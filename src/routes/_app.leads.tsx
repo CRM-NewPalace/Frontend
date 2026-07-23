@@ -10,10 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -26,11 +22,16 @@ import {
   Plus, Search, Filter, Download, MoreHorizontal, Phone, MessageSquare, Mail,
   UserPlus, MapPin, Wallet, Sparkles, Eye, Pencil, Trash2, X,
 } from "lucide-react";
-import { FUNIL_STAGES, CORRETORES, brl, type Lead } from "@/lib/mock-data";
+import { FUNIL_STAGES, brl, type Lead } from "@/lib/mock-data";
 import { getSession } from "@/lib/mock-auth";
+import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
+import { useCorretores } from "@/lib/corretores-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
+} from "@/components/form-dialog";
 
 export const Route = createFileRoute("/_app/leads")({
   head: () => ({ meta: [{ title: "Leads — Imob CRM" }] }),
@@ -99,10 +100,12 @@ function leadToForm(lead: Lead): FormState {
 
 function LeadsPage() {
   const user = getSession();
-  const isCorretor = user?.role === "corretor";
+  const canSeeTeam = user ? canViewTeamData(user.role) : false;
+  const isCorretor = !canSeeTeam;
   const defaultCorretor = isCorretor && user ? user.name : "Marina Alves";
 
   const { leads: allLeads, addLead, updateLead, deleteLead: removeLead } = useLeads();
+  const { corretores } = useCorretores();
   const leads = isCorretor && user
     ? allLeads.filter((l) => l.corretor === user.name)
     : allLeads;
@@ -245,7 +248,7 @@ function LeadsPage() {
           filteredLeads.length === leads.length
             ? isCorretor
               ? `${leads.length} leads atribuídos a você`
-              : `${leads.length} leads ativos no funil`
+              : `${leads.length} leads de toda a equipe no funil`
             : `${filteredLeads.length} de ${leads.length} leads`
         }
         actions={
@@ -260,33 +263,20 @@ function LeadsPage() {
         }
       />
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-br from-primary/10 via-background to-background">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                {formMode === "edit" ? <Pencil className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
-              </div>
-              <div className="space-y-1 pr-6">
-                <DialogTitle className="text-lg tracking-tight">
-                  {formMode === "edit" ? "Editar lead" : "Novo lead"}
-                </DialogTitle>
-                <DialogDescription>
-                  {formMode === "edit"
-                    ? "Atualize os dados do contato no funil."
-                    : "Preencha os dados para adicionar o contato ao funil."}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="flex flex-col max-h-[min(78vh,720px)]">
-            <div className="overflow-y-auto px-6 py-5 space-y-5">
-              <section className="rounded-xl border bg-card p-4 space-y-4 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  Contato
-                </div>
+      <FormDialogShell
+        open={open}
+        onOpenChange={setOpen}
+        icon={formMode === "edit" ? <Pencil className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+        title={formMode === "edit" ? "Editar lead" : "Novo lead"}
+        description={
+          formMode === "edit"
+            ? "Atualize os dados do contato no funil."
+            : "Preencha os dados para adicionar o contato ao funil."
+        }
+      >
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[min(78vh,720px)]">
+          <FormDialogBody>
+              <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
                 <div className="space-y-1.5">
                   <Label htmlFor="lead-nome" className="text-xs text-muted-foreground">Nome completo</Label>
                   <Input
@@ -340,7 +330,7 @@ function LeadsPage() {
                       <Select value={form.corretor} onValueChange={(v) => setField("corretor", v)}>
                         <SelectTrigger className="h-10 bg-background"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {CORRETORES.filter((c) => c.status === "Ativo").map((c) => (
+                          {corretores.filter((c) => c.status === "Ativo").map((c) => (
                             <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
                           ))}
                         </SelectContent>
@@ -355,13 +345,9 @@ function LeadsPage() {
                     </div>
                   )}
                 </div>
-              </section>
+              </FormSection>
 
-              <section className="rounded-xl border bg-card p-4 space-y-4 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Wallet className="w-3.5 h-3.5 text-primary" />
-                  Interesse e valor
-                </div>
+              <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse e valor">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Tipo de interesse</Label>
                   <div className="grid grid-cols-3 gap-2">
@@ -455,13 +441,9 @@ function LeadsPage() {
                     ))}
                   </div>
                 </div>
-              </section>
+              </FormSection>
 
-              <section className="rounded-xl border bg-card p-4 space-y-4 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <MapPin className="w-3.5 h-3.5 text-primary" />
-                  Localização
-                </div>
+              <FormSection icon={<MapPin className="w-3.5 h-3.5 text-primary" />} title="Localização">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="lead-cidade" className="text-xs text-muted-foreground">Cidade</Label>
@@ -484,62 +466,96 @@ function LeadsPage() {
                     />
                   </div>
                 </div>
-              </section>
-            </div>
+              </FormSection>
+          </FormDialogBody>
 
-            <DialogFooter className="px-6 py-4 border-t bg-muted/30 sm:justify-between gap-3">
-              <p className="text-xs text-muted-foreground hidden sm:block">
-                {formMode === "edit"
-                  ? "As alterações ficam só nesta sessão (demo)."
-                  : <>O lead entra na etapa <span className="font-medium text-foreground">Novo Lead</span>.</>}
-              </p>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" className="flex-1 sm:flex-none">
-                  {formMode === "edit" ? (
-                    "Salvar alterações"
-                  ) : (
-                    <><Plus className="w-4 h-4" />Salvar lead</>
+          <FormDialogActions
+            hint={
+              formMode === "edit"
+                ? "As alterações ficam só nesta sessão (demo)."
+                : <>O lead entra na etapa <span className="font-medium text-foreground">Novo Lead</span>.</>
+            }
+          >
+            <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="flex-1 sm:flex-none">
+              {formMode === "edit" ? (
+                "Salvar alterações"
+              ) : (
+                <><Plus className="w-4 h-4" />Salvar lead</>
+              )}
+            </Button>
+          </FormDialogActions>
+        </form>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={!!detailLead}
+        onOpenChange={(o) => !o && setDetailLead(null)}
+        icon={<Eye className="w-5 h-5" />}
+        title={detailLead?.nome ?? "Detalhes do lead"}
+        description={
+          detailLead
+            ? `${FUNIL_STAGES.find((s) => s.id === detailLead.stage)?.name ?? detailLead.stage} · Prioridade ${detailLead.prioridade}`
+            : undefined
+        }
+        className="sm:max-w-xl"
+      >
+        {detailLead && (
+          <>
+            <FormDialogBody>
+              <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DetailField label="Telefone" value={detailLead.telefone} />
+                  <DetailField label="E-mail" value={detailLead.email} />
+                  <DetailField label="Origem" value={detailLead.origem} />
+                  {!isCorretor && <DetailField label="Corretor" value={detailLead.corretor} />}
+                </div>
+              </FormSection>
+              <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse e valor">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DetailField label="Interesse" value={detailLead.interesse} />
+                  <DetailField label="Faixa" value={detailLead.faixa} />
+                  <DetailField label="Valor estimado" value={brl(detailLead.valor)} />
+                  <DetailField label="Prioridade" value={detailLead.prioridade} />
+                  {detailLead.tags.length > 0 && (
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <div className="text-xs text-muted-foreground">Tags</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {detailLead.tags.map((t) => (
+                          <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </div>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!detailLead} onOpenChange={(o) => !o && setDetailLead(null)}>
-        <DialogContent className="sm:max-w-md">
-          {detailLead && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{detailLead.nome}</DialogTitle>
-                <DialogDescription>
-                  {FUNIL_STAGES.find((s) => s.id === detailLead.stage)?.name} · {detailLead.prioridade}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-3 text-sm py-2">
-                <div><div className="text-xs text-muted-foreground">Telefone</div><div className="font-medium">{detailLead.telefone}</div></div>
-                <div><div className="text-xs text-muted-foreground">E-mail</div><div className="font-medium truncate">{detailLead.email}</div></div>
-                <div><div className="text-xs text-muted-foreground">Origem</div><div className="font-medium">{detailLead.origem}</div></div>
-                <div><div className="text-xs text-muted-foreground">Interesse</div><div className="font-medium">{detailLead.interesse}</div></div>
-                <div><div className="text-xs text-muted-foreground">Valor</div><div className="font-medium">{brl(detailLead.valor)}</div></div>
-                <div><div className="text-xs text-muted-foreground">Faixa</div><div className="font-medium">{detailLead.faixa}</div></div>
-                <div><div className="text-xs text-muted-foreground">Cidade</div><div className="font-medium">{detailLead.cidade || "—"}</div></div>
-                <div><div className="text-xs text-muted-foreground">Bairro</div><div className="font-medium">{detailLead.bairro || "—"}</div></div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetailLead(null)}>Fechar</Button>
-                <Button onClick={() => { const lead = detailLead; setDetailLead(null); openEdit(lead); }}>
-                  <Pencil className="w-4 h-4" /> Editar
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                </div>
+              </FormSection>
+              <FormSection icon={<MapPin className="w-3.5 h-3.5 text-primary" />} title="Localização">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DetailField label="Cidade" value={detailLead.cidade} />
+                  <DetailField label="Bairro" value={detailLead.bairro} />
+                </div>
+              </FormSection>
+            </FormDialogBody>
+            <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setDetailLead(null)}>
+                Fechar
+              </Button>
+              <Button
+                className="flex-1 sm:flex-none"
+                onClick={() => {
+                  const lead = detailLead;
+                  setDetailLead(null);
+                  openEdit(lead);
+                }}
+              >
+                <Pencil className="w-4 h-4" /> Editar
+              </Button>
+            </FormDialogActions>
+          </>
+        )}
+      </FormDialogShell>
 
       <AlertDialog open={!!deleteLead} onOpenChange={(o) => !o && setDeleteLead(null)}>
         <AlertDialogContent>
@@ -584,7 +600,7 @@ function LeadsPage() {
               <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Corretor" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos corretores</SelectItem>
-                {CORRETORES.map((c) => (
+                {corretores.map((c) => (
                   <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
                 ))}
               </SelectContent>

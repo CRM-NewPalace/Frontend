@@ -19,15 +19,23 @@ import {
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  LEADS_POR_ORIGEM, RECEITA_MES, TAREFAS, CORRETORES,
+  LEADS_POR_ORIGEM, RECEITA_MES, TAREFAS,
   tarefasForCorretor, brl, type Tarefa,
 } from "@/lib/mock-data";
 import { getSession } from "@/lib/mock-auth";
+import { canViewFinancial, canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useAgenda } from "@/lib/agenda-store";
+import { useCorretores } from "@/lib/corretores-store";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const FINANCIAL_CARD_LABELS = new Set([
+  "Receita do mês",
+  "Receita gerada",
+  "Comissão prevista",
+]);
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Imob CRM" }] }),
@@ -71,14 +79,17 @@ const GANHOS = [
 
 function Dashboard() {
   const user = getSession();
-  const isCorretor = user?.role === "corretor";
+  const canSeeTeam = user ? canViewTeamData(user.role) : false;
+  const isCorretor = !canSeeTeam;
+  const showFinancial = user ? canViewFinancial(user.role) || isCorretor : false;
   const nome = user?.name ?? "";
   const { leads: allLeads } = useLeads();
   const { events } = useAgenda();
+  const { corretores } = useCorretores();
 
   const myLeads = isCorretor ? allLeads.filter((l) => l.corretor === nome) : allLeads;
   const myAgenda = isCorretor ? events.filter((e) => e.corretor === nome) : events;
-  const myCorretor = isCorretor ? CORRETORES.find((c) => c.nome === nome) : null;
+  const myCorretor = isCorretor ? corretores.find((c) => c.nome === nome) : null;
 
   const [tarefas, setTarefas] = useState<Tarefa[]>(() =>
     isCorretor && nome ? tarefasForCorretor(nome) : [...TAREFAS],
@@ -94,7 +105,7 @@ function Dashboard() {
   const leadOptions = myLeads.map((l) => l.nome);
   const responsaveis = isCorretor
     ? [nome]
-    : CORRETORES.filter((c) => c.status === "Ativo").map((c) => c.nome);
+    : corretores.filter((c) => c.status === "Ativo").map((c) => c.nome);
   const [taskResponsavel, setTaskResponsavel] = useState(nome || responsaveis[0] || "");
 
   function openNewTask() {
@@ -131,7 +142,7 @@ function Dashboard() {
     toast.success("Tarefa adicionada ao dia.");
   }
 
-  const cards = isCorretor
+  const allCards = isCorretor
     ? [
         { label: "Meus leads", value: myLeads.length, delta: "ativos", up: true, icon: Users },
         {
@@ -189,6 +200,10 @@ function Dashboard() {
       ]
     : ADMIN_CARDS;
 
+  const cards = showFinancial
+    ? allCards
+    : allCards.filter((c) => !FINANCIAL_CARD_LABELS.has(c.label));
+
   const leadsOrigem = isCorretor
     ? Object.entries(
         myLeads.reduce<Record<string, number>>((acc, l) => {
@@ -237,7 +252,7 @@ function Dashboard() {
         description={
           isCorretor
             ? `Visão da sua operação, ${nome.split(" ")[0]}.`
-            : "Visão geral da operação hoje."
+            : "Visão geral da operação de todos os corretores."
         }
       />
 
@@ -271,26 +286,28 @@ function Dashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {isCorretor ? "Sua receita mensal" : "Receita mensal"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer>
-              <LineChart data={receitaMes}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="mes" stroke="var(--color-muted-foreground)" fontSize={12} />
-                <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid var(--color-border)" }} />
-                <Line type="monotone" dataKey="receita" stroke="var(--color-primary)" strokeWidth={2.5} dot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
+      <div className={cn("grid gap-4 mb-6", showFinancial ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1")}>
+        {showFinancial && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">
+                {isCorretor ? "Sua receita mensal" : "Receita mensal"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-64">
+              <ResponsiveContainer>
+                <LineChart data={receitaMes}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="mes" stroke="var(--color-muted-foreground)" fontSize={12} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid var(--color-border)" }} />
+                  <Line type="monotone" dataKey="receita" stroke="var(--color-primary)" strokeWidth={2.5} dot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+        <Card className={showFinancial ? undefined : "max-w-md"}>
           <CardHeader><CardTitle className="text-base">Ganhos x Perdidos</CardTitle></CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer>

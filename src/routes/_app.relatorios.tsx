@@ -6,6 +6,8 @@ import {
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { LEADS_POR_ORIGEM, RECEITA_MES, CORRETORES } from "@/lib/mock-data";
+import { getSession } from "@/lib/mock-auth";
+import { canViewFinancial } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_app/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios — Imob CRM" }] }),
@@ -22,6 +24,9 @@ const MOTIVOS_PERDA = [
 const COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
 
 function Relatorios() {
+  const user = getSession();
+  const showFinancial = user ? canViewFinancial(user.role) : false;
+
   return (
     <div>
       <PageHeader title="Relatórios" description="Indicadores de desempenho e conversão." />
@@ -54,22 +59,24 @@ function Relatorios() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Receita mensal</CardTitle></CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer>
-              <LineChart data={RECEITA_MES}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="mes" fontSize={11} />
-                <YAxis fontSize={11} />
-                <Tooltip />
-                <Line type="monotone" dataKey="receita" stroke="var(--color-primary)" strokeWidth={2.5} />
-                <Line type="monotone" dataKey="vendas" stroke="var(--color-chart-3)" strokeWidth={2.5} />
-                <Legend />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {showFinancial && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Receita mensal</CardTitle></CardHeader>
+            <CardContent className="h-64">
+              <ResponsiveContainer>
+                <LineChart data={RECEITA_MES}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="mes" fontSize={11} />
+                  <YAxis fontSize={11} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="receita" stroke="var(--color-primary)" strokeWidth={2.5} />
+                  <Line type="monotone" dataKey="vendas" stroke="var(--color-chart-3)" strokeWidth={2.5} />
+                  <Legend />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardHeader><CardTitle className="text-base">Motivos de perda</CardTitle></CardHeader>
           <CardContent className="h-64">

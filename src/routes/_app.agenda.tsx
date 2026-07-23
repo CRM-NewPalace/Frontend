@@ -20,10 +20,12 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CORRETORES, type AgendaEvento } from "@/lib/mock-data";
+import { type AgendaEvento } from "@/lib/mock-data";
 import { getSession } from "@/lib/mock-auth";
+import { canViewTeamData } from "@/lib/permissions";
 import { useAgenda } from "@/lib/agenda-store";
 import { useLeads } from "@/lib/leads-store";
+import { useCorretores } from "@/lib/corretores-store";
 import { Plus, Calendar as CalendarIcon, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -76,11 +78,13 @@ function eventStyle(tipo: AgendaEvento["tipo"]) {
 
 function Agenda() {
   const user = getSession();
-  const isCorretor = user?.role === "corretor";
+  const canSeeTeam = user ? canViewTeamData(user.role) : false;
+  const isCorretor = !canSeeTeam;
   const defaultCorretor = isCorretor && user ? user.name : "Marina Alves";
 
   const { events, addEvent, updateEvent, deleteEvent } = useAgenda();
   const { leads } = useLeads();
+  const { corretores } = useCorretores();
   const leadOptions = isCorretor && user
     ? leads.filter((l) => l.corretor === user.name)
     : leads;
@@ -169,7 +173,7 @@ function Agenda() {
         description={
           isCorretor
             ? "Seus compromissos: visitas, reuniões e ligações."
-            : "Visitas, reuniões, ligações e tarefas da equipe."
+            : "Visitas, reuniões e ligações de todos os corretores."
         }
         actions={
           <>
@@ -283,7 +287,7 @@ function Agenda() {
                 <Select value={form.corretor} onValueChange={(v) => setForm((f) => ({ ...f, corretor: v }))}>
                   <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CORRETORES.filter((c) => c.status === "Ativo").map((c) => (
+                    {corretores.filter((c) => c.status === "Ativo").map((c) => (
                       <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
                     ))}
                   </SelectContent>

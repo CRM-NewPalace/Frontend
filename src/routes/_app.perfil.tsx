@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getSession, type MockUser } from "@/lib/mock-auth";
+import { DEMO_USERS, getSession, type MockUser } from "@/lib/mock-auth";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { toast } from "sonner";
 
@@ -26,10 +27,16 @@ function Perfil() {
   const [user, setUser] = useState<MockUser | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [pushNotif, setPushNotif] = useState(true);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    setUser(getSession());
+    const session = getSession();
+    setUser(session);
     setDarkMode(getTheme() === "dark");
+    if (session?.email) {
+      setPassword(DEMO_USERS[session.email.toLowerCase()]?.password ?? "");
+    }
   }, []);
 
   const initials = user?.name.split(" ").map((n) => n[0]).slice(0, 2).join("") ?? "U";
@@ -63,7 +70,28 @@ function Perfil() {
             <div className="space-y-1.5"><Label>Nome</Label><Input defaultValue={user?.name} /></div>
             <div className="space-y-1.5"><Label>Email</Label><Input defaultValue={user?.email} /></div>
             <div className="space-y-1.5"><Label>Telefone</Label><Input defaultValue="(11) 98765-4321" /></div>
-            <div className="space-y-1.5"><Label>Senha</Label><Input type="password" defaultValue="••••••••" /></div>
+            <div className="space-y-1.5">
+              <Label htmlFor="perfil-senha">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="perfil-senha"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
             <div className="md:col-span-2 flex justify-end gap-2">
               <Button variant="outline">Cancelar</Button>
               <Button>Salvar alterações</Button>

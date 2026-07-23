@@ -4,6 +4,10 @@ import { getSession } from "@/lib/mock-auth";
 import { canAccessRoute, defaultRouteForRole } from "@/lib/permissions";
 import { LeadsProvider } from "@/lib/leads-store";
 import { AgendaProvider } from "@/lib/agenda-store";
+import { CorretoresProvider } from "@/lib/corretores-store";
+import { PropostasProvider } from "@/lib/propostas-store";
+import { TriagemProvider } from "@/lib/triagem-store";
+import { FinanceiroContasProvider } from "@/lib/financeiro-contas-store";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
@@ -17,9 +21,17 @@ export const Route = createFileRoute("/_app")({
   component: () => (
     <LeadsProvider>
       <AgendaProvider>
-        <AppShell>
-          <Outlet />
-        </AppShell>
+        <CorretoresProvider>
+          <PropostasProvider>
+            <TriagemProvider>
+              <FinanceiroContasProvider>
+                <AppShell>
+                  <Outlet />
+                </AppShell>
+              </FinanceiroContasProvider>
+            </TriagemProvider>
+          </PropostasProvider>
+        </CorretoresProvider>
       </AgendaProvider>
     </LeadsProvider>
   ),

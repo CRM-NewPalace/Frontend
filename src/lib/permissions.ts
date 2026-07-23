@@ -1,6 +1,11 @@
 import type { Role } from "@/lib/mock-auth";
 
-/** Rotas liberadas por perfil. Admin vê tudo; gerente não vê financeiro; corretor só o essencial. */
+/**
+ * Rotas por perfil:
+ * - admin: tudo, inclusive financeiro
+ * - gerente: operação completa da equipe (leads, funil, agenda, clientes, corretores…), sem financeiro nem usuários
+ * - corretor: essencial + imóveis do catálogo New Palace (só os próprios leads/agenda/clientes)
+ */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
   admin: [
     "/dashboard",
@@ -10,6 +15,8 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/imoveis",
     "/clientes",
     "/corretores",
+    "/metas",
+    "/triagem",
     "/usuarios",
     "/propostas",
     "/financeiro",
@@ -25,7 +32,8 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/imoveis",
     "/clientes",
     "/corretores",
-    "/usuarios",
+    "/metas",
+    "/triagem",
     "/propostas",
     "/relatorios",
     "/configuracoes",
@@ -36,7 +44,10 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/leads",
     "/funil",
     "/agenda",
+    "/imoveis",
     "/clientes",
+    "/metas",
+    "/triagem",
     "/perfil",
   ],
 };
@@ -54,4 +65,17 @@ export function canAccessRoute(role: Role, pathname: string): boolean {
 
 export function defaultRouteForRole(_role: Role): string {
   return "/dashboard";
+}
+
+/** Apenas admin vê indicadores financeiros (receita, comissão, valores em R$). */
+export function canViewFinancial(role: Role): boolean {
+  return role === "admin";
+}
+
+/**
+ * Admin e gerente acompanham leads, funil, agenda, clientes e processos de todos os corretores.
+ * Corretor fica restrito aos próprios registros.
+ */
+export function canViewTeamData(role: Role): boolean {
+  return role === "admin" || role === "gerente";
 }
