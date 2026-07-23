@@ -89,7 +89,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.ico?v=7", sizes: "any" },
+      { rel: "icon", href: "/favicon-32.png?v=7", type: "image/png", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/favicon-48.png?v=7", sizes: "48x48" },
     ],
   }),
   shellComponent: RootShell,
@@ -103,6 +105,8 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR">
       <head>
         <HeadContent />
+        <link rel="icon" href="/favicon.ico?v=7" sizes="any" />
+        <link rel="icon" type="image/png" href="/favicon-32.png?v=7" sizes="32x32" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}}catch(e){}})();`,

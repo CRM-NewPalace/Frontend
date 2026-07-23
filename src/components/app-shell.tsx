@@ -2,7 +2,7 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Kanban, Calendar, Building2, UserCircle2,
   UsersRound, FileText, DollarSign, BarChart3, Settings, User as UserIcon,
-  LogOut, Search, Bell, ChevronsLeft, ChevronDown, ChevronRight, Home,
+  LogOut, Search, Bell, ChevronsLeft, ChevronDown, ChevronRight,
   Target, ClipboardList, Briefcase, Shield, CircleUser, ArrowLeftRight,
   Banknote, ScrollText, ArrowUpRight, ArrowDownRight, FolderKanban, type LucideIcon,
 } from "lucide-react";
@@ -196,11 +196,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={`${collapsed ? "w-16" : "w-60"} shrink-0 border-r bg-sidebar text-sidebar-foreground transition-all duration-200 sticky top-0 h-screen flex flex-col`}
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b">
-          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold">
-            <Home className="w-4 h-4" />
-          </div>
+          <img
+            src="/favicon-32.png"
+            alt="Imob CRM"
+            className="w-8 h-8 rounded-lg object-cover shrink-0"
+          />
           {!collapsed && (
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold leading-tight">Imob CRM</div>
               <div className="text-[10px] text-muted-foreground">Gestão Imobiliária</div>
             </div>
