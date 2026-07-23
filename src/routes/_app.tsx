@@ -1,0 +1,26 @@
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { AppShell } from "@/components/app-shell";
+import { getSession } from "@/lib/mock-auth";
+import { canAccessRoute, defaultRouteForRole } from "@/lib/permissions";
+import { LeadsProvider } from "@/lib/leads-store";
+import { AgendaProvider } from "@/lib/agenda-store";
+
+export const Route = createFileRoute("/_app")({
+  ssr: false,
+  beforeLoad: ({ location }) => {
+    const user = getSession();
+    if (!user) throw redirect({ to: "/login" });
+    if (!canAccessRoute(user.role, location.pathname)) {
+      throw redirect({ to: defaultRouteForRole(user.role) });
+    }
+  },
+  component: () => (
+    <LeadsProvider>
+      <AgendaProvider>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+      </AgendaProvider>
+    </LeadsProvider>
+  ),
+});
