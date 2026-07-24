@@ -1,21 +1,46 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { FinanceKpiCard } from "@/components/finance-kpi-card";
+import {
+  FormDialogShell, FormDialogBody, FormDialogActions, FormSection, DetailField,
+} from "@/components/form-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown, CircleDollarSign } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Plus, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown,
+  CircleDollarSign, MoreHorizontal, Eye, Pencil, Trash2, ArrowLeftRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useFinanceiroContas } from "@/lib/financeiro-contas-store";
-import { FinanceKpiCard } from "@/components/finance-kpi-card";
+import {
+  useMovimentosFinanceiros,
+  formatDataBR,
+  type MovimentoFinanceiro,
+  type MovimentoTipo,
+} from "@/lib/movimentos-financeiros-store";
 
 export const Route = createFileRoute("/_app/financeiro/movimentacao")({
   head: () => ({ meta: [{ title: "Movimentação financeira — Financeiro" }] }),
   component: Movimentacao,
 });
+
+const CATEGORIAS = ["Comissão", "Sinal", "Marketing", "Estrutura", "Pessoal", "Serviços", "Outros"];
+const CONTAS = ["Conta corrente", "Cartão corporativo", "Caixa", "Poupança"];
+
+type DialogMode = "create" | "edit" | "view" | null;
 
 function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,37 +62,59 @@ function formatInput(n: number) {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const ENTRADAS = 1253447.3;
-const SAIDAS = 323851.57;
-
-const MOVIMENTOS = [
-  { id: "m1", data: "22/07/2026", desc: "Comissão venda IM-2001", tipo: "Entrada", categoria: "Comissão", valor: 24000, conta: "Conta corrente" },
-  { id: "m2", data: "21/07/2026", desc: "Marketing digital", tipo: "Saída", categoria: "Marketing", valor: 8500, conta: "Conta corrente" },
-  { id: "m3", data: "20/07/2026", desc: "Sinal proposta IM-2007", tipo: "Entrada", categoria: "Sinal", valor: 12000, conta: "Conta corrente" },
-  { id: "m4", data: "18/07/2026", desc: "Aluguel escritório", tipo: "Saída", categoria: "Estrutura", valor: 12000, conta: "Conta corrente" },
-  { id: "m5", data: "15/07/2026", desc: "Comissão venda IM-2003", tipo: "Entrada", categoria: "Comissão", valor: 35600, conta: "Conta corrente" },
-  { id: "m6", data: "10/07/2026", desc: "Portais imobiliários", tipo: "Saída", categoria: "Marketing", valor: 3200, conta: "Cartão corporativo" },
-  { id: "m7", data: "05/07/2026", desc: "Comissões corretores", tipo: "Saída", categoria: "Pessoal", valor: 45000, conta: "Conta corrente" },
-];
+function emptyForm(): Omit<MovimentoFinanceiro, "id"> {
+  return {
+    data: new Date().toISOString().slice(0, 10),
+    desc: "",
+    tipo: "Entrada",
+    categoria: "Comissão",
+    conta: "Conta corrente",
+    valor: 0,
+    observacoes: "",
+  };
+}
 
 function Movimentacao() {
   const { saldoInicial, setSaldoInicial } = useFinanceiroContas();
+  const { movimentos, addMovimento, updateMovimento, deleteMovimento } = useMovimentosFinanceiros();
+
   const [inputSaldo, setInputSaldo] = useState(formatInput(saldoInicial));
+  const [mode, setMode] = useState<DialogMode>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const [valorInput, setValorInput] = useState("0,00");
 
   useEffect(() => {
     setInputSaldo(formatInput(saldoInicial));
   }, [saldoInicial]);
 
+  const entradas = useMemo(
+    () => movimentos.filter((m) => m.tipo === "Entrada").reduce((s, m) => s + m.valor, 0),
+    [movimentos],
+  );
+  const saidas = useMemo(
+    () => movimentos.filter((m) => m.tipo === "Saída").reduce((s, m) => s + m.valor, 0),
+    [movimentos],
+  );
+
   const resumo = useMemo(() => {
-    const saldo = saldoInicial + ENTRADAS - SAIDAS;
+    const saldo = saldoInicial + entradas - saidas;
     return {
       saldoAnterior: saldoInicial,
-      entradas: ENTRADAS,
-      saidas: SAIDAS,
+      entradas,
+      saidas,
       saldo,
       saldoAtual: saldo,
     };
-  }, [saldoInicial]);
+  }, [saldoInicial, entradas, saidas]);
+
+  const sorted = useMemo(
+    () => [...movimentos].sort((a, b) => b.data.localeCompare(a.data)),
+    [movimentos],
+  );
+
+  const readOnly = mode === "view";
+  const dialogOpen = mode !== null;
 
   function salvarSaldoInicial() {
     const parsed = parseMoneyInput(inputSaldo);
@@ -80,13 +127,72 @@ function Movimentacao() {
     toast.success("Saldo inicial cadastrado");
   }
 
+  function openCreate() {
+    setEditingId(null);
+    setForm(emptyForm());
+    setValorInput("0,00");
+    setMode("create");
+  }
+
+  function openView(m: MovimentoFinanceiro) {
+    setEditingId(m.id);
+    setForm({ ...m });
+    setValorInput(formatInput(m.valor));
+    setMode("view");
+  }
+
+  function openEdit(m: MovimentoFinanceiro) {
+    setEditingId(m.id);
+    setForm({ ...m });
+    setValorInput(formatInput(m.valor));
+    setMode("edit");
+  }
+
+  function closeDialog() {
+    setMode(null);
+    setEditingId(null);
+  }
+
+  function save() {
+    if (!form.desc.trim()) {
+      toast.error("Informe a descrição");
+      return;
+    }
+    const valor = parseMoneyInput(valorInput);
+    if (valor == null || valor <= 0) {
+      toast.error("Informe um valor válido");
+      return;
+    }
+    const payload = { ...form, desc: form.desc.trim(), valor };
+    if (mode === "create") {
+      addMovimento({ ...payload, id: `m-${Date.now()}` });
+      toast.success("Movimentação criada");
+    } else if (editingId) {
+      updateMovimento(editingId, payload);
+      toast.success("Movimentação atualizada");
+    }
+    closeDialog();
+  }
+
+  function remove(id: string, desc: string) {
+    if (!window.confirm(`Excluir a movimentação "${desc}"?`)) return;
+    deleteMovimento(id);
+    toast.success("Movimentação excluída");
+    if (editingId === id) closeDialog();
+  }
+
+  const dialogTitle =
+    mode === "create" ? "Nova movimentação"
+      : mode === "edit" ? "Editar movimentação"
+        : "Detalhes da movimentação";
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Movimentação financeira"
-        description="Entradas e saídas registradas no período."
+        description="Entradas e saídas — criar, consultar, editar e excluir."
         actions={
-          <Button size="sm">
+          <Button size="sm" onClick={openCreate}>
             <Plus className="w-4 h-4 mr-1" />
             Nova movimentação
           </Button>
@@ -120,7 +226,7 @@ function Movimentacao() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 [&>*]:min-w-0">
         <FinanceKpiCard label="Saldo Anterior" value={resumo.saldoAnterior} icon={Wallet} tone="blue" />
         <FinanceKpiCard label="Entradas" value={resumo.entradas} icon={TrendingUp} tone="teal" />
         <FinanceKpiCard label="Saídas" value={resumo.saidas} icon={TrendingDown} tone="rose" />
@@ -138,14 +244,17 @@ function Movimentacao() {
               <TableHead>Categoria</TableHead>
               <TableHead>Conta</TableHead>
               <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {MOVIMENTOS.map((m) => {
+            {sorted.map((m) => {
               const entrada = m.tipo === "Entrada";
               return (
                 <TableRow key={m.id}>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{m.data}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDataBR(m.data)}
+                  </TableCell>
                   <TableCell className="text-sm font-medium">{m.desc}</TableCell>
                   <TableCell>
                     <Badge
@@ -170,12 +279,167 @@ function Movimentacao() {
                     {entrada ? "+" : "-"}
                     {money(m.valor)}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openView(m)}>
+                          <Eye className="w-3.5 h-3.5 mr-2" /> Ver detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEdit(m)}>
+                          <Pencil className="w-3.5 h-3.5 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => remove(m.id, m.desc)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               );
             })}
+            {!sorted.length && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-10">
+                  Nenhuma movimentação cadastrada.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </Card>
+
+      <FormDialogShell
+        open={dialogOpen}
+        onOpenChange={(o) => { if (!o) closeDialog(); }}
+        icon={<ArrowLeftRight className="w-5 h-5" />}
+        title={dialogTitle}
+        description="Registro de entrada ou saída no caixa."
+        footer={
+          <FormDialogActions>
+            <Button variant="outline" onClick={closeDialog}>
+              {readOnly ? "Fechar" : "Cancelar"}
+            </Button>
+            {readOnly ? (
+              <Button
+                onClick={() => {
+                  if (editingId) {
+                    const m = movimentos.find((x) => x.id === editingId);
+                    if (m) openEdit(m);
+                  }
+                }}
+              >
+                <Pencil className="w-4 h-4 mr-1" /> Editar
+              </Button>
+            ) : (
+              <Button onClick={save}>{mode === "create" ? "Cadastrar" : "Salvar"}</Button>
+            )}
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          {readOnly ? (
+            <FormSection title="Informações">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <DetailField label="Data" value={formatDataBR(form.data)} />
+                <DetailField label="Tipo" value={form.tipo} />
+                <DetailField label="Descrição" value={form.desc} className="sm:col-span-2" />
+                <DetailField label="Categoria" value={form.categoria} />
+                <DetailField label="Conta" value={form.conta} />
+                <DetailField label="Valor" value={money(form.valor)} />
+                <DetailField label="Observações" value={form.observacoes || "—"} className="sm:col-span-2" />
+              </div>
+            </FormSection>
+          ) : (
+            <FormSection title="Dados da movimentação">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Data</Label>
+                  <Input
+                    type="date"
+                    value={form.data}
+                    onChange={(e) => setForm({ ...form, data: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo</Label>
+                  <Select
+                    value={form.tipo}
+                    onValueChange={(v) => setForm({ ...form, tipo: v as MovimentoTipo })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Entrada">Entrada</SelectItem>
+                      <SelectItem value="Saída">Saída</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Descrição</Label>
+                  <Input
+                    value={form.desc}
+                    onChange={(e) => setForm({ ...form, desc: e.target.value })}
+                    placeholder="Ex.: Comissão venda IM-2001"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Categoria</Label>
+                  <Select
+                    value={form.categoria}
+                    onValueChange={(v) => setForm({ ...form, categoria: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIAS.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Conta</Label>
+                  <Select
+                    value={form.conta}
+                    onValueChange={(v) => setForm({ ...form, conta: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CONTAS.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Valor</Label>
+                  <Input
+                    inputMode="decimal"
+                    value={valorInput}
+                    onChange={(e) => setValorInput(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    rows={3}
+                    value={form.observacoes}
+                    onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+                  />
+                </div>
+              </div>
+            </FormSection>
+          )}
+        </FormDialogBody>
+      </FormDialogShell>
     </div>
   );
 }

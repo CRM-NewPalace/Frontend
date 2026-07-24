@@ -337,10 +337,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-card/70 backdrop-blur sticky top-0 z-30 flex items-center gap-3 px-6">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar leads, imóveis, corretores..." className="pl-9 h-9 bg-background" />
+        <header className="h-14 border-b bg-card/70 backdrop-blur sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
+          <div className="relative flex-1 max-w-md min-w-0">
+            <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Buscar..." className="pl-8 sm:pl-9 h-9 bg-background text-sm" />
           </div>
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-4 h-4" />
@@ -383,7 +383,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="flex-1 p-6 max-w-full">{children}</main>
+        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-hidden">{children}</main>
       </div>
     </div>
   );
@@ -393,12 +393,16 @@ export function PageHeader({
   title, description, actions,
 }: { title: string; description?: string; actions?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
+      <div className="min-w-0">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
         {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

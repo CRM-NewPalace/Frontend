@@ -8,6 +8,8 @@ import { CorretoresProvider } from "@/lib/corretores-store";
 import { PropostasProvider } from "@/lib/propostas-store";
 import { TriagemProvider } from "@/lib/triagem-store";
 import { FinanceiroContasProvider } from "@/lib/financeiro-contas-store";
+import { FinanceiroPessoasProvider } from "@/lib/financeiro-pessoas-store";
+import { MovimentosFinanceirosProvider } from "@/lib/movimentos-financeiros-store";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
@@ -25,9 +27,13 @@ export const Route = createFileRoute("/_app")({
           <PropostasProvider>
             <TriagemProvider>
               <FinanceiroContasProvider>
-                <AppShell>
-                  <Outlet />
-                </AppShell>
+                <FinanceiroPessoasProvider>
+                  <MovimentosFinanceirosProvider>
+                    <AppShell>
+                      <Outlet />
+                    </AppShell>
+                  </MovimentosFinanceirosProvider>
+                </FinanceiroPessoasProvider>
               </FinanceiroContasProvider>
             </TriagemProvider>
           </PropostasProvider>

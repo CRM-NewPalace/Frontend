@@ -41,27 +41,39 @@ export function FinanceKpiCard({
       ? value.toLocaleString("pt-BR")
       : money(value);
 
+  const len = display.length;
+  const valueSize =
+    len > 18 ? "text-sm leading-snug"
+      : len > 14 ? "text-base leading-snug"
+        : "text-xl leading-tight";
+
   const card = (
     <div
       className={cn(
-        "rounded-xl bg-card text-card-foreground shadow-sm border border-border/60 overflow-hidden",
+        "rounded-xl bg-card text-card-foreground shadow-sm border border-border/60 overflow-hidden min-w-0",
         href && "transition-shadow hover:shadow-md",
         className,
       )}
+      title={display}
     >
       <div className={cn("h-2 w-full", t.bar)} />
-      <div className="p-4 flex items-center gap-3">
+      <div className="p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3 min-w-0">
         <div
           className={cn(
-            "w-12 h-12 rounded-lg flex items-center justify-center shrink-0 text-white shadow-sm",
+            "w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0 text-white shadow-sm",
             t.icon,
           )}
         >
-          <Icon className="w-5 h-5" />
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs text-muted-foreground leading-snug">{label}</div>
-          <div className="text-xl font-bold tracking-tight tabular-nums mt-0.5 text-foreground">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="text-[11px] sm:text-xs text-muted-foreground leading-snug truncate">{label}</div>
+          <div
+            className={cn(
+              "font-bold tracking-tight tabular-nums mt-0.5 text-foreground break-all sm:break-words",
+              valueSize,
+            )}
+          >
             {display}
           </div>
         </div>
@@ -71,7 +83,7 @@ export function FinanceKpiCard({
 
   if (href) {
     return (
-      <Link to={href} className="block">
+      <Link to={href} className="block min-w-0">
         {card}
       </Link>
     );
