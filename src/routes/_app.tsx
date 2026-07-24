@@ -7,6 +7,8 @@ import { AgendaProvider } from "@/lib/agenda-store";
 import { CorretoresProvider } from "@/lib/corretores-store";
 import { PropostasProvider } from "@/lib/propostas-store";
 import { TriagemProvider } from "@/lib/triagem-store";
+import { DocumentacaoProvider } from "@/lib/documentacao-store";
+import { ComissaoProvider } from "@/lib/comissao-store";
 import { FinanceiroContasProvider } from "@/lib/financeiro-contas-store";
 import { FinanceiroPessoasProvider } from "@/lib/financeiro-pessoas-store";
 import { MovimentosFinanceirosProvider } from "@/lib/movimentos-financeiros-store";
@@ -26,15 +28,19 @@ export const Route = createFileRoute("/_app")({
         <CorretoresProvider>
           <PropostasProvider>
             <TriagemProvider>
-              <FinanceiroContasProvider>
-                <FinanceiroPessoasProvider>
-                  <MovimentosFinanceirosProvider>
-                    <AppShell>
-                      <Outlet />
-                    </AppShell>
-                  </MovimentosFinanceirosProvider>
-                </FinanceiroPessoasProvider>
-              </FinanceiroContasProvider>
+              <DocumentacaoProvider>
+                <ComissaoProvider>
+                  <FinanceiroContasProvider>
+                    <FinanceiroPessoasProvider>
+                      <MovimentosFinanceirosProvider>
+                        <AppShell>
+                          <Outlet />
+                        </AppShell>
+                      </MovimentosFinanceirosProvider>
+                    </FinanceiroPessoasProvider>
+                  </FinanceiroContasProvider>
+                </ComissaoProvider>
+              </DocumentacaoProvider>
             </TriagemProvider>
           </PropostasProvider>
         </CorretoresProvider>

@@ -107,6 +107,8 @@ export interface Corretor {
   telefone: string;
   email: string;
   equipe: string;
+  /** Gerente responsável pela equipe do corretor */
+  gerente: string;
   /** Meta mensal definida pelo gerente/admin */
   meta: number;
   /** Meta pessoal definida pelo próprio corretor */
@@ -119,12 +121,24 @@ export interface Corretor {
   criadoEm: string;
 }
 
+export interface GerenteEquipe {
+  id: string;
+  nome: string;
+  equipes: string[];
+}
+
+export const GERENTES: GerenteEquipe[] = [
+  { id: "g1", nome: "Carlos Lima", equipes: ["Time Norte"] },
+  { id: "g2", nome: "Fernanda Dias", equipes: ["Time Sul"] },
+  { id: "g3", nome: "Roberto Nunes", equipes: ["Time Centro"] },
+];
+
 export const CORRETORES: Corretor[] = [
-  { id: "c1", nome: "Marina Alves", creci: "CRECI 45678-F", telefone: "(11) 98123-4567", email: "marina@imob.com", equipe: "Time Norte", meta: 3, metaPessoal: 4, vendas: 4, leads: 28, valorVendido: 2450000, status: "Ativo", criadoEm: "2025-11-12" },
-  { id: "c2", nome: "Pedro Henrique", creci: "CRECI 41234-F", telefone: "(11) 97654-3210", email: "pedro@imob.com", equipe: "Time Sul", meta: 3, metaPessoal: 3, vendas: 2, leads: 22, valorVendido: 1180000, status: "Ativo", criadoEm: "2026-01-08" },
-  { id: "c3", nome: "Sofia Ramos", creci: "CRECI 39876-F", telefone: "(11) 96543-2109", email: "sofia@imob.com", equipe: "Time Norte", meta: 2, metaPessoal: 3, vendas: 3, leads: 19, valorVendido: 1620000, status: "Ativo", criadoEm: "2026-03-22" },
-  { id: "c4", nome: "Diego Cardoso", creci: "CRECI 38765-F", telefone: "(11) 95432-1098", email: "diego@imob.com", equipe: "Time Sul", meta: 3, metaPessoal: 2, vendas: 1, leads: 14, valorVendido: 540000, status: "Ativo", criadoEm: "2026-06-05" },
-  { id: "c5", nome: "Laura Prado", creci: "CRECI 37654-F", telefone: "(11) 94321-0987", email: "laura@imob.com", equipe: "Time Centro", meta: 2, metaPessoal: 2, vendas: 2, leads: 17, valorVendido: 890000, status: "Inativo", criadoEm: "2025-09-30" },
+  { id: "c1", nome: "Marina Alves", creci: "CRECI 45678-F", telefone: "(11) 98123-4567", email: "marina@imob.com", equipe: "Time Norte", gerente: "Carlos Lima", meta: 3, metaPessoal: 4, vendas: 4, leads: 28, valorVendido: 2450000, status: "Ativo", criadoEm: "2025-11-12" },
+  { id: "c2", nome: "Pedro Henrique", creci: "CRECI 41234-F", telefone: "(11) 97654-3210", email: "pedro@imob.com", equipe: "Time Sul", gerente: "Fernanda Dias", meta: 3, metaPessoal: 3, vendas: 2, leads: 22, valorVendido: 1180000, status: "Ativo", criadoEm: "2026-01-08" },
+  { id: "c3", nome: "Sofia Ramos", creci: "CRECI 39876-F", telefone: "(11) 96543-2109", email: "sofia@imob.com", equipe: "Time Norte", gerente: "Carlos Lima", meta: 2, metaPessoal: 3, vendas: 3, leads: 19, valorVendido: 1620000, status: "Ativo", criadoEm: "2026-03-22" },
+  { id: "c4", nome: "Diego Cardoso", creci: "CRECI 38765-F", telefone: "(11) 95432-1098", email: "diego@imob.com", equipe: "Time Sul", gerente: "Fernanda Dias", meta: 3, metaPessoal: 2, vendas: 1, leads: 14, valorVendido: 540000, status: "Ativo", criadoEm: "2026-06-05" },
+  { id: "c5", nome: "Laura Prado", creci: "CRECI 37654-F", telefone: "(11) 94321-0987", email: "laura@imob.com", equipe: "Time Centro", gerente: "Roberto Nunes", meta: 2, metaPessoal: 2, vendas: 2, leads: 17, valorVendido: 890000, status: "Inativo", criadoEm: "2025-09-30" },
 ];
 
 export interface Proposta {

@@ -8,7 +8,7 @@ import {
 } from "react";
 import { CORRETORES, type Corretor } from "@/lib/mock-data";
 
-const STORAGE_KEY = "crm_mock_corretores_v3";
+const STORAGE_KEY = "crm_mock_corretores_v4";
 
 function todayIso() {
   const d = new Date();
@@ -25,6 +25,7 @@ function normalizeCorretor(raw: Partial<Corretor> & { id: string; nome: string }
     telefone: raw.telefone ?? base?.telefone ?? "",
     email: raw.email ?? base?.email ?? "",
     equipe: raw.equipe ?? base?.equipe ?? "Time Norte",
+    gerente: raw.gerente ?? base?.gerente ?? "Carlos Lima",
     meta,
     metaPessoal: raw.metaPessoal ?? base?.metaPessoal ?? meta,
     vendas: raw.vendas ?? base?.vendas ?? 0,

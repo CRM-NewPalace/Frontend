@@ -25,7 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
 } from "@/components/form-dialog";
-import { brl, type Corretor } from "@/lib/mock-data";
+import { brl, GERENTES, type Corretor } from "@/lib/mock-data";
 import { getSession } from "@/lib/mock-auth";
 import { canViewFinancial } from "@/lib/permissions";
 import { useCorretores } from "@/lib/corretores-store";
@@ -260,6 +260,8 @@ function Corretores() {
     }
 
     if (formMode === "create") {
+      const gerente =
+        GERENTES.find((g) => g.equipes.includes(form.equipe))?.nome ?? "Carlos Lima";
       addCorretor({
         id: `c${Date.now()}`,
         nome,
@@ -267,6 +269,7 @@ function Corretores() {
         telefone,
         email,
         equipe: form.equipe,
+        gerente,
         meta,
         metaPessoal: meta,
         vendas: 0,
@@ -277,12 +280,15 @@ function Corretores() {
       });
       toast.success(`Corretor "${nome}" cadastrado.`);
     } else if (editingId) {
+      const gerente =
+        GERENTES.find((g) => g.equipes.includes(form.equipe))?.nome ?? "Carlos Lima";
       updateCorretor(editingId, {
         nome,
         creci: creci.toUpperCase().startsWith("CRECI") ? creci : `CRECI ${creci}`,
         telefone,
         email,
         equipe: form.equipe,
+        gerente,
         meta,
         status: form.status,
       });

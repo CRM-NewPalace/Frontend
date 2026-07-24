@@ -12,7 +12,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Users, Phone, CalendarCheck, FileText, HandshakeIcon, TrendingUp,
-  DollarSign, Wallet, ArrowUp, ArrowDown, Plus, CheckSquare,
+  DollarSign, Wallet, ArrowUp, ArrowDown, Plus, CheckSquare, Building2,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -35,6 +35,9 @@ const FINANCIAL_CARD_LABELS = new Set([
   "Receita do mês",
   "Receita gerada",
   "Comissão prevista",
+  "VGV do mês anterior",
+  "VGV atual",
+  "VGV previsto",
 ]);
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -43,6 +46,11 @@ export const Route = createFileRoute("/_app/dashboard")({
 });
 
 const PIE_COLORS = ["var(--color-primary)", "var(--color-destructive)"];
+
+/** VGV = valor dos apartamentos vendidos */
+const VGV_MES_ANTERIOR = 580000;
+const VGV_ATUAL = 720000;
+const VGV_PREVISTO = 850000;
 
 const ADMIN_CARDS = [
   { label: "Novos Leads", value: 47, delta: "+12%", up: true, icon: Users },
@@ -53,6 +61,12 @@ const ADMIN_CARDS = [
   { label: "Vendas do mês", value: 14, delta: "+27%", up: true, icon: TrendingUp },
   { label: "Receita do mês", value: brl(720000), delta: "+15%", up: true, icon: DollarSign },
   { label: "Comissão prevista", value: brl(108000), delta: "+9%", up: true, icon: Wallet },
+];
+
+const ADMIN_VGV_CARDS = [
+  { label: "VGV do mês anterior", value: brl(VGV_MES_ANTERIOR), delta: "mês anterior", up: true, icon: Building2 },
+  { label: "VGV atual", value: brl(VGV_ATUAL), delta: "+24%", up: true, icon: Building2 },
+  { label: "VGV previsto", value: brl(VGV_PREVISTO), delta: "+18%", up: true, icon: Building2 },
 ];
 
 const FUNIL_CONV = [
@@ -200,9 +214,51 @@ function Dashboard() {
       ]
     : ADMIN_CARDS;
 
+  const vgvCards = isCorretor
+    ? [
+        {
+          label: "VGV do mês anterior",
+          value: brl(
+            Math.round(
+              (myCorretor?.valorVendido ?? VGV_ATUAL) * (VGV_MES_ANTERIOR / VGV_ATUAL) * 0.35,
+            ),
+          ),
+          delta: "suas vendas",
+          up: true,
+          icon: Building2,
+        },
+        {
+          label: "VGV atual",
+          value: brl(
+            myCorretor?.valorVendido
+              ? Math.round(myCorretor.valorVendido * 0.35)
+              : myLeads.filter((l) => l.stage === "venda").reduce((s, l) => s + l.valor, 0),
+          ),
+          delta: "aps vendidos",
+          up: true,
+          icon: Building2,
+        },
+        {
+          label: "VGV previsto",
+          value: brl(
+            Math.round(
+              (myCorretor?.valorVendido ?? VGV_ATUAL) * (VGV_PREVISTO / VGV_ATUAL) * 0.35,
+            ),
+          ),
+          delta: "meta do mês",
+          up: true,
+          icon: Building2,
+        },
+      ]
+    : ADMIN_VGV_CARDS;
+
   const cards = showFinancial
     ? allCards
     : allCards.filter((c) => !FINANCIAL_CARD_LABELS.has(c.label));
+
+  const vgvRow = showFinancial
+    ? vgvCards
+    : [];
 
   const leadsOrigem = isCorretor
     ? Object.entries(
@@ -255,6 +311,38 @@ function Dashboard() {
             : "Visão geral da operação de todos os corretores."
         }
       />
+
+      {vgvRow.length > 0 && (
+        <div className="grid grid-cols-3 gap-4 w-full mb-4">
+          {vgvRow.map((c) => {
+            const Icon = c.icon;
+            const showTrend = typeof c.delta === "string" && (c.delta.startsWith("+") || c.delta.startsWith("-"));
+            return (
+              <Card key={c.label} className="shadow-sm min-w-0">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className={`text-xs flex items-center gap-0.5 shrink-0 ${c.up ? "text-success" : "text-destructive"}`}>
+                      {showTrend ? (
+                        <>
+                          {c.up ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                          {c.delta}
+                        </>
+                      ) : (
+                        c.delta
+                      )}
+                    </span>
+                  </div>
+                  <div className="mt-3 text-xl sm:text-2xl font-semibold tabular-nums break-all">{c.value}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {cards.map((c) => {

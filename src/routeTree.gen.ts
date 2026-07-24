@@ -17,6 +17,7 @@ import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
 import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppDocumentacaoRouteImport } from './routes/_app.documentacao'
 import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppFunilRouteImport } from './routes/_app.funil'
 import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
@@ -25,10 +26,13 @@ import { Route as AppMetasRouteImport } from './routes/_app.metas'
 import { Route as AppPerfilRouteImport } from './routes/_app.perfil'
 import { Route as AppPropostasRouteImport } from './routes/_app.propostas'
 import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppResultadoRouteImport } from './routes/_app.resultado'
+import { Route as AppTaxaConversaoRouteImport } from './routes/_app.taxa-conversao'
 import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
 import { Route as AppFinanceiroClientesFornecedoresRouteImport } from './routes/_app.financeiro.clientes-fornecedores'
+import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.financeiro.comissao'
 import { Route as AppFinanceiroContasAPagarRouteImport } from './routes/_app.financeiro.contas-a-pagar'
 import { Route as AppFinanceiroContasAReceberRouteImport } from './routes/_app.financeiro.contas-a-receber'
 import { Route as AppFinanceiroDemonstrativoRouteImport } from './routes/_app.financeiro.demonstrativo'
@@ -75,6 +79,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDocumentacaoRoute = AppDocumentacaoRouteImport.update({
+  id: '/documentacao',
+  path: '/documentacao',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -115,6 +124,16 @@ const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   path: '/relatorios',
   getParentRoute: () => AppRoute,
 } as any)
+const AppResultadoRoute = AppResultadoRouteImport.update({
+  id: '/resultado',
+  path: '/resultado',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTaxaConversaoRoute = AppTaxaConversaoRouteImport.update({
+  id: '/taxa-conversao',
+  path: '/taxa-conversao',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTriagemRoute = AppTriagemRouteImport.update({
   id: '/triagem',
   path: '/triagem',
@@ -137,6 +156,11 @@ const AppFinanceiroClientesFornecedoresRoute =
     path: '/clientes-fornecedores',
     getParentRoute: () => AppFinanceiroRoute,
   } as any)
+const AppFinanceiroComissaoRoute = AppFinanceiroComissaoRouteImport.update({
+  id: '/comissao',
+  path: '/comissao',
+  getParentRoute: () => AppFinanceiroRoute,
+} as any)
 const AppFinanceiroContasAPagarRoute =
   AppFinanceiroContasAPagarRouteImport.update({
     id: '/contas-a-pagar',
@@ -180,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof AppConfiguracoesRoute
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
+  '/documentacao': typeof AppDocumentacaoRoute
   '/financeiro': typeof AppFinanceiroRouteWithChildren
   '/funil': typeof AppFunilRoute
   '/imoveis': typeof AppImoveisRoute
@@ -188,10 +213,13 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof AppPerfilRoute
   '/propostas': typeof AppPropostasRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/resultado': typeof AppResultadoRoute
+  '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
+  '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
   '/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
   '/financeiro/contas-a-receber': typeof AppFinanceiroContasAReceberRoute
   '/financeiro/demonstrativo': typeof AppFinanceiroDemonstrativoRoute
@@ -207,6 +235,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof AppConfiguracoesRoute
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
+  '/documentacao': typeof AppDocumentacaoRoute
   '/financeiro': typeof AppFinanceiroRouteWithChildren
   '/funil': typeof AppFunilRoute
   '/imoveis': typeof AppImoveisRoute
@@ -215,10 +244,13 @@ export interface FileRoutesByTo {
   '/perfil': typeof AppPerfilRoute
   '/propostas': typeof AppPropostasRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/resultado': typeof AppResultadoRoute
+  '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
+  '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
   '/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
   '/financeiro/contas-a-receber': typeof AppFinanceiroContasAReceberRoute
   '/financeiro/demonstrativo': typeof AppFinanceiroDemonstrativoRoute
@@ -236,6 +268,7 @@ export interface FileRoutesById {
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/corretores': typeof AppCorretoresRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/documentacao': typeof AppDocumentacaoRoute
   '/_app/financeiro': typeof AppFinanceiroRouteWithChildren
   '/_app/funil': typeof AppFunilRoute
   '/_app/imoveis': typeof AppImoveisRoute
@@ -244,10 +277,13 @@ export interface FileRoutesById {
   '/_app/perfil': typeof AppPerfilRoute
   '/_app/propostas': typeof AppPropostasRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
+  '/_app/resultado': typeof AppResultadoRoute
+  '/_app/taxa-conversao': typeof AppTaxaConversaoRoute
   '/_app/triagem': typeof AppTriagemRoute
   '/_app/usuarios': typeof AppUsuariosRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/_app/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
+  '/_app/financeiro/comissao': typeof AppFinanceiroComissaoRoute
   '/_app/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
   '/_app/financeiro/contas-a-receber': typeof AppFinanceiroContasAReceberRoute
   '/_app/financeiro/demonstrativo': typeof AppFinanceiroDemonstrativoRoute
@@ -265,6 +301,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/corretores'
     | '/dashboard'
+    | '/documentacao'
     | '/financeiro'
     | '/funil'
     | '/imoveis'
@@ -273,10 +310,13 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/propostas'
     | '/relatorios'
+    | '/resultado'
+    | '/taxa-conversao'
     | '/triagem'
     | '/usuarios'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
+    | '/financeiro/comissao'
     | '/financeiro/contas-a-pagar'
     | '/financeiro/contas-a-receber'
     | '/financeiro/demonstrativo'
@@ -292,6 +332,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/corretores'
     | '/dashboard'
+    | '/documentacao'
     | '/financeiro'
     | '/funil'
     | '/imoveis'
@@ -300,10 +341,13 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/propostas'
     | '/relatorios'
+    | '/resultado'
+    | '/taxa-conversao'
     | '/triagem'
     | '/usuarios'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
+    | '/financeiro/comissao'
     | '/financeiro/contas-a-pagar'
     | '/financeiro/contas-a-receber'
     | '/financeiro/demonstrativo'
@@ -320,6 +364,7 @@ export interface FileRouteTypes {
     | '/_app/configuracoes'
     | '/_app/corretores'
     | '/_app/dashboard'
+    | '/_app/documentacao'
     | '/_app/financeiro'
     | '/_app/funil'
     | '/_app/imoveis'
@@ -328,10 +373,13 @@ export interface FileRouteTypes {
     | '/_app/perfil'
     | '/_app/propostas'
     | '/_app/relatorios'
+    | '/_app/resultado'
+    | '/_app/taxa-conversao'
     | '/_app/triagem'
     | '/_app/usuarios'
     | '/_app/financeiro/centro-despesas'
     | '/_app/financeiro/clientes-fornecedores'
+    | '/_app/financeiro/comissao'
     | '/_app/financeiro/contas-a-pagar'
     | '/_app/financeiro/contas-a-receber'
     | '/_app/financeiro/demonstrativo'
@@ -404,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/documentacao': {
+      id: '/_app/documentacao'
+      path: '/documentacao'
+      fullPath: '/documentacao'
+      preLoaderRoute: typeof AppDocumentacaoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/financeiro': {
       id: '/_app/financeiro'
       path: '/financeiro'
@@ -460,6 +515,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRelatoriosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/resultado': {
+      id: '/_app/resultado'
+      path: '/resultado'
+      fullPath: '/resultado'
+      preLoaderRoute: typeof AppResultadoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/taxa-conversao': {
+      id: '/_app/taxa-conversao'
+      path: '/taxa-conversao'
+      fullPath: '/taxa-conversao'
+      preLoaderRoute: typeof AppTaxaConversaoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/triagem': {
       id: '/_app/triagem'
       path: '/triagem'
@@ -486,6 +555,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes-fornecedores'
       fullPath: '/financeiro/clientes-fornecedores'
       preLoaderRoute: typeof AppFinanceiroClientesFornecedoresRouteImport
+      parentRoute: typeof AppFinanceiroRoute
+    }
+    '/_app/financeiro/comissao': {
+      id: '/_app/financeiro/comissao'
+      path: '/comissao'
+      fullPath: '/financeiro/comissao'
+      preLoaderRoute: typeof AppFinanceiroComissaoRouteImport
       parentRoute: typeof AppFinanceiroRoute
     }
     '/_app/financeiro/contas-a-pagar': {
@@ -536,6 +612,7 @@ declare module '@tanstack/react-router' {
 interface AppFinanceiroRouteChildren {
   AppFinanceiroCentroDespesasRoute: typeof AppFinanceiroCentroDespesasRoute
   AppFinanceiroClientesFornecedoresRoute: typeof AppFinanceiroClientesFornecedoresRoute
+  AppFinanceiroComissaoRoute: typeof AppFinanceiroComissaoRoute
   AppFinanceiroContasAPagarRoute: typeof AppFinanceiroContasAPagarRoute
   AppFinanceiroContasAReceberRoute: typeof AppFinanceiroContasAReceberRoute
   AppFinanceiroDemonstrativoRoute: typeof AppFinanceiroDemonstrativoRoute
@@ -548,6 +625,7 @@ const AppFinanceiroRouteChildren: AppFinanceiroRouteChildren = {
   AppFinanceiroCentroDespesasRoute: AppFinanceiroCentroDespesasRoute,
   AppFinanceiroClientesFornecedoresRoute:
     AppFinanceiroClientesFornecedoresRoute,
+  AppFinanceiroComissaoRoute: AppFinanceiroComissaoRoute,
   AppFinanceiroContasAPagarRoute: AppFinanceiroContasAPagarRoute,
   AppFinanceiroContasAReceberRoute: AppFinanceiroContasAReceberRoute,
   AppFinanceiroDemonstrativoRoute: AppFinanceiroDemonstrativoRoute,
@@ -566,6 +644,7 @@ interface AppRouteChildren {
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppCorretoresRoute: typeof AppCorretoresRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDocumentacaoRoute: typeof AppDocumentacaoRoute
   AppFinanceiroRoute: typeof AppFinanceiroRouteWithChildren
   AppFunilRoute: typeof AppFunilRoute
   AppImoveisRoute: typeof AppImoveisRoute
@@ -574,6 +653,8 @@ interface AppRouteChildren {
   AppPerfilRoute: typeof AppPerfilRoute
   AppPropostasRoute: typeof AppPropostasRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppResultadoRoute: typeof AppResultadoRoute
+  AppTaxaConversaoRoute: typeof AppTaxaConversaoRoute
   AppTriagemRoute: typeof AppTriagemRoute
   AppUsuariosRoute: typeof AppUsuariosRoute
 }
@@ -584,6 +665,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppCorretoresRoute: AppCorretoresRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDocumentacaoRoute: AppDocumentacaoRoute,
   AppFinanceiroRoute: AppFinanceiroRouteWithChildren,
   AppFunilRoute: AppFunilRoute,
   AppImoveisRoute: AppImoveisRoute,
@@ -592,6 +674,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppPerfilRoute: AppPerfilRoute,
   AppPropostasRoute: AppPropostasRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
+  AppResultadoRoute: AppResultadoRoute,
+  AppTaxaConversaoRoute: AppTaxaConversaoRoute,
   AppTriagemRoute: AppTriagemRoute,
   AppUsuariosRoute: AppUsuariosRoute,
 }

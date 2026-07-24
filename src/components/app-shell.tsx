@@ -4,7 +4,8 @@ import {
   UsersRound, FileText, DollarSign, BarChart3, Settings, User as UserIcon,
   LogOut, Search, Bell, ChevronsLeft, ChevronDown, ChevronRight,
   Target, ClipboardList, Briefcase, Shield, CircleUser, ArrowLeftRight,
-  Banknote, ScrollText, ArrowUpRight, ArrowDownRight, FolderKanban, type LucideIcon,
+  Banknote, ScrollText, ArrowUpRight, ArrowDownRight, FolderKanban,
+  FolderOpen, SearchCheck, Percent, Goal, type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { getSession, signOut, type MockUser } from "@/lib/mock-auth";
@@ -44,6 +45,7 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
   { to: "/financeiro/contas-a-receber", label: "Contas a receber", icon: ArrowUpRight },
   { to: "/financeiro/contas-a-pagar", label: "Contas a pagar", icon: ArrowDownRight },
   { to: "/financeiro/centro-despesas", label: "Centro de despesas", icon: FolderKanban },
+  { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
   { to: "/financeiro/demonstrativo", label: "Demonstrativo de resultado", icon: ScrollText },
 ];
 
@@ -64,6 +66,8 @@ const NAV_SECTIONS: {
       { to: "/leads", label: "Leads", icon: Users },
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/triagem", label: "Triagem", icon: ClipboardList },
+      { to: "/documentacao", label: "Documentação", icon: FolderOpen },
+      { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/imoveis", label: "Imóveis", icon: Building2 },
       { to: "/clientes", label: "Clientes", icon: UserCircle2 },
@@ -79,6 +83,7 @@ const NAV_SECTIONS: {
     adminOnly: true,
     items: [
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
+      { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
     ],
