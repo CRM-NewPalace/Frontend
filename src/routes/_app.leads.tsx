@@ -96,7 +96,6 @@ function LeadsPage() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
-  const defaultCorretor = isCorretor && user ? user.name : "Marina Alves";
 
   const {
     leads: allLeads,
@@ -125,19 +124,28 @@ function LeadsPage() {
     [allLeads, isCorretor, user],
   );
 
-  /** Opções do formulário (por nome) — equipe ativa da API. */
-  const corretorSelectOptions = useMemo(
-    () => assignees.map((a) => a.name),
+  /** Corretores ativos (perfil corretor) para atribuição/filtro. */
+  const corretorAssignees = useMemo(
+    () => assignees.filter((a) => !a.role || a.role === "corretor"),
     [assignees],
   );
 
+  const defaultCorretor =
+    isCorretor && user ? user.name : (corretorAssignees[0]?.name ?? "");
+
+  /** Opções do formulário (por nome). */
+  const corretorSelectOptions = useMemo(
+    () => corretorAssignees.map((a) => a.name),
+    [corretorAssignees],
+  );
+
   /** Opções do filtro (por id UUID — o que a API espera). */
-  const corretorFilterOptions = useMemo(() => assignees, [assignees]);
+  const corretorFilterOptions = useMemo(() => corretorAssignees, [corretorAssignees]);
 
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(() => emptyForm(defaultCorretor));
+  const [form, setForm] = useState<FormState>(() => emptyForm(""));
   const [deleteLead, setDeleteLead] = useState<Lead | null>(null);
   const [deleteMotivo, setDeleteMotivo] = useState("");
   const [deleteMotivoOutro, setDeleteMotivoOutro] = useState("");

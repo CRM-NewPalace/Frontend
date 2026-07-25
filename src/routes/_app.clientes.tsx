@@ -104,7 +104,6 @@ function Clientes() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
-  const defaultCorretor = isCorretor && user ? user.name : "Marina Alves";
 
   const { leads: allLeads, addLead, updateLead, markLeadLost, resolveCorretorId, assignees, loading } = useLeads();
   const { funnelStages, origens: origemOptions, tags: tagOptions, motivos: motivoOptions, colorByLabel } = useCatalog();
@@ -124,14 +123,20 @@ function Clientes() {
   );
 
   const corretorOptions = useMemo(
-    () => assignees.map((a) => a.name),
+    () =>
+      assignees
+        .filter((a) => !a.role || a.role === "corretor")
+        .map((a) => a.name),
     [assignees],
   );
+
+  const defaultCorretor =
+    isCorretor && user ? user.name : (corretorOptions[0] ?? "");
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(() => emptyForm(defaultCorretor));
+  const [form, setForm] = useState<FormState>(() => emptyForm(""));
 
   const [detail, setDetail] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
