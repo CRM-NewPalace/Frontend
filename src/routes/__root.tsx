@@ -75,7 +75,29 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+  head: () => {
+    const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+    let apiOrigin = "";
+    try {
+      if (apiUrl && /^https?:\/\//i.test(apiUrl)) {
+        apiOrigin = new URL(apiUrl).origin;
+      }
+    } catch {
+      // ignore invalid VITE_API_URL
+    }
+
+    const connectSrc = [
+      "'self'",
+      "http://127.0.0.1:3333",
+      "http://localhost:3333",
+      "https://backend-wbxw.onrender.com",
+      ...(apiOrigin ? [apiOrigin] : []),
+      "ws://localhost:8080",
+      "ws://127.0.0.1:8080",
+      "wss:",
+    ].join(" ");
+
+    return {
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico?v=7", sizes: "any" },
@@ -114,11 +136,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "font-src 'self' https://fonts.gstatic.com data:",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "script-src 'self' 'unsafe-inline'",
-          "connect-src 'self' http://127.0.0.1:3333 http://localhost:3333 ws://localhost:8080 ws://127.0.0.1:8080",
+          `connect-src ${connectSrc}`,
         ].join("; "),
       },
     ],
-  }),
+  };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
