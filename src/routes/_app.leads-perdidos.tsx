@@ -16,13 +16,14 @@ import {
 } from "@/components/form-dialog";
 import { Search, Eye, Trash2, UserX, Sparkles, Wallet } from "lucide-react";
 import { ApiError } from "@/lib/api";
+import { deleteLeadApi } from "@/lib/leads-api";
 import {
-  deleteLeadApi,
-  fetchLostLeads,
-  mapApiLead,
-  type ApiLead,
-} from "@/lib/leads-api";
-import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
+  getLostLeadsCache,
+  loadLostLeads,
+  removeLostLeadFromCache,
+  type LostLead,
+} from "@/lib/lost-leads-cache";
+import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
 import { useCatalog } from "@/lib/catalog-store";
 import { toast } from "sonner";
 
@@ -31,71 +32,76 @@ export const Route = createFileRoute("/_app/leads-perdidos")({
   component: LeadsPerdidos,
 });
 
-type LostLead = Lead & {
-  motivoPerda: string;
-  perdidoAt: string;
-  perdidoPor: string;
-};
-
-function mapLost(api: ApiLead): LostLead {
-  const base = mapApiLead(api);
-  const perdido = api.perdidoAt ? new Date(api.perdidoAt) : null;
-  return {
-    ...base,
-    motivoPerda: api.motivoPerda ?? "—",
-    perdidoAt: perdido && !Number.isNaN(perdido.getTime())
-      ? perdido.toLocaleString("pt-BR")
-      : "—",
-    perdidoPor: api.perdidoPor?.name ?? "—",
-  };
-}
-
 function initials(nome: string) {
   return nome.split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
 
 function LeadsPerdidos() {
   const { funnelStages } = useCatalog();
-  const [leads, setLeads] = useState<LostLead[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getLostLeadsCache();
+  const [leads, setLeads] = useState<LostLead[]>(cached ?? []);
+  // Só mostra "Carregando..." na primeira visita sem cache.
+  const [loading, setLoading] = useState(!cached);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<LostLead | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<LostLead | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? Boolean(getLostLeadsCache()?.length);
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     try {
-      const page = await fetchLostLeads({ page: 1, limit: 100 });
-      setLeads(page.data.map(mapLost));
+      const data = await loadLostLeads({ force: true });
+      setLeads(data);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Não foi possível carregar leads perdidos.");
+      // Com cache na tela, não apaga a lista — só avisa.
+      if (!getLostLeadsCache()?.length) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar leads perdidos.",
+        );
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void refresh({ silent: Boolean(cached) });
+    // Só no mount — refresh cobre o sync em background.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return leads;
     return leads.filter((l) =>
-      `${l.nome} ${l.email} ${l.telefone} ${l.motivoPerda} ${l.corretor}`.toLowerCase().includes(q),
+      `${l.nome} ${l.email} ${l.telefone} ${l.motivoPerda} ${l.corretor} ${l.perdidoPor}`
+        .toLowerCase()
+        .includes(q),
     );
   }, [leads, search]);
 
   async function confirmPurge() {
     if (!purgeTarget) return;
+    const target = purgeTarget;
+    // Otimista: some da lista na hora.
+    setLeads((prev) => prev.filter((l) => l.id !== target.id));
+    removeLostLeadFromCache(target.id);
+    setPurgeTarget(null);
+    if (detail?.id === target.id) setDetail(null);
+    toast.success(`Lead ${target.nome} excluído definitivamente.`);
+
     try {
-      await deleteLeadApi(purgeTarget.id);
-      toast.success(`Lead ${purgeTarget.nome} excluído definitivamente.`);
-      setPurgeTarget(null);
-      if (detail?.id === purgeTarget.id) setDetail(null);
-      await load();
+      await deleteLeadApi(target.id);
     } catch (err) {
+      // Rollback
+      setLeads((prev) => [target, ...prev.filter((l) => l.id !== target.id)]);
       toast.error(err instanceof ApiError ? err.message : "Não foi possível excluir.");
+      void refresh({ silent: true });
     }
   }
 
@@ -106,7 +112,9 @@ function LeadsPerdidos() {
         description={
           loading
             ? "Carregando..."
-            : `${filtered.length} lead(s) removidos da operação — só admin vê esta lista.`
+            : `${filtered.length} lead(s) removidos da operação — só admin vê esta lista.${
+                refreshing ? " Atualizando…" : ""
+              }`
         }
       />
 
@@ -256,7 +264,10 @@ function LeadsPerdidos() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => void confirmPurge()}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmPurge();
+              }}
             >
               Excluir do banco
             </AlertDialogAction>

@@ -14,26 +14,21 @@ import {
 } from "@/components/ui/dialog";
 import { useCatalog, INITIAL_STAGE_SLUG } from "@/lib/catalog-store";
 import type { CatalogItem, CatalogType } from "@/lib/catalog-api";
+import {
+  CATALOG_COLORS,
+  DEFAULT_CATALOG_COLOR,
+  catalogColorSwatch,
+  nextCatalogColor,
+} from "@/lib/catalog-colors";
 import { ApiError } from "@/lib/api";
 import { Plus, GripVertical, Pencil, Trash2, Zap, ListRestart } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Imob CRM" }] }),
   component: Config,
 });
-
-const STAGE_COLORS = [
-  "bg-slate-200 text-slate-700",
-  "bg-blue-100 text-blue-700",
-  "bg-indigo-100 text-indigo-700",
-  "bg-cyan-100 text-cyan-700",
-  "bg-teal-100 text-teal-700",
-  "bg-amber-100 text-amber-700",
-  "bg-orange-100 text-orange-700",
-  "bg-violet-100 text-violet-700",
-  "bg-pink-100 text-pink-700",
-];
 
 type Modelo = { id: string; nome: string; corpo: string };
 type Automacao = { id: string; nome: string; descricao: string; ativa: boolean };
@@ -51,6 +46,51 @@ const LIST_META: Record<
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
+}
+
+function ColorSwatchPicker({
+  value,
+  onChange,
+  previewLabel,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+  previewLabel?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Label>Cor</Label>
+        {previewLabel?.trim() && (
+          <Badge className={cn(value || DEFAULT_CATALOG_COLOR, "text-[10px]")}>
+            {previewLabel.trim()}
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {CATALOG_COLORS.map((color) => {
+          const selected = value === color;
+          return (
+            <button
+              key={color}
+              type="button"
+              title={color}
+              aria-label={`Selecionar cor ${color}`}
+              aria-pressed={selected}
+              onClick={() => onChange(color)}
+              className={cn(
+                "h-7 w-7 rounded-full border-2 transition-transform",
+                catalogColorSwatch(color),
+                selected
+                  ? "border-foreground scale-110 ring-2 ring-foreground/20"
+                  : "border-transparent hover:scale-105",
+              )}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function Config() {
@@ -79,16 +119,18 @@ function Config() {
 
   const [stageOpen, setStageOpen] = useState(false);
   const [stageName, setStageName] = useState("");
+  const [stageColor, setStageColor] = useState<string>(DEFAULT_CATALOG_COLOR);
   const [saving, setSaving] = useState(false);
 
   const [listOpen, setListOpen] = useState(false);
   const [listKind, setListKind] = useState<ListKind>("origens");
   const [listValue, setListValue] = useState("");
+  const [listColor, setListColor] = useState<string>(DEFAULT_CATALOG_COLOR);
 
-  // Edição de label de qualquer item de catálogo.
   const [editOpen, setEditOpen] = useState(false);
   const [editItem, setEditItem] = useState<CatalogItem | null>(null);
   const [editLabel, setEditLabel] = useState("");
+  const [editColor, setEditColor] = useState<string>(DEFAULT_CATALOG_COLOR);
 
   const [modeloOpen, setModeloOpen] = useState(false);
   const [editingModelo, setEditingModelo] = useState<Modelo | null>(null);
@@ -99,15 +141,29 @@ function Config() {
   const [autoNome, setAutoNome] = useState("");
   const [autoDesc, setAutoDesc] = useState("");
 
+  function openAddStage() {
+    setStageName("");
+    setStageColor(nextCatalogColor(funnelStages.length));
+    setStageOpen(true);
+  }
+
   function openAddList(kind: ListKind) {
+    const count =
+      kind === "origens"
+        ? catalog.origem.length
+        : kind === "motivos"
+          ? catalog.motivo_perda.length
+          : catalog.tag.length;
     setListKind(kind);
     setListValue("");
+    setListColor(nextCatalogColor(count));
     setListOpen(true);
   }
 
   function openEditItem(item: CatalogItem) {
     setEditItem(item);
     setEditLabel(item.label);
+    setEditColor(item.color ?? DEFAULT_CATALOG_COLOR);
     setEditOpen(true);
   }
 
@@ -135,7 +191,7 @@ function Config() {
       await addItem({
         type: "funil_etapa",
         label: name,
-        color: STAGE_COLORS[funnelStages.length % STAGE_COLORS.length],
+        color: stageColor,
       });
       setStageOpen(false);
       setStageName("");
@@ -157,7 +213,7 @@ function Config() {
     }
     setSaving(true);
     try {
-      await addItem({ type: meta.type, label: value });
+      await addItem({ type: meta.type, label: value, color: listColor });
       setListOpen(false);
       setListValue("");
       toast.success(`${meta.singular[0].toUpperCase()}${meta.singular.slice(1)} "${value}" adicionada.`);
@@ -176,13 +232,18 @@ function Config() {
       toast.error("Informe um nome.");
       return;
     }
-    if (label === editItem.label) {
+    const colorChanged = editColor !== (editItem.color ?? DEFAULT_CATALOG_COLOR);
+    const labelChanged = label !== editItem.label;
+    if (!labelChanged && !colorChanged) {
       setEditOpen(false);
       return;
     }
     setSaving(true);
     try {
-      await updateItem(editItem.id, { label });
+      await updateItem(editItem.id, {
+        ...(labelChanged ? { label } : {}),
+        ...(colorChanged ? { color: editColor } : {}),
+      });
       setEditOpen(false);
       setEditItem(null);
       toast.success("Item atualizado.");
@@ -303,7 +364,7 @@ function Config() {
                   <ListRestart className="w-4 h-4 mr-1" />
                   Etapas padrão
                 </Button>
-                <Button size="sm" onClick={() => { setStageName(""); setStageOpen(true); }}>
+                <Button size="sm" onClick={openAddStage}>
                   <Plus className="w-4 h-4 mr-1" />Nova etapa
                 </Button>
               </div>
@@ -320,7 +381,7 @@ function Config() {
                 return (
                   <div key={s.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/40">
                     <GripVertical className="w-4 h-4 text-muted-foreground" />
-                    <Badge className={s.color ?? "bg-slate-200 text-slate-700"}>{s.label}</Badge>
+                    <Badge className={s.color ?? DEFAULT_CATALOG_COLOR}>{s.label}</Badge>
                     {isInitial && (
                       <Badge variant="secondary" className="text-[10px]">Inicial</Badge>
                     )}
@@ -361,7 +422,9 @@ function Config() {
                 )}
                 {listItemsByKind[kind].map((item) => (
                   <div key={item.id} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40">
-                    <Badge variant="outline" className="text-sm py-1 px-3">{item.label}</Badge>
+                    <Badge className={cn("text-sm py-1 px-3", item.color ?? DEFAULT_CATALOG_COLOR)}>
+                      {item.label}
+                    </Badge>
                     <div className="ml-auto flex items-center gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditItem(item)}>
                         <Pencil className="w-3.5 h-3.5" />
@@ -461,6 +524,11 @@ function Config() {
                 autoFocus
               />
             </div>
+            <ColorSwatchPicker
+              value={stageColor}
+              onChange={setStageColor}
+              previewLabel={stageName || "Prévia"}
+            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setStageOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={saving}><Plus className="w-4 h-4" />Adicionar</Button>
@@ -488,6 +556,11 @@ function Config() {
                 autoFocus
               />
             </div>
+            <ColorSwatchPicker
+              value={listColor}
+              onChange={setListColor}
+              previewLabel={listValue || "Prévia"}
+            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setListOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={saving}><Plus className="w-4 h-4" />Adicionar</Button>
@@ -500,7 +573,7 @@ function Config() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Editar item</DialogTitle>
-            <DialogDescription>Altere o nome exibido no CRM.</DialogDescription>
+            <DialogDescription>Altere o nome e a cor exibidos no CRM.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveEdit} className="space-y-4">
             <div className="space-y-1.5">
@@ -512,6 +585,11 @@ function Config() {
                 autoFocus
               />
             </div>
+            <ColorSwatchPicker
+              value={editColor}
+              onChange={setEditColor}
+              previewLabel={editLabel || "Prévia"}
+            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>Salvar</Button>

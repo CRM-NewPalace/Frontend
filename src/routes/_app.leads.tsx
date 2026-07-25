@@ -26,7 +26,6 @@ import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
-import { fetchLeads, mapApiLead } from "@/lib/leads-api";
 import {
   formatPhone,
   isValidPhone,
@@ -105,11 +104,10 @@ function LeadsPage() {
     updateLead,
     markLeadLost,
     loading,
-    refresh,
     resolveCorretorId,
     assignees,
   } = useLeads();
-  const { funnelStages, origens: origemOptions, motivos: motivoOptions } = useCatalog();
+  const { funnelStages, origens: origemOptions, motivos: motivoOptions, colorByLabel } = useCatalog();
   // Backend atribui a etapa inicial (Novo lead) quando stage é omitido.
   const defaultStageName =
     funnelStages.find((s) => s.id === "novo")?.name ??
@@ -154,10 +152,6 @@ function LeadsPage() {
   const [interesseFilter, setInteresseFilter] = useState<string>("all");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
   const [showExtraFilters, setShowExtraFilters] = useState(false);
-  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
-  const [filterLoading, setFilterLoading] = useState(false);
-  /** Incrementa após create/edit/delete para reaplicar filtros na API. */
-  const [filterVersion, setFilterVersion] = useState(0);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -175,60 +169,25 @@ function LeadsPage() {
   const extraFiltersActive =
     prioridadeFilter !== "all" || interesseFilter !== "all" || origemFilter !== "all";
 
-  useEffect(() => {
-    let cancelled = false;
-
-    function matchLocal(list: Lead[]): Lead[] {
-      const q = debouncedSearch.toLowerCase();
-      const qDigits = phoneDigits(debouncedSearch);
-      return list.filter((l) => {
-        if (q) {
-          const hay = `${l.nome} ${l.email} ${l.telefone}`.toLowerCase();
-          const phoneOk = qDigits.length >= 3 && phoneDigits(l.telefone).includes(qDigits);
-          if (!hay.includes(q) && !phoneOk) return false;
-        }
-        if (stageFilter !== "all" && l.stage !== stageFilter) return false;
-        if (!isCorretor && corretorFilter !== "all" && l.corretorId !== corretorFilter) return false;
-        if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter) return false;
-        if (interesseFilter !== "all" && l.interesse !== interesseFilter) return false;
-        if (origemFilter !== "all" && l.origem !== origemFilter) return false;
-        return true;
-      });
-    }
-
-    async function run() {
-      if (!filtersActive) {
-        setFilteredLeads(leads);
-        setFilterLoading(false);
-        return;
+  // Filtra no cliente sobre a lista já carregada no store — evita round-trip
+  // ao Postgres remoto a cada mudança de filtro.
+  const filteredLeads = useMemo(() => {
+    if (!filtersActive) return leads;
+    const q = debouncedSearch.toLowerCase();
+    const qDigits = phoneDigits(debouncedSearch);
+    return leads.filter((l) => {
+      if (q) {
+        const hay = `${l.nome} ${l.email} ${l.telefone}`.toLowerCase();
+        const phoneOk = qDigits.length >= 3 && phoneDigits(l.telefone).includes(qDigits);
+        if (!hay.includes(q) && !phoneOk) return false;
       }
-
-      setFilterLoading(true);
-      try {
-        const page = await fetchLeads({
-          search: debouncedSearch || undefined,
-          tipo: "lead",
-          stage: stageFilter !== "all" ? stageFilter : undefined,
-          corretorId:
-            !isCorretor && corretorFilter !== "all" ? corretorFilter : undefined,
-          prioridade: prioridadeFilter !== "all" ? prioridadeFilter : undefined,
-          interesse: interesseFilter !== "all" ? interesseFilter : undefined,
-          origem: origemFilter !== "all" ? origemFilter : undefined,
-          page: 1,
-          limit: 100,
-        });
-        if (!cancelled) setFilteredLeads(page.data.map(mapApiLead));
-      } catch {
-        if (!cancelled) setFilteredLeads(matchLocal(leads));
-      } finally {
-        if (!cancelled) setFilterLoading(false);
-      }
-    }
-
-    void run();
-    return () => {
-      cancelled = true;
-    };
+      if (stageFilter !== "all" && l.stage !== stageFilter) return false;
+      if (!isCorretor && corretorFilter !== "all" && l.corretorId !== corretorFilter) return false;
+      if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter) return false;
+      if (interesseFilter !== "all" && l.interesse !== interesseFilter) return false;
+      if (origemFilter !== "all" && l.origem !== origemFilter) return false;
+      return true;
+    });
   }, [
     leads,
     filtersActive,
@@ -239,7 +198,6 @@ function LeadsPage() {
     interesseFilter,
     origemFilter,
     isCorretor,
-    filterVersion,
   ]);
 
   function clearFilters() {
@@ -250,11 +208,6 @@ function LeadsPage() {
     setPrioridadeFilter("all");
     setInteresseFilter("all");
     setOrigemFilter("all");
-  }
-
-  async function afterMutation() {
-    await refresh();
-    setFilterVersion((v) => v + 1);
   }
 
   function openCreate() {
@@ -309,6 +262,8 @@ function LeadsPage() {
 
     try {
       if (formMode === "edit" && editingId) {
+        setOpen(false);
+        toast.success(`Lead ${nome} atualizado.`);
         await updateLead(editingId, {
           nome,
           telefone,
@@ -322,12 +277,11 @@ function LeadsPage() {
           tags,
           ...(corretorId ? { corretorId } : {}),
         });
-        setOpen(false);
-        toast.success(`Lead ${nome} atualizado.`);
-        await afterMutation();
         return;
       }
 
+      setOpen(false);
+      toast.success(`Lead ${nome} criado com sucesso.`);
       await addLead({
         tipo: "lead",
         nome,
@@ -342,9 +296,6 @@ function LeadsPage() {
         tags,
         ...(corretorId ? { corretorId } : {}),
       });
-      setOpen(false);
-      toast.success(`Lead ${nome} criado com sucesso.`);
-      await afterMutation();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível salvar o lead.");
     }
@@ -365,12 +316,13 @@ function LeadsPage() {
       return;
     }
     try {
-      await markLeadLost(deleteLead.id, motivo);
-      toast.success(`Lead ${deleteLead.nome} movido para Leads Perdidos.`);
+      const id = deleteLead.id;
+      const nome = deleteLead.nome;
       setDeleteLead(null);
       setDeleteMotivo("");
       setDeleteMotivoOutro("");
-      await afterMutation();
+      toast.success(`Lead ${nome} movido para Leads Perdidos.`);
+      await markLeadLost(id, motivo);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível excluir o lead.");
     }
@@ -381,7 +333,7 @@ function LeadsPage() {
       <PageHeader
         title={isCorretor ? "Meus leads" : "Leads"}
         description={
-          loading || filterLoading
+          loading
             ? "Carregando leads..."
             : filteredLeads.length === leads.length && !filtersActive
             ? isCorretor
@@ -687,7 +639,7 @@ function LeadsPage() {
                       <div className="text-xs text-muted-foreground">Tags</div>
                       <div className="flex flex-wrap gap-1.5">
                         {detailLead.tags.map((t) => (
-                          <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                          <Badge key={t} className={`text-[10px] ${colorByLabel("tag", t)}`}>{t}</Badge>
                         ))}
                       </div>
                     </div>
@@ -905,7 +857,7 @@ function LeadsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading || filterLoading ? (
+            {loading ? (
               <TableRow>
                 <TableCell colSpan={isCorretor ? 8 : 9} className="h-24 text-center text-sm text-muted-foreground">
                   Carregando leads...

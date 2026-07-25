@@ -21,6 +21,7 @@ import {
   type GroupedCatalog,
   type UpdateCatalogInput,
 } from "@/lib/catalog-api";
+import { DEFAULT_CATALOG_COLOR } from "@/lib/catalog-colors";
 
 /** Etapa do funil normalizada para as telas (id = slug). */
 export type FunnelStage = { id: string; name: string; color: string };
@@ -41,6 +42,8 @@ type CatalogContextValue = {
   origens: string[];
   motivos: string[];
   tags: string[];
+  /** Cor Tailwind do item pelo label; fallback neutro se não houver. */
+  colorByLabel: (type: CatalogType, label: string) => string;
   addItem: (input: CreateCatalogInput) => Promise<CatalogItem>;
   updateItem: (id: string, patch: UpdateCatalogInput) => Promise<CatalogItem>;
   removeItem: (id: string) => Promise<void>;
@@ -62,8 +65,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       const data = await fetchCatalog(true);
@@ -88,7 +91,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       catalog.funil_etapa.map((item) => ({
         id: item.slug ?? item.id,
         name: item.label,
-        color: item.color ?? "bg-slate-200 text-slate-700",
+        color: item.color ?? DEFAULT_CATALOG_COLOR,
       })),
     [catalog.funil_etapa],
   );
@@ -107,6 +110,14 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [catalog.motivo_perda],
   );
   const tags = useMemo(() => catalog.tag.map((i) => i.label), [catalog.tag]);
+
+  const colorByLabel = useCallback(
+    (type: CatalogType, label: string) => {
+      const item = catalog[type].find((i) => i.label === label);
+      return item?.color ?? DEFAULT_CATALOG_COLOR;
+    },
+    [catalog],
+  );
 
   const upsertLocal = useCallback((item: CatalogItem) => {
     setCatalog((prev) => {
@@ -173,6 +184,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       origens,
       motivos,
       tags,
+      colorByLabel,
       addItem,
       updateItem,
       removeItem,
@@ -189,6 +201,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       origens,
       motivos,
       tags,
+      colorByLabel,
       addItem,
       updateItem,
       removeItem,

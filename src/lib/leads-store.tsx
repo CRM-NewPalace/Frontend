@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Lead, StageId } from "@/lib/crm-types";
+import { getSession } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import {
   createLead,
@@ -22,6 +23,7 @@ import {
   type LeadAssignee,
   type UpdateLeadInput,
 } from "@/lib/leads-api";
+import { prependLostLeadToCache } from "@/lib/lost-leads-cache";
 
 const LEGACY_STORAGE_KEY = "crm_mock_leads";
 
@@ -33,10 +35,13 @@ type LeadsContextValue = {
   error: string | null;
   /** Usuários ativos para atribuição (vindo de GET /leads/assignees). */
   assignees: LeadAssignee[];
-  refresh: () => Promise<void>;
+  refresh: (opts?: { silent?: boolean }) => Promise<void>;
   resolveCorretorId: (nome: string) => string | undefined;
   addLead: (input: CreateLeadInput) => Promise<Lead>;
-  updateLead: (id: string, patch: UpdateLeadInput & { corretor?: string }) => Promise<Lead>;
+  updateLead: (
+    id: string,
+    patch: UpdateLeadInput & { corretor?: string },
+  ) => Promise<Lead>;
   updateLeadStage: (id: string, stage: StageId) => Promise<Lead>;
   /** Marca como perdido (sai das listas operacionais). */
   markLeadLost: (id: string, motivo: string) => Promise<void>;
@@ -55,14 +60,50 @@ function clearLegacyStorage() {
   }
 }
 
+function todayLabel(): string {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+function buildOptimisticLead(
+  input: CreateLeadInput,
+  assignees: LeadAssignee[],
+): Lead {
+  const session = getSession();
+  const assignee =
+    (input.corretorId
+      ? assignees.find((a) => a.id === input.corretorId)
+      : null) ??
+    (session ? assignees.find((a) => a.id === session.id) : null);
+
+  return {
+    id: `temp-${crypto.randomUUID()}`,
+    tipo: input.tipo === "cliente" ? "cliente" : "lead",
+    nome: input.nome,
+    telefone: input.telefone,
+    email: input.email,
+    origem: input.origem,
+    interesse: input.interesse,
+    cidade: input.cidade,
+    bairro: input.bairro,
+    corretor: assignee?.name ?? session?.name ?? "—",
+    corretorId: input.corretorId ?? assignee?.id ?? session?.id ?? null,
+    stage: input.stage ?? "novo",
+    prioridade: input.prioridade ?? "Média",
+    renda: input.renda ?? null,
+    updatedAt: todayLabel(),
+    tags: input.tags ?? [],
+  };
+}
+
 export function LeadsProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [assignees, setAssignees] = useState<LeadAssignee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       const [page, team] = await Promise.all([
@@ -94,12 +135,25 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     [assignees],
   );
 
-  const addLead = useCallback(async (input: CreateLeadInput) => {
-    const created = await createLead(input);
-    const mapped = mapApiLead(created);
-    setLeads((prev) => [mapped, ...prev.filter((l) => l.id !== mapped.id)]);
-    return mapped;
-  }, []);
+  const addLead = useCallback(
+    async (input: CreateLeadInput) => {
+      const optimistic = buildOptimisticLead(input, assignees);
+      setLeads((prev) => [optimistic, ...prev]);
+
+      try {
+        const created = await createLead(input);
+        const mapped = mapApiLead(created);
+        setLeads((prev) =>
+          prev.map((l) => (l.id === optimistic.id ? mapped : l)),
+        );
+        return mapped;
+      } catch (err) {
+        setLeads((prev) => prev.filter((l) => l.id !== optimistic.id));
+        throw err;
+      }
+    },
+    [assignees],
+  );
 
   const updateLead = useCallback(
     async (id: string, patch: UpdateLeadInput & { corretor?: string }) => {
@@ -113,29 +167,106 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         if (resolved) body.corretorId = resolved;
       }
 
-      const updated = await updateLeadApi(id, body);
-      const mapped = mapApiLead(updated);
-      setLeads((prev) => prev.map((l) => (l.id === id ? mapped : l)));
-      return mapped;
+      const previous = leads.find((l) => l.id === id);
+      if (previous) {
+        const assigneeName = body.corretorId
+          ? (assignees.find((a) => a.id === body.corretorId)?.name ??
+            previous.corretor)
+          : corretor
+            ? corretor
+            : previous.corretor;
+
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === id
+              ? {
+                  ...l,
+                  ...rest,
+                  ...(body.corretorId !== undefined
+                    ? { corretorId: body.corretorId, corretor: assigneeName }
+                    : {}),
+                  ...(corretor && !body.corretorId
+                    ? { corretor }
+                    : {}),
+                  updatedAt: todayLabel(),
+                }
+              : l,
+          ),
+        );
+      }
+
+      try {
+        const updated = await updateLeadApi(id, body);
+        const mapped = mapApiLead(updated);
+        setLeads((prev) => prev.map((l) => (l.id === id ? mapped : l)));
+        return mapped;
+      } catch (err) {
+        if (previous) {
+          setLeads((prev) => prev.map((l) => (l.id === id ? previous : l)));
+        }
+        throw err;
+      }
     },
-    [resolveCorretorId],
+    [assignees, leads, resolveCorretorId],
   );
 
-  const updateLeadStage = useCallback(async (id: string, stage: StageId) => {
-    const updated = await updateLeadStageApi(id, stage);
-    const mapped = mapApiLead(updated);
-    setLeads((prev) => prev.map((l) => (l.id === id ? mapped : l)));
-    return mapped;
-  }, []);
+  const updateLeadStage = useCallback(
+    async (id: string, stage: StageId) => {
+      const previous = leads.find((l) => l.id === id);
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === id ? { ...l, stage, updatedAt: todayLabel() } : l,
+        ),
+      );
+
+      try {
+        const updated = await updateLeadStageApi(id, stage);
+        const mapped = mapApiLead(updated);
+        setLeads((prev) => prev.map((l) => (l.id === id ? mapped : l)));
+        return mapped;
+      } catch (err) {
+        if (previous) {
+          setLeads((prev) => prev.map((l) => (l.id === id ? previous : l)));
+        }
+        throw err;
+      }
+    },
+    [leads],
+  );
 
   const markLeadLost = useCallback(async (id: string, motivo: string) => {
-    await markLeadLostApi(id, motivo);
-    setLeads((prev) => prev.filter((l) => l.id !== id));
+    let previous: Lead | undefined;
+    setLeads((prev) => {
+      previous = prev.find((l) => l.id === id);
+      return prev.filter((l) => l.id !== id);
+    });
+
+    try {
+      const api = await markLeadLostApi(id, motivo);
+      prependLostLeadToCache(api);
+    } catch (err) {
+      if (previous) {
+        setLeads((prev) => [previous!, ...prev]);
+      }
+      throw err;
+    }
   }, []);
 
   const deleteLead = useCallback(async (id: string) => {
-    await deleteLeadApi(id);
-    setLeads((prev) => prev.filter((l) => l.id !== id));
+    let previous: Lead | undefined;
+    setLeads((prev) => {
+      previous = prev.find((l) => l.id === id);
+      return prev.filter((l) => l.id !== id);
+    });
+
+    try {
+      await deleteLeadApi(id);
+    } catch (err) {
+      if (previous) {
+        setLeads((prev) => [previous!, ...prev]);
+      }
+      throw err;
+    }
   }, []);
 
   const value = useMemo(

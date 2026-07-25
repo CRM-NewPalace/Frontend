@@ -19,9 +19,25 @@ interface LoginResponse {
   user: AuthUser;
 }
 
-/** Evita bater em /auth/me a cada troca de rota (antes bloqueava a navegação ~3s). */
+/** Intervalo entre revalidações em background de /auth/me. */
 const SESSION_MAX_AGE_MS = 2 * 60_000;
+const VALIDATED_AT_KEY = "crm_session_validated_at";
+
+function readValidatedAt(): number {
+  if (typeof window === "undefined") return 0;
+  const raw = sessionStorage.getItem(VALIDATED_AT_KEY);
+  const n = raw ? Number(raw) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+
+function writeValidatedAt(ts: number) {
+  if (typeof window === "undefined") return;
+  if (ts <= 0) sessionStorage.removeItem(VALIDATED_AT_KEY);
+  else sessionStorage.setItem(VALIDATED_AT_KEY, String(ts));
+}
+
 let lastValidatedAt = 0;
+let revalidateInFlight: Promise<AuthUser | null> | null = null;
 
 /**
  * Sessão em cache (sessionStorage), preenchida no login.
@@ -45,6 +61,7 @@ export async function signIn(
 
   sessionCache.setUser(data.user);
   lastValidatedAt = Date.now();
+  writeValidatedAt(lastValidatedAt);
   return data.user;
 }
 
@@ -56,6 +73,7 @@ export async function signOut(): Promise<void> {
   } finally {
     sessionCache.clear();
     lastValidatedAt = 0;
+    writeValidatedAt(0);
   }
 }
 
@@ -64,22 +82,60 @@ export async function fetchMe(): Promise<AuthUser> {
   const user = await apiFetch<AuthUser>("/auth/me");
   sessionCache.setUser(user);
   lastValidatedAt = Date.now();
+  writeValidatedAt(lastValidatedAt);
   return user;
 }
 
+/** Revalida /auth/me sem bloquear a navegação. Se a sessão morreu, manda para o login. */
+function revalidateSessionInBackground(): void {
+  if (revalidateInFlight) return;
+  revalidateInFlight = fetchMe()
+    .catch(() => {
+      sessionCache.clear();
+      lastValidatedAt = 0;
+      writeValidatedAt(0);
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/login")
+      ) {
+        window.location.assign("/login");
+      }
+      return null;
+    })
+    .finally(() => {
+      revalidateInFlight = null;
+    });
+}
+
 /**
- * Valida a sessão. Usa cache curto para não bloquear cada navegação
- * com uma ida à API; force=true ignora o cache (ex.: após login).
+ * Valida a sessão para o beforeLoad das rotas autenticadas.
+ *
+ * Com usuário em cache: retorna na hora (navegação instantânea) e
+ * revalida /auth/me em background se o cache estiver velho.
+ * Sem cache: aí sim espera a API (primeiro acesso / deep link).
  */
 export async function ensureSession(options?: {
   force?: boolean;
 }): Promise<AuthUser | null> {
+  if (!lastValidatedAt) lastValidatedAt = readValidatedAt();
+
   const cached = getSession();
-  if (
-    !options?.force &&
-    cached &&
-    Date.now() - lastValidatedAt < SESSION_MAX_AGE_MS
-  ) {
+
+  if (options?.force) {
+    try {
+      return await fetchMe();
+    } catch {
+      sessionCache.clear();
+      lastValidatedAt = 0;
+      writeValidatedAt(0);
+      return null;
+    }
+  }
+
+  if (cached) {
+    if (Date.now() - lastValidatedAt >= SESSION_MAX_AGE_MS) {
+      revalidateSessionInBackground();
+    }
     return cached;
   }
 
@@ -88,6 +144,7 @@ export async function ensureSession(options?: {
   } catch {
     sessionCache.clear();
     lastValidatedAt = 0;
+    writeValidatedAt(0);
     return null;
   }
 }
