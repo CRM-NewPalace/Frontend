@@ -819,12 +819,14 @@ function DocumentacaoPage() {
                   )}
                 </div>
 
-                <YesNoField
-                  label="Possui dependente?"
-                  value={form.temDependente}
-                  onChange={(v) => setField("temDependente", v)}
-                  disabled={readOnly}
-                />
+                <div className="sm:col-span-2">
+                  <YesNoField
+                    label="Possui dependente?"
+                    value={form.temDependente}
+                    onChange={(v) => setField("temDependente", v)}
+                    disabled={readOnly}
+                  />
+                </div>
               </div>
             </FormSection>
           </FormDialogBody>
