@@ -778,48 +778,55 @@ function DocumentacaoPage() {
               icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
               title="Documentação financeira"
             >
-              <YesNoField
-                label="Possui FGTS?"
-                value={form.temFgts}
-                onChange={(v) => {
-                  setField("temFgts", v);
-                  if (v === "nao") setField("valorFgts", "");
-                }}
-                disabled={readOnly}
-              />
-              {form.temFgts === "sim" && (
-                <MoneyField
-                  label="Valor do FGTS"
-                  value={form.valorFgts}
-                  onChange={(v) => setField("valorFgts", v)}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <YesNoField
+                  label="Possui FGTS?"
+                  value={form.temFgts}
+                  onChange={(v) => {
+                    setField("temFgts", v);
+                    if (v === "nao") setField("valorFgts", "");
+                  }}
                   disabled={readOnly}
                 />
-              )}
+                {form.temFgts === "sim" ? (
+                  <MoneyField
+                    label="Valor do FGTS"
+                    value={form.valorFgts}
+                    onChange={(v) => setField("valorFgts", v)}
+                    disabled={readOnly}
+                  />
+                ) : (
+                  <div className="hidden sm:block" aria-hidden />
+                )}
 
-              <YesNoField
-                label="Possui entrada?"
-                value={form.temEntrada}
-                onChange={(v) => {
-                  setField("temEntrada", v);
-                  if (v === "nao") setField("valorEntrada", "");
-                }}
-                disabled={readOnly}
-              />
-              {form.temEntrada === "sim" && (
-                <MoneyField
-                  label="Valor da entrada"
-                  value={form.valorEntrada}
-                  onChange={(v) => setField("valorEntrada", v)}
+                <YesNoField
+                  label="Possui entrada?"
+                  value={form.temEntrada}
+                  onChange={(v) => {
+                    setField("temEntrada", v);
+                    if (v === "nao") setField("valorEntrada", "");
+                  }}
                   disabled={readOnly}
                 />
-              )}
+                {form.temEntrada === "sim" ? (
+                  <MoneyField
+                    label="Valor da entrada"
+                    value={form.valorEntrada}
+                    onChange={(v) => setField("valorEntrada", v)}
+                    disabled={readOnly}
+                  />
+                ) : (
+                  <div className="hidden sm:block" aria-hidden />
+                )}
 
-              <YesNoField
-                label="Possui dependente?"
-                value={form.temDependente}
-                onChange={(v) => setField("temDependente", v)}
-                disabled={readOnly}
-              />
+                <YesNoField
+                  label="Possui dependente?"
+                  value={form.temDependente}
+                  onChange={(v) => setField("temDependente", v)}
+                  disabled={readOnly}
+                />
+                <div className="hidden sm:block" aria-hidden />
+              </div>
             </FormSection>
           </FormDialogBody>
 
@@ -870,9 +877,9 @@ function YesNoField({
   disabled?: boolean;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 w-full">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="grid grid-cols-2 gap-2 max-w-xs">
+      <div className="grid grid-cols-2 gap-2 w-full">
         {(["sim", "nao"] as const).map((opt) => (
           <button
             key={opt}
@@ -880,7 +887,7 @@ function YesNoField({
             disabled={disabled}
             onClick={() => onChange(opt)}
             className={cn(
-              "h-10 rounded-lg border text-sm font-medium capitalize transition-colors",
+              "h-10 w-full rounded-lg border text-sm font-medium transition-colors",
               value === opt
                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                 : "bg-background text-muted-foreground hover:bg-accent",
@@ -907,9 +914,9 @@ function MoneyField({
   disabled?: boolean;
 }) {
   return (
-    <div className="space-y-1.5 max-w-xs">
+    <div className="space-y-1.5 w-full">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="relative">
+      <div className="relative w-full">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
           R$
         </span>
@@ -918,7 +925,7 @@ function MoneyField({
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
           disabled={disabled}
-          className="h-10 bg-background pl-9"
+          className="h-10 w-full bg-background pl-9"
           placeholder="0"
         />
       </div>
