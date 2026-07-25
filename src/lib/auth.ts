@@ -1,4 +1,4 @@
-import { apiFetch, sessionCache } from "@/lib/api";
+import { apiFetch, sessionCache, storeCsrfToken } from "@/lib/api";
 
 export type Role = "admin" | "gerente" | "corretor";
 export type UserStatus = "ativo" | "inativo";
@@ -17,6 +17,7 @@ export interface AuthUser {
 
 interface LoginResponse {
   user: AuthUser;
+  csrfToken?: string;
 }
 
 /** Intervalo entre revalidações em background de /auth/me. */
@@ -60,6 +61,7 @@ export async function signIn(
   });
 
   sessionCache.setUser(data.user);
+  storeCsrfToken(data.csrfToken);
   lastValidatedAt = Date.now();
   writeValidatedAt(lastValidatedAt);
   return data.user;

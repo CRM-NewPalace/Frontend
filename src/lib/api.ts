@@ -10,6 +10,7 @@ export const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 const USER_KEY = "crm_session_user";
 const CSRF_COOKIE = "crm_csrf";
+const CSRF_STORAGE_KEY = "crm_csrf_token";
 const CSRF_HEADER = "X-CSRF-Token";
 
 /** Chaves antigas (JWT no localStorage) — removidas na migração anti-XSS. */
@@ -36,7 +37,7 @@ function clearLegacyTokens() {
 
 clearLegacyTokens();
 
-/** Cache do perfil (não é segredo). Tokens ficam só em cookies httpOnly. */
+/** Cache do perfil (não é segredo). Tokens JWT ficam só em cookies httpOnly. */
 export const sessionCache = {
   getUser: <T>(): T | null => {
     if (!isBrowser()) return null;
@@ -51,13 +52,13 @@ export const sessionCache = {
   setUser: (user: unknown) => {
     if (!isBrowser()) return;
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-    // Remove o cache antigo do localStorage (migração).
     localStorage.removeItem(USER_KEY);
   },
   clear: () => {
     if (!isBrowser()) return;
     sessionStorage.removeItem(USER_KEY);
     localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(CSRF_STORAGE_KEY);
     clearLegacyTokens();
   },
 };
@@ -69,6 +70,20 @@ function readCookie(name: string): string | null {
     .find((row) => row.startsWith(`${name}=`));
   if (!match) return null;
   return decodeURIComponent(match.slice(name.length + 1));
+}
+
+/** Cookie same-origin ou token salvo no sessionStorage (cross-origin Vercel→Render). */
+function readCsrfToken(): string | null {
+  return readCookie(CSRF_COOKIE) ?? (isBrowser() ? sessionStorage.getItem(CSRF_STORAGE_KEY) : null);
+}
+
+export function storeCsrfToken(token: string | null | undefined) {
+  if (!isBrowser()) return;
+  if (!token) {
+    sessionStorage.removeItem(CSRF_STORAGE_KEY);
+    return;
+  }
+  sessionStorage.setItem(CSRF_STORAGE_KEY, token);
 }
 
 async function parseError(response: Response): Promise<string> {
@@ -100,6 +115,12 @@ async function refreshSession(): Promise<boolean> {
     sessionCache.clear();
     return false;
   }
+  try {
+    const body = (await response.json()) as { csrfToken?: string };
+    storeCsrfToken(body.csrfToken);
+  } catch {
+    // ok
+  }
   return true;
 }
 
@@ -116,7 +137,7 @@ export async function apiFetch<T>(
   const { body, skipAuth, headers, ...rest } = options;
 
   const send = async (): Promise<Response> => {
-    const csrf = skipAuth ? null : readCookie(CSRF_COOKIE);
+    const csrf = skipAuth ? null : readCsrfToken();
     return fetch(`${API_URL}${path}`, {
       ...rest,
       credentials: "include",
