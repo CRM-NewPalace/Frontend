@@ -29,8 +29,10 @@ import {
   loadTriagemHistory,
   prependTriagemHistoryCached,
 } from "@/lib/triagem-history-cache";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClipboardList, Plus, User, Users, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type TriagemSearch = {
   leadId?: string;
@@ -89,12 +91,24 @@ function formatWhen(iso: string) {
   });
 }
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 function HistoryTimeline({
   events,
+  contactName,
   stageLabel,
   loading,
 }: {
   events: TriagemEvent[];
+  contactName: string;
   stageLabel: (slug: string | null) => string;
   loading?: boolean;
 }) {
@@ -113,34 +127,84 @@ function HistoryTimeline({
       </div>
     );
   }
+
   return (
-    <ul className="space-y-3">
-      {events.map((ev) => (
-        <li key={ev.id} className="rounded-xl border bg-card p-4 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-medium">{ev.autor.name}</div>
-            <div className="text-xs text-muted-foreground">{formatWhen(ev.createdAt)}</div>
-          </div>
-          {(ev.stageAnterior || ev.stageNovo) && (
-            <div className="text-xs text-muted-foreground">
-              Etapa:{" "}
-              {ev.stageAnterior
-                ? `${stageLabel(ev.stageAnterior)} → ${stageLabel(ev.stageNovo)}`
-                : stageLabel(ev.stageNovo)}
-              <Badge variant="outline" className="ml-2 text-[10px]">
-                {ev.origem === "funil" ? "Funil" : "Manual"}
-              </Badge>
-            </div>
-          )}
-          {!ev.stageAnterior && !ev.stageNovo && (
-            <Badge variant="outline" className="text-[10px]">
-              {ev.origem === "funil" ? "Funil" : "Manual"}
-            </Badge>
-          )}
-          <p className="text-sm whitespace-pre-wrap">{ev.texto}</p>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <ClipboardList className="w-4 h-4 text-primary" />
+        Linha do tempo da triagem
+      </div>
+      <ol className="relative space-y-0">
+        {events.map((ev, index) => {
+          const stageBadge = ev.stageNovo
+            ? stageLabel(ev.stageNovo)
+            : ev.stageAnterior
+              ? stageLabel(ev.stageAnterior)
+              : null;
+          const isLast = index === events.length - 1;
+
+          return (
+            <li key={ev.id} className="relative flex gap-3 pb-6 last:pb-0">
+              {/* Trilho vertical */}
+              <div className="flex flex-col items-center w-5 shrink-0">
+                <span className="relative z-10 mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <FileText className="h-2.5 w-2.5" />
+                </span>
+                {!isLast && (
+                  <span
+                    aria-hidden
+                    className="mt-1 w-px flex-1 min-h-[1.5rem] bg-border"
+                  />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="text-xs text-muted-foreground tabular-nums">
+                  {formatWhen(ev.createdAt)}
+                </div>
+
+                <div
+                  className={cn(
+                    "rounded-xl border bg-card p-3.5 space-y-2.5 shadow-sm",
+                  )}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
+                        {initials(ev.autor.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="text-sm leading-snug">
+                        <span className="font-semibold">{ev.autor.name}</span>
+                        {" atualizou a triagem de "}
+                        <span className="font-semibold">{contactName}</span>
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {stageBadge && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-medium bg-primary/10 text-primary border-primary/20"
+                          >
+                            {stageBadge}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-[10px]">
+                          {ev.origem === "funil" ? "Funil" : "Manual"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap pl-0 sm:pl-[2.625rem]">
+                    {ev.texto}
+                  </p>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 
@@ -436,6 +500,7 @@ function CorretorTriagem() {
               </div>
               <HistoryTimeline
                 events={events}
+                contactName={selectedContact.nome}
                 stageLabel={stageName}
                 loading={historyLoading}
               />
@@ -690,6 +755,7 @@ function ManagerTriagem() {
               </div>
               <HistoryTimeline
                 events={events}
+                contactName={selectedLead.nome}
                 stageLabel={stageName}
                 loading={historyLoading}
               />
