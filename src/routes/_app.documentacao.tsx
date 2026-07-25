@@ -778,46 +778,46 @@ function DocumentacaoPage() {
               icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
               title="Documentação financeira"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <YesNoField
-                  label="Possui FGTS?"
-                  value={form.temFgts}
-                  onChange={(v) => {
-                    setField("temFgts", v);
-                    if (v === "nao") setField("valorFgts", "");
-                  }}
-                  disabled={readOnly}
-                />
-                {form.temFgts === "sim" ? (
-                  <MoneyField
-                    label="Valor do FGTS"
-                    value={form.valorFgts}
-                    onChange={(v) => setField("valorFgts", v)}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
+                <div className="space-y-3">
+                  <YesNoField
+                    label="Possui FGTS?"
+                    value={form.temFgts}
+                    onChange={(v) => {
+                      setField("temFgts", v);
+                      if (v === "nao") setField("valorFgts", "");
+                    }}
                     disabled={readOnly}
                   />
-                ) : (
-                  <div className="hidden sm:block" aria-hidden />
-                )}
+                  {form.temFgts === "sim" && (
+                    <MoneyField
+                      label="Valor do FGTS"
+                      value={form.valorFgts}
+                      onChange={(v) => setField("valorFgts", v)}
+                      disabled={readOnly}
+                    />
+                  )}
+                </div>
 
-                <YesNoField
-                  label="Possui entrada?"
-                  value={form.temEntrada}
-                  onChange={(v) => {
-                    setField("temEntrada", v);
-                    if (v === "nao") setField("valorEntrada", "");
-                  }}
-                  disabled={readOnly}
-                />
-                {form.temEntrada === "sim" ? (
-                  <MoneyField
-                    label="Valor da entrada"
-                    value={form.valorEntrada}
-                    onChange={(v) => setField("valorEntrada", v)}
+                <div className="space-y-3">
+                  <YesNoField
+                    label="Possui entrada?"
+                    value={form.temEntrada}
+                    onChange={(v) => {
+                      setField("temEntrada", v);
+                      if (v === "nao") setField("valorEntrada", "");
+                    }}
                     disabled={readOnly}
                   />
-                ) : (
-                  <div className="hidden sm:block" aria-hidden />
-                )}
+                  {form.temEntrada === "sim" && (
+                    <MoneyField
+                      label="Valor da entrada"
+                      value={form.valorEntrada}
+                      onChange={(v) => setField("valorEntrada", v)}
+                      disabled={readOnly}
+                    />
+                  )}
+                </div>
 
                 <YesNoField
                   label="Possui dependente?"
@@ -825,7 +825,6 @@ function DocumentacaoPage() {
                   onChange={(v) => setField("temDependente", v)}
                   disabled={readOnly}
                 />
-                <div className="hidden sm:block" aria-hidden />
               </div>
             </FormSection>
           </FormDialogBody>
