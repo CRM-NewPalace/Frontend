@@ -15,10 +15,11 @@ export default defineConfig({
   vite: {
     server: {
       // Proxy evita CORS e o atraso ~3s do Windows (localhost → IPv6 timeout → IPv4).
-      // O browser fala com a mesma origem; o Vite encaminha para o Nest em 127.0.0.1.
+      // O browser fala com a mesma origem; o Vite encaminha para o Nest.
+      // API_PROXY_TARGET aponta para a API hospedada (ex.: https://x.onrender.com).
       proxy: {
         "/api": {
-          target: "http://127.0.0.1:3333",
+          target: process.env.API_PROXY_TARGET ?? "http://127.0.0.1:3333",
           changeOrigin: true,
         },
       },

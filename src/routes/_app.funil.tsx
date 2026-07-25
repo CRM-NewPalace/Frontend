@@ -3,6 +3,15 @@ import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { brl, prioridadeBadgeClass, type Lead, type StageId } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
@@ -11,9 +20,15 @@ import { useCatalog } from "@/lib/catalog-store";
 import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
 } from "@/components/form-dialog";
-import { Clock, User, Eye, Sparkles, Wallet, MapPin } from "lucide-react";
-import { useRef, useState } from "react";
+import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
+/** Slug da etapa que dispara o fluxo de "lead perdido". */
+const LOST_STAGE_SLUG = "perdido";
+
+/** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
+const COLUMN_STEP_PX = 288 + 12;
 
 export const Route = createFileRoute("/_app/funil")({
   head: () => ({ meta: [{ title: "Funil de Vendas — Imob CRM" }] }),
@@ -24,34 +39,143 @@ function Funil() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
-  const { leads: allLeads, updateLeadStage, loading } = useLeads();
-  const { funnelStages, loading: catalogLoading } = useCatalog();
+  const { leads: allLeads, updateLeadStage, markLeadLost, loading } = useLeads();
+  const { funnelStages, motivos: motivoOptions, loading: catalogLoading, colorByLabel } = useCatalog();
   const leads = isCorretor && user
     ? allLeads.filter((l) => l.corretor === user.name || l.corretorId === user.id)
     : allLeads;
   const [dragging, setDragging] = useState<string | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const didDrag = useRef(false);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Fluxo de perda ao soltar o card na coluna "Perdido".
+  const [lostTarget, setLostTarget] = useState<Lead | null>(null);
+  const [lostMotivo, setLostMotivo] = useState("");
+  const [lostMotivoOutro, setLostMotivoOutro] = useState("");
+
+  const updateScrollButtons = useCallback(() => {
+    const el = boardRef.current;
+    if (!el) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    const max = el.scrollWidth - el.clientWidth;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < max - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    updateScrollButtons();
+    el.addEventListener("scroll", updateScrollButtons, { passive: true });
+    const ro = new ResizeObserver(updateScrollButtons);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollButtons);
+      ro.disconnect();
+    };
+  }, [updateScrollButtons, funnelStages.length, loading, catalogLoading]);
+
+  function scrollBoard(direction: -1 | 1) {
+    const el = boardRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * COLUMN_STEP_PX, behavior: "smooth" });
+  }
 
   async function onDrop(stage: StageId) {
     if (!dragging) return;
     const leadId = dragging;
     const lead = allLeads.find((l) => l.id === leadId);
     setDragging(null);
+    if (!lead || lead.stage === stage) return;
+
+    // Perdido não é uma etapa comum: pede o motivo e faz soft-delete.
+    if (stage === LOST_STAGE_SLUG) {
+      setLostMotivo("");
+      setLostMotivoOutro("");
+      setLostTarget(lead);
+      return;
+    }
+
     try {
       await updateLeadStage(leadId, stage);
-      if (lead) {
-        const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
-        toast.success(`${lead.nome} movido para ${stageName}`);
-      }
+      const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
+      toast.success(`${lead.nome} movido para ${stageName}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível mover o lead.");
+    }
+  }
+
+  async function confirmLost() {
+    if (!lostTarget) return;
+    const motivo =
+      lostMotivo === "__outro__" ? lostMotivoOutro.trim() : lostMotivo.trim();
+    if (!motivo) {
+      toast.error(
+        motivoOptions.length === 0
+          ? "Informe o motivo da perda."
+          : "Selecione o motivo da perda.",
+      );
+      return;
+    }
+
+    const { id, nome } = lostTarget;
+    setLostTarget(null);
+    setLostMotivo("");
+    setLostMotivoOutro("");
+    toast.success(`${nome} movido para Leads Perdidos.`);
+    try {
+      await markLeadLost(id, motivo);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível marcar como perdido.");
     }
   }
 
   function openDetail(lead: Lead) {
     if (didDrag.current) return;
     setDetailLead(lead);
+  }
+
+  async function moveDetailToStage(stage: StageId) {
+    if (!detailLead || stage === detailLead.stage) return;
+
+    // Perdido: fecha o detalhe e abre o modal de motivo (soft-delete).
+    if (stage === LOST_STAGE_SLUG) {
+      const target = detailLead;
+      setDetailLead(null);
+      setLostMotivo("");
+      setLostMotivoOutro("");
+      setLostTarget(target);
+      return;
+    }
+
+    const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
+    const previousStage = detailLead.stage;
+    // Atualização otimista no próprio modal.
+    setDetailLead({ ...detailLead, stage });
+    try {
+      await updateLeadStage(detailLead.id, stage);
+      toast.success(`${detailLead.nome} movido para ${stageName}`);
+    } catch (err) {
+      setDetailLead((cur) =>
+        cur && cur.id === detailLead.id ? { ...cur, stage: previousStage } : cur,
+      );
+      toast.error(err instanceof Error ? err.message : "Não foi possível mover o lead.");
+    }
+  }
+
+  function openLostFromDetail() {
+    if (!detailLead) return;
+    const target = detailLead;
+    setDetailLead(null);
+    setLostMotivo("");
+    setLostMotivoOutro("");
+    setLostTarget(target);
   }
 
   return (
@@ -66,15 +190,47 @@ function Funil() {
             : "Funil da equipe — leads de captação e clientes da carteira. Clique para ver detalhes."
         }
         actions={
-          !isCorretor ? (
-            <Button size="sm" asChild>
-              <Link to="/configuracoes">Configurar funil</Link>
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-md border bg-background">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-r-none"
+                disabled={!canScrollLeft}
+                aria-label="Coluna anterior"
+                title="Coluna anterior"
+                onClick={() => scrollBoard(-1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="w-px h-4 bg-border" />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-l-none"
+                disabled={!canScrollRight}
+                aria-label="Próxima coluna"
+                title="Próxima coluna"
+                onClick={() => scrollBoard(1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            {!isCorretor && (
+              <Button size="sm" asChild>
+                <Link to="/configuracoes">Configurar funil</Link>
+              </Button>
+            )}
+          </div>
         }
       />
 
-      <div className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6">
+      <div
+        ref={boardRef}
+        className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
+      >
         {funnelStages.map((stage) => {
           const stageLeads = leads.filter((l) => l.stage === stage.id);
           const total = stageLeads.reduce((s, l) => s + (l.renda ?? 0), 0);
@@ -205,7 +361,7 @@ function Funil() {
                       <div className="text-xs text-muted-foreground">Tags</div>
                       <div className="flex flex-wrap gap-1.5">
                         {detailLead.tags.map((t) => (
-                          <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                          <Badge key={t} className={`text-[10px] ${colorByLabel("tag", t)}`}>{t}</Badge>
                         ))}
                       </div>
                     </div>
@@ -220,18 +376,115 @@ function Funil() {
               </FormSection>
             </FormDialogBody>
             <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
-              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setDetailLead(null)}>
-                Fechar
-              </Button>
-              <Button className="flex-1 sm:flex-none" asChild>
-                <Link to="/leads" onClick={() => setDetailLead(null)}>
-                  Ver em Leads
-                </Link>
-              </Button>
+              <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Etapa:</span>
+                  <Select
+                    value={detailLead.stage}
+                    onValueChange={(v) => void moveDetailToStage(v)}
+                  >
+                    <SelectTrigger className="h-9 min-w-[180px]">
+                      <SelectValue placeholder="Selecione a etapa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {funnelStages.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  onClick={openLostFromDetail}
+                >
+                  Dar perda
+                </Button>
+              </div>
             </FormDialogActions>
           </>
         )}
       </FormDialogShell>
+
+      <AlertDialog
+        open={!!lostTarget}
+        onOpenChange={(o) => {
+          if (!o) {
+            setLostTarget(null);
+            setLostMotivo("");
+            setLostMotivoOutro("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Por que este lead foi perdido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {lostTarget
+                ? `${lostTarget.nome} sairá do funil e das listas operacionais, e irá para Leads Perdidos (visível só para o administrador).`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-1">
+            {motivoOptions.length > 0 ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Motivo</Label>
+                  <Select value={lostMotivo} onValueChange={setLostMotivo}>
+                    <SelectTrigger className="h-10"><SelectValue placeholder="Selecione o motivo" /></SelectTrigger>
+                    <SelectContent>
+                      {motivoOptions.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                      <SelectItem value="__outro__">Outro…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {lostMotivo === "__outro__" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="funil-motivo-outro" className="text-xs text-muted-foreground">Descreva o motivo</Label>
+                    <Input
+                      id="funil-motivo-outro"
+                      value={lostMotivoOutro}
+                      onChange={(e) => setLostMotivoOutro(e.target.value)}
+                      placeholder="Ex.: Cliente sem interesse"
+                      className="h-10"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="funil-motivo-livre" className="text-xs text-muted-foreground">Motivo</Label>
+                <Input
+                  id="funil-motivo-livre"
+                  value={lostMotivo}
+                  onChange={(e) => setLostMotivo(e.target.value)}
+                  placeholder="Ex.: Cliente sem interesse"
+                  className="h-10"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Cadastre motivos em Configurações para selecionar depois.
+                </p>
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmLost();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar perda
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

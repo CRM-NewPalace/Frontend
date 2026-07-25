@@ -44,6 +44,35 @@ export const Route = createFileRoute("/_app/usuarios")({
   component: Usuarios,
 });
 
+/** Cache da lista para abrir a tela sem esperar a API (sincroniza em background). */
+const USERS_CACHE_KEY = "crm_users_cache_v1";
+let usersMemoryCache: ApiUser[] | null = null;
+
+function getUsersCache(): ApiUser[] | null {
+  if (usersMemoryCache) return usersMemoryCache;
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(USERS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ApiUser[];
+    if (!Array.isArray(parsed)) return null;
+    usersMemoryCache = parsed;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setUsersCache(users: ApiUser[]) {
+  usersMemoryCache = users;
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(USERS_CACHE_KEY, JSON.stringify(users));
+  } catch {
+    // quota / private mode — ignore
+  }
+}
+
 const ROLE_LABEL: Record<Role, string> = {
   admin: "Administrador",
   gerente: "Gerente",
@@ -123,11 +152,25 @@ function Usuarios() {
   const session = getSession();
   const { refresh: refreshLeads } = useLeads();
 
-  const [users, setUsers] = useState<ApiUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedUsers = getUsersCache();
+  const [users, setUsersState] = useState<ApiUser[]>(cachedUsers ?? []);
+  // Só bloqueia com "Carregando..." na primeira visita sem cache.
+  const [loading, setLoading] = useState(!cachedUsers);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  /** Atualiza estado + cache juntos. */
+  const setUsers = useCallback(
+    (updater: (prev: ApiUser[]) => ApiUser[]) => {
+      setUsersState((prev) => {
+        const next = updater(prev);
+        setUsersCache(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
@@ -138,21 +181,25 @@ function Usuarios() {
   const [detail, setDetail] = useState<ApiUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiUser | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const page = await fetchUsers({ page: 1, limit: 100 });
-      setUsers(page.data);
+      setUsers(() => page.data);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Não foi possível carregar os usuários.");
+      if (!opts?.silent) {
+        toast.error(err instanceof ApiError ? err.message : "Não foi possível carregar os usuários.");
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setUsers]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load({ silent: Boolean(cachedUsers) });
+    // Só no mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -187,7 +234,8 @@ function Usuarios() {
   }
 
   async function syncTeam() {
-    await Promise.all([load(), refreshLeads()]);
+    // Assignees dos leads em background (sem travar a UI).
+    void refreshLeads({ silent: true });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -213,7 +261,7 @@ function Usuarios() {
     setSaving(true);
     try {
       if (formMode === "create") {
-        await createUser({
+        const created = await createUser({
           name,
           email,
           password: form.password,
@@ -222,9 +270,10 @@ function Usuarios() {
           role: form.role,
           status: form.status,
         });
+        setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
         toast.success(`Usuário ${name} criado.`);
       } else if (editingId) {
-        await updateUser(editingId, {
+        const updated = await updateUser(editingId, {
           name,
           email,
           phone: phone || null,
@@ -232,10 +281,11 @@ function Usuarios() {
           role: form.role,
           status: form.status,
         });
+        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
         toast.success("Usuário atualizado.");
       }
       setFormOpen(false);
-      await syncTeam();
+      void syncTeam();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Não foi possível salvar.");
     } finally {
@@ -245,25 +295,38 @@ function Usuarios() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
+    const target = deleteTarget;
+    // Otimista: some da tabela na hora; volta se a API falhar.
+    setUsers((prev) => prev.filter((u) => u.id !== target.id));
+    setDeleteTarget(null);
+    setDetail(null);
+    toast.success(`Usuário ${target.name} excluído.`);
     try {
-      await deleteUser(deleteTarget.id);
-      toast.success(`Usuário ${deleteTarget.name} excluído.`);
-      setDeleteTarget(null);
-      setDetail(null);
-      await syncTeam();
+      await deleteUser(target.id);
+      void syncTeam();
     } catch (err) {
+      setUsers((prev) => [target, ...prev.filter((u) => u.id !== target.id)]);
       toast.error(err instanceof ApiError ? err.message : "Não foi possível excluir.");
     }
   }
 
   async function toggleStatus(u: ApiUser) {
     const next: UserStatus = u.status === "ativo" ? "inativo" : "ativo";
+    // Otimista: badge muda na hora; volta se a API falhar.
+    setUsers((prev) =>
+      prev.map((x) => (x.id === u.id ? { ...x, status: next } : x)),
+    );
+    if (detail?.id === u.id) setDetail((d) => (d ? { ...d, status: next } : d));
+    toast.success(next === "ativo" ? `${u.name} reativado.` : `${u.name} inativado.`);
     try {
-      await updateUserStatus(u.id, next);
-      toast.success(next === "ativo" ? `${u.name} reativado.` : `${u.name} inativado.`);
-      await syncTeam();
-      if (detail?.id === u.id) setDetail((d) => (d ? { ...d, status: next } : d));
+      const updated = await updateUserStatus(u.id, next);
+      setUsers((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      void syncTeam();
     } catch (err) {
+      setUsers((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, status: u.status } : x)),
+      );
+      if (detail?.id === u.id) setDetail((d) => (d ? { ...d, status: u.status } : d));
       toast.error(err instanceof ApiError ? err.message : "Não foi possível alterar o status.");
     }
   }

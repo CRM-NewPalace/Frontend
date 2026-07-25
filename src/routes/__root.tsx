@@ -127,14 +127,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    // suppressHydrationWarning: o script inline de tema abaixo pode adicionar
+    // class="dark" e style.colorScheme antes do React hidratar — mismatch esperado.
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <HeadContent />
         <link rel="icon" href="/favicon.ico?v=7" sizes="any" />
         <link rel="icon" type="image/png" href="/favicon-32.png?v=7" sizes="32x32" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.style.colorScheme="light"}}catch(e){}})();`,
           }}
         />
       </head>

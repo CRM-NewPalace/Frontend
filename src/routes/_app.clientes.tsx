@@ -107,7 +107,7 @@ function Clientes() {
   const defaultCorretor = isCorretor && user ? user.name : "Marina Alves";
 
   const { leads: allLeads, addLead, updateLead, markLeadLost, resolveCorretorId, assignees, loading } = useLeads();
-  const { funnelStages, origens: origemOptions, tags: tagOptions, motivos: motivoOptions } = useCatalog();
+  const { funnelStages, origens: origemOptions, tags: tagOptions, motivos: motivoOptions, colorByLabel } = useCatalog();
 
   const stageName = (stage: Lead["stage"]) =>
     funnelStages.find((s) => s.id === stage)?.name ?? stage;
@@ -201,6 +201,8 @@ function Clientes() {
 
     try {
       if (formMode === "create") {
+        setFormOpen(false);
+        toast.success(`Cliente "${nome}" cadastrado.`);
         await addLead({
           tipo: "cliente",
           nome,
@@ -215,8 +217,9 @@ function Clientes() {
           tags: form.tags,
           ...(corretorId ? { corretorId } : {}),
         });
-        toast.success(`Cliente "${nome}" cadastrado.`);
       } else if (editingId) {
+        setFormOpen(false);
+        toast.success("Cliente atualizado.");
         await updateLead(editingId, {
           nome,
           telefone,
@@ -229,10 +232,7 @@ function Clientes() {
           tags: form.tags,
           ...(corretorId ? { corretorId } : {}),
         });
-        toast.success("Cliente atualizado.");
       }
-
-      setFormOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível salvar o cliente.");
     }
@@ -253,12 +253,14 @@ function Clientes() {
       return;
     }
     try {
-      await markLeadLost(deleteTarget.id, motivo);
-      toast.success(`Cliente "${deleteTarget.nome}" movido para Leads Perdidos.`);
-      if (detail?.id === deleteTarget.id) setDetail(null);
+      const id = deleteTarget.id;
+      const nome = deleteTarget.nome;
+      if (detail?.id === id) setDetail(null);
       setDeleteTarget(null);
       setDeleteMotivo("");
       setDeleteMotivoOutro("");
+      toast.success(`Cliente "${nome}" movido para Leads Perdidos.`);
+      await markLeadLost(id, motivo);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível excluir o cliente.");
     }
@@ -321,7 +323,7 @@ function Clientes() {
                 <TableCell>
                   <div className="flex gap-1 flex-wrap">
                     {l.tags.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                      <Badge key={t} className={`text-[10px] ${colorByLabel("tag", t)}`}>{t}</Badge>
                     ))}
                   </div>
                 </TableCell>
@@ -611,7 +613,7 @@ function Clientes() {
                       <div className="text-xs text-muted-foreground">Tags</div>
                       <div className="flex flex-wrap gap-1.5">
                         {detail.tags.map((t) => (
-                          <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                          <Badge key={t} className={`text-[10px] ${colorByLabel("tag", t)}`}>{t}</Badge>
                         ))}
                       </div>
                     </div>

@@ -19,7 +19,7 @@ export type GroupedCatalog = Record<CatalogType, CatalogItem[]>;
 export interface CreateCatalogInput {
   type: CatalogType;
   label: string;
-  /** Só usado para etapas do funil (classes Tailwind da badge). */
+  /** Classes Tailwind da badge (etapas, origens, tags, motivos). */
   color?: string;
 }
 
