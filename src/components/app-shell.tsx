@@ -5,7 +5,7 @@ import {
   LogOut, Search, Bell, ChevronsLeft, ChevronDown, ChevronRight,
   Target, ClipboardList, Briefcase, Shield, CircleUser, ArrowLeftRight,
   Banknote, ScrollText, ArrowUpRight, ArrowDownRight, FolderKanban,
-  FolderOpen, SearchCheck, Percent, Goal, UserX, type LucideIcon,
+  FolderOpen, SearchCheck, Percent, Goal, UserX, Network, type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { getSession, signOut, type AuthUser } from "@/lib/auth";
@@ -83,6 +83,7 @@ const NAV_SECTIONS: {
     adminOnly: true,
     items: [
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
+      { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },

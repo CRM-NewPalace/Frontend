@@ -18,6 +18,7 @@ import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoe
 import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppDocumentacaoRouteImport } from './routes/_app.documentacao'
+import { Route as AppEquipesRouteImport } from './routes/_app.equipes'
 import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppFunilRouteImport } from './routes/_app.funil'
 import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
@@ -83,6 +84,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
 const AppDocumentacaoRoute = AppDocumentacaoRouteImport.update({
   id: '/documentacao',
   path: '/documentacao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipesRoute = AppEquipesRouteImport.update({
+  id: '/equipes',
+  path: '/equipes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
   '/documentacao': typeof AppDocumentacaoRoute
+  '/equipes': typeof AppEquipesRoute
   '/financeiro': typeof AppFinanceiroRouteWithChildren
   '/funil': typeof AppFunilRoute
   '/imoveis': typeof AppImoveisRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
   '/documentacao': typeof AppDocumentacaoRoute
+  '/equipes': typeof AppEquipesRoute
   '/financeiro': typeof AppFinanceiroRouteWithChildren
   '/funil': typeof AppFunilRoute
   '/imoveis': typeof AppImoveisRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/_app/corretores': typeof AppCorretoresRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/documentacao': typeof AppDocumentacaoRoute
+  '/_app/equipes': typeof AppEquipesRoute
   '/_app/financeiro': typeof AppFinanceiroRouteWithChildren
   '/_app/funil': typeof AppFunilRoute
   '/_app/imoveis': typeof AppImoveisRoute
@@ -311,6 +320,7 @@ export interface FileRouteTypes {
     | '/corretores'
     | '/dashboard'
     | '/documentacao'
+    | '/equipes'
     | '/financeiro'
     | '/funil'
     | '/imoveis'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/corretores'
     | '/dashboard'
     | '/documentacao'
+    | '/equipes'
     | '/financeiro'
     | '/funil'
     | '/imoveis'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/_app/corretores'
     | '/_app/dashboard'
     | '/_app/documentacao'
+    | '/_app/equipes'
     | '/_app/financeiro'
     | '/_app/funil'
     | '/_app/imoveis'
@@ -469,6 +481,13 @@ declare module '@tanstack/react-router' {
       path: '/documentacao'
       fullPath: '/documentacao'
       preLoaderRoute: typeof AppDocumentacaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/equipes': {
+      id: '/_app/equipes'
+      path: '/equipes'
+      fullPath: '/equipes'
+      preLoaderRoute: typeof AppEquipesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/financeiro': {
@@ -664,6 +683,7 @@ interface AppRouteChildren {
   AppCorretoresRoute: typeof AppCorretoresRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDocumentacaoRoute: typeof AppDocumentacaoRoute
+  AppEquipesRoute: typeof AppEquipesRoute
   AppFinanceiroRoute: typeof AppFinanceiroRouteWithChildren
   AppFunilRoute: typeof AppFunilRoute
   AppImoveisRoute: typeof AppImoveisRoute
@@ -686,6 +706,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCorretoresRoute: AppCorretoresRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDocumentacaoRoute: AppDocumentacaoRoute,
+  AppEquipesRoute: AppEquipesRoute,
   AppFinanceiroRoute: AppFinanceiroRouteWithChildren,
   AppFunilRoute: AppFunilRoute,
   AppImoveisRoute: AppImoveisRoute,

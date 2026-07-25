@@ -20,6 +20,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/documentacao",
     "/resultado",
     "/usuarios",
+    "/equipes",
     "/leads-perdidos",
     "/taxa-conversao",
     "/propostas",
@@ -80,7 +81,7 @@ export function canViewFinancial(role: Role): boolean {
 }
 
 /**
- * Admin e gerente acompanham leads, funil, agenda, clientes e processos de todos os corretores.
+ * Admin vê todos; gerente vê a própria equipe (escopo aplicado na API).
  * Corretor fica restrito aos próprios registros.
  */
 export function canViewTeamData(role: Role): boolean {
