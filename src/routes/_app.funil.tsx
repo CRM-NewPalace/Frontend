@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { brl, prioridadeBadgeClass, type Lead, type StageId } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
@@ -20,7 +23,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
 } from "@/components/form-dialog";
-import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -36,6 +39,7 @@ export const Route = createFileRoute("/_app/funil")({
 });
 
 function Funil() {
+  const navigate = useNavigate();
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
@@ -55,6 +59,25 @@ function Funil() {
   const [lostTarget, setLostTarget] = useState<Lead | null>(null);
   const [lostMotivo, setLostMotivo] = useState("");
   const [lostMotivoOutro, setLostMotivoOutro] = useState("");
+
+  /** Após mudar etapa (só corretor): pergunta se quer registrar histórico na Triagem. */
+  const [triagemPrompt, setTriagemPrompt] = useState<{
+    leadId: string;
+    leadNome: string;
+    stage: StageId;
+    stageName: string;
+  } | null>(null);
+
+  function offerTriagemHistory(lead: Lead, stage: StageId) {
+    if (!isCorretor) return;
+    const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
+    setTriagemPrompt({
+      leadId: lead.id,
+      leadNome: lead.nome,
+      stage,
+      stageName,
+    });
+  }
 
   const updateScrollButtons = useCallback(() => {
     const el = boardRef.current;
@@ -102,11 +125,14 @@ function Funil() {
       return;
     }
 
+    const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
+    // Feedback imediato (a API já atualiza o board de forma otimista no store).
+    toast.success(`${lead.nome} movido para ${stageName}`);
+    offerTriagemHistory(lead, stage);
     try {
       await updateLeadStage(leadId, stage);
-      const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
-      toast.success(`${lead.nome} movido para ${stageName}`);
     } catch (err) {
+      setTriagemPrompt(null);
       toast.error(err instanceof Error ? err.message : "Não foi possível mover o lead.");
     }
   }
@@ -156,12 +182,14 @@ function Funil() {
 
     const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
     const previousStage = detailLead.stage;
-    // Atualização otimista no próprio modal.
+    // Atualização otimista no próprio modal + feedback imediato.
     setDetailLead({ ...detailLead, stage });
+    toast.success(`${detailLead.nome} movido para ${stageName}`);
+    offerTriagemHistory({ ...detailLead, stage }, stage);
     try {
       await updateLeadStage(detailLead.id, stage);
-      toast.success(`${detailLead.nome} movido para ${stageName}`);
     } catch (err) {
+      setTriagemPrompt(null);
       setDetailLead((cur) =>
         cur && cur.id === detailLead.id ? { ...cur, stage: previousStage } : cur,
       );
@@ -485,6 +513,54 @@ function Funil() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={Boolean(triagemPrompt)}
+        onOpenChange={(open) => {
+          if (!open) setTriagemPrompt(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <DialogTitle>Registrar histórico?</DialogTitle>
+                <DialogDescription>
+                  {triagemPrompt
+                    ? `${triagemPrompt.leadNome} foi movido para ${triagemPrompt.stageName}. Deseja registrar um relato na Triagem?`
+                    : null}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTriagemPrompt(null)}
+            >
+              Não registrar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!triagemPrompt) return;
+                const { leadId, stage } = triagemPrompt;
+                setTriagemPrompt(null);
+                void navigate({
+                  to: "/triagem",
+                  search: { leadId, stage },
+                });
+              }}
+            >
+              Registrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

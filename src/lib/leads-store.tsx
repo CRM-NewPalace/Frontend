@@ -107,7 +107,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const [page, team] = await Promise.all([
-        fetchLeads({ page: 1, limit: 100 }),
+        fetchLeads({ page: 1, limit: 200 }),
         fetchLeadAssignees(),
       ]);
       setLeads(page.data.map(mapApiLead));
