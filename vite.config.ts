@@ -12,4 +12,16 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      // Proxy evita CORS e o atraso ~3s do Windows (localhost → IPv6 timeout → IPv4).
+      // O browser fala com a mesma origem; o Vite encaminha para o Nest em 127.0.0.1.
+      proxy: {
+        "/api": {
+          target: "http://127.0.0.1:3333",
+          changeOrigin: true,
+        },
+      },
+    },
+  },
 });

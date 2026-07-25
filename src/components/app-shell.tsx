@@ -5,10 +5,10 @@ import {
   LogOut, Search, Bell, ChevronsLeft, ChevronDown, ChevronRight,
   Target, ClipboardList, Briefcase, Shield, CircleUser, ArrowLeftRight,
   Banknote, ScrollText, ArrowUpRight, ArrowDownRight, FolderKanban,
-  FolderOpen, SearchCheck, Percent, Goal, type LucideIcon,
+  FolderOpen, SearchCheck, Percent, Goal, UserX, type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
-import { getSession, signOut, type MockUser } from "@/lib/mock-auth";
+import { getSession, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import { setTheme } from "@/lib/theme";
 import { Input } from "@/components/ui/input";
@@ -83,6 +83,7 @@ const NAV_SECTIONS: {
     adminOnly: true,
     items: [
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
+      { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
@@ -123,7 +124,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
   });
@@ -185,8 +186,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  function handleSignOut() {
-    signOut();
+  async function handleSignOut() {
+    await signOut();
     setTheme("light");
     toast.success("Você saiu da conta");
     navigate({ to: "/login", replace: true });

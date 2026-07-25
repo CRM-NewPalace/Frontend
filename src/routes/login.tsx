@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { signIn } from "@/lib/mock-auth";
+import { signIn } from "@/lib/auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({
-  ssr: false,
+  // SSR ativo: evita mismatch Suspense (servidor) vs página (cliente) no React 19.
   head: () => ({
     meta: [
       { title: "Entrar — Imob CRM" },
@@ -32,6 +32,10 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+// Atalhos de desenvolvimento. Nunca vão para o bundle de produção, para não
+// divulgar credenciais válidas na tela de login.
+const SHOW_DEMO_ACCOUNTS = import.meta.env.DEV;
+
 const DEMO = [
   { email: "admin@imob.com", password: "admin", role: "Administrador", hint: "Acesso total" },
   { email: "gerente@imob.com", password: "gerente", role: "Gerente", hint: "Equipe e operação" },
@@ -40,24 +44,25 @@ const DEMO = [
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@imob.com");
-  const [password, setPassword] = useState("admin");
+  const [email, setEmail] = useState(SHOW_DEMO_ACCOUNTS ? "admin@imob.com" : "");
+  const [password, setPassword] = useState(SHOW_DEMO_ACCOUNTS ? "admin" : "");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      const user = signIn(email, password);
-      setLoading(false);
-      if (!user) {
-        toast.error("Credenciais inválidas");
-        return;
-      }
+    try {
+      const user = await signIn(email, password);
       toast.success(`Bem-vindo(a), ${user.name.split(" ")[0]}!`);
       navigate({ to: "/dashboard" });
-    }, 400);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível entrar",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -252,6 +257,7 @@ function LoginPage() {
             Entrar no painel
           </Button>
 
+          {SHOW_DEMO_ACCOUNTS && (
           <div className="space-y-3">
             <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
@@ -286,6 +292,7 @@ function LoginPage() {
               ))}
             </div>
           </div>
+          )}
         </form>
       </main>
 

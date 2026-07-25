@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
-import { DEMO_USERS, getSession, type MockUser } from "@/lib/mock-auth";
+import { changePassword, getSession, type AuthUser } from "@/lib/auth";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { toast } from "sonner";
 
@@ -24,22 +24,40 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 function Perfil() {
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [pushNotif, setPushNotif] = useState(true);
-  const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
-    setUser(session);
+    setUser(getSession());
     setDarkMode(getTheme() === "dark");
-    if (session?.email) {
-      setPassword(DEMO_USERS[session.email.toLowerCase()]?.password ?? "");
-    }
   }, []);
 
   const initials = user?.name.split(" ").map((n) => n[0]).slice(0, 2).join("") ?? "U";
+
+  async function handleChangePassword() {
+    if (!currentPassword || !newPassword) {
+      toast.error("Informe a senha atual e a nova senha");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      toast.success("Senha alterada com sucesso");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível alterar a senha",
+      );
+    } finally {
+      setSavingPassword(false);
+    }
+  }
 
   function handleDarkMode(checked: boolean) {
     const theme: Theme = checked ? "dark" : "light";
@@ -69,32 +87,64 @@ function Perfil() {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5"><Label>Nome</Label><Input defaultValue={user?.name} /></div>
             <div className="space-y-1.5"><Label>Email</Label><Input defaultValue={user?.email} /></div>
-            <div className="space-y-1.5"><Label>Telefone</Label><Input defaultValue="(11) 98765-4321" /></div>
             <div className="space-y-1.5">
-              <Label htmlFor="perfil-senha">Senha</Label>
-              <div className="relative">
-                <Input
-                  id="perfil-senha"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-              </div>
+              <Label>Telefone</Label>
+              <Input defaultValue={user?.phone ?? ""} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cargo</Label>
+              <Input defaultValue={user?.cargo ?? ""} />
             </div>
             <div className="md:col-span-2 flex justify-end gap-2">
               <Button variant="outline">Cancelar</Button>
               <Button>Salvar alterações</Button>
+            </div>
+
+            <div className="md:col-span-2 border-t pt-4 space-y-4">
+              <div className="text-sm font-medium">Alterar senha</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="senha-atual">Senha atual</Label>
+                  <Input
+                    id="senha-atual"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="senha-nova">Nova senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="senha-nova"
+                      type={showPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="pr-10"
+                      autoComplete="new-password"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo de 8 caracteres, com maiúscula, minúscula e número.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleChangePassword} disabled={savingPassword}>
+                  {savingPassword ? "Salvando..." : "Alterar senha"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

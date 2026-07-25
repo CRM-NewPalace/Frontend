@@ -22,6 +22,7 @@ import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppFunilRouteImport } from './routes/_app.funil'
 import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
 import { Route as AppLeadsRouteImport } from './routes/_app.leads'
+import { Route as AppLeadsPerdidosRouteImport } from './routes/_app.leads-perdidos'
 import { Route as AppMetasRouteImport } from './routes/_app.metas'
 import { Route as AppPerfilRouteImport } from './routes/_app.perfil'
 import { Route as AppPropostasRouteImport } from './routes/_app.propostas'
@@ -102,6 +103,11 @@ const AppImoveisRoute = AppImoveisRouteImport.update({
 const AppLeadsRoute = AppLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeadsPerdidosRoute = AppLeadsPerdidosRouteImport.update({
+  id: '/leads-perdidos',
+  path: '/leads-perdidos',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMetasRoute = AppMetasRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/funil': typeof AppFunilRoute
   '/imoveis': typeof AppImoveisRoute
   '/leads': typeof AppLeadsRoute
+  '/leads-perdidos': typeof AppLeadsPerdidosRoute
   '/metas': typeof AppMetasRoute
   '/perfil': typeof AppPerfilRoute
   '/propostas': typeof AppPropostasRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/funil': typeof AppFunilRoute
   '/imoveis': typeof AppImoveisRoute
   '/leads': typeof AppLeadsRoute
+  '/leads-perdidos': typeof AppLeadsPerdidosRoute
   '/metas': typeof AppMetasRoute
   '/perfil': typeof AppPerfilRoute
   '/propostas': typeof AppPropostasRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/_app/funil': typeof AppFunilRoute
   '/_app/imoveis': typeof AppImoveisRoute
   '/_app/leads': typeof AppLeadsRoute
+  '/_app/leads-perdidos': typeof AppLeadsPerdidosRoute
   '/_app/metas': typeof AppMetasRoute
   '/_app/perfil': typeof AppPerfilRoute
   '/_app/propostas': typeof AppPropostasRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/funil'
     | '/imoveis'
     | '/leads'
+    | '/leads-perdidos'
     | '/metas'
     | '/perfil'
     | '/propostas'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/funil'
     | '/imoveis'
     | '/leads'
+    | '/leads-perdidos'
     | '/metas'
     | '/perfil'
     | '/propostas'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/_app/funil'
     | '/_app/imoveis'
     | '/_app/leads'
+    | '/_app/leads-perdidos'
     | '/_app/metas'
     | '/_app/perfil'
     | '/_app/propostas'
@@ -485,6 +497,13 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads'
       preLoaderRoute: typeof AppLeadsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/leads-perdidos': {
+      id: '/_app/leads-perdidos'
+      path: '/leads-perdidos'
+      fullPath: '/leads-perdidos'
+      preLoaderRoute: typeof AppLeadsPerdidosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/metas': {
@@ -649,6 +668,7 @@ interface AppRouteChildren {
   AppFunilRoute: typeof AppFunilRoute
   AppImoveisRoute: typeof AppImoveisRoute
   AppLeadsRoute: typeof AppLeadsRoute
+  AppLeadsPerdidosRoute: typeof AppLeadsPerdidosRoute
   AppMetasRoute: typeof AppMetasRoute
   AppPerfilRoute: typeof AppPerfilRoute
   AppPropostasRoute: typeof AppPropostasRoute
@@ -670,6 +690,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFunilRoute: AppFunilRoute,
   AppImoveisRoute: AppImoveisRoute,
   AppLeadsRoute: AppLeadsRoute,
+  AppLeadsPerdidosRoute: AppLeadsPerdidosRoute,
   AppMetasRoute: AppMetasRoute,
   AppPerfilRoute: AppPerfilRoute,
   AppPropostasRoute: AppPropostasRoute,
