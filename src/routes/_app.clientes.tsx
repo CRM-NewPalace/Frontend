@@ -20,11 +20,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
 } from "@/components/form-dialog";
-import { getSession } from "@/lib/mock-auth";
+import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
-import { useCorretores } from "@/lib/corretores-store";
-import { FUNIL_STAGES, type Lead } from "@/lib/mock-data";
+import { useCatalog } from "@/lib/catalog-store";
+import { brl, type Lead } from "@/lib/crm-types";
+import {
+  formatPhone,
+  isValidPhone,
+  PHONE_INVALID_MESSAGE,
+  PHONE_PLACEHOLDER,
+} from "@/lib/phone";
 import {
   Plus, MoreHorizontal, Eye, Pencil, Trash2, UserPlus, MapPin, Sparkles, Wallet,
 } from "lucide-react";
@@ -37,16 +43,6 @@ export const Route = createFileRoute("/_app/clientes")({
 });
 
 const INTERESSES: Lead["interesse"][] = ["Comprar", "Alugar", "Investir"];
-const ORIGENS = ["Site", "Facebook Ads", "Google Ads", "Instagram", "WhatsApp", "Indicação", "OLX", "Portal Zap"];
-const TAG_OPTIONS = ["Quente", "Frio", "VIP", "Retorno", "Investidor", "Primeira compra"];
-const FAIXAS = [
-  "R$ 125k - 200k",
-  "R$ 200k - 300k",
-  "R$ 300k - 500k",
-  "R$ 500k - 800k",
-  "R$ 800k - 1.2M",
-  "R$ 1.2M+",
-];
 
 type FormState = {
   nome: string;
@@ -54,7 +50,8 @@ type FormState = {
   email: string;
   origem: string;
   interesse: Lead["interesse"];
-  faixa: string;
+  /** Renda mensal do cliente (opcional); só dígitos no input. */
+  renda: string;
   cidade: string;
   bairro: string;
   corretor: string;
@@ -63,14 +60,14 @@ type FormState = {
 
 type FormMode = "create" | "edit";
 
-function emptyForm(corretorDefault: string): FormState {
+function emptyForm(corretorDefault: string, origemDefault = ""): FormState {
   return {
     nome: "",
     telefone: "",
     email: "",
-    origem: "WhatsApp",
+    origem: origemDefault,
     interesse: "Comprar",
-    faixa: "R$ 300k - 500k",
+    renda: "",
     cidade: "Recife",
     bairro: "",
     corretor: corretorDefault,
@@ -81,11 +78,11 @@ function emptyForm(corretorDefault: string): FormState {
 function leadToForm(lead: Lead): FormState {
   return {
     nome: lead.nome,
-    telefone: lead.telefone,
+    telefone: formatPhone(lead.telefone),
     email: lead.email,
     origem: lead.origem,
     interesse: lead.interesse,
-    faixa: lead.faixa,
+    renda: lead.renda != null ? String(lead.renda) : "",
     cidade: lead.cidade,
     bairro: lead.bairro,
     corretor: lead.corretor,
@@ -103,38 +100,32 @@ function initials(nome: string) {
     .toUpperCase();
 }
 
-function todayLabel() {
-  const today = new Date();
-  return `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
-}
-
-function stageName(stage: Lead["stage"]) {
-  return FUNIL_STAGES.find((s) => s.id === stage)?.name ?? stage;
-}
-
 function Clientes() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
   const defaultCorretor = isCorretor && user ? user.name : "Marina Alves";
 
-  const { leads: allLeads, addLead, updateLead, deleteLead } = useLeads();
-  const { corretores } = useCorretores();
+  const { leads: allLeads, addLead, updateLead, markLeadLost, resolveCorretorId, assignees, loading } = useLeads();
+  const { funnelStages, origens: origemOptions, tags: tagOptions, motivos: motivoOptions } = useCatalog();
+
+  const stageName = (stage: Lead["stage"]) =>
+    funnelStages.find((s) => s.id === stage)?.name ?? stage;
 
   const clientes = useMemo(
-    () =>
-      isCorretor && user
-        ? allLeads.filter((l) => l.corretor === user.name)
-        : allLeads,
+    () => {
+      const scoped =
+        isCorretor && user
+          ? allLeads.filter((l) => l.corretor === user.name || l.corretorId === user.id)
+          : allLeads;
+      return scoped.filter((l) => l.tipo === "cliente");
+    },
     [allLeads, isCorretor, user],
   );
 
   const corretorOptions = useMemo(
-    () =>
-      corretores
-        .filter((c) => c.status === "Ativo")
-        .map((c) => c.nome),
-    [corretores],
+    () => assignees.map((a) => a.name),
+    [assignees],
   );
 
   const [formOpen, setFormOpen] = useState(false);
@@ -144,11 +135,18 @@ function Clientes() {
 
   const [detail, setDetail] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
+  const [deleteMotivo, setDeleteMotivo] = useState("");
+  const [deleteMotivoOutro, setDeleteMotivoOutro] = useState("");
 
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    setForm(emptyForm(isCorretor ? defaultCorretor : (corretorOptions[0] ?? defaultCorretor)));
+    setForm(
+      emptyForm(
+        isCorretor ? defaultCorretor : (corretorOptions[0] ?? defaultCorretor),
+        origemOptions[0] ?? "",
+      ),
+    );
     setFormOpen(true);
   }
 
@@ -167,69 +165,103 @@ function Clientes() {
     }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const nome = form.nome.trim();
     const telefone = form.telefone.trim();
     const email = form.email.trim();
     const cidade = form.cidade.trim() || "Recife";
     const bairro = form.bairro.trim() || "—";
-    const corretor = isCorretor ? defaultCorretor : form.corretor;
+    const corretorNome = isCorretor ? defaultCorretor : form.corretor;
 
     if (!nome || !telefone || !email) {
       toast.error("Preencha nome, telefone e e-mail.");
       return;
     }
-    if (!corretor) {
+    if (!isValidPhone(telefone)) {
+      toast.error(PHONE_INVALID_MESSAGE);
+      return;
+    }
+    if (!form.origem || !origemOptions.includes(form.origem)) {
+      toast.error(
+        origemOptions.length === 0
+          ? "Cadastre ao menos uma origem em Configurações."
+          : "Selecione uma origem válida.",
+      );
+      return;
+    }
+    if (!corretorNome) {
       toast.error("Selecione o corretor responsável.");
       return;
     }
 
-    if (formMode === "create") {
-      const novo: Lead = {
-        id: `L${Date.now()}`,
-        nome,
-        telefone,
-        email,
-        origem: form.origem,
-        interesse: form.interesse,
-        faixa: form.faixa,
-        cidade,
-        bairro,
-        corretor,
-        stage: "novo",
-        prioridade: "Média",
-        valor: 0,
-        updatedAt: todayLabel(),
-        tags: form.tags,
-      };
-      addLead(novo);
-      toast.success(`Cliente "${nome}" cadastrado.`);
-    } else if (editingId) {
-      updateLead(editingId, {
-        nome,
-        telefone,
-        email,
-        origem: form.origem,
-        interesse: form.interesse,
-        faixa: form.faixa,
-        cidade,
-        bairro,
-        corretor,
-        tags: form.tags,
-      });
-      toast.success("Cliente atualizado.");
-    }
+    const corretorId = isCorretor ? undefined : resolveCorretorId(corretorNome);
+    const rendaDigits = String(form.renda).replace(/\D/g, "");
+    const rendaNum = rendaDigits ? Number(rendaDigits) : null;
 
-    setFormOpen(false);
+    try {
+      if (formMode === "create") {
+        await addLead({
+          tipo: "cliente",
+          nome,
+          telefone,
+          email,
+          origem: form.origem,
+          interesse: form.interesse,
+          cidade,
+          bairro,
+          prioridade: "Média",
+          ...(rendaNum != null ? { renda: rendaNum } : {}),
+          tags: form.tags,
+          ...(corretorId ? { corretorId } : {}),
+        });
+        toast.success(`Cliente "${nome}" cadastrado.`);
+      } else if (editingId) {
+        await updateLead(editingId, {
+          nome,
+          telefone,
+          email,
+          origem: form.origem,
+          interesse: form.interesse,
+          cidade,
+          bairro,
+          renda: rendaNum,
+          tags: form.tags,
+          ...(corretorId ? { corretorId } : {}),
+        });
+        toast.success("Cliente atualizado.");
+      }
+
+      setFormOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar o cliente.");
+    }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!deleteTarget) return;
-    deleteLead(deleteTarget.id);
-    toast.success(`Cliente "${deleteTarget.nome}" excluído.`);
-    if (detail?.id === deleteTarget.id) setDetail(null);
-    setDeleteTarget(null);
+    const motivo =
+      deleteMotivo === "__outro__"
+        ? deleteMotivoOutro.trim()
+        : deleteMotivo.trim();
+    if (!motivo) {
+      toast.error(
+        motivoOptions.length === 0
+          ? "Informe o motivo da exclusão."
+          : "Selecione o motivo da exclusão.",
+      );
+      return;
+    }
+    try {
+      await markLeadLost(deleteTarget.id, motivo);
+      toast.success(`Cliente "${deleteTarget.nome}" movido para Leads Perdidos.`);
+      if (detail?.id === deleteTarget.id) setDetail(null);
+      setDeleteTarget(null);
+      setDeleteMotivo("");
+      setDeleteMotivoOutro("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível excluir o cliente.");
+    }
   }
 
   return (
@@ -237,9 +269,11 @@ function Clientes() {
       <PageHeader
         title={isCorretor ? "Meus clientes" : "Clientes"}
         description={
-          isCorretor
-            ? "Clientes e contatos atribuídos a você."
-            : "Clientes e contatos de toda a equipe de corretores."
+          loading
+            ? "Carregando clientes..."
+            : isCorretor
+            ? "Sua carteira pessoal de clientes — também aparece no funil."
+            : "Clientes da carteira dos corretores (não misturam com leads de captação)."
         }
         actions={
           <Button size="sm" onClick={openCreate}>
@@ -343,7 +377,7 @@ function Clientes() {
             : "Cadastre um novo cliente na base da equipe."
         }
       >
-        <form onSubmit={handleSubmit} className="flex flex-col max-h-[min(78vh,720px)]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
             <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
               <div className="space-y-1.5">
@@ -363,10 +397,14 @@ function Clientes() {
                   <Label htmlFor="cli-tel" className="text-xs text-muted-foreground">Telefone</Label>
                   <Input
                     id="cli-tel"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
                     value={form.telefone}
-                    onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))}
-                    placeholder="(81) 99999-9999"
+                    onChange={(e) => setForm((f) => ({ ...f, telefone: formatPhone(e.target.value) }))}
+                    placeholder={PHONE_PLACEHOLDER}
                     className="h-10 bg-background"
+                    maxLength={15}
                     required
                   />
                 </div>
@@ -386,12 +424,28 @@ function Clientes() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Origem</Label>
-                  <Select value={form.origem} onValueChange={(v) => setForm((f) => ({ ...f, origem: v }))}>
-                    <SelectTrigger className="h-10 bg-background"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={form.origem || undefined}
+                    onValueChange={(v) => setForm((f) => ({ ...f, origem: v }))}
+                  >
+                    <SelectTrigger className="h-10 bg-background">
+                      <SelectValue placeholder="Selecione a origem" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {ORIGENS.map((o) => (
-                        <SelectItem key={o} value={o}>{o}</SelectItem>
-                      ))}
+                      {origemOptions.length === 0 ? (
+                        <SelectItem value="__empty" disabled>
+                          Nenhuma origem cadastrada
+                        </SelectItem>
+                      ) : (
+                        origemOptions.map((o) => (
+                          <SelectItem key={o} value={o}>{o}</SelectItem>
+                        ))
+                      )}
+                      {formMode === "edit" &&
+                        form.origem &&
+                        !origemOptions.includes(form.origem) && (
+                          <SelectItem value={form.origem}>{form.origem}</SelectItem>
+                        )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -436,20 +490,25 @@ function Clientes() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Faixa de valor</Label>
-                <Select value={form.faixa} onValueChange={(v) => setForm((f) => ({ ...f, faixa: v }))}>
-                  <SelectTrigger className="h-10 bg-background"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {FAIXAS.map((f) => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="cli-renda" className="text-xs text-muted-foreground">
+                  Renda mensal <span className="font-normal">(opcional)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">R$</span>
+                  <Input
+                    id="cli-renda"
+                    inputMode="numeric"
+                    value={form.renda}
+                    onChange={(e) => setForm((f) => ({ ...f, renda: e.target.value.replace(/\D/g, "") }))}
+                    placeholder="Ex.: 8500"
+                    className="h-10 bg-background pl-9"
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Tags</Label>
                 <div className="flex flex-wrap gap-1.5">
-                  {TAG_OPTIONS.map((tag) => {
+                  {tagOptions.map((tag) => {
                     const active = form.tags.includes(tag);
                     return (
                       <button
@@ -540,10 +599,13 @@ function Clientes() {
                   {!isCorretor && <DetailField label="Corretor" value={detail.corretor} />}
                 </div>
               </FormSection>
-              <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse">
+              <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse e renda">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Interesse" value={detail.interesse} />
-                  <DetailField label="Faixa" value={detail.faixa} />
+                  <DetailField
+                    label="Renda mensal"
+                    value={detail.renda != null ? brl(detail.renda) : "—"}
+                  />
                   {detail.tags.length > 0 && (
                     <div className="sm:col-span-2 space-y-1.5">
                       <div className="text-xs text-muted-foreground">Tags</div>
@@ -575,24 +637,77 @@ function Clientes() {
         )}
       </FormDialogShell>
 
-      {/* Excluir */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      {/* Excluir → Leads Perdidos */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+            setDeleteMotivo("");
+            setDeleteMotivoOutro("");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+            <AlertDialogTitle>Por que está excluindo este cliente?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `"${deleteTarget.nome}" será removido da base (também some de leads e funil).`
+                ? `"${deleteTarget.nome}" sairá da base operacional e irá para Leads Perdidos (só o administrador vê).`
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-3 py-1">
+            {motivoOptions.length > 0 ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Motivo</Label>
+                  <Select value={deleteMotivo} onValueChange={setDeleteMotivo}>
+                    <SelectTrigger className="h-10"><SelectValue placeholder="Selecione o motivo" /></SelectTrigger>
+                    <SelectContent>
+                      {motivoOptions.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                      <SelectItem value="__outro__">Outro…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {deleteMotivo === "__outro__" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cli-motivo-outro" className="text-xs text-muted-foreground">Descreva o motivo</Label>
+                    <Input
+                      id="cli-motivo-outro"
+                      value={deleteMotivoOutro}
+                      onChange={(e) => setDeleteMotivoOutro(e.target.value)}
+                      placeholder="Ex.: Cliente sem interesse"
+                      className="h-10"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="cli-motivo-livre" className="text-xs text-muted-foreground">Motivo</Label>
+                <Input
+                  id="cli-motivo-livre"
+                  value={deleteMotivo}
+                  onChange={(e) => setDeleteMotivo(e.target.value)}
+                  placeholder="Ex.: Cliente sem interesse"
+                  className="h-10"
+                />
+              </div>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={confirmDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
             >
-              Excluir
+              Confirmar exclusão
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

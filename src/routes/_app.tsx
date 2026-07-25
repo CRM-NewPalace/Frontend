@@ -1,50 +1,26 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { getSession } from "@/lib/mock-auth";
+import { ensureSession } from "@/lib/auth";
 import { canAccessRoute, defaultRouteForRole } from "@/lib/permissions";
 import { LeadsProvider } from "@/lib/leads-store";
-import { AgendaProvider } from "@/lib/agenda-store";
-import { CorretoresProvider } from "@/lib/corretores-store";
-import { PropostasProvider } from "@/lib/propostas-store";
-import { TriagemProvider } from "@/lib/triagem-store";
-import { DocumentacaoProvider } from "@/lib/documentacao-store";
-import { ComissaoProvider } from "@/lib/comissao-store";
-import { FinanceiroContasProvider } from "@/lib/financeiro-contas-store";
-import { FinanceiroPessoasProvider } from "@/lib/financeiro-pessoas-store";
-import { MovimentosFinanceirosProvider } from "@/lib/movimentos-financeiros-store";
+import { CatalogProvider } from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
-  beforeLoad: ({ location }) => {
-    const user = getSession();
+  beforeLoad: async ({ location }) => {
+    const user = await ensureSession();
     if (!user) throw redirect({ to: "/login" });
     if (!canAccessRoute(user.role, location.pathname)) {
       throw redirect({ to: defaultRouteForRole(user.role) });
     }
   },
   component: () => (
-    <LeadsProvider>
-      <AgendaProvider>
-        <CorretoresProvider>
-          <PropostasProvider>
-            <TriagemProvider>
-              <DocumentacaoProvider>
-                <ComissaoProvider>
-                  <FinanceiroContasProvider>
-                    <FinanceiroPessoasProvider>
-                      <MovimentosFinanceirosProvider>
-                        <AppShell>
-                          <Outlet />
-                        </AppShell>
-                      </MovimentosFinanceirosProvider>
-                    </FinanceiroPessoasProvider>
-                  </FinanceiroContasProvider>
-                </ComissaoProvider>
-              </DocumentacaoProvider>
-            </TriagemProvider>
-          </PropostasProvider>
-        </CorretoresProvider>
-      </AgendaProvider>
-    </LeadsProvider>
+    <CatalogProvider>
+      <LeadsProvider>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+      </LeadsProvider>
+    </CatalogProvider>
   ),
 });

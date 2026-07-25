@@ -1,4 +1,4 @@
-import type { Role } from "@/lib/mock-auth";
+import type { Role } from "@/lib/auth";
 
 /**
  * Rotas por perfil:
@@ -20,6 +20,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/documentacao",
     "/resultado",
     "/usuarios",
+    "/leads-perdidos",
     "/taxa-conversao",
     "/propostas",
     "/financeiro",

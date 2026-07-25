@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getSession } from "@/lib/mock-auth";
+import { getSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   ssr: false,

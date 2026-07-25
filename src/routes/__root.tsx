@@ -76,22 +76,47 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Imob CRM — Gestão Imobiliária" },
-      { name: "description", content: "CRM moderno para imobiliárias: gestão de leads, funil de vendas, corretores, imóveis e propostas." },
-      { name: "author", content: "Imob CRM" },
-      { property: "og:title", content: "Imob CRM — Gestão Imobiliária" },
-      { property: "og:description", content: "Plataforma completa para imobiliárias gerenciarem leads, funil e vendas." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico?v=7", sizes: "any" },
       { rel: "icon", href: "/favicon-32.png?v=7", type: "image/png", sizes: "32x32" },
       { rel: "apple-touch-icon", href: "/favicon-48.png?v=7", sizes: "48x48" },
+    ],
+    // CSP do frontend: bloqueia scripts/iframes de terceiros (mitigação XSS).
+    // 'unsafe-inline' no script-src só cobre o bootstrap de tema acima — sem eval.
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Imob CRM — Gestão Imobiliária" },
+      {
+        name: "description",
+        content:
+          "CRM moderno para imobiliárias: gestão de leads, funil de vendas, corretores, imóveis e propostas.",
+      },
+      { name: "author", content: "Imob CRM" },
+      { property: "og:title", content: "Imob CRM — Gestão Imobiliária" },
+      {
+        property: "og:description",
+        content:
+          "Plataforma completa para imobiliárias gerenciarem leads, funil e vendas.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      {
+        // frame-ancestors NÃO funciona em <meta> — só em header HTTP (ver server.ts).
+        httpEquiv: "Content-Security-Policy",
+        content: [
+          "default-src 'self'",
+          "base-uri 'self'",
+          "object-src 'none'",
+          "form-action 'self'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' https://fonts.gstatic.com data:",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "script-src 'self' 'unsafe-inline'",
+          "connect-src 'self' http://127.0.0.1:3333 http://localhost:3333 ws://localhost:8080 ws://127.0.0.1:8080",
+        ].join("; "),
+      },
     ],
   }),
   shellComponent: RootShell,

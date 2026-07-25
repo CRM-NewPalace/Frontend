@@ -45,7 +45,7 @@ export function FormDialogShell({
             </div>
           </div>
         </DialogHeader>
-        <div className={cn("flex flex-col min-h-0 flex-1 max-h-[min(70dvh,720px)]", contentClassName)}>
+        <div className={cn("flex flex-col min-h-0 flex-1 overflow-hidden", contentClassName)}>
           {children}
         </div>
         {footer}
@@ -78,7 +78,7 @@ export function FormSection({
 
 export function FormDialogBody({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-5", className)}>
+    <div className={cn("flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-5", className)}>
       {children}
     </div>
   );

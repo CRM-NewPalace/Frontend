@@ -12,8 +12,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { FUNIL_STAGES } from "@/lib/mock-data";
-import { Plus, GripVertical, Pencil, Zap } from "lucide-react";
+import { useCatalog, INITIAL_STAGE_SLUG } from "@/lib/catalog-store";
+import type { CatalogItem, CatalogType } from "@/lib/catalog-api";
+import { ApiError } from "@/lib/api";
+import { Plus, GripVertical, Pencil, Trash2, Zap, ListRestart } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/configuracoes")({
@@ -33,41 +35,36 @@ const STAGE_COLORS = [
   "bg-pink-100 text-pink-700",
 ];
 
-type StageItem = { id: string; name: string; color: string };
 type Modelo = { id: string; nome: string; corpo: string };
 type Automacao = { id: string; nome: string; descricao: string; ativa: boolean };
 
 type ListKind = "origens" | "motivos" | "tags";
 
-const LIST_META: Record<ListKind, { title: string; singular: string; addLabel: string }> = {
-  origens: { title: "Origens de leads", singular: "origem", addLabel: "Adicionar origem" },
-  motivos: { title: "Motivos de perda", singular: "motivo", addLabel: "Adicionar motivo" },
-  tags: { title: "Tags", singular: "tag", addLabel: "Adicionar tag" },
+const LIST_META: Record<
+  ListKind,
+  { title: string; singular: string; addLabel: string; type: CatalogType }
+> = {
+  origens: { title: "Origens de leads", singular: "origem", addLabel: "Adicionar origem", type: "origem" },
+  motivos: { title: "Motivos de perda", singular: "motivo", addLabel: "Adicionar motivo", type: "motivo_perda" },
+  tags: { title: "Tags", singular: "tag", addLabel: "Adicionar tag", type: "tag" },
 };
 
-function slugify(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || `item-${Date.now()}`;
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
 }
 
 function Config() {
-  const [stages, setStages] = useState<StageItem[]>(() =>
-    FUNIL_STAGES.filter((s) => s.id !== "perdido").map((s) => ({
-      id: s.id,
-      name: s.name,
-      color: s.color,
-    })),
-  );
-  const [lists, setLists] = useState<Record<ListKind, string[]>>({
-    origens: ["Site", "Facebook Ads", "Google Ads", "Instagram", "WhatsApp", "Indicação", "OLX", "Portal Zap"],
-    motivos: ["Preço acima do orçamento", "Localização", "Financiamento negado", "Escolheu concorrente", "Perdeu interesse"],
-    tags: ["Quente", "Frio", "VIP", "Retorno", "Investidor", "Primeira compra"],
-  });
+  const {
+    catalog,
+    loading,
+    error,
+    funnelStages,
+    addItem,
+    updateItem,
+    removeItem,
+    installDefaultFunnel,
+  } = useCatalog();
+
   const [modelos, setModelos] = useState<Modelo[]>([
     { id: "m1", nome: "Boas-vindas WhatsApp", corpo: "Olá {{nome}}! Bem-vindo(a) à New Palace. Sou {{corretor}} e vou te ajudar." },
     { id: "m2", nome: "Follow-up 24h", corpo: "Oi {{nome}}, tudo bem? Queria saber se conseguiu ver as opções que enviei ontem." },
@@ -82,10 +79,16 @@ function Config() {
 
   const [stageOpen, setStageOpen] = useState(false);
   const [stageName, setStageName] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const [listOpen, setListOpen] = useState(false);
   const [listKind, setListKind] = useState<ListKind>("origens");
   const [listValue, setListValue] = useState("");
+
+  // Edição de label de qualquer item de catálogo.
+  const [editOpen, setEditOpen] = useState(false);
+  const [editItem, setEditItem] = useState<CatalogItem | null>(null);
+  const [editLabel, setEditLabel] = useState("");
 
   const [modeloOpen, setModeloOpen] = useState(false);
   const [editingModelo, setEditingModelo] = useState<Modelo | null>(null);
@@ -102,28 +105,49 @@ function Config() {
     setListOpen(true);
   }
 
-  function handleAddStage(e: React.FormEvent) {
+  function openEditItem(item: CatalogItem) {
+    setEditItem(item);
+    setEditLabel(item.label);
+    setEditOpen(true);
+  }
+
+  async function handleInstallDefaults() {
+    setSaving(true);
+    try {
+      await installDefaultFunnel();
+      toast.success("Etapas padrão do funil instaladas no banco.");
+    } catch (err) {
+      toast.error(errorMessage(err, "Não foi possível instalar as etapas padrão."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAddStage(e: React.FormEvent) {
     e.preventDefault();
     const name = stageName.trim();
     if (!name) {
       toast.error("Informe o nome da etapa.");
       return;
     }
-    const id = slugify(name);
-    if (stages.some((s) => s.id === id || s.name.toLowerCase() === name.toLowerCase())) {
-      toast.error("Já existe uma etapa com esse nome.");
-      return;
+    setSaving(true);
+    try {
+      await addItem({
+        type: "funil_etapa",
+        label: name,
+        color: STAGE_COLORS[funnelStages.length % STAGE_COLORS.length],
+      });
+      setStageOpen(false);
+      setStageName("");
+      toast.success(`Etapa "${name}" adicionada.`);
+    } catch (err) {
+      toast.error(errorMessage(err, "Não foi possível adicionar a etapa."));
+    } finally {
+      setSaving(false);
     }
-    setStages((prev) => [
-      ...prev,
-      { id, name, color: STAGE_COLORS[prev.length % STAGE_COLORS.length] },
-    ]);
-    setStageOpen(false);
-    setStageName("");
-    toast.success(`Etapa "${name}" adicionada.`);
   }
 
-  function handleAddListItem(e: React.FormEvent) {
+  async function handleAddListItem(e: React.FormEvent) {
     e.preventDefault();
     const value = listValue.trim();
     const meta = LIST_META[listKind];
@@ -131,14 +155,51 @@ function Config() {
       toast.error(`Informe a ${meta.singular}.`);
       return;
     }
-    if (lists[listKind].some((i) => i.toLowerCase() === value.toLowerCase())) {
-      toast.error(`Essa ${meta.singular} já existe.`);
+    setSaving(true);
+    try {
+      await addItem({ type: meta.type, label: value });
+      setListOpen(false);
+      setListValue("");
+      toast.success(`${meta.singular[0].toUpperCase()}${meta.singular.slice(1)} "${value}" adicionada.`);
+    } catch (err) {
+      toast.error(errorMessage(err, `Não foi possível adicionar a ${meta.singular}.`));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editItem) return;
+    const label = editLabel.trim();
+    if (!label) {
+      toast.error("Informe um nome.");
       return;
     }
-    setLists((prev) => ({ ...prev, [listKind]: [...prev[listKind], value] }));
-    setListOpen(false);
-    setListValue("");
-    toast.success(`${meta.singular[0].toUpperCase()}${meta.singular.slice(1)} "${value}" adicionada.`);
+    if (label === editItem.label) {
+      setEditOpen(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateItem(editItem.id, { label });
+      setEditOpen(false);
+      setEditItem(null);
+      toast.success("Item atualizado.");
+    } catch (err) {
+      toast.error(errorMessage(err, "Não foi possível atualizar o item."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemoveItem(item: CatalogItem) {
+    try {
+      await removeItem(item.id);
+      toast.success(`"${item.label}" desativado.`);
+    } catch (err) {
+      toast.error(errorMessage(err, "Não foi possível desativar o item."));
+    }
   }
 
   function openCreateModelo() {
@@ -197,9 +258,22 @@ function Config() {
     toast.success(`Automação "${nome}" criada.`);
   }
 
+  const listItemsByKind: Record<ListKind, CatalogItem[]> = {
+    origens: catalog.origem,
+    motivos: catalog.motivo_perda,
+    tags: catalog.tag,
+  };
+
   return (
     <div>
       <PageHeader title="Configurações" description="Personalize funil, origens, tags e automações." />
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       <Tabs defaultValue="funil">
         <TabsList>
           <TabsTrigger value="funil">Funil</TabsTrigger>
@@ -212,20 +286,61 @@ function Config() {
 
         <TabsContent value="funil">
           <Card>
-            <CardHeader className="flex-row justify-between items-center">
-              <CardTitle className="text-base">Etapas do funil</CardTitle>
-              <Button size="sm" onClick={() => { setStageName(""); setStageOpen(true); }}>
-                <Plus className="w-4 h-4 mr-1" />Nova etapa
-              </Button>
+            <CardHeader className="flex-row justify-between items-center gap-2 flex-wrap">
+              <div>
+                <CardTitle className="text-base">Etapas do funil</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Persistidas no banco. Novos leads entram em &quot;Novo lead&quot;.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => void handleInstallDefaults()}
+                >
+                  <ListRestart className="w-4 h-4 mr-1" />
+                  Etapas padrão
+                </Button>
+                <Button size="sm" onClick={() => { setStageName(""); setStageOpen(true); }}>
+                  <Plus className="w-4 h-4 mr-1" />Nova etapa
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-2">
-              {stages.map((s) => (
-                <div key={s.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/40">
-                  <GripVertical className="w-4 h-4 text-muted-foreground" />
-                  <Badge className={s.color}>{s.name}</Badge>
-                  <span className="text-xs text-muted-foreground ml-auto">{s.id}</span>
-                </div>
-              ))}
+              {loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+              {!loading && catalog.funil_etapa.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma etapa cadastrada. Use &quot;Etapas padrão&quot; ou crie a sua.
+                </p>
+              )}
+              {catalog.funil_etapa.map((s) => {
+                const isInitial = s.slug === INITIAL_STAGE_SLUG;
+                return (
+                  <div key={s.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/40">
+                    <GripVertical className="w-4 h-4 text-muted-foreground" />
+                    <Badge className={s.color ?? "bg-slate-200 text-slate-700"}>{s.label}</Badge>
+                    {isInitial && (
+                      <Badge variant="secondary" className="text-[10px]">Inicial</Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground ml-auto">{s.slug}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditItem(s)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      disabled={isInitial}
+                      title={isInitial ? "Etapa inicial não pode ser removida" : "Desativar"}
+                      onClick={() => handleRemoveItem(s)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </TabsContent>
@@ -239,12 +354,24 @@ function Config() {
                   <Plus className="w-4 h-4 mr-1" />Adicionar
                 </Button>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {lists[kind].map((i) => (
-                    <Badge key={i} variant="outline" className="text-sm py-1 px-3">{i}</Badge>
-                  ))}
-                </div>
+              <CardContent className="space-y-2">
+                {loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+                {!loading && listItemsByKind[kind].length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhum item cadastrado.</p>
+                )}
+                {listItemsByKind[kind].map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40">
+                    <Badge variant="outline" className="text-sm py-1 px-3">{item.label}</Badge>
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditItem(item)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveItem(item)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
@@ -336,7 +463,7 @@ function Config() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setStageOpen(false)}>Cancelar</Button>
-              <Button type="submit"><Plus className="w-4 h-4" />Adicionar</Button>
+              <Button type="submit" disabled={saving}><Plus className="w-4 h-4" />Adicionar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -363,7 +490,31 @@ function Config() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setListOpen(false)}>Cancelar</Button>
-              <Button type="submit"><Plus className="w-4 h-4" />Adicionar</Button>
+              <Button type="submit" disabled={saving}><Plus className="w-4 h-4" />Adicionar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar item</DialogTitle>
+            <DialogDescription>Altere o nome exibido no CRM.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-label">Nome</Label>
+              <Input
+                id="edit-label"
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={saving}>Salvar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
