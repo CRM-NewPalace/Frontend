@@ -1,22 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback, useEffect, useMemo, useRef, useState, type FormEvent,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection,
 } from "@/components/form-dialog";
@@ -29,17 +29,23 @@ import {
   fetchEquipes,
   updateEquipe,
   type Equipe,
+  type EquipeMember,
   type EquipeOptionUser,
 } from "@/lib/equipes-api";
 import {
   Network, Plus, Loader2, Pencil, Trash2, Users, UserCog,
+  ChevronLeft, ChevronRight, Crown,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/equipes")({
   head: () => ({ meta: [{ title: "Equipes — Imob CRM" }] }),
   component: EquipesPage,
 });
+
+/** Largura da coluna (w-72) + gap (gap-3). */
+const COLUMN_STEP_PX = 288 + 12;
 
 type FormState = {
   name: string;
@@ -55,6 +61,68 @@ const emptyForm = (): FormState => ({
   status: "ativo",
 });
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function MemberCard({
+  member,
+  roleLabel,
+  accent,
+}: {
+  member: EquipeMember;
+  roleLabel: string;
+  accent?: boolean;
+}) {
+  return (
+    <Card
+      className={cn(
+        "p-3 shadow-sm",
+        accent && "border-primary/30 bg-primary/5",
+      )}
+    >
+      <div className="flex items-start gap-2.5">
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarFallback
+            className={cn(
+              "text-[11px] font-semibold",
+              accent
+                ? "bg-primary/15 text-primary"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {initials(member.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            {accent && <Crown className="w-3 h-3 text-primary shrink-0" />}
+            <div className="text-sm font-medium truncate">{member.name}</div>
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+            {member.email}
+          </div>
+          <Badge
+            variant="outline"
+            className={cn(
+              "mt-2 text-[10px] capitalize",
+              accent && "border-primary/30 text-primary",
+            )}
+          >
+            {roleLabel}
+          </Badge>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function EquipesPage() {
   const [items, setItems] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +136,10 @@ function EquipesPage() {
   const [gerentes, setGerentes] = useState<EquipeOptionUser[]>([]);
   const [corretores, setCorretores] = useState<EquipeOptionUser[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
+
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -87,6 +159,37 @@ function EquipesPage() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  const updateScrollButtons = useCallback(() => {
+    const el = boardRef.current;
+    if (!el) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    const max = el.scrollWidth - el.clientWidth;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < max - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    updateScrollButtons();
+    el.addEventListener("scroll", updateScrollButtons, { passive: true });
+    const ro = new ResizeObserver(updateScrollButtons);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollButtons);
+      ro.disconnect();
+    };
+  }, [updateScrollButtons, items.length, loading]);
+
+  function scrollBoard(direction: -1 | 1) {
+    const el = boardRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * COLUMN_STEP_PX, behavior: "smooth" });
+  }
 
   async function loadOptions(equipeId?: string) {
     setOptionsLoading(true);
@@ -141,7 +244,6 @@ function EquipesPage() {
   const selectedCount = form.membroIds.length;
 
   const gerenteOptions = useMemo(() => {
-    // Garante que o gerente atual apareça mesmo se a lista de opções falhar parcialmente.
     const map = new Map(gerentes.map((g) => [g.id, g]));
     return [...map.values()];
   }, [gerentes]);
@@ -209,111 +311,135 @@ function EquipesPage() {
     <div>
       <PageHeader
         title="Equipes"
-        description="Monte as equipes: um gerente e os corretores. Cada gerente só vê os processos da própria equipe."
+        description="Quadro das equipes — cada coluna é uma equipe com gerente e corretores."
         actions={
-          <Button size="sm" onClick={() => void openCreate()}>
-            <Plus className="w-4 h-4 mr-1" />
-            Nova equipe
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-md border bg-background">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-r-none"
+                disabled={!canScrollLeft}
+                aria-label="Coluna anterior"
+                title="Coluna anterior"
+                onClick={() => scrollBoard(-1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="w-px h-4 bg-border" />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-l-none"
+                disabled={!canScrollRight}
+                aria-label="Próxima coluna"
+                title="Próxima coluna"
+                onClick={() => scrollBoard(1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            <Button size="sm" onClick={() => void openCreate()}>
+              <Plus className="w-4 h-4 mr-1" />
+              Nova equipe
+            </Button>
+          </div>
         }
       />
 
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Carregando equipes...
-            </div>
-          ) : items.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                <Network className="w-5 h-5 text-muted-foreground" />
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Carregando equipes...
+        </div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-16 px-4 rounded-xl border border-dashed bg-muted/20">
+          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Network className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">Nenhuma equipe cadastrada</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Crie a primeira equipe e vincule um gerente com corretores.
+          </p>
+        </div>
+      ) : (
+        <div
+          ref={boardRef}
+          className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
+        >
+          {items.map((eq) => (
+            <div
+              key={eq.id}
+              className="w-72 shrink-0 flex flex-col bg-muted/40 rounded-xl p-3 min-h-[28rem]"
+            >
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold truncate">
+                      {eq.name}
+                    </span>
+                    <Badge
+                      variant={eq.status === "ativo" ? "default" : "outline"}
+                      className="capitalize text-[10px] shrink-0"
+                    >
+                      {eq.status}
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    {eq.membros.length} corretor
+                    {eq.membros.length === 1 ? "" : "es"}
+                  </div>
+                </div>
+                <div className="flex items-center shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => void openEdit(eq)}
+                    title="Editar"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive"
+                    onClick={() => setDeleteId(eq.id)}
+                    title="Excluir"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
-              <p className="text-sm font-medium">Nenhuma equipe cadastrada</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Crie a primeira equipe e vincule um gerente com corretores.
-              </p>
+
+              <div className="space-y-2 flex-1">
+                <MemberCard
+                  member={eq.gerente}
+                  roleLabel="Gerente"
+                  accent
+                />
+
+                {eq.membros.length === 0 ? (
+                  <div className="rounded-lg border border-dashed bg-background/50 px-3 py-6 text-center text-xs text-muted-foreground">
+                    Sem corretores nesta equipe
+                  </div>
+                ) : (
+                  eq.membros.map((m) => (
+                    <MemberCard
+                      key={m.id}
+                      member={m}
+                      roleLabel="Corretor"
+                    />
+                  ))
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Equipe</TableHead>
-                    <TableHead>Gerente</TableHead>
-                    <TableHead>Corretores</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[100px]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((eq) => (
-                    <TableRow key={eq.id}>
-                      <TableCell className="font-medium">{eq.name}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">{eq.gerente.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {eq.gerente.email}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-md">
-                          {eq.membros.length === 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              Sem corretores
-                            </span>
-                          ) : (
-                            eq.membros.map((m) => (
-                              <Badge
-                                key={m.id}
-                                variant="secondary"
-                                className="text-[10px] font-normal"
-                              >
-                                {m.name}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={eq.status === "ativo" ? "default" : "outline"}
-                          className="capitalize text-[10px]"
-                        >
-                          {eq.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => void openEdit(eq)}
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => setDeleteId(eq.id)}
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      )}
 
       <FormDialogShell
         open={open}
