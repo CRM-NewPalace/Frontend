@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -31,6 +30,16 @@ import {
   FormDialogShell,
   FormSection,
 } from "@/components/form-dialog";
+import {
+  AgendaBoard,
+  addDays,
+  formatRangeLabel,
+  getVisibleRange,
+  startOfDay,
+  startOfMonth,
+  toDateInput,
+  type AgendaViewMode,
+} from "@/components/agenda-board";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
@@ -51,14 +60,12 @@ import {
 } from "@/lib/agenda-api";
 import {
   CalendarDays,
-  Clock,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
-  MapPin,
-  Pencil,
   Plus,
   Trash2,
   User,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -84,28 +91,19 @@ type FormState = {
 
 const emptyForm = (): FormState => {
   const now = new Date();
-  const date = toDateInput(now);
-  const timeStart = toTimeInput(now);
   return {
     leadId: "",
     clienteId: "",
     titulo: "",
     tipo: "visita",
     status: "agendado",
-    date,
-    timeStart,
+    date: toDateInput(now),
+    timeStart: toTimeInput(now),
     timeEnd: "",
     local: "",
     observacoes: "",
   };
 };
-
-function toDateInput(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function toTimeInput(d: Date) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -117,73 +115,24 @@ function combineLocalIso(date: string, time: string): string {
   return new Date(y, m - 1, d, hh, mm, 0, 0).toISOString();
 }
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-}
-
-function endOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-}
-
-function startOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
-function endOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-}
-
-function sameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function formatDayTitle(d: Date) {
-  return d.toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-  });
-}
-
-function formatTimeRange(item: Agendamento) {
-  const start = new Date(item.startsAt);
-  const startLabel = start.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  if (!item.endsAt) return startLabel;
-  const end = new Date(item.endsAt);
-  const endLabel = end.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${startLabel} – ${endLabel}`;
-}
-
-const STATUS_BADGE: Record<AgendamentoStatus, string> = {
-  agendado: "bg-cyan-100 text-cyan-800",
-  concluido: "bg-emerald-100 text-emerald-800",
-  cancelado: "bg-red-100 text-red-800",
-};
-
-const TIPO_BADGE: Record<AgendamentoTipo, string> = {
-  visita: "bg-violet-100 text-violet-800",
-  ligacao: "bg-blue-100 text-blue-800",
-  reuniao: "bg-amber-100 text-amber-800",
-  outro: "bg-slate-100 text-slate-700",
-};
+const VIEW_OPTIONS: { id: AgendaViewMode; label: string }[] = [
+  { id: "dia", label: "Dia" },
+  { id: "semana", label: "Semana" },
+  { id: "mes", label: "Mês" },
+];
 
 function AgendaPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const { leads, assignees, loading: leadsLoading } = useLeads();
 
-  const [selectedDay, setSelectedDay] = useState<Date>(() => startOfDay(new Date()));
-  const [month, setMonth] = useState<Date>(() => startOfMonth(new Date()));
+  const [view, setView] = useState<AgendaViewMode>("semana");
+  const [selectedDay, setSelectedDay] = useState<Date>(() =>
+    startOfDay(new Date()),
+  );
+  const [miniMonth, setMiniMonth] = useState<Date>(() =>
+    startOfMonth(new Date()),
+  );
 
   const [items, setItems] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,6 +146,11 @@ function AgendaPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const visibleRange = useMemo(
+    () => getVisibleRange(view, selectedDay),
+    [view, selectedDay],
+  );
 
   const visibleLeads = useMemo(() => {
     if (!user) return [];
@@ -223,11 +177,9 @@ function AgendaPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const from = startOfMonth(month).toISOString();
-      const to = endOfMonth(month).toISOString();
       const data = await fetchAgendamentos({
-        from,
-        to,
+        from: visibleRange.from.toISOString(),
+        to: visibleRange.to.toISOString(),
         corretorId:
           isManager && filterCorretorId !== "__all__"
             ? filterCorretorId
@@ -249,7 +201,14 @@ function AgendaPage() {
     } finally {
       setLoading(false);
     }
-  }, [month, isManager, filterCorretorId, filterTipo, filterStatus]);
+  }, [
+    visibleRange.from,
+    visibleRange.to,
+    isManager,
+    filterCorretorId,
+    filterTipo,
+    filterStatus,
+  ]);
 
   useEffect(() => {
     void loadItems();
@@ -265,14 +224,12 @@ function AgendaPage() {
     return map;
   }, [items]);
 
-  const dayItems = useMemo(() => {
-    return items
-      .filter((item) => sameDay(new Date(item.startsAt), selectedDay))
-      .sort(
-        (a, b) =>
-          new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
-      );
-  }, [items, selectedDay]);
+  const modifiers = useMemo(
+    () => ({
+      hasEvent: (day: Date) => daysWithEvents.has(toDateInput(day)),
+    }),
+    [daysWithEvents],
+  );
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -302,11 +259,16 @@ function AgendaPage() {
     }));
   }
 
-  function openCreate() {
+  function openCreate(day?: Date, hour?: number) {
     setFormMode("create");
     setEditingId(null);
     const base = emptyForm();
-    base.date = toDateInput(selectedDay);
+    const target = day ? startOfDay(day) : selectedDay;
+    base.date = toDateInput(target);
+    if (hour != null) {
+      base.timeStart = `${String(hour).padStart(2, "0")}:00`;
+      base.timeEnd = `${String(Math.min(hour + 1, 23)).padStart(2, "0")}:00`;
+    }
     setForm(base);
     setOpen(true);
   }
@@ -407,6 +369,7 @@ function AgendaPage() {
       await deleteAgendamento(deleteId);
       toast.success("Compromisso excluído.");
       setDeleteId(null);
+      setOpen(false);
       await loadItems();
     } catch (err) {
       toast.error(
@@ -417,12 +380,36 @@ function AgendaPage() {
     }
   }
 
-  const modifiers = useMemo(
-    () => ({
-      hasEvent: (day: Date) => daysWithEvents.has(toDateInput(day)),
-    }),
-    [daysWithEvents],
-  );
+  function goToday() {
+    const today = startOfDay(new Date());
+    setSelectedDay(today);
+    setMiniMonth(startOfMonth(today));
+  }
+
+  function navigate(direction: -1 | 1) {
+    if (view === "dia") {
+      setSelectedDay((d) => addDays(d, direction));
+      return;
+    }
+    if (view === "semana") {
+      setSelectedDay((d) => addDays(d, direction * 7));
+      return;
+    }
+    setSelectedDay((d) => {
+      const next = startOfMonth(
+        new Date(d.getFullYear(), d.getMonth() + direction, 1),
+      );
+      setMiniMonth(next);
+      return next;
+    });
+  }
+
+  function handleSelectDay(day: Date) {
+    const d = startOfDay(day);
+    setSelectedDay(d);
+    setMiniMonth(startOfMonth(d));
+    setView("dia");
+  }
 
   return (
     <div>
@@ -430,68 +417,121 @@ function AgendaPage() {
         title="Agenda"
         description="Compromissos com leads e clientes — visitas, ligações e reuniões."
         actions={
-          <Button onClick={openCreate}>
+          <Button onClick={() => openCreate()}>
             <Plus className="w-4 h-4 mr-1" />
             Novo
           </Button>
         }
       />
 
-      <div className="mb-4 flex flex-wrap gap-3">
-        {isManager && (
-          <Select value={filterCorretorId} onValueChange={setFilterCorretorId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Corretor" />
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={goToday}>
+            Hoje
+          </Button>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate(-1)}
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate(1)}
+              aria-label="Próximo"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          <h2 className="text-base font-semibold capitalize min-w-0">
+            {formatRangeLabel(view, selectedDay)}
+          </h2>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
+            {VIEW_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setView(opt.id)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  view === opt.id
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {isManager && (
+            <Select
+              value={filterCorretorId}
+              onValueChange={setFilterCorretorId}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Corretor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos os corretores</SelectItem>
+                {assignees.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={filterTipo} onValueChange={setFilterTipo}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Todos os corretores</SelectItem>
-              {assignees.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name}
+              <SelectItem value="__all__">Todos os tipos</SelectItem>
+              {AGENDAMENTO_TIPOS.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {AGENDAMENTO_TIPO_LABEL[t]}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
-        <Select value={filterTipo} onValueChange={setFilterTipo}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos os tipos</SelectItem>
-            {AGENDAMENTO_TIPOS.map((t) => (
-              <SelectItem key={t} value={t}>
-                {AGENDAMENTO_TIPO_LABEL[t]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos os status</SelectItem>
-            {AGENDAMENTO_STATUS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {AGENDAMENTO_STATUS_LABEL[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os status</SelectItem>
+              {AGENDAMENTO_STATUS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {AGENDAMENTO_STATUS_LABEL[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[auto_1fr]">
-        <Card className="w-fit">
-          <CardContent className="p-2 sm:p-3">
+      <div className="grid gap-4 xl:grid-cols-[220px_1fr]">
+        <Card className="h-fit hidden xl:block">
+          <CardContent className="p-2">
             <Calendar
               mode="single"
               locale={ptBR}
               selected={selectedDay}
-              month={month}
-              onMonthChange={setMonth}
+              month={miniMonth}
+              onMonthChange={setMiniMonth}
               onSelect={(day) => {
-                if (day) setSelectedDay(startOfDay(day));
+                if (!day) return;
+                setSelectedDay(startOfDay(day));
               }}
               modifiers={modifiers}
               modifiersClassNames={{
@@ -499,125 +539,64 @@ function AgendaPage() {
                   "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:size-1 after:rounded-full after:bg-primary",
               }}
             />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 sm:p-5 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold capitalize">
-                  {formatDayTitle(selectedDay)}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {dayItems.length === 0
-                    ? "Nenhum compromisso neste dia."
-                    : `${dayItems.length} compromisso${dayItems.length > 1 ? "s" : ""}`}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={openCreate}>
-                <Plus className="w-4 h-4 mr-1" />
-                Agendar
-              </Button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Carregando…
-              </div>
-            ) : dayItems.length === 0 ? (
-              <div className="rounded-xl border border-dashed py-14 text-center text-sm text-muted-foreground">
-                <CalendarDays className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                Sem compromissos. Clique em <strong>Novo</strong> para agendar.
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                {dayItems.map((item) => (
-                  <li
-                    key={item.id}
-                    className={cn(
-                      "rounded-xl border p-4 transition-colors hover:bg-muted/30",
-                      item.status === "cancelado" && "opacity-60",
-                    )}
+            <div className="px-2 pb-2 pt-1 space-y-1.5 text-[11px] text-muted-foreground">
+              <p className="font-medium text-foreground">Legenda</p>
+              <div className="flex flex-wrap gap-1.5">
+                {AGENDAMENTO_TIPOS.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-2 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className={TIPO_BADGE[item.tipo]}>
-                            {AGENDAMENTO_TIPO_LABEL[item.tipo]}
-                          </Badge>
-                          <Badge
-                            variant="secondary"
-                            className={STATUS_BADGE[item.status]}
-                          >
-                            {AGENDAMENTO_STATUS_LABEL[item.status]}
-                          </Badge>
-                        </div>
-                        <p className="font-medium leading-snug">{item.titulo}</p>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                          <span className="inline-flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5" />
-                            {formatTimeRange(item)}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5" />
-                            {item.lead.nome}
-                          </span>
-                          {item.lead.corretor && isManager ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <Users className="w-3.5 h-3.5" />
-                              {item.lead.corretor.name}
-                            </span>
-                          ) : null}
-                          {item.local ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {item.local}
-                            </span>
-                          ) : null}
-                        </div>
-                        {item.observacoes ? (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {item.observacoes}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(item)}
-                          aria-label="Editar"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteId(item.id)}
-                          aria-label="Excluir"
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  </li>
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        t === "visita" && "bg-violet-500",
+                        t === "ligacao" && "bg-sky-500",
+                        t === "reuniao" && "bg-amber-500",
+                        t === "outro" && "bg-slate-500",
+                      )}
+                    />
+                    {AGENDAMENTO_TIPO_LABEL[t]}
+                  </span>
                 ))}
-              </ul>
-            )}
+              </div>
+            </div>
           </CardContent>
         </Card>
+
+        <AgendaBoard
+          view={view}
+          anchor={selectedDay}
+          items={items}
+          loading={loading}
+          onSelectDay={handleSelectDay}
+          onCreateAt={openCreate}
+          onEdit={openEdit}
+        />
       </div>
 
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
         icon={<CalendarDays className="w-5 h-5" />}
-        title={formMode === "create" ? "Novo compromisso" : "Editar compromisso"}
+        title={
+          formMode === "create" ? "Novo compromisso" : "Editar compromisso"
+        }
         description="Vincule a um lead ou cliente e defina data e horário."
         footer={
           <FormDialogActions>
+            {formMode === "edit" && editingId ? (
+              <Button
+                type="button"
+                variant="destructive"
+                className="mr-auto"
+                onClick={() => setDeleteId(editingId)}
+                disabled={saving}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Excluir
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -643,7 +622,10 @@ function AgendaPage() {
       >
         <form id="agenda-form" onSubmit={handleSubmit}>
           <FormDialogBody>
-            <FormSection title="Contato" icon={<User className="w-4 h-4 text-primary" />}>
+            <FormSection
+              title="Contato"
+              icon={<User className="w-4 h-4 text-primary" />}
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Lead</Label>
@@ -714,7 +696,9 @@ function AgendaPage() {
                   <Label>Tipo</Label>
                   <Select
                     value={form.tipo}
-                    onValueChange={(v) => setField("tipo", v as AgendamentoTipo)}
+                    onValueChange={(v) =>
+                      setField("tipo", v as AgendamentoTipo)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
