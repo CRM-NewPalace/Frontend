@@ -80,7 +80,6 @@ const NAV_SECTIONS: {
     id: "administracao",
     label: "Administração",
     icon: Shield,
-    adminOnly: true,
     items: [
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
       { to: "/equipes", label: "Equipes", icon: Network },
@@ -96,17 +95,6 @@ const NAV_SECTIONS: {
     icon: DollarSign,
     adminOnly: true,
     items: FINANCEIRO_MODULES,
-  },
-  {
-    id: "gestao",
-    label: "Gestão",
-    icon: BarChart3,
-    gerenteOnly: true,
-    items: [
-      { to: "/usuarios", label: "Usuários", icon: UsersRound },
-      { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-      { to: "/configuracoes", label: "Configurações", icon: Settings },
-    ],
   },
   {
     id: "conta",

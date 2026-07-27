@@ -3,7 +3,7 @@ import type { Role } from "@/lib/auth";
 /**
  * Rotas por perfil:
  * - admin: tudo, inclusive financeiro
- * - gerente: operação completa da equipe (leads, funil, agenda, clientes, corretores…), sem financeiro nem usuários
+ * - gerente: operação da equipe + administração limitada (usuários/equipes da equipe), sem financeiro
  * - corretor: essencial + imóveis do catálogo New Palace (só os próprios leads/agenda/clientes)
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
@@ -42,6 +42,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/documentacao",
     "/resultado",
     "/usuarios",
+    "/equipes",
     "/propostas",
     "/relatorios",
     "/configuracoes",

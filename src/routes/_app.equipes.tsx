@@ -21,6 +21,7 @@ import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection,
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import {
   createEquipe,
   deleteEquipe,
@@ -124,6 +125,9 @@ function MemberCard({
 }
 
 function EquipesPage() {
+  const session = getSession();
+  const canManage = session?.role === "admin";
+
   const [items, setItems] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -183,12 +187,10 @@ function EquipesPage() {
       el.removeEventListener("scroll", updateScrollButtons);
       ro.disconnect();
     };
-  }, [updateScrollButtons, items.length, loading]);
+  }, [items.length, updateScrollButtons]);
 
-  function scrollBoard(direction: -1 | 1) {
-    const el = boardRef.current;
-    if (!el) return;
-    el.scrollBy({ left: direction * COLUMN_STEP_PX, behavior: "smooth" });
+  function scrollBoard(dir: -1 | 1) {
+    boardRef.current?.scrollBy({ left: dir * COLUMN_STEP_PX, behavior: "smooth" });
   }
 
   async function loadOptions(equipeId?: string) {
@@ -212,6 +214,7 @@ function EquipesPage() {
   }
 
   async function openCreate() {
+    if (!canManage) return;
     setFormMode("create");
     setEditingId(null);
     setForm(emptyForm());
@@ -220,6 +223,7 @@ function EquipesPage() {
   }
 
   async function openEdit(equipe: Equipe) {
+    if (!canManage) return;
     setFormMode("edit");
     setEditingId(equipe.id);
     setForm({
@@ -233,24 +237,25 @@ function EquipesPage() {
   }
 
   function toggleMembro(id: string, checked: boolean) {
-    setForm((prev) => ({
-      ...prev,
+    setForm((p) => ({
+      ...p,
       membroIds: checked
-        ? [...prev.membroIds, id]
-        : prev.membroIds.filter((x) => x !== id),
+        ? [...p.membroIds, id]
+        : p.membroIds.filter((x) => x !== id),
     }));
   }
-
-  const selectedCount = form.membroIds.length;
 
   const gerenteOptions = useMemo(() => {
     const map = new Map(gerentes.map((g) => [g.id, g]));
     return [...map.values()];
   }, [gerentes]);
 
+  const selectedCount = form.membroIds.length;
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || form.name.trim().length < 2) {
+    if (!canManage) return;
+    if (!form.name.trim()) {
       toast.error("Informe o nome da equipe.");
       return;
     }
@@ -258,7 +263,6 @@ function EquipesPage() {
       toast.error("Selecione o gerente da equipe.");
       return;
     }
-
     setSaving(true);
     try {
       if (formMode === "create") {
@@ -292,11 +296,11 @@ function EquipesPage() {
   }
 
   async function confirmDelete() {
-    if (!deleteId) return;
+    if (!canManage || !deleteId) return;
     try {
       await deleteEquipe(deleteId);
-      toast.success("Equipe excluída.");
       setDeleteId(null);
+      toast.success("Equipe excluída.");
       await loadItems();
     } catch (err) {
       toast.error(
@@ -311,7 +315,11 @@ function EquipesPage() {
     <div>
       <PageHeader
         title="Equipes"
-        description="Quadro das equipes — cada coluna é uma equipe com gerente e corretores."
+        description={
+          canManage
+            ? "Quadro das equipes — cada coluna é uma equipe com gerente e corretores."
+            : "Membros da sua equipe — gerente e corretores vinculados."
+        }
         actions={
           <div className="flex items-center gap-2">
             <div className="flex items-center rounded-md border bg-background">
@@ -341,10 +349,12 @@ function EquipesPage() {
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
-            <Button size="sm" onClick={() => void openCreate()}>
-              <Plus className="w-4 h-4 mr-1" />
-              Nova equipe
-            </Button>
+            {canManage && (
+              <Button size="sm" onClick={() => void openCreate()}>
+                <Plus className="w-4 h-4 mr-1" />
+                Nova equipe
+              </Button>
+            )}
           </div>
         }
       />
@@ -359,9 +369,13 @@ function EquipesPage() {
           <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
             <Network className="w-5 h-5 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium">Nenhuma equipe cadastrada</p>
+          <p className="text-sm font-medium">
+            {canManage ? "Nenhuma equipe cadastrada" : "Você ainda não lidera uma equipe"}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Crie a primeira equipe e vincule um gerente com corretores.
+            {canManage
+              ? "Crie a primeira equipe e vincule um gerente com corretores."
+              : "Peça ao administrador para vincular você como gerente de uma equipe."}
           </p>
         </div>
       ) : (
@@ -393,26 +407,28 @@ function EquipesPage() {
                     {eq.membros.length === 1 ? "" : "es"}
                   </div>
                 </div>
-                <div className="flex items-center shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => void openEdit(eq)}
-                    title="Editar"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() => setDeleteId(eq.id)}
-                    title="Excluir"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                {canManage && (
+                  <div className="flex items-center shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => void openEdit(eq)}
+                      title="Editar"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive"
+                      onClick={() => setDeleteId(eq.id)}
+                      title="Excluir"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 flex-1">
@@ -441,159 +457,163 @@ function EquipesPage() {
         </div>
       )}
 
-      <FormDialogShell
-        open={open}
-        onOpenChange={setOpen}
-        icon={<Network className="w-5 h-5" />}
-        title={formMode === "create" ? "Nova equipe" : "Editar equipe"}
-        description="Defina o gerente responsável e os corretores da equipe."
-        className="max-w-xl"
-      >
-        <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col flex-1 min-h-0">
-          <FormDialogBody>
-            <FormSection
-              icon={<UserCog className="w-3.5 h-3.5 text-primary" />}
-              title="Identificação"
-            >
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Nome da equipe</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, name: e.target.value }))
-                  }
-                  placeholder="Ex.: Equipe Recife Norte"
-                  className="h-10 bg-background"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Gerente</Label>
-                <Select
-                  value={form.gerenteId || "__none__"}
-                  onValueChange={(v) =>
-                    setForm((p) => ({
-                      ...p,
-                      gerenteId: v === "__none__" ? "" : v,
-                    }))
-                  }
-                  disabled={optionsLoading}
+      {canManage && (
+        <>
+          <FormDialogShell
+            open={open}
+            onOpenChange={setOpen}
+            icon={<Network className="w-5 h-5" />}
+            title={formMode === "create" ? "Nova equipe" : "Editar equipe"}
+            description="Defina o gerente responsável e os corretores da equipe."
+            className="max-w-xl"
+          >
+            <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col flex-1 min-h-0">
+              <FormDialogBody>
+                <FormSection
+                  icon={<UserCog className="w-3.5 h-3.5 text-primary" />}
+                  title="Identificação"
                 >
-                  <SelectTrigger className="h-10 bg-background">
-                    <SelectValue placeholder="Selecionar gerente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__" disabled>
-                      Selecione
-                    </SelectItem>
-                    {gerenteOptions.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {!optionsLoading && gerenteOptions.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Nenhum gerente disponível. Cadastre um usuário com perfil gerente.
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(v) =>
-                    setForm((p) => ({
-                      ...p,
-                      status: v as "ativo" | "inativo",
-                    }))
-                  }
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Nome da equipe</Label>
+                    <Input
+                      value={form.name}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, name: e.target.value }))
+                      }
+                      placeholder="Ex.: Equipe Recife Norte"
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Gerente</Label>
+                    <Select
+                      value={form.gerenteId || "__none__"}
+                      onValueChange={(v) =>
+                        setForm((p) => ({
+                          ...p,
+                          gerenteId: v === "__none__" ? "" : v,
+                        }))
+                      }
+                      disabled={optionsLoading}
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue placeholder="Selecionar gerente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__" disabled>
+                          Selecione
+                        </SelectItem>
+                        {gerenteOptions.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!optionsLoading && gerenteOptions.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhum gerente disponível. Cadastre um usuário com perfil gerente.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <Select
+                      value={form.status}
+                      onValueChange={(v) =>
+                        setForm((p) => ({
+                          ...p,
+                          status: v as "ativo" | "inativo",
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="inativo">Inativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </FormSection>
+
+                <FormSection
+                  icon={<Users className="w-3.5 h-3.5 text-primary" />}
+                  title={`Corretores (${selectedCount})`}
                 >
-                  <SelectTrigger className="h-10 bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="inativo">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </FormSection>
+                  {optionsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Carregando corretores...
+                    </div>
+                  ) : corretores.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2">
+                      Nenhum corretor disponível. Cadastre corretores em Usuários ou
+                      liberte-os de outras equipes.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto rounded-lg border p-3">
+                      {corretores.map((c) => {
+                        const checked = form.membroIds.includes(c.id);
+                        return (
+                          <label
+                            key={c.id}
+                            className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) =>
+                                toggleMembro(c.id, v === true)
+                              }
+                            />
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">
+                                {c.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {c.email}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </FormSection>
+              </FormDialogBody>
 
-            <FormSection
-              icon={<Users className="w-3.5 h-3.5 text-primary" />}
-              title={`Corretores (${selectedCount})`}
-            >
-              {optionsLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Carregando corretores...
-                </div>
-              ) : corretores.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">
-                  Nenhum corretor disponível. Cadastre corretores em Usuários ou
-                  liberte-os de outras equipes.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto rounded-lg border p-3">
-                  {corretores.map((c) => {
-                    const checked = form.membroIds.includes(c.id);
-                    return (
-                      <label
-                        key={c.id}
-                        className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) =>
-                            toggleMembro(c.id, v === true)
-                          }
-                        />
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            {c.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {c.email}
-                          </div>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </FormSection>
-          </FormDialogBody>
+              <FormDialogActions>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={saving || optionsLoading}>
+                  {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                  {formMode === "create" ? "Criar equipe" : "Salvar"}
+                </Button>
+              </FormDialogActions>
+            </form>
+          </FormDialogShell>
 
-          <FormDialogActions>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={saving || optionsLoading}>
-              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              {formMode === "create" ? "Criar equipe" : "Salvar"}
-            </Button>
-          </FormDialogActions>
-        </form>
-      </FormDialogShell>
-
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir equipe?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Os corretores ficarão sem equipe. O gerente poderá ser vinculado a
-              outra equipe depois.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmDelete()}>
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir equipe?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Os corretores ficarão sem equipe. O gerente poderá ser vinculado a
+                  outra equipe depois.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void confirmDelete()}>
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
   );
 }
