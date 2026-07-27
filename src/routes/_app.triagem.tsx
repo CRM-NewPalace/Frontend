@@ -29,6 +29,7 @@ import {
   loadTriagemHistory,
   prependTriagemHistoryCached,
 } from "@/lib/triagem-history-cache";
+import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClipboardList, Plus, User, Users, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -637,17 +638,56 @@ function CorretorTriagem() {
 /* ───────────────────────── Admin / Gerente ───────────────────────── */
 
 function ManagerTriagem() {
+  const user = getSession();
+  const isAdmin = user?.role === "admin";
   const { leads: allLeads, assignees, loading } = useLeads();
   const stageName = useStageLabel();
 
-  const corretores = useMemo(
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [equipesLoading, setEquipesLoading] = useState(false);
+  const [selectedEquipeId, setSelectedEquipeId] = useState<string>("__all__");
+  const [selectedCorretorId, setSelectedCorretorId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const { events, loading: historyLoading } = useHistory(selectedLeadId);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    setEquipesLoading(true);
+    void fetchEquipes()
+      .then(setEquipes)
+      .catch((err) => {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar as equipes.",
+        );
+      })
+      .finally(() => setEquipesLoading(false));
+  }, [isAdmin]);
+
+  const allCorretores = useMemo(
     () => assignees.filter((a) => !a.role || a.role === "corretor"),
     [assignees],
   );
 
-  const [selectedCorretorId, setSelectedCorretorId] = useState<string | null>(null);
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const { events, loading: historyLoading } = useHistory(selectedLeadId);
+  const corretorIdsNaEquipe = useMemo(() => {
+    if (!isAdmin || selectedEquipeId === "__all__") return null;
+    if (selectedEquipeId === "__none__") {
+      const inAny = new Set(
+        equipes.flatMap((eq) => eq.membros.map((m) => m.id)),
+      );
+      return new Set(
+        allCorretores.filter((c) => !inAny.has(c.id)).map((c) => c.id),
+      );
+    }
+    const eq = equipes.find((e) => e.id === selectedEquipeId);
+    return new Set((eq?.membros ?? []).map((m) => m.id));
+  }, [isAdmin, selectedEquipeId, equipes, allCorretores]);
+
+  const corretores = useMemo(() => {
+    if (!corretorIdsNaEquipe) return allCorretores;
+    return allCorretores.filter((c) => corretorIdsNaEquipe.has(c.id));
+  }, [allCorretores, corretorIdsNaEquipe]);
 
   const leads = useMemo(() => {
     if (!selectedCorretorId) return [];
@@ -660,6 +700,12 @@ function ManagerTriagem() {
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId) ?? null;
   const selectedCorretor = corretores.find((c) => c.id === selectedCorretorId);
+
+  function selectEquipe(id: string) {
+    setSelectedEquipeId(id);
+    setSelectedCorretorId(null);
+    setSelectedLeadId(null);
+  }
 
   function selectCorretor(id: string) {
     setSelectedCorretorId(id);
@@ -679,12 +725,41 @@ function ManagerTriagem() {
             <Users className="w-4 h-4 text-primary" />
             Corretores
           </div>
+
+          {isAdmin && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Equipe</Label>
+              <Select
+                value={selectedEquipeId}
+                onValueChange={selectEquipe}
+                disabled={equipesLoading}
+              >
+                <SelectTrigger className="h-9 bg-background">
+                  <SelectValue placeholder="Filtrar por equipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas as equipes</SelectItem>
+                  <SelectItem value="__none__">Sem equipe</SelectItem>
+                  {equipes.map((eq) => (
+                    <SelectItem key={eq.id} value={eq.id}>
+                      {eq.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2 max-h-[32rem] overflow-y-auto">
-            {loading && corretores.length === 0 && (
+            {(loading || equipesLoading) && corretores.length === 0 && (
               <p className="text-xs text-muted-foreground">Carregando...</p>
             )}
-            {!loading && corretores.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nenhum corretor.</p>
+            {!loading && !equipesLoading && corretores.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                {isAdmin && selectedEquipeId !== "__all__"
+                  ? "Nenhum corretor nesta equipe."
+                  : "Nenhum corretor."}
+              </p>
             )}
             {corretores.map((c) => (
               <button
