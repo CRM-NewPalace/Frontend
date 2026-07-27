@@ -33,9 +33,10 @@ import {
   type EquipeMember,
   type EquipeOptionUser,
 } from "@/lib/equipes-api";
+import { resetUserPassword } from "@/lib/users-api";
 import {
   Network, Plus, Loader2, Pencil, Trash2, Users, UserCog,
-  ChevronLeft, ChevronRight, Crown,
+  ChevronLeft, ChevronRight, Crown, KeyRound, Copy, Check, Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -76,10 +77,14 @@ function MemberCard({
   member,
   roleLabel,
   accent,
+  onResetPassword,
+  resetting,
 }: {
   member: EquipeMember;
   roleLabel: string;
   accent?: boolean;
+  onResetPassword?: () => void;
+  resetting?: boolean;
 }) {
   return (
     <Card
@@ -102,12 +107,33 @@ function MemberCard({
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            {accent && <Crown className="w-3 h-3 text-primary shrink-0" />}
-            <div className="text-sm font-medium truncate">{member.name}</div>
-          </div>
-          <div className="text-[11px] text-muted-foreground truncate mt-0.5">
-            {member.email}
+          <div className="flex items-start justify-between gap-1">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                {accent && <Crown className="w-3 h-3 text-primary shrink-0" />}
+                <div className="text-sm font-medium truncate">{member.name}</div>
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                {member.email}
+              </div>
+            </div>
+            {onResetPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                title="Gerar senha temporária"
+                disabled={resetting}
+                onClick={onResetPassword}
+              >
+                {resetting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <KeyRound className="w-3.5 h-3.5" />
+                )}
+              </Button>
+            )}
           </div>
           <Badge
             variant="outline"
@@ -127,6 +153,8 @@ function MemberCard({
 function EquipesPage() {
   const session = getSession();
   const canManage = session?.role === "admin";
+  const canResetMemberPassword =
+    session?.role === "admin" || session?.role === "gerente";
 
   const [items, setItems] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,6 +164,13 @@ function EquipesPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(null);
 
   const [gerentes, setGerentes] = useState<EquipeOptionUser[]>([]);
   const [corretores, setCorretores] = useState<EquipeOptionUser[]>([]);
@@ -311,6 +346,42 @@ function EquipesPage() {
     }
   }
 
+  async function handleResetPassword(member: EquipeMember) {
+    if (!canResetMemberPassword || member.role !== "corretor") return;
+    setResettingId(member.id);
+    try {
+      const result = await resetUserPassword(member.id);
+      if (result.temporaryPassword) {
+        setCredentials({
+          name: member.name,
+          email: member.email,
+          password: result.temporaryPassword,
+        });
+      } else {
+        toast.success(`Senha de ${member.name} redefinida.`);
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível gerar a senha temporária.",
+      );
+    } finally {
+      setResettingId(null);
+    }
+  }
+
+  async function copyText(value: string, field: "email" | "password") {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      toast.success(field === "email" ? "E-mail copiado." : "Senha copiada.");
+      window.setTimeout(() => setCopiedField(null), 1500);
+    } catch {
+      toast.error("Não foi possível copiar.");
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -318,7 +389,7 @@ function EquipesPage() {
         description={
           canManage
             ? "Quadro das equipes — cada coluna é uma equipe com gerente e corretores."
-            : "Membros da sua equipe — gerente e corretores vinculados."
+            : "Membros da sua equipe — use a chave para gerar senha temporária se alguém esquecer."
         }
         actions={
           <div className="flex items-center gap-2">
@@ -448,6 +519,12 @@ function EquipesPage() {
                       key={m.id}
                       member={m}
                       roleLabel="Corretor"
+                      onResetPassword={
+                        canResetMemberPassword
+                          ? () => void handleResetPassword(m)
+                          : undefined
+                      }
+                      resetting={resettingId === m.id}
                     />
                   ))
                 )}
@@ -614,6 +691,81 @@ function EquipesPage() {
           </AlertDialog>
         </>
       )}
+
+      <FormDialogShell
+        open={!!credentials}
+        onOpenChange={(o) => !o && setCredentials(null)}
+        icon={<KeyRound className="w-5 h-5" />}
+        title="Senha temporária gerada"
+        description={
+          credentials
+            ? `Anote e entregue a ${credentials.name}. A senha só aparece agora.`
+            : undefined
+        }
+      >
+        {credentials && (
+          <>
+            <FormDialogBody>
+              <FormSection
+                icon={<Shield className="w-3.5 h-3.5 text-primary" />}
+                title="Acesso"
+              >
+                <div className="space-y-3">
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                    <div className="text-[11px] text-muted-foreground">E-mail</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-sm break-all">{credentials.email}</code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => void copyText(credentials.email, "email")}
+                      >
+                        {copiedField === "email" ? (
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1">
+                    <div className="text-[11px] text-muted-foreground">
+                      Senha temporária
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-sm font-semibold tracking-wide break-all">
+                        {credentials.password}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => void copyText(credentials.password, "password")}
+                      >
+                        {copiedField === "password" ? (
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </FormSection>
+            </FormDialogBody>
+            <FormDialogActions hint="Peça ao corretor para trocar a senha no perfil após o login.">
+              <Button type="button" onClick={() => setCredentials(null)}>
+                Entendi
+              </Button>
+            </FormDialogActions>
+          </>
+        )}
+      </FormDialogShell>
     </div>
   );
 }
