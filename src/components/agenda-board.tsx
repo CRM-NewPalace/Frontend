@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export type AgendaViewMode = "dia" | "semana" | "mes";
 
 const HOUR_START = 7;
-const HOUR_END = 21;
+const HOUR_END = 23;
 const PX_PER_HOUR = 56;
 const DEFAULT_DURATION_MIN = 60;
 

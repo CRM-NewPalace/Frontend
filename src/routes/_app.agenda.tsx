@@ -256,7 +256,13 @@ function AgendaPage() {
     base.date = toDateInput(target);
     if (hour != null) {
       base.timeStart = `${String(hour).padStart(2, "0")}:00`;
-      base.timeEnd = `${String(Math.min(hour + 1, 23)).padStart(2, "0")}:00`;
+      if (hour === 23) {
+        base.timeEnd = "23:59";
+      } else if (hour === 0) {
+        base.timeEnd = "00:30";
+      } else {
+        base.timeEnd = `${String(hour + 1).padStart(2, "0")}:00`;
+      }
     }
     setForm(base);
     setOpen(true);

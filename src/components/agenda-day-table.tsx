@@ -19,8 +19,10 @@ import { cn } from "@/lib/utils";
 import { Clock, MapPin, Pencil, Plus, User, Users } from "lucide-react";
 import { sameDay, toDateInput } from "@/components/agenda-board";
 
-const HOUR_START = 7;
-const HOUR_END = 20;
+/** Horários da tabela: 07:00 até 00:00. */
+const DAY_HOURS = [
+  7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0,
+] as const;
 
 const TIPO_BADGE: Record<AgendamentoTipo, string> = {
   visita: "bg-violet-100 text-violet-800 border-violet-200",
@@ -64,7 +66,7 @@ function buildDaySlots(day: Date, items: Agendamento[]): Slot[] {
   const used = new Set<string>();
   const slots: Slot[] = [];
 
-  for (let hour = HOUR_START; hour <= HOUR_END; hour += 1) {
+  for (const hour of DAY_HOURS) {
     const atHour = dayItems.filter((item) => {
       if (used.has(item.id)) return false;
       return new Date(item.startsAt).getHours() === hour;
@@ -81,7 +83,7 @@ function buildDaySlots(day: Date, items: Agendamento[]): Slot[] {
     }
   }
 
-  // Compromissos fora da grade (antes/depois) ainda aparecem no fim.
+  // Compromissos fora da grade (madrugada 01–06) ainda aparecem no fim.
   for (const item of dayItems) {
     if (used.has(item.id)) continue;
     slots.push({
@@ -92,6 +94,10 @@ function buildDaySlots(day: Date, items: Agendamento[]): Slot[] {
   }
 
   return slots;
+}
+
+function formatHourLabel(hour: number) {
+  return `${String(hour).padStart(2, "0")}:00`;
 }
 
 type Props = {
@@ -183,7 +189,7 @@ export function AgendaDayTable({
                           )}
                         >
                           <Clock className="w-3.5 h-3.5" />
-                          {String(slot.hour).padStart(2, "0")}:00
+                          {formatHourLabel(slot.hour)}
                         </div>
                       </TableCell>
                       <TableCell colSpan={showCorretor ? 4 : 3}>
