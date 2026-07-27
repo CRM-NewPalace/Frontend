@@ -7,10 +7,17 @@ import {
   Banknote, ScrollText, ArrowUpRight, ArrowDownRight, FolderKanban,
   FolderOpen, SearchCheck, Percent, Goal, UserX, Network, type LucideIcon,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSession, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import { setTheme } from "@/lib/theme";
+import { ApiError } from "@/lib/api";
+import {
+  fetchNotificacoes,
+  markAllNotificacoesLidas,
+  markNotificacaoLida,
+  type Notificacao,
+} from "@/lib/notificacoes-api";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -119,10 +126,60 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     operacao: true,
   });
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => { setUser(getSession()); }, []);
+
+  const loadNotificacoes = useCallback(async () => {
+    try {
+      setNotificacoes(await fetchNotificacoes());
+    } catch {
+      // silencioso: sino não deve quebrar o shell
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadNotificacoes();
+    const id = window.setInterval(() => void loadNotificacoes(), 60_000);
+    return () => window.clearInterval(id);
+  }, [user, loadNotificacoes]);
+
+  const unreadCount = useMemo(
+    () => notificacoes.filter((n) => !n.lida).length,
+    [notificacoes],
+  );
+
+  async function handleOpenNotif(n: Notificacao) {
+    try {
+      if (!n.lida) {
+        const updated = await markNotificacaoLida(n.id);
+        setNotificacoes((prev) =>
+          prev.map((x) => (x.id === updated.id ? updated : x)),
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível marcar como lida.",
+      );
+    }
+    setNotifOpen(false);
+    void navigate({ to: "/funil" });
+  }
+
+  async function handleMarkAllRead() {
+    try {
+      await markAllNotificacoesLidas();
+      setNotificacoes((prev) => prev.map((n) => ({ ...n, lida: true })));
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível marcar todas.",
+      );
+    }
+  }
 
   const navSections = useMemo(() => {
     if (!user) return [];
@@ -338,10 +395,61 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-8 sm:pl-9 h-9 bg-background text-sm" />
           </div>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-4 h-4" />
-            <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] bg-primary">3</Badge>
-          </Button>
+          <DropdownMenu open={notifOpen} onOpenChange={(o) => {
+            setNotifOpen(o);
+            if (o) void loadNotificacoes();
+          }}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] bg-primary">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 p-0">
+              <div className="flex items-center justify-between px-3 py-2 border-b">
+                <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
+                {unreadCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => void handleMarkAllRead()}
+                  >
+                    Marcar todas
+                  </Button>
+                )}
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {notificacoes.length === 0 ? (
+                  <div className="px-3 py-8 text-center text-xs text-muted-foreground">
+                    Nenhuma notificação
+                  </div>
+                ) : (
+                  notificacoes.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      className={cn(
+                        "w-full text-left px-3 py-2.5 border-b last:border-0 hover:bg-accent/60 transition-colors",
+                        !n.lida && "bg-primary/5",
+                      )}
+                      onClick={() => void handleOpenNotif(n)}
+                    >
+                      <div className="text-xs font-medium leading-snug">{n.titulo}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                        {n.corpo}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button

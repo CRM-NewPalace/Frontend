@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_app/usuarios")({
 });
 
 /** Cache da lista para abrir a tela sem esperar a API (sincroniza em background). */
-const USERS_CACHE_KEY = "crm_users_cache_v1";
+const USERS_CACHE_KEY = "crm_users_cache_v2";
 let usersMemoryCache: ApiUser[] | null = null;
 
 function getUsersCache(): ApiUser[] | null {
@@ -92,6 +92,7 @@ type FormState = {
   name: string;
   email: string;
   phone: string;
+  whatsapp: string;
   cargo: string;
   role: Role;
   status: UserStatus;
@@ -102,6 +103,7 @@ const emptyForm = (): FormState => ({
   name: "",
   email: "",
   phone: "",
+  whatsapp: "",
   cargo: "",
   role: "corretor",
   status: "ativo",
@@ -113,6 +115,7 @@ function userToForm(u: ApiUser): FormState {
     name: u.name,
     email: u.email,
     phone: u.phone ? formatPhone(u.phone) : "",
+    whatsapp: u.whatsapp ? formatPhone(u.whatsapp) : "",
     cargo: u.cargo ?? "",
     role: u.role,
     status: u.status,
@@ -268,6 +271,7 @@ function Usuarios() {
     const name = form.name.trim();
     const email = form.email.trim().toLowerCase();
     const phone = form.phone.trim();
+    const whatsapp = form.whatsapp.trim();
     const cargo = form.cargo.trim();
 
     if (!name || !email) {
@@ -276,6 +280,10 @@ function Usuarios() {
     }
     if (phone && !isValidPhone(phone)) {
       toast.error(PHONE_INVALID_MESSAGE);
+      return;
+    }
+    if (whatsapp && !isValidPhone(whatsapp)) {
+      toast.error("Informe um WhatsApp válido com DDD.");
       return;
     }
     if (formMode === "create" && !isStrongPassword(form.password)) {
@@ -291,6 +299,7 @@ function Usuarios() {
           email,
           password: form.password,
           phone: phone || undefined,
+          whatsapp: whatsapp || undefined,
           cargo: cargo || undefined,
           role: form.role,
           status: form.status,
@@ -308,6 +317,7 @@ function Usuarios() {
           name,
           email,
           phone: phone || null,
+          whatsapp: whatsapp || null,
           cargo: cargo || null,
           role: form.role,
           status: form.status,
@@ -558,6 +568,20 @@ function Usuarios() {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label htmlFor="usr-wa" className="text-xs text-muted-foreground">WhatsApp</Label>
+                <Input
+                  id="usr-wa"
+                  type="tel"
+                  value={form.whatsapp}
+                  onChange={(e) => setField("whatsapp", formatPhone(e.target.value))}
+                  placeholder={PHONE_PLACEHOLDER}
+                  className="h-10 bg-background"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Usado para enviar o resultado da análise ao corretor.
+                </p>
+              </div>
+              <div className="space-y-1.5">
                 <Label htmlFor="usr-cargo" className="text-xs text-muted-foreground">Cargo</Label>
                 <Input id="usr-cargo" value={form.cargo} onChange={(e) => setField("cargo", e.target.value)} placeholder="Ex.: Corretor sênior" className="h-10 bg-background" />
               </div>
@@ -640,6 +664,7 @@ function Usuarios() {
                     </div>
                   </div>
                   <DetailField label="Telefone" value={detail.phone || "—"} />
+                  <DetailField label="WhatsApp" value={detail.whatsapp || "—"} />
                   <DetailField label="Cargo" value={detail.cargo || "—"} />
                   <DetailField label="Último acesso" value={formatLastAccess(detail.lastLoginAt)} />
                 </div>

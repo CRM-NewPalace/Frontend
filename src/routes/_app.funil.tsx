@@ -15,7 +15,7 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { brl, prioridadeBadgeClass, type Lead, type StageId } from "@/lib/crm-types";
+import { brl, prioridadeBadgeClass, type AnaliseStatus, type Lead, type StageId } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
@@ -26,6 +26,19 @@ import {
 import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
+  pendente: "Análise pendente",
+  aprovado: "Análise aprovada",
+  reprovado: "Análise reprovada",
+};
+
+function analiseBadgeClass(status: AnaliseStatus) {
+  if (status === "aprovado") return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  if (status === "reprovado") return "border-destructive/40 bg-destructive/10 text-destructive";
+  return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
+}
 
 /** Slug da etapa que dispara o fluxo de "lead perdido". */
 const LOST_STAGE_SLUG = "perdido";
@@ -311,6 +324,14 @@ function Funil() {
                         }`} />
                       </div>
                     </div>
+                    {l.analise && (
+                      <Badge
+                        variant="outline"
+                        className={cn("text-[9px] px-1.5 py-0 h-5 mb-1", analiseBadgeClass(l.analise.status))}
+                      >
+                        {ANALISE_STATUS_LABEL[l.analise.status]}
+                      </Badge>
+                    )}
                     <div className="text-xs text-muted-foreground">{l.telefone}</div>
                     {l.tipo === "cliente" && !isCorretor && (
                       <div className="text-[10px] text-violet-600 dark:text-violet-300 mt-1">
@@ -367,6 +388,26 @@ function Funil() {
                   <DetailField label="E-mail" value={detailLead.email} />
                   <DetailField label="Origem" value={detailLead.origem} />
                   {!isCorretor && <DetailField label="Corretor" value={detailLead.corretor} />}
+                  {detailLead.analise && (
+                    <DetailField
+                      label="Análise"
+                      value={
+                        <div className="space-y-1">
+                          <Badge
+                            variant="outline"
+                            className={cn("text-[10px]", analiseBadgeClass(detailLead.analise.status))}
+                          >
+                            {ANALISE_STATUS_LABEL[detailLead.analise.status]}
+                          </Badge>
+                          {detailLead.analise.parecer ? (
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {detailLead.analise.parecer}
+                            </p>
+                          ) : null}
+                        </div>
+                      }
+                    />
+                  )}
                 </div>
               </FormSection>
               <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse e renda">

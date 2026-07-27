@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { ContatoTipo, Lead, StageId } from "@/lib/crm-types";
+import type { AnaliseStatus, ContatoTipo, Lead, StageId } from "@/lib/crm-types";
 
 /** Shape retornado pelo backend (Prisma select). */
 export interface ApiLead {
@@ -18,6 +18,7 @@ export interface ApiLead {
   tags: string[];
   corretorId: string | null;
   corretor: { id: string; name: string } | null;
+  analise?: { status: AnaliseStatus; parecer: string | null } | null;
   perdidoAt?: string | null;
   motivoPerda?: string | null;
   perdidoPorId?: string | null;
@@ -76,6 +77,7 @@ export function mapApiLead(api: ApiLead): Lead {
     renda: api.renda ?? null,
     updatedAt: formatUpdatedAt(api.updatedAt),
     tags: api.tags ?? [],
+    analise: api.analise ?? null,
   };
 }
 

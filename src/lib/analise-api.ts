@@ -34,7 +34,7 @@ export interface Analise {
     nome: string;
     stage: StageId;
     corretorId: string | null;
-    corretor: { id: string; name: string } | null;
+    corretor: { id: string; name: string; whatsapp?: string | null } | null;
   };
 }
 

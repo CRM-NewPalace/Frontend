@@ -25,10 +25,11 @@ import {
 } from "@/lib/analise-api";
 import {
   SearchCheck, Loader2, ChevronLeft, ChevronRight, Users, User,
-  Wallet, FileText, MapPin,
+  Wallet, FileText, MapPin, MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { phoneDigits } from "@/lib/phone";
 
 export const Route = createFileRoute("/_app/resultado")({
   head: () => ({ meta: [{ title: "Análise — Imob CRM" }] }),
@@ -206,7 +207,11 @@ function AnalisePage() {
       });
       setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
       setDetail(updated);
-      toast.success("Análise atualizada.");
+      toast.success(
+        statusDraft === "aprovado" || statusDraft === "reprovado"
+          ? "Análise salva. O corretor foi notificado no sistema."
+          : "Análise atualizada.",
+      );
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -216,6 +221,28 @@ function AnalisePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function openWhatsApp(item: Analise) {
+    const raw = item.lead.corretor?.whatsapp;
+    if (!raw) {
+      toast.error("Cadastre o WhatsApp do corretor em Usuários.");
+      return;
+    }
+    const digits = phoneDigits(raw);
+    if (digits.length < 10) {
+      toast.error("WhatsApp do corretor inválido.");
+      return;
+    }
+    const e164 = digits.startsWith("55") ? digits : `55${digits}`;
+    const statusLabel = STATUS_LABEL[item.status];
+    const parecer = item.parecer?.trim()
+      ? `\nParecer: ${item.parecer.trim()}`
+      : "";
+    const text = encodeURIComponent(
+      `*Resultado da análise*\nCliente: ${item.nome}\nStatus: ${statusLabel}${parecer}`,
+    );
+    window.open(`https://wa.me/${e164}?text=${text}`, "_blank", "noopener,noreferrer");
   }
 
   const busy = loading || leadsLoading;
@@ -413,6 +440,20 @@ function AnalisePage() {
             <FormDialogActions>
               <Button type="button" variant="outline" onClick={() => setDetail(null)}>
                 Fechar
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!detail.lead.corretor?.whatsapp}
+                title={
+                  detail.lead.corretor?.whatsapp
+                    ? "Abrir WhatsApp com o resultado"
+                    : "Cadastre o WhatsApp do corretor em Usuários"
+                }
+                onClick={() => openWhatsApp(detail)}
+              >
+                <MessageCircle className="w-4 h-4 mr-1" />
+                WhatsApp
               </Button>
               <Button
                 type="button"

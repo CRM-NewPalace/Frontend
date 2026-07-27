@@ -7,6 +7,8 @@ export type StageId = string;
 
 export type ContatoTipo = "lead" | "cliente";
 
+export type AnaliseStatus = "pendente" | "aprovado" | "reprovado";
+
 export interface Lead {
   id: string;
   /** lead = captação; cliente = carteira pessoal do corretor. */
@@ -28,6 +30,8 @@ export interface Lead {
   renda: number | null;
   updatedAt: string;
   tags: string[];
+  /** Ficha de análise, se existir. */
+  analise?: { status: AnaliseStatus; parecer: string | null } | null;
 }
 
 export function brl(n: number) {
