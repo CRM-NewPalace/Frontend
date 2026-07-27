@@ -568,10 +568,10 @@ function Funil() {
                 <ClipboardList className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <DialogTitle>Registrar histórico?</DialogTitle>
+                <DialogTitle>Adicionar relato?</DialogTitle>
                 <DialogDescription>
                   {triagemPrompt
-                    ? `${triagemPrompt.leadNome} foi movido para ${triagemPrompt.stageName}. Deseja registrar um relato na Triagem?`
+                    ? `${triagemPrompt.leadNome} foi movido para ${triagemPrompt.stageName}. A etapa já foi registrada na Triagem. Deseja incluir um relato com mais detalhes?`
                     : null}
                 </DialogDescription>
               </div>
@@ -583,7 +583,7 @@ function Funil() {
               variant="outline"
               onClick={() => setTriagemPrompt(null)}
             >
-              Não registrar
+              Não, obrigado
             </Button>
             <Button
               type="button"
@@ -597,7 +597,7 @@ function Funil() {
                 });
               }}
             >
-              Registrar
+              Adicionar relato
             </Button>
           </DialogFooter>
         </DialogContent>
