@@ -41,6 +41,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/triagem",
     "/documentacao",
     "/resultado",
+    "/usuarios",
     "/propostas",
     "/relatorios",
     "/configuracoes",

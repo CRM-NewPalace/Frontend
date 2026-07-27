@@ -103,6 +103,7 @@ const NAV_SECTIONS: {
     icon: BarChart3,
     gerenteOnly: true,
     items: [
+      { to: "/usuarios", label: "Usuários", icon: UsersRound },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
     ],

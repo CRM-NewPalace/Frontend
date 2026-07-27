@@ -24,9 +24,10 @@ import {
 } from "@/components/form-dialog";
 import {
   Plus, MoreHorizontal, KeyRound, Ban, Pencil, Trash2, Eye, UserPlus,
-  Search, CheckCircle2, Sparkles, Shield,
+  Search, CheckCircle2, Sparkles, Shield, Copy, Check,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
+import { canViewTeamData } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import { useLeads } from "@/lib/leads-store";
 import {
@@ -150,6 +151,8 @@ function isStrongPassword(value: string) {
 
 function Usuarios() {
   const session = getSession();
+  const isAdmin = session?.role === "admin";
+  const isManager = session ? canViewTeamData(session.role) : false;
   const { refresh: refreshLeads } = useLeads();
 
   const cachedUsers = getUsersCache();
@@ -180,6 +183,13 @@ function Usuarios() {
 
   const [detail, setDetail] = useState<ApiUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiUser | null>(null);
+  const [credentials, setCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    title: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(null);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -238,8 +248,23 @@ function Usuarios() {
     void refreshLeads({ silent: true });
   }
 
+  async function copyText(value: string, field: "email" | "password") {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      toast.success(field === "email" ? "E-mail copiado." : "Senha copiada.");
+      window.setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      toast.error("Não foi possível copiar.");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isAdmin) {
+      toast.error("Apenas administradores podem criar ou editar usuários.");
+      return;
+    }
     const name = form.name.trim();
     const email = form.email.trim().toLowerCase();
     const phone = form.phone.trim();
@@ -271,7 +296,13 @@ function Usuarios() {
           status: form.status,
         });
         setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
-        toast.success(`Usuário ${name} criado.`);
+        setFormOpen(false);
+        setCredentials({
+          name: created.name,
+          email: created.email,
+          password: form.password,
+          title: "Credenciais do novo usuário",
+        });
       } else if (editingId) {
         const updated = await updateUser(editingId, {
           name,
@@ -283,8 +314,8 @@ function Usuarios() {
         });
         setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
         toast.success("Usuário atualizado.");
+        setFormOpen(false);
       }
-      setFormOpen(false);
       void syncTeam();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Não foi possível salvar.");
@@ -335,9 +366,12 @@ function Usuarios() {
     try {
       const result = await resetUserPassword(u.id);
       if (result.temporaryPassword) {
-        toast.success(`Senha temporária gerada para ${u.name}`, {
-          description: result.temporaryPassword,
-          duration: 20_000,
+        setDetail(null);
+        setCredentials({
+          name: u.name,
+          email: u.email,
+          password: result.temporaryPassword,
+          title: "Senha temporária gerada",
         });
       } else {
         toast.success(`Senha de ${u.name} redefinida.`);
@@ -351,11 +385,19 @@ function Usuarios() {
     <div>
       <PageHeader
         title="Usuários"
-        description={loading ? "Carregando usuários..." : `${filtered.length} de ${users.length} usuários`}
+        description={
+          loading
+            ? "Carregando usuários..."
+            : isAdmin
+              ? `${filtered.length} de ${users.length} usuários`
+              : `Membros da sua equipe — ${filtered.length} usuário(s). E-mail visível; use Resetar senha se alguém esquecer.`
+        }
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />Novo usuário
-          </Button>
+          isAdmin ? (
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />Novo usuário
+            </Button>
+          ) : undefined
         }
       />
 
@@ -447,30 +489,40 @@ function Usuarios() {
                         <DropdownMenuItem onClick={() => setDetail(u)}>
                           <Eye className="w-3.5 h-3.5 mr-2" />Ver detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openEdit(u)}>
-                          <Pencil className="w-3.5 h-3.5 mr-2" />Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => void handleResetPassword(u)}>
-                          <KeyRound className="w-3.5 h-3.5 mr-2" />Resetar senha
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={session?.id === u.id && u.status === "ativo"}
-                          onClick={() => void toggleStatus(u)}
-                        >
-                          {u.status === "ativo" ? (
-                            <><Ban className="w-3.5 h-3.5 mr-2" />Inativar</>
-                          ) : (
-                            <><CheckCircle2 className="w-3.5 h-3.5 mr-2" />Reativar</>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          disabled={session?.id === u.id}
-                          onClick={() => setDeleteTarget(u)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-2" />Excluir
-                        </DropdownMenuItem>
+                        {isAdmin && (
+                          <DropdownMenuItem onClick={() => openEdit(u)}>
+                            <Pencil className="w-3.5 h-3.5 mr-2" />Editar
+                          </DropdownMenuItem>
+                        )}
+                        {(isAdmin || (isManager && u.role === "corretor")) && (
+                          <DropdownMenuItem onClick={() => void handleResetPassword(u)}>
+                            <KeyRound className="w-3.5 h-3.5 mr-2" />Gerar senha temporária
+                          </DropdownMenuItem>
+                        )}
+                        {isAdmin && (
+                          <DropdownMenuItem
+                            disabled={session?.id === u.id && u.status === "ativo"}
+                            onClick={() => void toggleStatus(u)}
+                          >
+                            {u.status === "ativo" ? (
+                              <><Ban className="w-3.5 h-3.5 mr-2" />Inativar</>
+                            ) : (
+                              <><CheckCircle2 className="w-3.5 h-3.5 mr-2" />Reativar</>
+                            )}
+                          </DropdownMenuItem>
+                        )}
+                        {isAdmin && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={session?.id === u.id}
+                              onClick={() => setDeleteTarget(u)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-2" />Excluir
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -567,7 +619,26 @@ function Usuarios() {
             <FormDialogBody>
               <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField label="E-mail" value={detail.email} />
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">E-mail</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium break-all">{detail.email}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        onClick={() => void copyText(detail.email, "email")}
+                        title="Copiar e-mail"
+                      >
+                        {copiedField === "email" ? (
+                          <Check className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                   <DetailField label="Telefone" value={detail.phone || "—"} />
                   <DetailField label="Cargo" value={detail.cargo || "—"} />
                   <DetailField label="Último acesso" value={formatLastAccess(detail.lastLoginAt)} />
@@ -578,11 +649,99 @@ function Usuarios() {
                   <DetailField label="Perfil" value={ROLE_LABEL[detail.role]} />
                   <DetailField label="Status" value={STATUS_LABEL[detail.status]} />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  A senha original não pode ser visualizada (fica criptografada). Use{" "}
+                  <strong>Gerar senha temporária</strong> se o usuário esquecer.
+                </p>
               </FormSection>
             </FormDialogBody>
             <FormDialogActions>
               <Button type="button" variant="outline" onClick={() => setDetail(null)}>Fechar</Button>
-              <Button type="button" onClick={() => openEdit(detail)}><Pencil className="w-4 h-4 mr-1" />Editar</Button>
+              {(isAdmin || (isManager && detail.role === "corretor")) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void handleResetPassword(detail)}
+                >
+                  <KeyRound className="w-4 h-4 mr-1" />
+                  Gerar senha temporária
+                </Button>
+              )}
+              {isAdmin && (
+                <Button type="button" onClick={() => openEdit(detail)}>
+                  <Pencil className="w-4 h-4 mr-1" />Editar
+                </Button>
+              )}
+            </FormDialogActions>
+          </>
+        )}
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={!!credentials}
+        onOpenChange={(o) => !o && setCredentials(null)}
+        icon={<KeyRound className="w-5 h-5" />}
+        title={credentials?.title ?? "Credenciais"}
+        description={
+          credentials
+            ? `Anote e entregue a ${credentials.name}. A senha só aparece agora.`
+            : undefined
+        }
+      >
+        {credentials && (
+          <>
+            <FormDialogBody>
+              <FormSection icon={<Shield className="w-3.5 h-3.5 text-primary" />} title="Acesso">
+                <div className="space-y-3">
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                    <div className="text-[11px] text-muted-foreground">E-mail</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-sm break-all">{credentials.email}</code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => void copyText(credentials.email, "email")}
+                      >
+                        {copiedField === "email" ? (
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Senha temporária</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-sm font-semibold tracking-wide break-all">
+                        {credentials.password}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => void copyText(credentials.password, "password")}
+                      >
+                        {copiedField === "password" ? (
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </FormSection>
+            </FormDialogBody>
+            <FormDialogActions hint="Peça ao usuário para trocar a senha no perfil após o login.">
+              <Button type="button" onClick={() => setCredentials(null)}>
+                Entendi
+              </Button>
             </FormDialogActions>
           </>
         )}
