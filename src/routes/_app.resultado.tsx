@@ -199,6 +199,7 @@ function AnalisePage() {
 
   async function handleSaveDetail() {
     if (!detail) return;
+    const previousStatus = detail.status;
     setSaving(true);
     try {
       const updated = await updateAnalise(detail.id, {
@@ -207,11 +208,19 @@ function AnalisePage() {
       });
       setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
       setDetail(updated);
-      toast.success(
-        statusDraft === "aprovado" || statusDraft === "reprovado"
-          ? "Análise salva. O corretor foi notificado no sistema."
-          : "Análise atualizada.",
-      );
+
+      const isResultado =
+        updated.status === "aprovado" || updated.status === "reprovado";
+      const statusMudouParaResultado =
+        isResultado && previousStatus !== updated.status;
+
+      if (statusMudouParaResultado) {
+        toast.success("Análise salva. O corretor foi notificado no sistema.");
+        // Abre WhatsApp com mensagem pronta (gerente confirma o envio no app).
+        openWhatsApp(updated, { silentIfMissing: true });
+      } else {
+        toast.success("Análise atualizada.");
+      }
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -223,10 +232,19 @@ function AnalisePage() {
     }
   }
 
-  function openWhatsApp(item: Analise) {
+  function openWhatsApp(
+    item: Analise,
+    opts?: { silentIfMissing?: boolean },
+  ) {
     const raw = item.lead.corretor?.whatsapp;
     if (!raw) {
-      toast.error("Cadastre o WhatsApp do corretor em Usuários.");
+      if (!opts?.silentIfMissing) {
+        toast.error("Cadastre o WhatsApp do corretor em Usuários.");
+      } else {
+        toast.message(
+          "WhatsApp não aberto: cadastre o número do corretor em Usuários.",
+        );
+      }
       return;
     }
     const digits = phoneDigits(raw);
@@ -447,7 +465,7 @@ function AnalisePage() {
                 disabled={!detail.lead.corretor?.whatsapp}
                 title={
                   detail.lead.corretor?.whatsapp
-                    ? "Abrir WhatsApp com o resultado"
+                    ? "Abrir WhatsApp de novo (também abre ao salvar aprovado/reprovado)"
                     : "Cadastre o WhatsApp do corretor em Usuários"
                 }
                 onClick={() => openWhatsApp(detail)}
