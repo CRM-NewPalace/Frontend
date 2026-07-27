@@ -2,8 +2,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +31,7 @@ import {
 import {
   AgendaBoard,
   addDays,
-  endOfMonth,
+  endOfDay,
   formatRangeLabel,
   getVisibleRange,
   startOfDay,
@@ -73,7 +71,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { ptBR } from "date-fns/locale";
 
 type LayoutMode = "tabela" | "calendario";
 
@@ -137,9 +134,6 @@ function AgendaPage() {
   const [selectedDay, setSelectedDay] = useState<Date>(() =>
     startOfDay(new Date()),
   );
-  const [miniMonth, setMiniMonth] = useState<Date>(() =>
-    startOfMonth(new Date()),
-  );
 
   const [items, setItems] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,10 +150,9 @@ function AgendaPage() {
 
   const visibleRange = useMemo(() => {
     if (layoutMode === "tabela") {
-      // Carrega o mês do dia selecionado (mini calendário + tabela do dia).
       return {
-        from: startOfMonth(selectedDay),
-        to: endOfMonth(selectedDay),
+        from: startOfDay(selectedDay),
+        to: endOfDay(selectedDay),
       };
     }
     return getVisibleRange(view, selectedDay);
@@ -226,23 +219,6 @@ function AgendaPage() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
-
-  const daysWithEvents = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const item of items) {
-      if (item.status === "cancelado") continue;
-      const key = toDateInput(new Date(item.startsAt));
-      map.set(key, (map.get(key) ?? 0) + 1);
-    }
-    return map;
-  }, [items]);
-
-  const modifiers = useMemo(
-    () => ({
-      hasEvent: (day: Date) => daysWithEvents.has(toDateInput(day)),
-    }),
-    [daysWithEvents],
-  );
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -394,18 +370,12 @@ function AgendaPage() {
   }
 
   function goToday() {
-    const today = startOfDay(new Date());
-    setSelectedDay(today);
-    setMiniMonth(startOfMonth(today));
+    setSelectedDay(startOfDay(new Date()));
   }
 
   function navigate(direction: -1 | 1) {
     if (layoutMode === "tabela") {
-      setSelectedDay((d) => {
-        const next = addDays(d, direction);
-        setMiniMonth(startOfMonth(next));
-        return next;
-      });
+      setSelectedDay((d) => addDays(d, direction));
       return;
     }
     if (view === "dia") {
@@ -416,19 +386,13 @@ function AgendaPage() {
       setSelectedDay((d) => addDays(d, direction * 7));
       return;
     }
-    setSelectedDay((d) => {
-      const next = startOfMonth(
-        new Date(d.getFullYear(), d.getMonth() + direction, 1),
-      );
-      setMiniMonth(next);
-      return next;
-    });
+    setSelectedDay((d) =>
+      startOfMonth(new Date(d.getFullYear(), d.getMonth() + direction, 1)),
+    );
   }
 
   function handleSelectDay(day: Date) {
-    const d = startOfDay(day);
-    setSelectedDay(d);
-    setMiniMonth(startOfMonth(d));
+    setSelectedDay(startOfDay(day));
     setLayoutMode("tabela");
   }
 
@@ -579,71 +543,26 @@ function AgendaPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[220px_1fr]">
-        <Card className="h-fit hidden xl:block">
-          <CardContent className="p-2">
-            <Calendar
-              mode="single"
-              locale={ptBR}
-              selected={selectedDay}
-              month={miniMonth}
-              onMonthChange={setMiniMonth}
-              onSelect={(day) => {
-                if (!day) return;
-                setSelectedDay(startOfDay(day));
-              }}
-              modifiers={modifiers}
-              modifiersClassNames={{
-                hasEvent:
-                  "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:size-1 after:rounded-full after:bg-primary",
-              }}
-            />
-            <div className="px-2 pb-2 pt-1 space-y-1.5 text-[11px] text-muted-foreground">
-              <p className="font-medium text-foreground">Legenda</p>
-              <div className="flex flex-wrap gap-1.5">
-                {AGENDAMENTO_TIPOS.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5"
-                  >
-                    <span
-                      className={cn(
-                        "size-1.5 rounded-full",
-                        t === "visita" && "bg-violet-500",
-                        t === "ligacao" && "bg-sky-500",
-                        t === "reuniao" && "bg-amber-500",
-                        t === "outro" && "bg-slate-500",
-                      )}
-                    />
-                    {AGENDAMENTO_TIPO_LABEL[t]}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {layoutMode === "tabela" ? (
-          <AgendaDayTable
-            day={selectedDay}
-            items={items}
-            loading={loading}
-            showCorretor={isManager}
-            onCreateAt={openCreate}
-            onEdit={openEdit}
-          />
-        ) : (
-          <AgendaBoard
-            view={view}
-            anchor={selectedDay}
-            items={items}
-            loading={loading}
-            onSelectDay={handleSelectDay}
-            onCreateAt={openCreate}
-            onEdit={openEdit}
-          />
-        )}
-      </div>
+      {layoutMode === "tabela" ? (
+        <AgendaDayTable
+          day={selectedDay}
+          items={items}
+          loading={loading}
+          showCorretor={isManager}
+          onCreateAt={openCreate}
+          onEdit={openEdit}
+        />
+      ) : (
+        <AgendaBoard
+          view={view}
+          anchor={selectedDay}
+          items={items}
+          loading={loading}
+          onSelectDay={handleSelectDay}
+          onCreateAt={openCreate}
+          onEdit={openEdit}
+        />
+      )}
 
       <FormDialogShell
         open={open}
