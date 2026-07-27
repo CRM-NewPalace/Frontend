@@ -19,6 +19,7 @@ const TIPO_BLOCK: Record<AgendamentoTipo, string> = {
   visita: "bg-violet-500 border-violet-600 text-white",
   ligacao: "bg-sky-500 border-sky-600 text-white",
   reuniao: "bg-amber-500 border-amber-600 text-white",
+  tarefa: "bg-emerald-500 border-emerald-600 text-white",
   outro: "bg-slate-500 border-slate-600 text-white",
 };
 

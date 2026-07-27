@@ -28,6 +28,7 @@ const TIPO_BADGE: Record<AgendamentoTipo, string> = {
   visita: "bg-violet-100 text-violet-800 border-violet-200",
   ligacao: "bg-sky-100 text-sky-800 border-sky-200",
   reuniao: "bg-amber-100 text-amber-900 border-amber-200",
+  tarefa: "bg-emerald-100 text-emerald-800 border-emerald-200",
   outro: "bg-slate-100 text-slate-700 border-slate-200",
 };
 
@@ -241,6 +242,22 @@ export function AgendaDayTable({
                       >
                         {item.titulo}
                       </button>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {item.escopo === "pessoal" ? (
+                          <Badge variant="outline" className="text-[10px]">
+                            Pessoal
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-800">
+                            Com gerente
+                          </Badge>
+                        )}
+                        {item.solicitacaoStatus === "pendente" ? (
+                          <Badge className="text-[10px] bg-amber-500 hover:bg-amber-500">
+                            Aguardando
+                          </Badge>
+                        ) : null}
+                      </div>
                       {item.local ? (
                         <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="w-3 h-3" />

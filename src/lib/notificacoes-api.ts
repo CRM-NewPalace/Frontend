@@ -1,6 +1,9 @@
 import { apiFetch } from "@/lib/api";
 
-export type NotificacaoTipo = "analise_resultado";
+export type NotificacaoTipo =
+  | "analise_resultado"
+  | "agenda_solicitacao"
+  | "agenda_resposta";
 
 export type Notificacao = {
   id: string;
@@ -10,6 +13,7 @@ export type Notificacao = {
   lida: boolean;
   leadId: string | null;
   analiseId: string | null;
+  agendamentoId: string | null;
   createdAt: string;
 };
 

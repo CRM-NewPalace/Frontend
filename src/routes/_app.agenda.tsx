@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,15 +46,20 @@ import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { ApiError } from "@/lib/api";
 import {
+  AGENDAMENTO_ESCOPO_LABEL,
   AGENDAMENTO_STATUS,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPOS,
   AGENDAMENTO_TIPO_LABEL,
+  aprovarAgendamento,
   createAgendamento,
   deleteAgendamento,
   fetchAgendamentos,
+  fetchSolicitacoesAgenda,
+  recusarAgendamento,
   updateAgendamento,
   type Agendamento,
+  type AgendamentoEscopo,
   type AgendamentoStatus,
   type AgendamentoTipo,
   type CreateAgendamentoInput,
@@ -61,6 +67,7 @@ import {
 import {
   CalendarDays,
   CalendarRange,
+  Check,
   ChevronLeft,
   ChevronRight,
   LayoutList,
@@ -68,6 +75,7 @@ import {
   Plus,
   Trash2,
   User,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -84,6 +92,7 @@ type FormState = {
   clienteId: string;
   titulo: string;
   tipo: AgendamentoTipo;
+  escopo: AgendamentoEscopo;
   status: AgendamentoStatus;
   date: string;
   timeStart: string;
@@ -98,7 +107,8 @@ const emptyForm = (): FormState => {
     leadId: "",
     clienteId: "",
     titulo: "",
-    tipo: "visita",
+    tipo: "tarefa",
+    escopo: "pessoal",
     status: "agendado",
     date: toDateInput(now),
     timeStart: toTimeInput(now),
@@ -136,6 +146,7 @@ function AgendaPage() {
   );
 
   const [items, setItems] = useState<Agendamento[]>([]);
+  const [solicitacoes, setSolicitacoes] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCorretorId, setFilterCorretorId] = useState("__all__");
   const [filterTipo, setFilterTipo] = useState<string>("__all__");
@@ -147,6 +158,7 @@ function AgendaPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const visibleRange = useMemo(() => {
     if (layoutMode === "tabela") {
@@ -183,21 +195,27 @@ function AgendaPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchAgendamentos({
-        from: visibleRange.from.toISOString(),
-        to: visibleRange.to.toISOString(),
-        corretorId:
-          isManager && filterCorretorId !== "__all__"
-            ? filterCorretorId
-            : undefined,
-        tipo:
-          filterTipo !== "__all__" ? (filterTipo as AgendamentoTipo) : undefined,
-        status:
-          filterStatus !== "__all__"
-            ? (filterStatus as AgendamentoStatus)
-            : undefined,
-      });
+      const [data, sols] = await Promise.all([
+        fetchAgendamentos({
+          from: visibleRange.from.toISOString(),
+          to: visibleRange.to.toISOString(),
+          corretorId:
+            isManager && filterCorretorId !== "__all__"
+              ? filterCorretorId
+              : undefined,
+          tipo:
+            filterTipo !== "__all__"
+              ? (filterTipo as AgendamentoTipo)
+              : undefined,
+          status:
+            filterStatus !== "__all__"
+              ? (filterStatus as AgendamentoStatus)
+              : undefined,
+        }),
+        fetchSolicitacoesAgenda(),
+      ]);
       setItems(data);
+      setSolicitacoes(sols);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -278,6 +296,7 @@ function AgendaPage() {
       clienteId: item.lead.tipo === "cliente" ? item.leadId : "",
       titulo: item.titulo,
       tipo: item.tipo,
+      escopo: item.escopo,
       status: item.status,
       date: toDateInput(start),
       timeStart: toTimeInput(start),
@@ -317,6 +336,7 @@ function AgendaPage() {
       leadId,
       titulo: form.titulo.trim(),
       tipo: form.tipo,
+      escopo: form.escopo,
       startsAt,
       endsAt,
       local: form.local.trim() || null,
@@ -332,11 +352,13 @@ function AgendaPage() {
     setSaving(true);
     try {
       if (formMode === "create") {
-        await createAgendamento(payload);
+        const created = await createAgendamento(payload);
         toast.success(
-          payload.tipo === "visita"
-            ? "Visita agendada. Funil atualizado quando aplicável."
-            : "Compromisso criado.",
+          created.solicitacaoStatus === "pendente"
+            ? "Solicitação enviada ao gerente."
+            : payload.escopo === "pessoal"
+              ? "Tarefa agendada."
+              : "Compromisso criado.",
         );
       } else if (editingId) {
         await updateAgendamento(editingId, {
@@ -355,6 +377,41 @@ function AgendaPage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleAprovar(id: string) {
+    setActingId(id);
+    try {
+      await aprovarAgendamento(id);
+      toast.success("Solicitação aprovada.");
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível aprovar.",
+      );
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function handleRecusar(id: string) {
+    const motivo = window.prompt("Motivo da recusa (opcional):") ?? undefined;
+    setActingId(id);
+    try {
+      await recusarAgendamento(id, motivo || undefined);
+      toast.success("Solicitação recusada.");
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível recusar.",
+      );
+    } finally {
+      setActingId(null);
     }
   }
 
@@ -549,6 +606,78 @@ function AgendaPage() {
         </div>
       </div>
 
+      {solicitacoes.length > 0 ? (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-950">
+                {isManager
+                  ? "Solicitações aguardando aprovação"
+                  : "Suas solicitações pendentes"}
+              </h3>
+              <p className="text-xs text-amber-900/70">
+                {isManager
+                  ? "Visitas e reuniões pedidas pelos corretores da equipe."
+                  : "Aguardando o gerente aprovar o horário com a equipe."}
+              </p>
+            </div>
+            <Badge className="bg-amber-500 hover:bg-amber-500">
+              {solicitacoes.length}
+            </Badge>
+          </div>
+          <ul className="space-y-2">
+            {solicitacoes.map((s) => (
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2.5"
+              >
+                <div className="min-w-0 space-y-0.5">
+                  <p className="font-medium text-sm truncate">{s.titulo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(s.startsAt).toLocaleString("pt-BR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                    {" · "}
+                    {s.lead.nome}
+                    {isManager ? ` · ${s.autor.name}` : null}
+                    {" · "}
+                    {AGENDAMENTO_TIPO_LABEL[s.tipo]}
+                  </p>
+                </div>
+                {isManager ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={actingId === s.id}
+                      onClick={() => void handleRecusar(s.id)}
+                    >
+                      <X className="w-3.5 h-3.5 mr-1" />
+                      Recusar
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={actingId === s.id}
+                      onClick={() => void handleAprovar(s.id)}
+                    >
+                      {actingId === s.id ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Aprovar
+                    </Button>
+                  </div>
+                ) : (
+                  <Badge variant="secondary">Aguardando</Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {layoutMode === "tabela" ? (
         <AgendaDayTable
           day={selectedDay}
@@ -691,9 +820,21 @@ function AgendaPage() {
                   <Label>Tipo</Label>
                   <Select
                     value={form.tipo}
-                    onValueChange={(v) =>
-                      setField("tipo", v as AgendamentoTipo)
-                    }
+                    onValueChange={(v) => {
+                      const tipo = v as AgendamentoTipo;
+                      setForm((prev) => ({
+                        ...prev,
+                        tipo,
+                        // Visita/reunião sugerem envolvimento do gerente.
+                        escopo:
+                          tipo === "visita" || tipo === "reuniao"
+                            ? "com_gerente"
+                            : prev.escopo === "com_gerente" &&
+                                (tipo === "tarefa" || tipo === "ligacao")
+                              ? "pessoal"
+                              : prev.escopo,
+                      }));
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -706,6 +847,35 @@ function AgendaPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Participação</Label>
+                  <Select
+                    value={form.escopo}
+                    onValueChange={(v) =>
+                      setField("escopo", v as AgendamentoEscopo)
+                    }
+                    disabled={formMode === "edit"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pessoal">
+                        {AGENDAMENTO_ESCOPO_LABEL.pessoal}
+                      </SelectItem>
+                      <SelectItem value="com_gerente">
+                        {AGENDAMENTO_ESCOPO_LABEL.com_gerente}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {form.escopo === "com_gerente"
+                      ? user?.role === "corretor"
+                        ? "Será enviada solicitação ao gerente para aprovar."
+                        : "Compromisso com participação do gerente."
+                      : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
+                  </p>
                 </div>
                 {formMode === "edit" ? (
                   <div className="space-y-2">

@@ -18,6 +18,7 @@ import {
   markNotificacaoLida,
   type Notificacao,
 } from "@/lib/notificacoes-api";
+import { fetchSolicitacoesAgendaCount } from "@/lib/agenda-api";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   });
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
+  const [agendaSolicitacoesCount, setAgendaSolicitacoesCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -141,12 +143,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loadAgendaBadge = useCallback(async () => {
+    try {
+      const { count } = await fetchSolicitacoesAgendaCount();
+      setAgendaSolicitacoesCount(count);
+    } catch {
+      // silencioso
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     void loadNotificacoes();
-    const id = window.setInterval(() => void loadNotificacoes(), 60_000);
+    void loadAgendaBadge();
+    const id = window.setInterval(() => {
+      void loadNotificacoes();
+      void loadAgendaBadge();
+    }, 60_000);
     return () => window.clearInterval(id);
-  }, [user, loadNotificacoes]);
+  }, [user, loadNotificacoes, loadAgendaBadge]);
 
   const unreadCount = useMemo(
     () => notificacoes.filter((n) => !n.lida).length,
@@ -167,6 +182,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       );
     }
     setNotifOpen(false);
+    if (n.tipo === "agenda_solicitacao" || n.tipo === "agenda_resposta") {
+      void navigate({ to: "/agenda" });
+      return;
+    }
     void navigate({ to: "/funil" });
   }
 
@@ -346,6 +365,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                       const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
                       const Icon = item.icon;
+                      const showAgendaBadge =
+                        item.to === "/agenda" && agendaSolicitacoesCount > 0;
                       return (
                         <Link
                           key={item.to}
@@ -357,8 +378,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
                           )}
                         >
-                          <Icon className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{item.label}</span>
+                          <span className="relative shrink-0">
+                            <Icon className="w-4 h-4" />
+                            {showAgendaBadge && collapsed ? (
+                              <span className="absolute -top-1.5 -right-1.5 size-2 rounded-full bg-primary" />
+                            ) : null}
+                          </span>
+                          {!collapsed && (
+                            <>
+                              <span className="truncate flex-1">{item.label}</span>
+                              {showAgendaBadge ? (
+                                <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-primary">
+                                  {agendaSolicitacoesCount > 9
+                                    ? "9+"
+                                    : agendaSolicitacoesCount}
+                                </Badge>
+                              ) : null}
+                            </>
+                          )}
                         </Link>
                       );
                     })}

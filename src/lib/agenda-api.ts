@@ -5,6 +5,7 @@ export const AGENDAMENTO_TIPOS = [
   "visita",
   "ligacao",
   "reuniao",
+  "tarefa",
   "outro",
 ] as const;
 
@@ -18,10 +19,23 @@ export const AGENDAMENTO_STATUS = [
 
 export type AgendamentoStatus = (typeof AGENDAMENTO_STATUS)[number];
 
+export const AGENDAMENTO_ESCOPOS = ["pessoal", "com_gerente"] as const;
+export type AgendamentoEscopo = (typeof AGENDAMENTO_ESCOPOS)[number];
+
+export const AGENDAMENTO_SOLICITACAO = [
+  "nenhuma",
+  "pendente",
+  "aprovada",
+  "recusada",
+] as const;
+export type AgendamentoSolicitacaoStatus =
+  (typeof AGENDAMENTO_SOLICITACAO)[number];
+
 export const AGENDAMENTO_TIPO_LABEL: Record<AgendamentoTipo, string> = {
   visita: "Visita",
   ligacao: "Ligação",
   reuniao: "Reunião",
+  tarefa: "Tarefa",
   outro: "Outro",
 };
 
@@ -31,19 +45,29 @@ export const AGENDAMENTO_STATUS_LABEL: Record<AgendamentoStatus, string> = {
   cancelado: "Cancelado",
 };
 
+export const AGENDAMENTO_ESCOPO_LABEL: Record<AgendamentoEscopo, string> = {
+  pessoal: "Tarefa pessoal",
+  com_gerente: "Com o gerente",
+};
+
 export interface Agendamento {
   id: string;
   leadId: string;
   titulo: string;
   tipo: AgendamentoTipo;
   status: AgendamentoStatus;
+  escopo: AgendamentoEscopo;
+  solicitacaoStatus: AgendamentoSolicitacaoStatus;
   startsAt: string;
   endsAt: string | null;
   local: string | null;
   observacoes: string | null;
+  motivoRecusa: string | null;
+  aprovadoAt: string | null;
   createdAt: string;
   updatedAt: string;
   autor: { id: string; name: string };
+  aprovadoPor: { id: string; name: string } | null;
   lead: {
     id: string;
     tipo: ContatoTipo;
@@ -59,6 +83,7 @@ export type CreateAgendamentoInput = {
   leadId: string;
   titulo: string;
   tipo: AgendamentoTipo;
+  escopo: AgendamentoEscopo;
   startsAt: string;
   endsAt?: string | null;
   local?: string | null;
@@ -92,6 +117,14 @@ export async function fetchAgendamentos(
   return apiFetch<Agendamento[]>(`/agenda${query ? `?${query}` : ""}`);
 }
 
+export async function fetchSolicitacoesAgenda(): Promise<Agendamento[]> {
+  return apiFetch<Agendamento[]>("/agenda/solicitacoes");
+}
+
+export async function fetchSolicitacoesAgendaCount(): Promise<{ count: number }> {
+  return apiFetch<{ count: number }>("/agenda/solicitacoes/count");
+}
+
 export async function createAgendamento(
   input: CreateAgendamentoInput,
 ): Promise<Agendamento> {
@@ -108,6 +141,20 @@ export async function updateAgendamento(
   return apiFetch<Agendamento>(`/agenda/${id}`, {
     method: "PATCH",
     body: input,
+  });
+}
+
+export async function aprovarAgendamento(id: string): Promise<Agendamento> {
+  return apiFetch<Agendamento>(`/agenda/${id}/aprovar`, { method: "POST" });
+}
+
+export async function recusarAgendamento(
+  id: string,
+  motivo?: string,
+): Promise<Agendamento> {
+  return apiFetch<Agendamento>(`/agenda/${id}/recusar`, {
+    method: "POST",
+    body: { motivo },
   });
 }
 
