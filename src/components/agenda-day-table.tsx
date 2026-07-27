@@ -1,0 +1,296 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AGENDAMENTO_STATUS_LABEL,
+  AGENDAMENTO_TIPO_LABEL,
+  type Agendamento,
+  type AgendamentoStatus,
+  type AgendamentoTipo,
+} from "@/lib/agenda-api";
+import { cn } from "@/lib/utils";
+import { Clock, MapPin, Pencil, Plus, User, Users } from "lucide-react";
+import { sameDay, toDateInput } from "@/components/agenda-board";
+
+const HOUR_START = 7;
+const HOUR_END = 20;
+
+const TIPO_BADGE: Record<AgendamentoTipo, string> = {
+  visita: "bg-violet-100 text-violet-800 border-violet-200",
+  ligacao: "bg-sky-100 text-sky-800 border-sky-200",
+  reuniao: "bg-amber-100 text-amber-900 border-amber-200",
+  outro: "bg-slate-100 text-slate-700 border-slate-200",
+};
+
+const STATUS_BADGE: Record<AgendamentoStatus, string> = {
+  agendado: "bg-cyan-100 text-cyan-800",
+  concluido: "bg-emerald-100 text-emerald-800",
+  cancelado: "bg-red-100 text-red-800",
+};
+
+function formatTime(d: Date) {
+  return d.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatTimeRange(item: Agendamento) {
+  const start = new Date(item.startsAt);
+  const startLabel = formatTime(start);
+  if (!item.endsAt) return startLabel;
+  return `${startLabel} – ${formatTime(new Date(item.endsAt))}`;
+}
+
+type Slot =
+  | { kind: "empty"; hour: number }
+  | { kind: "event"; hour: number; item: Agendamento };
+
+function buildDaySlots(day: Date, items: Agendamento[]): Slot[] {
+  const dayItems = items
+    .filter((item) => sameDay(new Date(item.startsAt), day))
+    .sort(
+      (a, b) =>
+        new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+    );
+
+  const used = new Set<string>();
+  const slots: Slot[] = [];
+
+  for (let hour = HOUR_START; hour <= HOUR_END; hour += 1) {
+    const atHour = dayItems.filter((item) => {
+      if (used.has(item.id)) return false;
+      return new Date(item.startsAt).getHours() === hour;
+    });
+
+    if (atHour.length === 0) {
+      slots.push({ kind: "empty", hour });
+      continue;
+    }
+
+    for (const item of atHour) {
+      used.add(item.id);
+      slots.push({ kind: "event", hour, item });
+    }
+  }
+
+  // Compromissos fora da grade (antes/depois) ainda aparecem no fim.
+  for (const item of dayItems) {
+    if (used.has(item.id)) continue;
+    slots.push({
+      kind: "event",
+      hour: new Date(item.startsAt).getHours(),
+      item,
+    });
+  }
+
+  return slots;
+}
+
+type Props = {
+  day: Date;
+  items: Agendamento[];
+  loading?: boolean;
+  showCorretor?: boolean;
+  onCreateAt: (day: Date, hour?: number) => void;
+  onEdit: (item: Agendamento) => void;
+};
+
+export function AgendaDayTable({
+  day,
+  items,
+  loading,
+  showCorretor,
+  onCreateAt,
+  onEdit,
+}: Props) {
+  const slots = buildDaySlots(day, items);
+  const activeCount = items.filter(
+    (i) => sameDay(new Date(i.startsAt), day) && i.status !== "cancelado",
+  ).length;
+  const now = new Date();
+  const isToday = sameDay(day, now);
+  const currentHour = now.getHours();
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 bg-muted/20">
+        <div>
+          <h3 className="text-sm font-semibold capitalize">
+            {day.toLocaleDateString("pt-BR", {
+              weekday: "long",
+              day: "2-digit",
+              month: "long",
+            })}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {activeCount === 0
+              ? "Nenhum compromisso neste dia."
+              : `${activeCount} compromisso${activeCount > 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <Button size="sm" onClick={() => onCreateAt(day)}>
+          <Plus className="w-4 h-4 mr-1" />
+          Agendar
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          Carregando horários…
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[110px]">Horário</TableHead>
+                <TableHead>Compromisso</TableHead>
+                <TableHead className="hidden md:table-cell">Contato</TableHead>
+                {showCorretor ? (
+                  <TableHead className="hidden lg:table-cell">Corretor</TableHead>
+                ) : null}
+                <TableHead className="hidden sm:table-cell w-[120px]">
+                  Status
+                </TableHead>
+                <TableHead className="w-[72px] text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {slots.map((slot) => {
+                if (slot.kind === "empty") {
+                  const isNow = isToday && slot.hour === currentHour;
+                  return (
+                    <TableRow
+                      key={`empty-${slot.hour}`}
+                      className={cn(
+                        "group",
+                        isNow && "bg-primary/[0.04]",
+                      )}
+                    >
+                      <TableCell className="align-middle">
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1.5 text-sm font-medium tabular-nums text-muted-foreground",
+                            isNow && "text-primary",
+                          )}
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          {String(slot.hour).padStart(2, "0")}:00
+                        </div>
+                      </TableCell>
+                      <TableCell colSpan={showCorretor ? 4 : 3}>
+                        <button
+                          type="button"
+                          onClick={() => onCreateAt(day, slot.hour)}
+                          className="w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm text-muted-foreground transition hover:border-primary/40 hover:bg-muted/40 hover:text-foreground"
+                        >
+                          Livre — clicar para agendar
+                        </button>
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  );
+                }
+
+                const { item } = slot;
+                const cancelled = item.status === "cancelado";
+                const isNow =
+                  isToday &&
+                  new Date(item.startsAt).getHours() === currentHour;
+
+                return (
+                  <TableRow
+                    key={item.id}
+                    className={cn(
+                      cancelled && "opacity-55",
+                      isNow && "bg-primary/[0.04]",
+                    )}
+                  >
+                    <TableCell className="align-top">
+                      <div className="text-sm font-semibold tabular-nums">
+                        {formatTimeRange(item)}
+                      </div>
+                      <div className="mt-1">
+                        <Badge
+                          variant="outline"
+                          className={cn("text-[10px]", TIPO_BADGE[item.tipo])}
+                        >
+                          {AGENDAMENTO_TIPO_LABEL[item.tipo]}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(item)}
+                        className="text-left font-medium hover:underline"
+                      >
+                        {item.titulo}
+                      </button>
+                      {item.local ? (
+                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="w-3 h-3" />
+                          {item.local}
+                        </p>
+                      ) : null}
+                      {item.observacoes ? (
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                          {item.observacoes}
+                        </p>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="align-top hidden md:table-cell">
+                      <div className="inline-flex items-center gap-1.5 text-sm">
+                        <User className="w-3.5 h-3.5 text-muted-foreground" />
+                        {item.lead.nome}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {item.lead.telefone}
+                      </p>
+                    </TableCell>
+                    {showCorretor ? (
+                      <TableCell className="align-top hidden lg:table-cell">
+                        <div className="inline-flex items-center gap-1.5 text-sm">
+                          <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                          {item.lead.corretor?.name ?? "—"}
+                        </div>
+                      </TableCell>
+                    ) : null}
+                    <TableCell className="align-top hidden sm:table-cell">
+                      <Badge
+                        variant="secondary"
+                        className={STATUS_BADGE[item.status]}
+                      >
+                        {AGENDAMENTO_STATUS_LABEL[item.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="align-top text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => onEdit(item)}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          <p className="sr-only">{toDateInput(day)}</p>
+        </div>
+      )}
+    </div>
+  );
+}

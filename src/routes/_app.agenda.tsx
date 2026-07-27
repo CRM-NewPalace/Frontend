@@ -33,6 +33,7 @@ import {
 import {
   AgendaBoard,
   addDays,
+  endOfMonth,
   formatRangeLabel,
   getVisibleRange,
   startOfDay,
@@ -40,6 +41,7 @@ import {
   toDateInput,
   type AgendaViewMode,
 } from "@/components/agenda-board";
+import { AgendaDayTable } from "@/components/agenda-day-table";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
@@ -60,8 +62,10 @@ import {
 } from "@/lib/agenda-api";
 import {
   CalendarDays,
+  CalendarRange,
   ChevronLeft,
   ChevronRight,
+  LayoutList,
   Loader2,
   Plus,
   Trash2,
@@ -70,6 +74,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
+
+type LayoutMode = "tabela" | "calendario";
 
 export const Route = createFileRoute("/_app/agenda")({
   head: () => ({ meta: [{ title: "Agenda — Imob CRM" }] }),
@@ -126,6 +132,7 @@ function AgendaPage() {
   const isManager = user ? canViewTeamData(user.role) : false;
   const { leads, assignees, loading: leadsLoading } = useLeads();
 
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("tabela");
   const [view, setView] = useState<AgendaViewMode>("semana");
   const [selectedDay, setSelectedDay] = useState<Date>(() =>
     startOfDay(new Date()),
@@ -147,10 +154,16 @@ function AgendaPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const visibleRange = useMemo(
-    () => getVisibleRange(view, selectedDay),
-    [view, selectedDay],
-  );
+  const visibleRange = useMemo(() => {
+    if (layoutMode === "tabela") {
+      // Carrega o mês do dia selecionado (mini calendário + tabela do dia).
+      return {
+        from: startOfMonth(selectedDay),
+        to: endOfMonth(selectedDay),
+      };
+    }
+    return getVisibleRange(view, selectedDay);
+  }, [layoutMode, view, selectedDay]);
 
   const visibleLeads = useMemo(() => {
     if (!user) return [];
@@ -387,6 +400,14 @@ function AgendaPage() {
   }
 
   function navigate(direction: -1 | 1) {
+    if (layoutMode === "tabela") {
+      setSelectedDay((d) => {
+        const next = addDays(d, direction);
+        setMiniMonth(startOfMonth(next));
+        return next;
+      });
+      return;
+    }
     if (view === "dia") {
       setSelectedDay((d) => addDays(d, direction));
       return;
@@ -408,14 +429,28 @@ function AgendaPage() {
     const d = startOfDay(day);
     setSelectedDay(d);
     setMiniMonth(startOfMonth(d));
-    setView("dia");
+    setLayoutMode("tabela");
   }
+
+  const rangeTitle =
+    layoutMode === "tabela"
+      ? selectedDay.toLocaleDateString("pt-BR", {
+          weekday: "long",
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : formatRangeLabel(view, selectedDay);
 
   return (
     <div>
       <PageHeader
         title="Agenda"
-        description="Compromissos com leads e clientes — visitas, ligações e reuniões."
+        description={
+          isManager
+            ? "Tabela do dia com os compromissos da equipe — alterne para o calendário completo quando quiser."
+            : "Tabela do dia com seus compromissos — alterne para o calendário completo quando quiser."
+        }
         actions={
           <Button onClick={() => openCreate()}>
             <Plus className="w-4 h-4 mr-1" />
@@ -450,28 +485,52 @@ function AgendaPage() {
             </Button>
           </div>
           <h2 className="text-base font-semibold capitalize min-w-0">
-            {formatRangeLabel(view, selectedDay)}
+            {rangeTitle}
           </h2>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
-            {VIEW_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setView(opt.id)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  view === opt.id
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <Button
+            variant={layoutMode === "calendario" ? "default" : "outline"}
+            size="sm"
+            onClick={() =>
+              setLayoutMode((m) =>
+                m === "tabela" ? "calendario" : "tabela",
+              )
+            }
+          >
+            {layoutMode === "tabela" ? (
+              <>
+                <CalendarRange className="w-4 h-4 mr-1.5" />
+                Ver calendário
+              </>
+            ) : (
+              <>
+                <LayoutList className="w-4 h-4 mr-1.5" />
+                Ver tabela do dia
+              </>
+            )}
+          </Button>
+
+          {layoutMode === "calendario" ? (
+            <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
+              {VIEW_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setView(opt.id)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    view === opt.id
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {isManager && (
             <Select
@@ -564,15 +623,26 @@ function AgendaPage() {
           </CardContent>
         </Card>
 
-        <AgendaBoard
-          view={view}
-          anchor={selectedDay}
-          items={items}
-          loading={loading}
-          onSelectDay={handleSelectDay}
-          onCreateAt={openCreate}
-          onEdit={openEdit}
-        />
+        {layoutMode === "tabela" ? (
+          <AgendaDayTable
+            day={selectedDay}
+            items={items}
+            loading={loading}
+            showCorretor={isManager}
+            onCreateAt={openCreate}
+            onEdit={openEdit}
+          />
+        ) : (
+          <AgendaBoard
+            view={view}
+            anchor={selectedDay}
+            items={items}
+            loading={loading}
+            onSelectDay={handleSelectDay}
+            onCreateAt={openCreate}
+            onEdit={openEdit}
+          />
+        )}
       </div>
 
       <FormDialogShell
