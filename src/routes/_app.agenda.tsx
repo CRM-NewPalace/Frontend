@@ -243,26 +243,18 @@ function AgendaPage() {
   }
 
   function selectLead(id: string) {
-    const contact = leads.find((l) => l.id === id);
     setForm((prev) => ({
       ...prev,
       leadId: id,
       clienteId: "",
-      titulo:
-        prev.titulo.trim() ||
-        (contact ? `Visita — ${contact.nome}` : prev.titulo),
     }));
   }
 
   function selectCliente(id: string) {
-    const contact = leads.find((l) => l.id === id);
     setForm((prev) => ({
       ...prev,
       clienteId: id,
       leadId: "",
-      titulo:
-        prev.titulo.trim() ||
-        (contact ? `Visita — ${contact.nome}` : prev.titulo),
     }));
   }
 
