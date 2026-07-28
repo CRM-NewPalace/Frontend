@@ -16,7 +16,17 @@ import {
   type AgendamentoTipo,
 } from "@/lib/agenda-api";
 import { cn } from "@/lib/utils";
-import { Clock, Check, Loader2, MapPin, Pencil, Plus, User, Users } from "lucide-react";
+import {
+  Clock,
+  Check,
+  Loader2,
+  MapPin,
+  Pencil,
+  Plus,
+  User,
+  Users,
+  X,
+} from "lucide-react";
 import { sameDay, toDateInput } from "@/components/agenda-board";
 
 /** Horários da tabela: 07:00 até 00:00. */
@@ -107,9 +117,11 @@ type Props = {
   loading?: boolean;
   showCorretor?: boolean;
   completingId?: string | null;
+  cancelingId?: string | null;
   onCreateAt: (day: Date, hour?: number) => void;
   onEdit: (item: Agendamento) => void;
   onComplete: (item: Agendamento) => void;
+  onCancel: (item: Agendamento) => void;
 };
 
 export function AgendaDayTable({
@@ -118,9 +130,11 @@ export function AgendaDayTable({
   loading,
   showCorretor,
   completingId,
+  cancelingId,
   onCreateAt,
   onEdit,
   onComplete,
+  onCancel,
 }: Props) {
   const slots = buildDaySlots(day, items);
   const activeCount = items.filter(
@@ -314,7 +328,10 @@ export function AgendaDayTable({
                             size="icon"
                             className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
                             onClick={() => onComplete(item)}
-                            disabled={completingId === item.id}
+                            disabled={
+                              completingId === item.id ||
+                              cancelingId === item.id
+                            }
                             aria-label="Concluir"
                             title="Concluir"
                           >
@@ -322,6 +339,26 @@ export function AgendaDayTable({
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <Check className="w-4 h-4" />
+                            )}
+                          </Button>
+                        ) : null}
+                        {item.status === "agendado" ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-500/10"
+                            onClick={() => onCancel(item)}
+                            disabled={
+                              completingId === item.id ||
+                              cancelingId === item.id
+                            }
+                            aria-label="Cancelar"
+                            title="Cancelar"
+                          >
+                            {cancelingId === item.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <X className="w-4 h-4" />
                             )}
                           </Button>
                         ) : null}

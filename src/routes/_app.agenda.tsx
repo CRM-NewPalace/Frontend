@@ -163,6 +163,7 @@ function AgendaPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   const visibleRange = useMemo(() => {
     if (layoutMode === "tabela") {
@@ -433,6 +434,24 @@ function AgendaPage() {
       );
     } finally {
       setCompletingId(null);
+    }
+  }
+
+  async function handleCancelStatus(item: Agendamento) {
+    if (item.status !== "agendado") return;
+    setCancelingId(item.id);
+    try {
+      await updateAgendamento(item.id, { status: "cancelado" });
+      toast.success("Compromisso cancelado.");
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível cancelar o compromisso.",
+      );
+    } finally {
+      setCancelingId(null);
     }
   }
 
@@ -754,9 +773,11 @@ function AgendaPage() {
               loading={loading}
               showCorretor={isManager}
               completingId={completingId}
+              cancelingId={cancelingId}
               onCreateAt={openCreate}
               onEdit={openEdit}
               onComplete={(item) => void handleComplete(item)}
+              onCancel={(item) => void handleCancelStatus(item)}
             />
           ) : (
             <AgendaBoard
