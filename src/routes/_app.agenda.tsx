@@ -70,6 +70,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Inbox,
   LayoutList,
   Loader2,
   Plus,
@@ -81,6 +82,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type LayoutMode = "tabela" | "calendario";
+type AgendaSection = "agenda" | "solicitacoes";
 
 export const Route = createFileRoute("/_app/agenda")({
   head: () => ({ meta: [{ title: "Agenda — Imob CRM" }] }),
@@ -140,6 +142,7 @@ function AgendaPage() {
   const { leads, assignees, loading: leadsLoading } = useLeads();
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("tabela");
+  const [section, setSection] = useState<AgendaSection>("agenda");
   const [view, setView] = useState<AgendaViewMode>("semana");
   const [selectedDay, setSelectedDay] = useState<Date>(() =>
     startOfDay(new Date()),
@@ -345,13 +348,16 @@ function AgendaPage() {
     try {
       if (formMode === "create") {
         const created = await createAgendamento(payload);
-        toast.success(
-          created.solicitacaoStatus === "pendente"
-            ? "Solicitação enviada ao gerente."
-            : payload.escopo === "pessoal"
+        if (created.solicitacaoStatus === "pendente") {
+          toast.success("Solicitação enviada ao gerente.");
+          setSection("solicitacoes");
+        } else {
+          toast.success(
+            payload.escopo === "pessoal"
               ? "Tarefa agendada."
               : "Compromisso criado.",
-        );
+          );
+        }
       } else if (editingId) {
         await updateAgendamento(editingId, {
           ...payload,
@@ -466,229 +472,279 @@ function AgendaPage() {
       <PageHeader
         title="Agenda"
         description={
-          isManager
-            ? "Tabela do dia com os compromissos da equipe — alterne para o calendário completo quando quiser."
-            : "Tabela do dia com seus compromissos — alterne para o calendário completo quando quiser."
+          section === "solicitacoes"
+            ? isManager
+              ? "Pedidos de visita/reunião dos corretores aguardando sua aprovação."
+              : "Pedidos enviados ao gerente — acompanhe aqui sem misturar com sua agenda do dia."
+            : isManager
+              ? "Tabela do dia com os compromissos da equipe — alterne para o calendário completo quando quiser."
+              : "Tabela do dia com seus compromissos — alterne para o calendário completo quando quiser."
         }
         actions={
-          <Button onClick={() => openCreate()}>
-            <Plus className="w-4 h-4 mr-1" />
-            Novo
-          </Button>
+          section === "agenda" ? (
+            <Button onClick={() => openCreate()}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo
+            </Button>
+          ) : null
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToday}>
-            Hoje
-          </Button>
-          <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => navigate(-1)}
-              aria-label="Anterior"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => navigate(1)}
-              aria-label="Próximo"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-          <h2 className="text-base font-semibold capitalize min-w-0">
-            {rangeTitle}
-          </h2>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant={layoutMode === "calendario" ? "default" : "outline"}
-            size="sm"
-            onClick={() =>
-              setLayoutMode((m) =>
-                m === "tabela" ? "calendario" : "tabela",
-              )
-            }
-          >
-            {layoutMode === "tabela" ? (
-              <>
-                <CalendarRange className="w-4 h-4 mr-1.5" />
-                Ver calendário
-              </>
-            ) : (
-              <>
-                <LayoutList className="w-4 h-4 mr-1.5" />
-                Ver tabela do dia
-              </>
-            )}
-          </Button>
-
-          {layoutMode === "calendario" ? (
-            <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
-              {VIEW_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setView(opt.id)}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    view === opt.id
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          {isManager && (
-            <Select
-              value={filterCorretorId}
-              onValueChange={setFilterCorretorId}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Corretor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todos os corretores</SelectItem>
-                {assignees.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="mb-4 inline-flex rounded-lg border p-0.5 bg-muted/40">
+        <button
+          type="button"
+          onClick={() => setSection("agenda")}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            section === "agenda"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
           )}
-          <Select value={filterTipo} onValueChange={setFilterTipo}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos os tipos</SelectItem>
-              {AGENDAMENTO_TIPOS.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {AGENDAMENTO_TIPO_LABEL[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos os status</SelectItem>
-              {AGENDAMENTO_STATUS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {AGENDAMENTO_STATUS_LABEL[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        >
+          <CalendarDays className="w-4 h-4" />
+          Agenda
+        </button>
+        <button
+          type="button"
+          onClick={() => setSection("solicitacoes")}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            section === "solicitacoes"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Inbox className="w-4 h-4" />
+          Solicitações
+          {solicitacoes.length > 0 ? (
+            <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-amber-500 hover:bg-amber-500">
+              {solicitacoes.length > 9 ? "9+" : solicitacoes.length}
+            </Badge>
+          ) : null}
+        </button>
       </div>
 
-      {solicitacoes.length > 0 ? (
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold text-amber-950">
-                {isManager
-                  ? "Solicitações aguardando aprovação"
-                  : "Suas solicitações pendentes"}
-              </h3>
-              <p className="text-xs text-amber-900/70">
-                {isManager
-                  ? "Visitas e reuniões pedidas pelos corretores da equipe."
-                  : "Aguardando o gerente aprovar o horário com a equipe."}
-              </p>
-            </div>
-            <Badge className="bg-amber-500 hover:bg-amber-500">
-              {solicitacoes.length}
-            </Badge>
+      {section === "solicitacoes" ? (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="border-b px-4 py-3 bg-muted/20">
+            <h3 className="text-sm font-semibold">
+              {isManager
+                ? "Aguardando sua aprovação"
+                : "Aguardando o gerente"}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isManager
+                ? "Visitas e reuniões pedidas pelos corretores da equipe."
+                : "Compromissos com o gerente que você enviou e ainda não foram respondidos."}
+            </p>
           </div>
-          <ul className="space-y-2">
-            {solicitacoes.map((s) => (
-              <li
-                key={s.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2.5"
-              >
-                <div className="min-w-0 space-y-0.5">
-                  <p className="font-medium text-sm truncate">{s.titulo}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(s.startsAt).toLocaleString("pt-BR", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                    {" · "}
-                    {s.lead.nome}
-                    {isManager ? ` · ${s.autor.name}` : null}
-                    {" · "}
-                    {AGENDAMENTO_TIPO_LABEL[s.tipo]}
-                  </p>
-                </div>
-                {isManager ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={actingId === s.id}
-                      onClick={() => void handleRecusar(s.id)}
-                    >
-                      <X className="w-3.5 h-3.5 mr-1" />
-                      Recusar
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={actingId === s.id}
-                      onClick={() => void handleAprovar(s.id)}
-                    >
-                      {actingId === s.id ? (
-                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5 mr-1" />
-                      )}
-                      Aprovar
-                    </Button>
-                  </div>
-                ) : (
-                  <Badge variant="secondary">Aguardando</Badge>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
 
-      {layoutMode === "tabela" ? (
-        <AgendaDayTable
-          day={selectedDay}
-          items={items}
-          loading={loading}
-          showCorretor={isManager}
-          onCreateAt={openCreate}
-          onEdit={openEdit}
-        />
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Carregando…
+            </div>
+          ) : solicitacoes.length === 0 ? (
+            <div className="py-16 text-center text-sm text-muted-foreground px-4">
+              <Inbox className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              Nenhuma solicitação pendente no momento.
+            </div>
+          ) : (
+            <ul className="divide-y">
+              {solicitacoes.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-medium text-sm truncate">{s.titulo}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(s.startsAt).toLocaleString("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                      {" · "}
+                      {s.lead.nome}
+                      {isManager ? ` · ${s.autor.name}` : null}
+                      {" · "}
+                      {AGENDAMENTO_TIPO_LABEL[s.tipo]}
+                    </p>
+                  </div>
+                  {isManager ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={actingId === s.id}
+                        onClick={() => void handleRecusar(s.id)}
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" />
+                        Recusar
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={actingId === s.id}
+                        onClick={() => void handleAprovar(s.id)}
+                      >
+                        {actingId === s.id ? (
+                          <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Aprovar
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge variant="secondary">Aguardando</Badge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       ) : (
-        <AgendaBoard
-          view={view}
-          anchor={selectedDay}
-          items={items}
-          loading={loading}
-          onSelectDay={handleSelectDay}
-          onCreateAt={openCreate}
-          onEdit={openEdit}
-        />
+        <>
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goToday}>
+                Hoje
+              </Button>
+              <div className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => navigate(-1)}
+                  aria-label="Anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => navigate(1)}
+                  aria-label="Próximo"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <h2 className="text-base font-semibold capitalize min-w-0">
+                {rangeTitle}
+              </h2>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant={layoutMode === "calendario" ? "default" : "outline"}
+                size="sm"
+                onClick={() =>
+                  setLayoutMode((m) =>
+                    m === "tabela" ? "calendario" : "tabela",
+                  )
+                }
+              >
+                {layoutMode === "tabela" ? (
+                  <>
+                    <CalendarRange className="w-4 h-4 mr-1.5" />
+                    Ver calendário
+                  </>
+                ) : (
+                  <>
+                    <LayoutList className="w-4 h-4 mr-1.5" />
+                    Ver tabela do dia
+                  </>
+                )}
+              </Button>
+
+              {layoutMode === "calendario" ? (
+                <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
+                  {VIEW_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setView(opt.id)}
+                      className={cn(
+                        "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                        view === opt.id
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {isManager && (
+                <Select
+                  value={filterCorretorId}
+                  onValueChange={setFilterCorretorId}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Corretor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos os corretores</SelectItem>
+                    {assignees.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Select value={filterTipo} onValueChange={setFilterTipo}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os tipos</SelectItem>
+                  {AGENDAMENTO_TIPOS.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {AGENDAMENTO_TIPO_LABEL[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os status</SelectItem>
+                  {AGENDAMENTO_STATUS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {AGENDAMENTO_STATUS_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {layoutMode === "tabela" ? (
+            <AgendaDayTable
+              day={selectedDay}
+              items={items}
+              loading={loading}
+              showCorretor={isManager}
+              onCreateAt={openCreate}
+              onEdit={openEdit}
+            />
+          ) : (
+            <AgendaBoard
+              view={view}
+              anchor={selectedDay}
+              items={items}
+              loading={loading}
+              onSelectDay={handleSelectDay}
+              onCreateAt={openCreate}
+              onEdit={openEdit}
+            />
+          )}
+        </>
       )}
 
       <FormDialogShell
