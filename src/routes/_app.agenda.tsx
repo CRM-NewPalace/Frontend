@@ -362,8 +362,10 @@ function AgendaPage() {
           );
         }
       } else if (editingId) {
+        // PATCH não aceita leadId (vínculo fixo); enviar gera 400 Bad Request.
+        const { leadId: _leadId, ...updateFields } = payload;
         await updateAgendamento(editingId, {
-          ...payload,
+          ...updateFields,
           status: form.status,
         });
         toast.success("Compromisso atualizado.");
