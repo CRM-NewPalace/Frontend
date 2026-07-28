@@ -287,8 +287,8 @@ function AgendaPage() {
     setFormMode("edit");
     setEditingId(item.id);
     setForm({
-      leadId: item.lead.tipo === "lead" ? item.leadId : "",
-      clienteId: item.lead.tipo === "cliente" ? item.leadId : "",
+      leadId: item.lead?.tipo === "lead" ? item.leadId ?? "" : "",
+      clienteId: item.lead?.tipo === "cliente" ? item.leadId ?? "" : "",
       titulo: item.titulo,
       tipo: item.tipo,
       escopo: item.escopo,
@@ -303,9 +303,11 @@ function AgendaPage() {
   }
 
   function validateForm(): CreateAgendamentoInput | null {
-    const leadId = form.leadId || form.clienteId;
-    if (!leadId) {
-      toast.error("Selecione um lead ou um cliente.");
+    const leadId = form.leadId || form.clienteId || null;
+    if (form.escopo === "com_gerente" && !leadId) {
+      toast.error(
+        "Selecione um lead ou cliente para compromissos com o gerente.",
+      );
       return null;
     }
     if (!form.titulo.trim() || form.titulo.trim().length < 2) {
@@ -564,7 +566,7 @@ function AgendaPage() {
                         timeStyle: "short",
                       })}
                       {" · "}
-                      {s.lead.nome}
+                      {s.lead?.nome ?? "Sem contato"}
                       {isManager ? ` · ${s.autor.name}` : null}
                       {" · "}
                       {AGENDAMENTO_TIPO_LABEL[s.tipo]}
@@ -754,7 +756,7 @@ function AgendaPage() {
         title={
           formMode === "create" ? "Novo compromisso" : "Editar compromisso"
         }
-        description="Vincule a um lead ou cliente e defina data e horário."
+        description="Defina data e horário. Lead/cliente é opcional em tarefas pessoais."
         footer={
           <FormDialogActions>
             {formMode === "edit" && editingId ? (
@@ -799,7 +801,7 @@ function AgendaPage() {
         >
           <FormDialogBody className="overflow-y-scroll">
             <FormSection
-              title="Contato"
+              title="Contato (opcional)"
               icon={<User className="w-4 h-4 text-primary" />}
             >
               <div className="grid gap-4 sm:grid-cols-2">

@@ -271,19 +271,25 @@ export function AgendaDayTable({
                       ) : null}
                     </TableCell>
                     <TableCell className="align-top hidden md:table-cell">
-                      <div className="inline-flex items-center gap-1.5 text-sm">
-                        <User className="w-3.5 h-3.5 text-muted-foreground" />
-                        {item.lead.nome}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {item.lead.telefone}
-                      </p>
+                      {item.lead ? (
+                        <>
+                          <div className="inline-flex items-center gap-1.5 text-sm">
+                            <User className="w-3.5 h-3.5 text-muted-foreground" />
+                            {item.lead.nome}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {item.lead.telefone}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     {showCorretor ? (
                       <TableCell className="align-top hidden lg:table-cell">
                         <div className="inline-flex items-center gap-1.5 text-sm">
                           <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                          {item.lead.corretor?.name ?? "—"}
+                          {item.lead?.corretor?.name ?? item.autor?.name ?? "—"}
                         </div>
                       </TableCell>
                     ) : null}

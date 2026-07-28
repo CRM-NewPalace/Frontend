@@ -350,14 +350,15 @@ function TimeGridBoard({
                       item.status === "concluido" && "opacity-80",
                     )}
                     style={{ top, height: Math.max(height, 22) }}
-                    title={`${item.titulo} · ${item.lead.nome}`}
+                    title={`${item.titulo}${item.lead ? ` · ${item.lead.nome}` : ""}`}
                   >
                     <div className="truncate text-[11px] font-semibold leading-tight">
                       {item.titulo}
                     </div>
                     {height > 36 ? (
                       <div className="truncate text-[10px] opacity-90">
-                        {formatEventTime(item)} · {item.lead.nome}
+                        {formatEventTime(item)}
+                        {item.lead ? ` · ${item.lead.nome}` : ""}
                       </div>
                     ) : null}
                   </button>

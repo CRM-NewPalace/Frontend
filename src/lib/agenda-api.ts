@@ -52,7 +52,7 @@ export const AGENDAMENTO_ESCOPO_LABEL: Record<AgendamentoEscopo, string> = {
 
 export interface Agendamento {
   id: string;
-  leadId: string;
+  leadId: string | null;
   titulo: string;
   tipo: AgendamentoTipo;
   status: AgendamentoStatus;
@@ -76,11 +76,11 @@ export interface Agendamento {
     stage: StageId;
     corretorId: string | null;
     corretor: { id: string; name: string } | null;
-  };
+  } | null;
 }
 
 export type CreateAgendamentoInput = {
-  leadId: string;
+  leadId?: string | null;
   titulo: string;
   tipo: AgendamentoTipo;
   escopo: AgendamentoEscopo;
