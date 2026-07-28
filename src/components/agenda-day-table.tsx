@@ -16,7 +16,7 @@ import {
   type AgendamentoTipo,
 } from "@/lib/agenda-api";
 import { cn } from "@/lib/utils";
-import { Clock, MapPin, Pencil, Plus, User, Users } from "lucide-react";
+import { Clock, Check, Loader2, MapPin, Pencil, Plus, User, Users } from "lucide-react";
 import { sameDay, toDateInput } from "@/components/agenda-board";
 
 /** Horários da tabela: 07:00 até 00:00. */
@@ -106,8 +106,10 @@ type Props = {
   items: Agendamento[];
   loading?: boolean;
   showCorretor?: boolean;
+  completingId?: string | null;
   onCreateAt: (day: Date, hour?: number) => void;
   onEdit: (item: Agendamento) => void;
+  onComplete: (item: Agendamento) => void;
 };
 
 export function AgendaDayTable({
@@ -115,8 +117,10 @@ export function AgendaDayTable({
   items,
   loading,
   showCorretor,
+  completingId,
   onCreateAt,
   onEdit,
+  onComplete,
 }: Props) {
   const slots = buildDaySlots(day, items);
   const activeCount = items.filter(
@@ -302,15 +306,36 @@ export function AgendaDayTable({
                       </Badge>
                     </TableCell>
                     <TableCell className="align-top text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onEdit(item)}
-                        aria-label="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
+                      <div className="inline-flex items-center gap-0.5">
+                        {item.status === "agendado" &&
+                        item.solicitacaoStatus !== "pendente" ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                            onClick={() => onComplete(item)}
+                            disabled={completingId === item.id}
+                            aria-label="Concluir"
+                            title="Concluir"
+                          >
+                            {completingId === item.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onEdit(item)}
+                          aria-label="Editar"
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

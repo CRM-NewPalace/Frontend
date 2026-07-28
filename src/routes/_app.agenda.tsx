@@ -162,6 +162,7 @@ function AgendaPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   const visibleRange = useMemo(() => {
     if (layoutMode === "tabela") {
@@ -412,6 +413,24 @@ function AgendaPage() {
       );
     } finally {
       setActingId(null);
+    }
+  }
+
+  async function handleComplete(item: Agendamento) {
+    if (item.status !== "agendado") return;
+    setCompletingId(item.id);
+    try {
+      await updateAgendamento(item.id, { status: "concluido" });
+      toast.success("Tarefa concluída.");
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível concluir a tarefa.",
+      );
+    } finally {
+      setCompletingId(null);
     }
   }
 
@@ -732,8 +751,10 @@ function AgendaPage() {
               items={items}
               loading={loading}
               showCorretor={isManager}
+              completingId={completingId}
               onCreateAt={openCreate}
               onEdit={openEdit}
+              onComplete={(item) => void handleComplete(item)}
             />
           ) : (
             <AgendaBoard
