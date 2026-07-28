@@ -744,8 +744,12 @@ function AgendaPage() {
           </FormDialogActions>
         }
       >
-        <form id="agenda-form" onSubmit={handleSubmit}>
-          <FormDialogBody>
+        <form
+          id="agenda-form"
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <FormDialogBody className="overflow-y-scroll">
             <FormSection
               title="Contato"
               icon={<User className="w-4 h-4 text-primary" />}
