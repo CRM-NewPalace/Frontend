@@ -132,7 +132,13 @@ export function AgendaLembretesDialog({
                     : null}
                 </p>
                 <div className="flex flex-col gap-1">
-                  {p.equipeNome ? (
+                  {p.publicoLabel ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Network className="w-3 h-3 shrink-0" />
+                      <span>{p.publicoLabel}</span>
+                    </p>
+                  ) : null}
+                  {p.equipeNome && !p.publicoLabel?.startsWith("Equipe:") ? (
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Network className="w-3 h-3 shrink-0" />
                       <span>Equipe: {p.equipeNome}</span>
@@ -152,13 +158,17 @@ export function AgendaLembretesDialog({
                       <span>Corretor: {p.corretorNome}</span>
                     </p>
                   ) : null}
-                  {p.gerenteNome ? (
+                  {p.gerenteNome &&
+                  !p.publicoLabel?.startsWith("Gerente:") ? (
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Users className="w-3 h-3 shrink-0" />
                       <span>Gerente: {p.gerenteNome}</span>
                     </p>
                   ) : null}
-                  {!p.corretorNome && !p.gerenteNome && p.autorNome ? (
+                  {!p.corretorNome &&
+                  !p.gerenteNome &&
+                  !p.publicoLabel &&
+                  p.autorNome ? (
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Users className="w-3 h-3 shrink-0" />
                       <span>Criado por: {p.autorNome}</span>

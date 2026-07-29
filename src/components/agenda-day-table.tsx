@@ -237,7 +237,25 @@ export function AgendaDayTable({
                 const { item } = slot;
                 const cancelled = item.status === "cancelado";
                 const canMutate = canMutateItem(item, currentUserRole);
-                const isTeamWide = item.autor.role === "admin";
+                const isAdminEvent =
+                  item.alvoTipo === "todos" ||
+                  item.alvoTipo === "equipe" ||
+                  item.alvoTipo === "gerente" ||
+                  item.autor.role === "admin";
+                const alvoBadgeLabel =
+                  item.alvoTipo === "todos"
+                    ? "Todas as equipes"
+                    : item.alvoTipo === "equipe"
+                      ? item.alvoEquipe?.name
+                        ? `Equipe: ${item.alvoEquipe.name}`
+                        : "Equipe"
+                      : item.alvoTipo === "gerente"
+                        ? item.alvoGerente?.name
+                          ? `Gerente: ${item.alvoGerente.name}`
+                          : "Gerente"
+                        : item.autor.role === "admin"
+                          ? "Equipe"
+                          : null;
                 const isNow =
                   isToday &&
                   new Date(item.startsAt).getHours() === currentHour;
@@ -276,12 +294,12 @@ export function AgendaDayTable({
                         <span className="font-medium">{item.titulo}</span>
                       )}
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {isTeamWide ? (
+                        {isAdminEvent && alvoBadgeLabel ? (
                           <Badge
                             variant="outline"
                             className="text-[10px] border-sky-300 text-sky-800"
                           >
-                            Equipe
+                            {alvoBadgeLabel}
                           </Badge>
                         ) : item.escopo === "pessoal" ? (
                           <Badge variant="outline" className="text-[10px]">

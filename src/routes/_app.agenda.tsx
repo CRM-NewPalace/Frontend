@@ -47,6 +47,7 @@ import { useLeads } from "@/lib/leads-store";
 import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
+  AGENDAMENTO_ALVO_LABEL,
   AGENDAMENTO_ESCOPO_LABEL,
   AGENDAMENTO_STATUS,
   AGENDAMENTO_STATUS_LABEL,
@@ -60,6 +61,7 @@ import {
   recusarAgendamento,
   updateAgendamento,
   type Agendamento,
+  type AgendamentoAlvo,
   type AgendamentoEscopo,
   type AgendamentoStatus,
   type AgendamentoTipo,
@@ -75,6 +77,7 @@ import {
   Inbox,
   LayoutList,
   Loader2,
+  Network,
   Plus,
   Trash2,
   User,
@@ -103,6 +106,9 @@ type FormState = {
   tipo: AgendamentoTipo;
   escopo: AgendamentoEscopo;
   status: AgendamentoStatus;
+  alvoTipo: AgendamentoAlvo;
+  alvoEquipeId: string;
+  alvoGerenteId: string;
   date: string;
   timeStart: string;
   timeEnd: string;
@@ -119,6 +125,9 @@ const emptyForm = (): FormState => {
     tipo: "tarefa",
     escopo: "pessoal",
     status: "agendado",
+    alvoTipo: "todos",
+    alvoEquipeId: "",
+    alvoGerenteId: "",
     date: toDateInput(now),
     timeStart: toTimeInput(now),
     timeEnd: "",
@@ -212,6 +221,16 @@ function AgendaPage() {
     const ids = new Set([eq.gerenteId, ...eq.membros.map((m) => m.id)]);
     return assignees.filter((a) => ids.has(a.id));
   }, [assignees, equipes, filterEquipeId]);
+
+  const gerenteOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const e of equipes) {
+      if (e.gerente) map.set(e.gerente.id, e.gerente);
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [equipes]);
 
   const activeFiltersCount = useMemo(() => {
     let n = 0;
@@ -362,6 +381,9 @@ function AgendaPage() {
       tipo: item.tipo,
       escopo: item.escopo,
       status: item.status,
+      alvoTipo: item.alvoTipo && item.alvoTipo !== "nenhum" ? item.alvoTipo : "todos",
+      alvoEquipeId: item.alvoEquipeId ?? "",
+      alvoGerenteId: item.alvoGerenteId ?? "",
       date: toDateInput(start),
       timeStart: toTimeInput(start),
       timeEnd: end ? toTimeInput(end) : "",
@@ -372,11 +394,23 @@ function AgendaPage() {
   }
 
   function validateForm(): CreateAgendamentoInput | null {
-    const leadId = form.leadId || form.clienteId || null;
-    if (form.escopo === "com_gerente" && !leadId) {
+    const isAdminEvent = user?.role === "admin";
+    const leadId = isAdminEvent
+      ? null
+      : form.leadId || form.clienteId || null;
+
+    if (!isAdminEvent && form.escopo === "com_gerente" && !leadId) {
       toast.error(
         "Selecione um lead ou cliente para compromissos com o gerente.",
       );
+      return null;
+    }
+    if (isAdminEvent && form.alvoTipo === "equipe" && !form.alvoEquipeId) {
+      toast.error("Selecione a equipe do evento.");
+      return null;
+    }
+    if (isAdminEvent && form.alvoTipo === "gerente" && !form.alvoGerenteId) {
+      toast.error("Selecione o gerente do evento.");
       return null;
     }
     if (!form.titulo.trim() || form.titulo.trim().length < 2) {
@@ -402,7 +436,16 @@ function AgendaPage() {
       leadId,
       titulo: form.titulo.trim(),
       tipo: form.tipo,
-      escopo: form.escopo,
+      escopo: isAdminEvent ? "pessoal" : form.escopo,
+      ...(isAdminEvent
+        ? {
+            alvoTipo: form.alvoTipo === "nenhum" ? "todos" : form.alvoTipo,
+            alvoEquipeId:
+              form.alvoTipo === "equipe" ? form.alvoEquipeId || null : null,
+            alvoGerenteId:
+              form.alvoTipo === "gerente" ? form.alvoGerenteId || null : null,
+          }
+        : {}),
       startsAt,
       endsAt,
       local: form.local.trim() || null,
@@ -425,7 +468,11 @@ function AgendaPage() {
         } else {
           toast.success(
             user?.role === "admin"
-              ? "Compromisso publicado para toda a equipe."
+              ? form.alvoTipo === "gerente"
+                ? "Evento agendado para o gerente."
+                : form.alvoTipo === "equipe"
+                  ? "Evento agendado para a equipe."
+                  : "Evento agendado para todas as equipes."
               : payload.escopo === "pessoal"
                 ? "Tarefa agendada."
                 : "Compromisso criado.",
@@ -999,59 +1046,164 @@ function AgendaPage() {
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <FormDialogBody className="overflow-y-scroll">
-            <FormSection
-              title="Contato (opcional)"
-              icon={<User className="w-4 h-4 text-primary" />}
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Lead</Label>
-                  <Select
-                    value={form.leadId || "__none__"}
-                    onValueChange={(v) =>
-                      v === "__none__" ? setField("leadId", "") : selectLead(v)
-                    }
-                    disabled={formMode === "edit" || leadsLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar lead" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {leadOptions.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.nome}
+            {isAdmin ? (
+              <FormSection
+                title="Público do evento"
+                icon={<Network className="w-4 h-4 text-primary" />}
+              >
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Quem deve ver</Label>
+                    <Select
+                      value={form.alvoTipo}
+                      onValueChange={(v) => {
+                        const alvo = v as AgendamentoAlvo;
+                        setForm((prev) => ({
+                          ...prev,
+                          alvoTipo: alvo,
+                          alvoEquipeId:
+                            alvo === "equipe" ? prev.alvoEquipeId : "",
+                          alvoGerenteId:
+                            alvo === "gerente" ? prev.alvoGerenteId : "",
+                        }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">
+                          {AGENDAMENTO_ALVO_LABEL.todos}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Cliente</Label>
-                  <Select
-                    value={form.clienteId || "__none__"}
-                    onValueChange={(v) =>
-                      v === "__none__"
-                        ? setField("clienteId", "")
-                        : selectCliente(v)
-                    }
-                    disabled={formMode === "edit" || leadsLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {clienteOptions.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.nome}
+                        <SelectItem value="equipe">
+                          {AGENDAMENTO_ALVO_LABEL.equipe}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        <SelectItem value="gerente">
+                          {AGENDAMENTO_ALVO_LABEL.gerente}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      {form.alvoTipo === "gerente"
+                        ? "Somente o gerente escolhido verá este evento (corretores não)."
+                        : form.alvoTipo === "equipe"
+                          ? "Gerente e corretores da equipe escolhida verão este evento."
+                          : "Todos os usuários verão este evento na agenda."}
+                    </p>
+                  </div>
+
+                  {form.alvoTipo === "equipe" ? (
+                    <div className="space-y-2">
+                      <Label>Equipe</Label>
+                      <Select
+                        value={form.alvoEquipeId || "__none__"}
+                        onValueChange={(v) =>
+                          setField(
+                            "alvoEquipeId",
+                            v === "__none__" ? "" : v,
+                          )
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecionar equipe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">—</SelectItem>
+                          {equipes.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {e.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  {form.alvoTipo === "gerente" ? (
+                    <div className="space-y-2">
+                      <Label>Gerente</Label>
+                      <Select
+                        value={form.alvoGerenteId || "__none__"}
+                        onValueChange={(v) =>
+                          setField(
+                            "alvoGerenteId",
+                            v === "__none__" ? "" : v,
+                          )
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecionar gerente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">—</SelectItem>
+                          {gerenteOptions.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>
+                              {g.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            </FormSection>
+              </FormSection>
+            ) : (
+              <FormSection
+                title="Contato (opcional)"
+                icon={<User className="w-4 h-4 text-primary" />}
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Lead</Label>
+                    <Select
+                      value={form.leadId || "__none__"}
+                      onValueChange={(v) =>
+                        v === "__none__"
+                          ? setField("leadId", "")
+                          : selectLead(v)
+                      }
+                      disabled={formMode === "edit" || leadsLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar lead" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">—</SelectItem>
+                        {leadOptions.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cliente</Label>
+                    <Select
+                      value={form.clienteId || "__none__"}
+                      onValueChange={(v) =>
+                        v === "__none__"
+                          ? setField("clienteId", "")
+                          : selectCliente(v)
+                      }
+                      disabled={formMode === "edit" || leadsLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">—</SelectItem>
+                        {clienteOptions.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </FormSection>
+            )}
 
             <FormSection
               title="Detalhes"
@@ -1068,7 +1220,7 @@ function AgendaPage() {
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className={cn("grid gap-4", isAdmin ? "" : "sm:grid-cols-2")}>
                 <div className="space-y-2">
                   <Label>Tipo</Label>
                   <Select
@@ -1078,9 +1230,9 @@ function AgendaPage() {
                       setForm((prev) => ({
                         ...prev,
                         tipo,
-                        // Visita/reunião sugerem envolvimento do gerente.
-                        escopo:
-                          tipo === "visita" || tipo === "reuniao"
+                        escopo: isAdmin
+                          ? prev.escopo
+                          : tipo === "visita" || tipo === "reuniao"
                             ? "com_gerente"
                             : prev.escopo === "com_gerente" &&
                                 (tipo === "tarefa" || tipo === "ligacao")
@@ -1101,60 +1253,61 @@ function AgendaPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Participação</Label>
-                  <Select
-                    value={form.escopo}
-                    onValueChange={(v) =>
-                      setField("escopo", v as AgendamentoEscopo)
-                    }
-                    disabled={formMode === "edit"}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pessoal">
-                        {AGENDAMENTO_ESCOPO_LABEL.pessoal}
-                      </SelectItem>
-                      <SelectItem value="com_gerente">
-                        {AGENDAMENTO_ESCOPO_LABEL.com_gerente}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground">
-                    {form.escopo === "com_gerente"
-                      ? user?.role === "corretor"
-                        ? "Será enviada solicitação ao gerente para aprovar."
-                        : "Compromisso com participação do gerente."
-                      : user?.role === "admin"
-                        ? "Como admin, este compromisso aparece na agenda de todos."
-                        : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
-                  </p>
-                </div>
-                {formMode === "edit" ? (
+                {!isAdmin ? (
                   <div className="space-y-2">
-                    <Label>Status</Label>
+                    <Label>Participação</Label>
                     <Select
-                      value={form.status}
+                      value={form.escopo}
                       onValueChange={(v) =>
-                        setField("status", v as AgendamentoStatus)
+                        setField("escopo", v as AgendamentoEscopo)
                       }
+                      disabled={formMode === "edit"}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {AGENDAMENTO_STATUS.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {AGENDAMENTO_STATUS_LABEL[s]}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="pessoal">
+                          {AGENDAMENTO_ESCOPO_LABEL.pessoal}
+                        </SelectItem>
+                        <SelectItem value="com_gerente">
+                          {AGENDAMENTO_ESCOPO_LABEL.com_gerente}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      {form.escopo === "com_gerente"
+                        ? user?.role === "corretor"
+                          ? "Será enviada solicitação ao gerente para aprovar."
+                          : "Compromisso com participação do gerente."
+                        : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
+                    </p>
                   </div>
                 ) : null}
               </div>
+
+              {formMode === "edit" ? (
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={form.status}
+                    onValueChange={(v) =>
+                      setField("status", v as AgendamentoStatus)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AGENDAMENTO_STATUS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {AGENDAMENTO_STATUS_LABEL[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">

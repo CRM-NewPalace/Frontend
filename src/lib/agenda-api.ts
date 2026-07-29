@@ -23,6 +23,14 @@ export type AgendamentoStatus = (typeof AGENDAMENTO_STATUS)[number];
 export const AGENDAMENTO_ESCOPOS = ["pessoal", "com_gerente"] as const;
 export type AgendamentoEscopo = (typeof AGENDAMENTO_ESCOPOS)[number];
 
+export const AGENDAMENTO_ALVOS = [
+  "nenhum",
+  "todos",
+  "equipe",
+  "gerente",
+] as const;
+export type AgendamentoAlvo = (typeof AGENDAMENTO_ALVOS)[number];
+
 export const AGENDAMENTO_SOLICITACAO = [
   "nenhuma",
   "pendente",
@@ -51,6 +59,13 @@ export const AGENDAMENTO_ESCOPO_LABEL: Record<AgendamentoEscopo, string> = {
   com_gerente: "Com o gerente",
 };
 
+export const AGENDAMENTO_ALVO_LABEL: Record<AgendamentoAlvo, string> = {
+  nenhum: "—",
+  todos: "Todas as equipes",
+  equipe: "Uma equipe",
+  gerente: "Um gerente",
+};
+
 export interface Agendamento {
   id: string;
   leadId: string | null;
@@ -59,6 +74,9 @@ export interface Agendamento {
   status: AgendamentoStatus;
   escopo: AgendamentoEscopo;
   solicitacaoStatus: AgendamentoSolicitacaoStatus;
+  alvoTipo: AgendamentoAlvo;
+  alvoEquipeId: string | null;
+  alvoGerenteId: string | null;
   startsAt: string;
   endsAt: string | null;
   local: string | null;
@@ -69,6 +87,8 @@ export interface Agendamento {
   updatedAt: string;
   autor: { id: string; name: string; role: Role };
   aprovadoPor: { id: string; name: string } | null;
+  alvoEquipe: { id: string; name: string } | null;
+  alvoGerente: { id: string; name: string } | null;
   lead: {
     id: string;
     tipo: ContatoTipo;
@@ -85,6 +105,9 @@ export type CreateAgendamentoInput = {
   titulo: string;
   tipo: AgendamentoTipo;
   escopo: AgendamentoEscopo;
+  alvoTipo?: AgendamentoAlvo;
+  alvoEquipeId?: string | null;
+  alvoGerenteId?: string | null;
   startsAt: string;
   endsAt?: string | null;
   local?: string | null;
@@ -179,6 +202,7 @@ export type AgendaProximo = {
   corretorNome: string | null;
   gerenteNome: string | null;
   equipeNome: string | null;
+  publicoLabel: string | null;
   autorNome: string;
   autorRole: Role;
   nivel: "dia" | "duas_horas" | "uma_hora";
