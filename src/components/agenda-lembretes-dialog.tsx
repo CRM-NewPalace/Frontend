@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { AgendaProximo, AgendaUrgencia } from "@/lib/agenda-api";
-import { Briefcase, CalendarClock, MapPin, User, Users } from "lucide-react";
+import { Briefcase, CalendarClock, MapPin, Network, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NIVEL_LABEL: Record<AgendaProximo["nivel"], string> = {
@@ -131,6 +131,12 @@ export function AgendaLembretesDialog({
                     ? ` · falta ${formatRestante(p.msRestante)}`
                     : null}
                 </p>
+                {p.equipeNome ? (
+                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Network className="w-3 h-3" />
+                    Equipe: {p.equipeNome}
+                  </p>
+                ) : null}
                 {p.leadNome && contatoLabel ? (
                   <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <User className="w-3 h-3" />
