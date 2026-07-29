@@ -71,6 +71,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Filter,
   Inbox,
   LayoutList,
   Loader2,
@@ -81,6 +82,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type LayoutMode = "tabela" | "calendario";
 type AgendaSection = "agenda" | "solicitacoes";
@@ -206,6 +212,29 @@ function AgendaPage() {
     const ids = new Set([eq.gerenteId, ...eq.membros.map((m) => m.id)]);
     return assignees.filter((a) => ids.has(a.id));
   }, [assignees, equipes, filterEquipeId]);
+
+  const activeFiltersCount = useMemo(() => {
+    let n = 0;
+    if (isAdmin && filterEquipeId !== "__all__") n += 1;
+    if (isManager && filterCorretorId !== "__all__") n += 1;
+    if (filterTipo !== "__all__") n += 1;
+    if (filterStatus !== "__all__") n += 1;
+    return n;
+  }, [
+    isAdmin,
+    isManager,
+    filterEquipeId,
+    filterCorretorId,
+    filterTipo,
+    filterStatus,
+  ]);
+
+  function clearAgendaFilters() {
+    setFilterEquipeId("__all__");
+    setFilterCorretorId("__all__");
+    setFilterTipo("__all__");
+    setFilterStatus("__all__");
+  }
 
   const leadOptions = useMemo(
     () => visibleLeads.filter((l) => l.tipo === "lead"),
@@ -759,72 +788,135 @@ function AgendaPage() {
                 </div>
               ) : null}
 
-              {isAdmin && equipes.length > 0 ? (
-                <Select
-                  value={filterEquipeId}
-                  onValueChange={(v) => {
-                    setFilterEquipeId(v);
-                    setFilterCorretorId("__all__");
-                  }}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Equipe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todas as equipes</SelectItem>
-                    {equipes.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      activeFiltersCount > 0 && "border-primary text-primary",
+                    )}
+                  >
+                    <Filter className="w-4 h-4 mr-1.5" />
+                    Filtros
+                    {activeFiltersCount > 0 ? (
+                      <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px]">
+                        {activeFiltersCount}
+                      </Badge>
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 space-y-3 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">Filtros</p>
+                    {activeFiltersCount > 0 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={clearAgendaFilters}
+                      >
+                        Limpar
+                      </Button>
+                    ) : null}
+                  </div>
 
-              {isManager && (
-                <Select
-                  value={filterCorretorId}
-                  onValueChange={setFilterCorretorId}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Corretor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todos os corretores</SelectItem>
-                    {corretorFilterOptions.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Select value={filterTipo} onValueChange={setFilterTipo}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todos os tipos</SelectItem>
-                  {AGENDAMENTO_TIPOS.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {AGENDAMENTO_TIPO_LABEL[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todos os status</SelectItem>
-                  {AGENDAMENTO_STATUS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {AGENDAMENTO_STATUS_LABEL[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  {isAdmin && equipes.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Equipe
+                      </Label>
+                      <Select
+                        value={filterEquipeId}
+                        onValueChange={(v) => {
+                          setFilterEquipeId(v);
+                          setFilterCorretorId("__all__");
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Equipe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">
+                            Todas as equipes
+                          </SelectItem>
+                          {equipes.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {e.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  {isManager ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Corretor
+                      </Label>
+                      <Select
+                        value={filterCorretorId}
+                        onValueChange={setFilterCorretorId}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Corretor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">
+                            Todos os corretores
+                          </SelectItem>
+                          {corretorFilterOptions.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Tipo</Label>
+                    <Select value={filterTipo} onValueChange={setFilterTipo}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todos os tipos</SelectItem>
+                        {AGENDAMENTO_TIPOS.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {AGENDAMENTO_TIPO_LABEL[t]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Status
+                    </Label>
+                    <Select
+                      value={filterStatus}
+                      onValueChange={setFilterStatus}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todos os status</SelectItem>
+                        {AGENDAMENTO_STATUS.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {AGENDAMENTO_STATUS_LABEL[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
