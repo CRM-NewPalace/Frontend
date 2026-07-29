@@ -45,6 +45,7 @@ import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { ApiError } from "@/lib/api";
+import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
   AGENDAMENTO_ESCOPO_LABEL,
   AGENDAMENTO_STATUS,
@@ -139,6 +140,7 @@ const VIEW_OPTIONS: { id: AgendaViewMode; label: string }[] = [
 function AgendaPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
+  const isAdmin = user?.role === "admin";
   const { leads, assignees, loading: leadsLoading } = useLeads();
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("tabela");
@@ -151,6 +153,8 @@ function AgendaPage() {
   const [items, setItems] = useState<Agendamento[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [filterEquipeId, setFilterEquipeId] = useState("__all__");
   const [filterCorretorId, setFilterCorretorId] = useState("__all__");
   const [filterTipo, setFilterTipo] = useState<string>("__all__");
   const [filterStatus, setFilterStatus] = useState<string>("__all__");
@@ -185,8 +189,23 @@ function AgendaPage() {
     if (filterCorretorId !== "__all__") {
       return leads.filter((l) => l.corretorId === filterCorretorId);
     }
+    if (filterEquipeId !== "__all__") {
+      const eq = equipes.find((e) => e.id === filterEquipeId);
+      if (eq) {
+        const ids = new Set([eq.gerenteId, ...eq.membros.map((m) => m.id)]);
+        return leads.filter((l) => l.corretorId && ids.has(l.corretorId));
+      }
+    }
     return leads;
-  }, [leads, user, isManager, filterCorretorId]);
+  }, [leads, user, isManager, filterCorretorId, filterEquipeId, equipes]);
+
+  const corretorFilterOptions = useMemo(() => {
+    if (filterEquipeId === "__all__") return assignees;
+    const eq = equipes.find((e) => e.id === filterEquipeId);
+    if (!eq) return assignees;
+    const ids = new Set([eq.gerenteId, ...eq.membros.map((m) => m.id)]);
+    return assignees.filter((a) => ids.has(a.id));
+  }, [assignees, equipes, filterEquipeId]);
 
   const leadOptions = useMemo(
     () => visibleLeads.filter((l) => l.tipo === "lead"),
@@ -197,6 +216,13 @@ function AgendaPage() {
     [visibleLeads],
   );
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    void fetchEquipes()
+      .then((list) => setEquipes(list.filter((e) => e.status === "ativo")))
+      .catch(() => setEquipes([]));
+  }, [isAdmin]);
+
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
@@ -204,6 +230,10 @@ function AgendaPage() {
         fetchAgendamentos({
           from: visibleRange.from.toISOString(),
           to: visibleRange.to.toISOString(),
+          equipeId:
+            isAdmin && filterEquipeId !== "__all__"
+              ? filterEquipeId
+              : undefined,
           corretorId:
             isManager && filterCorretorId !== "__all__"
               ? filterCorretorId
@@ -233,7 +263,9 @@ function AgendaPage() {
   }, [
     visibleRange.from,
     visibleRange.to,
+    isAdmin,
     isManager,
+    filterEquipeId,
     filterCorretorId,
     filterTipo,
     filterStatus,
@@ -727,6 +759,28 @@ function AgendaPage() {
                 </div>
               ) : null}
 
+              {isAdmin && equipes.length > 0 ? (
+                <Select
+                  value={filterEquipeId}
+                  onValueChange={(v) => {
+                    setFilterEquipeId(v);
+                    setFilterCorretorId("__all__");
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Equipe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todas as equipes</SelectItem>
+                    {equipes.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+
               {isManager && (
                 <Select
                   value={filterCorretorId}
@@ -737,7 +791,7 @@ function AgendaPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">Todos os corretores</SelectItem>
-                    {assignees.map((a) => (
+                    {corretorFilterOptions.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.name}
                       </SelectItem>

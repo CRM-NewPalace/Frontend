@@ -99,6 +99,7 @@ export type UpdateAgendamentoInput = Partial<
 
 export type FetchAgendamentosParams = {
   corretorId?: string;
+  equipeId?: string;
   tipo?: AgendamentoTipo;
   status?: AgendamentoStatus;
   from?: string;
@@ -110,6 +111,7 @@ export async function fetchAgendamentos(
 ): Promise<Agendamento[]> {
   const qs = new URLSearchParams();
   if (params.corretorId) qs.set("corretorId", params.corretorId);
+  if (params.equipeId) qs.set("equipeId", params.equipeId);
   if (params.tipo) qs.set("tipo", params.tipo);
   if (params.status) qs.set("status", params.status);
   if (params.from) qs.set("from", params.from);
