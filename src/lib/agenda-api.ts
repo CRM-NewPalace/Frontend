@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { Role } from "@/lib/auth";
 import type { ContatoTipo, StageId } from "@/lib/crm-types";
 
 export const AGENDAMENTO_TIPOS = [
@@ -66,7 +67,7 @@ export interface Agendamento {
   aprovadoAt: string | null;
   createdAt: string;
   updatedAt: string;
-  autor: { id: string; name: string };
+  autor: { id: string; name: string; role: Role };
   aprovadoPor: { id: string; name: string } | null;
   lead: {
     id: string;

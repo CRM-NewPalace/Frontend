@@ -284,6 +284,12 @@ function AgendaPage() {
   }
 
   function openEdit(item: Agendamento) {
+    if (item.autor.role === "admin" && user?.role !== "admin") {
+      toast.error(
+        "Apenas administradores podem editar compromissos da equipe.",
+      );
+      return;
+    }
     const start = new Date(item.startsAt);
     const end = item.endsAt ? new Date(item.endsAt) : null;
     setFormMode("edit");
@@ -357,9 +363,11 @@ function AgendaPage() {
           setSection("solicitacoes");
         } else {
           toast.success(
-            payload.escopo === "pessoal"
-              ? "Tarefa agendada."
-              : "Compromisso criado.",
+            user?.role === "admin"
+              ? "Compromisso publicado para toda a equipe."
+              : payload.escopo === "pessoal"
+                ? "Tarefa agendada."
+                : "Compromisso criado.",
           );
         }
       } else if (editingId) {
@@ -772,6 +780,7 @@ function AgendaPage() {
               items={items}
               loading={loading}
               showCorretor={isManager}
+              currentUserRole={user?.role}
               completingId={completingId}
               cancelingId={cancelingId}
               onCreateAt={openCreate}
@@ -972,7 +981,9 @@ function AgendaPage() {
                       ? user?.role === "corretor"
                         ? "Será enviada solicitação ao gerente para aprovar."
                         : "Compromisso com participação do gerente."
-                      : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
+                      : user?.role === "admin"
+                        ? "Como admin, este compromisso aparece na agenda de todos."
+                        : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
                   </p>
                 </div>
                 {formMode === "edit" ? (

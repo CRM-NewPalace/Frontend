@@ -15,6 +15,7 @@ import {
   type AgendamentoStatus,
   type AgendamentoTipo,
 } from "@/lib/agenda-api";
+import type { Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
   Clock,
@@ -116,6 +117,8 @@ type Props = {
   items: Agendamento[];
   loading?: boolean;
   showCorretor?: boolean;
+  /** Papel do usuário logado — compromissos de admin só admin altera. */
+  currentUserRole?: Role;
   completingId?: string | null;
   cancelingId?: string | null;
   onCreateAt: (day: Date, hour?: number) => void;
@@ -124,11 +127,17 @@ type Props = {
   onCancel: (item: Agendamento) => void;
 };
 
+function canMutateItem(item: Agendamento, role?: Role) {
+  if (item.autor.role === "admin") return role === "admin";
+  return true;
+}
+
 export function AgendaDayTable({
   day,
   items,
   loading,
   showCorretor,
+  currentUserRole,
   completingId,
   cancelingId,
   onCreateAt,
@@ -227,6 +236,8 @@ export function AgendaDayTable({
 
                 const { item } = slot;
                 const cancelled = item.status === "cancelado";
+                const canMutate = canMutateItem(item, currentUserRole);
+                const isTeamWide = item.autor.role === "admin";
                 const isNow =
                   isToday &&
                   new Date(item.startsAt).getHours() === currentHour;
@@ -253,20 +264,34 @@ export function AgendaDayTable({
                       </div>
                     </TableCell>
                     <TableCell className="align-top">
-                      <button
-                        type="button"
-                        onClick={() => onEdit(item)}
-                        className="text-left font-medium hover:underline"
-                      >
-                        {item.titulo}
-                      </button>
+                      {canMutate ? (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(item)}
+                          className="text-left font-medium hover:underline"
+                        >
+                          {item.titulo}
+                        </button>
+                      ) : (
+                        <span className="font-medium">{item.titulo}</span>
+                      )}
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {item.escopo === "pessoal" ? (
+                        {isTeamWide ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-sky-300 text-sky-800"
+                          >
+                            Equipe
+                          </Badge>
+                        ) : item.escopo === "pessoal" ? (
                           <Badge variant="outline" className="text-[10px]">
                             Pessoal
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-800">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-amber-300 text-amber-800"
+                          >
                             Com gerente
                           </Badge>
                         )}
@@ -321,7 +346,8 @@ export function AgendaDayTable({
                     </TableCell>
                     <TableCell className="align-top text-right">
                       <div className="inline-flex items-center gap-0.5">
-                        {item.status === "agendado" &&
+                        {canMutate &&
+                        item.status === "agendado" &&
                         item.solicitacaoStatus !== "pendente" ? (
                           <Button
                             variant="ghost"
@@ -342,7 +368,7 @@ export function AgendaDayTable({
                             )}
                           </Button>
                         ) : null}
-                        {item.status === "agendado" ? (
+                        {canMutate && item.status === "agendado" ? (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -362,16 +388,18 @@ export function AgendaDayTable({
                             )}
                           </Button>
                         ) : null}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => onEdit(item)}
-                          aria-label="Editar"
-                          title="Editar"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
+                        {canMutate ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => onEdit(item)}
+                            aria-label="Editar"
+                            title="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
