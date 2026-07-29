@@ -173,6 +173,7 @@ export type AgendaProximo = {
   startsAt: string;
   local: string | null;
   leadNome: string | null;
+  leadTipo: ContatoTipo | null;
   corretorNome: string | null;
   gerenteNome: string | null;
   autorNome: string;

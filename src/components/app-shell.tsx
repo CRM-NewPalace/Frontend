@@ -214,19 +214,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [notificacoes],
   );
 
+  const isAdmin = user?.role === "admin";
   const agendaBadgeCount =
     agendaUrgencia !== "nenhuma"
       ? agendaProximosCount
       : agendaSolicitacoesCount;
   const showAgendaBadge = agendaBadgeCount > 0;
+  // Admin: badge neutro (sem vermelho/laranja de urgência pessoal).
   const agendaBadgeClass =
-    agendaUrgencia !== "nenhuma"
-      ? AGENDA_BADGE_BY_URGENCIA[agendaUrgencia]
-      : "bg-primary";
+    isAdmin
+      ? agendaUrgencia !== "nenhuma"
+        ? "bg-slate-500 text-white hover:bg-slate-500"
+        : "bg-primary"
+      : agendaUrgencia !== "nenhuma"
+        ? AGENDA_BADGE_BY_URGENCIA[agendaUrgencia]
+        : "bg-primary";
   const agendaDotClass =
-    agendaUrgencia !== "nenhuma"
-      ? AGENDA_DOT_BY_URGENCIA[agendaUrgencia]
-      : "bg-primary";
+    isAdmin
+      ? agendaUrgencia !== "nenhuma"
+        ? "bg-slate-500"
+        : "bg-primary"
+      : agendaUrgencia !== "nenhuma"
+        ? AGENDA_DOT_BY_URGENCIA[agendaUrgencia]
+        : "bg-primary";
 
   async function handleOpenNotif(n: Notificacao) {
     try {
@@ -606,6 +616,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onOpenChange={setLembretesOpen}
         proximos={agendaProximos}
         urgencia={agendaUrgencia}
+        informativo={user?.role === "admin"}
         onGoAgenda={() => {
           setLembretesOpen(false);
           void navigate({ to: "/agenda" });
