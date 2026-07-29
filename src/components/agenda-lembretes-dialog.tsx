@@ -131,42 +131,46 @@ export function AgendaLembretesDialog({
                     ? ` · falta ${formatRestante(p.msRestante)}`
                     : null}
                 </p>
-                {p.equipeNome ? (
-                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Network className="w-3 h-3" />
-                    Equipe: {p.equipeNome}
-                  </p>
-                ) : null}
-                {p.leadNome && contatoLabel ? (
-                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <User className="w-3 h-3" />
-                    {contatoLabel}: {p.leadNome}
-                  </p>
-                ) : null}
-                {p.corretorNome ? (
-                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Briefcase className="w-3 h-3" />
-                    Corretor: {p.corretorNome}
-                  </p>
-                ) : null}
-                {p.gerenteNome ? (
-                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="w-3 h-3" />
-                    Gerente: {p.gerenteNome}
-                  </p>
-                ) : null}
-                {!p.corretorNome && !p.gerenteNome && p.autorNome ? (
-                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="w-3 h-3" />
-                    Criado por: {p.autorNome}
-                  </p>
-                ) : null}
-                {p.local ? (
-                  <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="w-3 h-3" />
-                    {p.local}
-                  </p>
-                ) : null}
+                <div className="flex flex-col gap-1">
+                  {p.equipeNome ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Network className="w-3 h-3 shrink-0" />
+                      <span>Equipe: {p.equipeNome}</span>
+                    </p>
+                  ) : null}
+                  {p.leadNome && contatoLabel ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <User className="w-3 h-3 shrink-0" />
+                      <span>
+                        {contatoLabel}: {p.leadNome}
+                      </span>
+                    </p>
+                  ) : null}
+                  {p.corretorNome ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Briefcase className="w-3 h-3 shrink-0" />
+                      <span>Corretor: {p.corretorNome}</span>
+                    </p>
+                  ) : null}
+                  {p.gerenteNome ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="w-3 h-3 shrink-0" />
+                      <span>Gerente: {p.gerenteNome}</span>
+                    </p>
+                  ) : null}
+                  {!p.corretorNome && !p.gerenteNome && p.autorNome ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="w-3 h-3 shrink-0" />
+                      <span>Criado por: {p.autorNome}</span>
+                    </p>
+                  ) : null}
+                  {p.local ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      <span>{p.local}</span>
+                    </p>
+                  ) : null}
+                </div>
               </div>
             );
           })}
