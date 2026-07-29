@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { AgendaProximo, AgendaUrgencia } from "@/lib/agenda-api";
-import { CalendarClock, MapPin, User } from "lucide-react";
+import { Briefcase, CalendarClock, MapPin, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NIVEL_LABEL: Record<AgendaProximo["nivel"], string> = {
@@ -111,10 +111,28 @@ export function AgendaLembretesDialog({
               <p className="text-xs text-muted-foreground">
                 {formatQuando(p.startsAt)} · falta {formatRestante(p.msRestante)}
               </p>
+              {p.corretorNome ? (
+                <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Briefcase className="w-3 h-3" />
+                  Corretor: {p.corretorNome}
+                </p>
+              ) : null}
+              {p.gerenteNome ? (
+                <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="w-3 h-3" />
+                  Gerente: {p.gerenteNome}
+                </p>
+              ) : null}
+              {!p.corretorNome && !p.gerenteNome && p.autorNome ? (
+                <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="w-3 h-3" />
+                  Criado por: {p.autorNome}
+                </p>
+              ) : null}
               {p.leadNome ? (
                 <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <User className="w-3 h-3" />
-                  {p.leadNome}
+                  Contato: {p.leadNome}
                 </p>
               ) : null}
               {p.local ? (
