@@ -18,7 +18,12 @@ import {
   markNotificacaoLida,
   type Notificacao,
 } from "@/lib/notificacoes-api";
-import { fetchSolicitacoesAgendaCount } from "@/lib/agenda-api";
+import {
+  fetchAgendaLembretes,
+  type AgendaProximo,
+  type AgendaUrgencia,
+} from "@/lib/agenda-api";
+import { AgendaLembretesDialog } from "@/components/agenda-lembretes-dialog";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +34,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const AGENDA_BADGE_BY_URGENCIA: Record<
+  Exclude<AgendaUrgencia, "nenhuma">,
+  string
+> = {
+  dia: "bg-amber-400 text-amber-950 hover:bg-amber-400",
+  duas_horas: "bg-orange-500 text-white hover:bg-orange-500",
+  uma_hora: "bg-red-600 text-white hover:bg-red-600",
+};
+
+const AGENDA_DOT_BY_URGENCIA: Record<
+  Exclude<AgendaUrgencia, "nenhuma">,
+  string
+> = {
+  dia: "bg-amber-400",
+  duas_horas: "bg-orange-500",
+  uma_hora: "bg-red-600",
+};
+
+const SESSION_LEMBRETE_KEY = "agenda-lembretes-card-shown";
 
 type NavLeaf = { to: string; label: string; icon: LucideIcon };
 type NavGroup = { id: string; label: string; icon: LucideIcon; children: NavLeaf[] };
@@ -129,6 +154,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [agendaSolicitacoesCount, setAgendaSolicitacoesCount] = useState(0);
+  const [agendaUrgencia, setAgendaUrgencia] = useState<AgendaUrgencia>("nenhuma");
+  const [agendaProximosCount, setAgendaProximosCount] = useState(0);
+  const [agendaProximos, setAgendaProximos] = useState<AgendaProximo[]>([]);
+  const [lembretesOpen, setLembretesOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -143,19 +172,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const loadAgendaBadge = useCallback(async () => {
+  const loadAgendaBadge = useCallback(async (opts?: { showCard?: boolean }) => {
     try {
-      const { count } = await fetchSolicitacoesAgendaCount();
-      setAgendaSolicitacoesCount(count);
+      const data = await fetchAgendaLembretes();
+      setAgendaSolicitacoesCount(data.solicitacoesCount);
+      setAgendaUrgencia(data.urgencia);
+      setAgendaProximosCount(data.proximosCount);
+      setAgendaProximos(data.proximos);
+
+      if (opts?.showCard && data.proximos.length > 0) {
+        const already =
+          typeof sessionStorage !== "undefined" &&
+          sessionStorage.getItem(SESSION_LEMBRETE_KEY) === "1";
+        if (!already) {
+          sessionStorage.setItem(SESSION_LEMBRETE_KEY, "1");
+          setLembretesOpen(true);
+        }
+      }
+
+      if (data.novasNotificacoes.length > 0) {
+        void loadNotificacoes();
+      }
     } catch {
       // silencioso
     }
-  }, []);
+  }, [loadNotificacoes]);
 
   useEffect(() => {
     if (!user) return;
     void loadNotificacoes();
-    void loadAgendaBadge();
+    void loadAgendaBadge({ showCard: true });
     const id = window.setInterval(() => {
       void loadNotificacoes();
       void loadAgendaBadge();
@@ -167,6 +213,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     () => notificacoes.filter((n) => !n.lida).length,
     [notificacoes],
   );
+
+  const agendaBadgeCount =
+    agendaUrgencia !== "nenhuma"
+      ? agendaProximosCount
+      : agendaSolicitacoesCount;
+  const showAgendaBadge = agendaBadgeCount > 0;
+  const agendaBadgeClass =
+    agendaUrgencia !== "nenhuma"
+      ? AGENDA_BADGE_BY_URGENCIA[agendaUrgencia]
+      : "bg-primary";
+  const agendaDotClass =
+    agendaUrgencia !== "nenhuma"
+      ? AGENDA_DOT_BY_URGENCIA[agendaUrgencia]
+      : "bg-primary";
 
   async function handleOpenNotif(n: Notificacao) {
     try {
@@ -182,7 +242,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       );
     }
     setNotifOpen(false);
-    if (n.tipo === "agenda_solicitacao" || n.tipo === "agenda_resposta") {
+    if (
+      n.tipo === "agenda_solicitacao" ||
+      n.tipo === "agenda_resposta" ||
+      n.tipo === "agenda_lembrete_1d" ||
+      n.tipo === "agenda_lembrete_2h" ||
+      n.tipo === "agenda_lembrete_1h"
+    ) {
       void navigate({ to: "/agenda" });
       return;
     }
@@ -254,6 +320,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   async function handleSignOut() {
     await signOut();
+    sessionStorage.removeItem(SESSION_LEMBRETE_KEY);
     setTheme("light");
     toast.success("Você saiu da conta");
     navigate({ to: "/login", replace: true });
@@ -365,8 +432,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                       const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
                       const Icon = item.icon;
-                      const showAgendaBadge =
-                        item.to === "/agenda" && agendaSolicitacoesCount > 0;
+                      const isAgenda = item.to === "/agenda";
                       return (
                         <Link
                           key={item.to}
@@ -380,18 +446,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         >
                           <span className="relative shrink-0">
                             <Icon className="w-4 h-4" />
-                            {showAgendaBadge && collapsed ? (
-                              <span className="absolute -top-1.5 -right-1.5 size-2 rounded-full bg-primary" />
+                            {isAgenda && showAgendaBadge && collapsed ? (
+                              <span
+                                className={cn(
+                                  "absolute -top-1.5 -right-1.5 size-2 rounded-full",
+                                  agendaDotClass,
+                                )}
+                              />
                             ) : null}
                           </span>
                           {!collapsed && (
                             <>
                               <span className="truncate flex-1">{item.label}</span>
-                              {showAgendaBadge ? (
-                                <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-primary">
-                                  {agendaSolicitacoesCount > 9
-                                    ? "9+"
-                                    : agendaSolicitacoesCount}
+                              {isAgenda && showAgendaBadge ? (
+                                <Badge
+                                  className={cn(
+                                    "h-5 min-w-5 px-1.5 text-[10px]",
+                                    agendaBadgeClass,
+                                  )}
+                                >
+                                  {agendaBadgeCount > 9 ? "9+" : agendaBadgeCount}
                                 </Badge>
                               ) : null}
                             </>
@@ -526,6 +600,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-hidden">{children}</main>
       </div>
+
+      <AgendaLembretesDialog
+        open={lembretesOpen}
+        onOpenChange={setLembretesOpen}
+        proximos={agendaProximos}
+        urgencia={agendaUrgencia}
+        onGoAgenda={() => {
+          setLembretesOpen(false);
+          void navigate({ to: "/agenda" });
+        }}
+      />
     </div>
   );
 }

@@ -164,3 +164,32 @@ export async function deleteAgendamento(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+export type AgendaUrgencia = "nenhuma" | "dia" | "duas_horas" | "uma_hora";
+
+export type AgendaProximo = {
+  id: string;
+  titulo: string;
+  startsAt: string;
+  local: string | null;
+  leadNome: string | null;
+  nivel: "dia" | "duas_horas" | "uma_hora";
+  msRestante: number;
+};
+
+export type AgendaLembretesResponse = {
+  urgencia: AgendaUrgencia;
+  proximosCount: number;
+  solicitacoesCount: number;
+  proximos: AgendaProximo[];
+  novasNotificacoes: Array<{
+    id: string;
+    tipo: string;
+    titulo: string;
+    corpo: string;
+  }>;
+};
+
+export async function fetchAgendaLembretes(): Promise<AgendaLembretesResponse> {
+  return apiFetch<AgendaLembretesResponse>("/agenda/lembretes");
+}

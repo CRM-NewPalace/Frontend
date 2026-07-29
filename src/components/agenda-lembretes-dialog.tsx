@@ -1,0 +1,139 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import type { AgendaProximo, AgendaUrgencia } from "@/lib/agenda-api";
+import { CalendarClock, MapPin, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const NIVEL_LABEL: Record<AgendaProximo["nivel"], string> = {
+  dia: "Em até 1 dia",
+  duas_horas: "Em até 2 horas",
+  uma_hora: "Em até 1 hora",
+};
+
+const NIVEL_BADGE: Record<AgendaProximo["nivel"], string> = {
+  dia: "bg-amber-100 text-amber-900 border-amber-200",
+  duas_horas: "bg-orange-100 text-orange-900 border-orange-200",
+  uma_hora: "bg-red-100 text-red-800 border-red-200",
+};
+
+function formatQuando(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatRestante(ms: number) {
+  const totalMin = Math.max(0, Math.round(ms / 60_000));
+  if (totalMin < 60) return `${totalMin} min`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h < 24) return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
+}
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  proximos: AgendaProximo[];
+  urgencia: AgendaUrgencia;
+  onGoAgenda: () => void;
+};
+
+export function AgendaLembretesDialog({
+  open,
+  onOpenChange,
+  proximos,
+  urgencia,
+  onGoAgenda,
+}: Props) {
+  if (proximos.length === 0) return null;
+
+  const titulo =
+    urgencia === "uma_hora"
+      ? "Compromisso em menos de 1 hora"
+      : urgencia === "duas_horas"
+        ? "Compromisso em menos de 2 horas"
+        : "Compromissos nas próximas 24 horas";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarClock
+              className={cn(
+                "w-5 h-5",
+                urgencia === "uma_hora"
+                  ? "text-red-600"
+                  : urgencia === "duas_horas"
+                    ? "text-orange-600"
+                    : "text-amber-600",
+              )}
+            />
+            {titulo}
+          </DialogTitle>
+          <DialogDescription>
+            Você tem {proximos.length} compromisso
+            {proximos.length > 1 ? "s" : ""} próximo
+            {proximos.length > 1 ? "s" : ""}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {proximos.map((p) => (
+            <div
+              key={p.id}
+              className="rounded-lg border bg-card px-3 py-2.5 space-y-1.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium leading-snug">{p.titulo}</p>
+                <Badge
+                  variant="outline"
+                  className={cn("text-[10px] shrink-0", NIVEL_BADGE[p.nivel])}
+                >
+                  {NIVEL_LABEL[p.nivel]}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatQuando(p.startsAt)} · falta {formatRestante(p.msRestante)}
+              </p>
+              {p.leadNome ? (
+                <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <User className="w-3 h-3" />
+                  {p.leadNome}
+                </p>
+              ) : null}
+              {p.local ? (
+                <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="w-3 h-3" />
+                  {p.local}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Depois
+          </Button>
+          <Button onClick={onGoAgenda}>Ver Agenda</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

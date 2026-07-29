@@ -3,7 +3,10 @@ import { apiFetch } from "@/lib/api";
 export type NotificacaoTipo =
   | "analise_resultado"
   | "agenda_solicitacao"
-  | "agenda_resposta";
+  | "agenda_resposta"
+  | "agenda_lembrete_1d"
+  | "agenda_lembrete_2h"
+  | "agenda_lembrete_1h";
 
 export type Notificacao = {
   id: string;
