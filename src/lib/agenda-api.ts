@@ -66,6 +66,43 @@ export const AGENDAMENTO_ALVO_LABEL: Record<AgendamentoAlvo, string> = {
   gerente: "Um gerente",
 };
 
+/** Origem visual no calendário: quem criou o compromisso. */
+export type AgendamentoOrigem = "admin" | "gerente" | "corretor";
+
+export const AGENDAMENTO_ORIGEM_LABEL: Record<AgendamentoOrigem, string> = {
+  admin: "Administrador",
+  gerente: "Gerente",
+  corretor: "Corretor (lead/cliente)",
+};
+
+/** Blocos sólidos (calendário semana/mês). */
+export const AGENDAMENTO_ORIGEM_BLOCK: Record<AgendamentoOrigem, string> = {
+  admin: "bg-indigo-500 border-indigo-600 text-white",
+  gerente: "bg-teal-500 border-teal-600 text-white",
+  corretor: "bg-amber-500 border-amber-600 text-white",
+};
+
+/** Badges suaves (tabela do dia). */
+export const AGENDAMENTO_ORIGEM_SOFT: Record<AgendamentoOrigem, string> = {
+  admin: "bg-indigo-100 text-indigo-900 border-indigo-200",
+  gerente: "bg-teal-100 text-teal-900 border-teal-200",
+  corretor: "bg-amber-100 text-amber-900 border-amber-200",
+};
+
+export const AGENDAMENTO_ORIGEM_DOT: Record<AgendamentoOrigem, string> = {
+  admin: "bg-indigo-500",
+  gerente: "bg-teal-500",
+  corretor: "bg-amber-500",
+};
+
+export function getAgendamentoOrigem(item: {
+  autor: { role: Role };
+}): AgendamentoOrigem {
+  if (item.autor.role === "admin") return "admin";
+  if (item.autor.role === "gerente") return "gerente";
+  return "corretor";
+}
+
 export interface Agendamento {
   id: string;
   leadId: string | null;

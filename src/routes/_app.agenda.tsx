@@ -49,6 +49,8 @@ import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
   AGENDAMENTO_ALVO_LABEL,
   AGENDAMENTO_ESCOPO_LABEL,
+  AGENDAMENTO_ORIGEM_DOT,
+  AGENDAMENTO_ORIGEM_LABEL,
   AGENDAMENTO_STATUS,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPOS,
@@ -156,6 +158,9 @@ function AgendaPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
+  const isGerente = user?.role === "gerente";
+  /** Fila corretor→gerente: só gerente aprova e corretor acompanha. Admin não participa. */
+  const showSolicitacoes = !isAdmin;
   const { leads, assignees, loading: leadsLoading } = useLeads();
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("tabela");
@@ -271,6 +276,12 @@ function AgendaPage() {
       .catch(() => setEquipes([]));
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!showSolicitacoes && section === "solicitacoes") {
+      setSection("agenda");
+    }
+  }, [showSolicitacoes, section]);
+
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
@@ -295,7 +306,7 @@ function AgendaPage() {
               ? (filterStatus as AgendamentoStatus)
               : undefined,
         }),
-        fetchSolicitacoesAgenda(),
+        showSolicitacoes ? fetchSolicitacoesAgenda() : Promise.resolve([]),
       ]);
       setItems(data);
       setSolicitacoes(sols);
@@ -313,6 +324,7 @@ function AgendaPage() {
     visibleRange.to,
     isAdmin,
     isManager,
+    showSolicitacoes,
     filterEquipeId,
     filterCorretorId,
     filterTipo,
@@ -631,7 +643,7 @@ function AgendaPage() {
         title="Agenda"
         description={
           section === "solicitacoes"
-            ? isManager
+            ? isGerente
               ? "Pedidos de visita/reunião dos corretores aguardando sua aprovação."
               : "Pedidos enviados ao gerente — acompanhe aqui sem misturar com sua agenda do dia."
             : isManager
@@ -662,36 +674,38 @@ function AgendaPage() {
           <CalendarDays className="w-4 h-4" />
           Agenda
         </button>
-        <button
-          type="button"
-          onClick={() => setSection("solicitacoes")}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-            section === "solicitacoes"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Inbox className="w-4 h-4" />
-          Solicitações
-          {solicitacoes.length > 0 ? (
-            <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-amber-500 hover:bg-amber-500">
-              {solicitacoes.length > 9 ? "9+" : solicitacoes.length}
-            </Badge>
-          ) : null}
-        </button>
+        {showSolicitacoes ? (
+          <button
+            type="button"
+            onClick={() => setSection("solicitacoes")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              section === "solicitacoes"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Inbox className="w-4 h-4" />
+            Solicitações
+            {solicitacoes.length > 0 ? (
+              <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-amber-500 hover:bg-amber-500">
+                {solicitacoes.length > 9 ? "9+" : solicitacoes.length}
+              </Badge>
+            ) : null}
+          </button>
+        ) : null}
       </div>
 
       {section === "solicitacoes" ? (
         <div className="rounded-xl border bg-card overflow-hidden">
           <div className="border-b px-4 py-3 bg-muted/20">
             <h3 className="text-sm font-semibold">
-              {isManager
+              {isGerente
                 ? "Aguardando sua aprovação"
                 : "Aguardando o gerente"}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {isManager
+              {isGerente
                 ? "Visitas e reuniões pedidas pelos corretores da equipe."
                 : "Compromissos com o gerente que você enviou e ainda não foram respondidos."}
             </p>
@@ -723,12 +737,12 @@ function AgendaPage() {
                       })}
                       {" · "}
                       {s.lead?.nome ?? "Sem contato"}
-                      {isManager ? ` · ${s.autor.name}` : null}
+                      {isGerente ? ` · ${s.autor.name}` : null}
                       {" · "}
                       {AGENDAMENTO_TIPO_LABEL[s.tipo]}
                     </p>
                   </div>
-                  {isManager ? (
+                  {isGerente ? (
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Button
                         size="sm"
@@ -965,6 +979,23 @@ function AgendaPage() {
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground/80">Cores:</span>
+            {(
+              ["admin", "gerente", "corretor"] as const
+            ).map((origem) => (
+              <span key={origem} className="inline-flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "size-2.5 rounded-full",
+                    AGENDAMENTO_ORIGEM_DOT[origem],
+                  )}
+                />
+                {AGENDAMENTO_ORIGEM_LABEL[origem]}
+              </span>
+            ))}
           </div>
 
           {layoutMode === "tabela" ? (

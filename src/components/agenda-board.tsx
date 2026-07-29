@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  AGENDAMENTO_ORIGEM_BLOCK,
+  AGENDAMENTO_ORIGEM_LABEL,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_LABEL,
+  getAgendamentoOrigem,
   type Agendamento,
-  type AgendamentoTipo,
 } from "@/lib/agenda-api";
 import { cn } from "@/lib/utils";
 
@@ -14,14 +16,6 @@ const HOUR_START = 7;
 const HOUR_END = 23;
 const PX_PER_HOUR = 56;
 const DEFAULT_DURATION_MIN = 60;
-
-const TIPO_BLOCK: Record<AgendamentoTipo, string> = {
-  visita: "bg-violet-500 border-violet-600 text-white",
-  ligacao: "bg-sky-500 border-sky-600 text-white",
-  reuniao: "bg-amber-500 border-amber-600 text-white",
-  tarefa: "bg-emerald-500 border-emerald-600 text-white",
-  outro: "bg-slate-500 border-slate-600 text-white",
-};
 
 export function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -346,11 +340,12 @@ function TimeGridBoard({
                     }}
                     className={cn(
                       "absolute left-1 right-1 z-[6] overflow-hidden rounded-md border px-1.5 py-1 text-left shadow-sm transition hover:brightness-110",
-                      TIPO_BLOCK[item.tipo],
+                      AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
                       item.status === "concluido" && "opacity-80",
+                      item.status === "cancelado" && "opacity-50 grayscale",
                     )}
                     style={{ top, height: Math.max(height, 22) }}
-                    title={`${item.titulo}${item.lead ? ` · ${item.lead.nome}` : ""}`}
+                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${item.titulo}${item.lead ? ` · ${item.lead.nome}` : ""}`}
                   >
                     <div className="truncate text-[11px] font-semibold leading-tight">
                       {item.titulo}
@@ -478,9 +473,10 @@ function MonthBoard({
                     onClick={() => onEdit(item)}
                     className={cn(
                       "truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-tight border",
-                      TIPO_BLOCK[item.tipo],
+                      AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
+                      item.status === "cancelado" && "opacity-50 grayscale",
                     )}
-                    title={`${AGENDAMENTO_TIPO_LABEL[item.tipo]} · ${item.titulo} · ${AGENDAMENTO_STATUS_LABEL[item.status]}`}
+                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${AGENDAMENTO_TIPO_LABEL[item.tipo]} · ${item.titulo} · ${AGENDAMENTO_STATUS_LABEL[item.status]}`}
                   >
                     {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
                       hour: "2-digit",

@@ -9,11 +9,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AGENDAMENTO_ORIGEM_DOT,
+  AGENDAMENTO_ORIGEM_LABEL,
+  AGENDAMENTO_ORIGEM_SOFT,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_LABEL,
+  getAgendamentoOrigem,
   type Agendamento,
   type AgendamentoStatus,
-  type AgendamentoTipo,
 } from "@/lib/agenda-api";
 import type { Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -34,14 +37,6 @@ import { sameDay, toDateInput } from "@/components/agenda-board";
 const DAY_HOURS = [
   7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0,
 ] as const;
-
-const TIPO_BADGE: Record<AgendamentoTipo, string> = {
-  visita: "bg-violet-100 text-violet-800 border-violet-200",
-  ligacao: "bg-sky-100 text-sky-800 border-sky-200",
-  reuniao: "bg-amber-100 text-amber-900 border-amber-200",
-  tarefa: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  outro: "bg-slate-100 text-slate-700 border-slate-200",
-};
 
 const STATUS_BADGE: Record<AgendamentoStatus, string> = {
   agendado: "bg-cyan-100 text-cyan-800",
@@ -237,6 +232,7 @@ export function AgendaDayTable({
                 const { item } = slot;
                 const cancelled = item.status === "cancelado";
                 const canMutate = canMutateItem(item, currentUserRole);
+                const origem = getAgendamentoOrigem(item);
                 const isAdminEvent =
                   item.alvoTipo === "todos" ||
                   item.alvoTipo === "equipe" ||
@@ -269,16 +265,30 @@ export function AgendaDayTable({
                     )}
                   >
                     <TableCell className="align-top">
-                      <div className="text-sm font-semibold tabular-nums">
-                        {formatTimeRange(item)}
-                      </div>
-                      <div className="mt-1">
-                        <Badge
-                          variant="outline"
-                          className={cn("text-[10px]", TIPO_BADGE[item.tipo])}
-                        >
-                          {AGENDAMENTO_TIPO_LABEL[item.tipo]}
-                        </Badge>
+                      <div className="flex items-start gap-2">
+                        <span
+                          className={cn(
+                            "mt-1.5 h-8 w-1 shrink-0 rounded-full",
+                            AGENDAMENTO_ORIGEM_DOT[origem],
+                          )}
+                          title={AGENDAMENTO_ORIGEM_LABEL[origem]}
+                        />
+                        <div>
+                          <div className="text-sm font-semibold tabular-nums">
+                            {formatTimeRange(item)}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                AGENDAMENTO_ORIGEM_SOFT[origem],
+                              )}
+                            >
+                              {AGENDAMENTO_TIPO_LABEL[item.tipo]}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="align-top">
