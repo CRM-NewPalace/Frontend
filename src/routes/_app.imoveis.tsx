@@ -121,13 +121,27 @@ function ImoveisPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
             <Building2 className="w-8 h-8 opacity-40" />
-            <p>
+            <p className="text-center max-w-sm">
               {items.length === 0
                 ? isAdmin
-                  ? "Nenhum empreendimento. Use “Sincronizar do site”."
-                  : "Nenhum empreendimento disponível."
+                  ? "Nenhum empreendimento ainda. Clique em “Sincronizar do site” para importar a listagem da New Palace."
+                  : "Nenhum empreendimento cadastrado ainda. Peça a um administrador para sincronizar do site New Palace."
                 : "Nenhum resultado para a busca."}
             </p>
+            {items.length === 0 && isAdmin && (
+              <Button
+                className="mt-2"
+                onClick={() => void handleSync()}
+                disabled={syncing}
+              >
+                {syncing ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                )}
+                Sincronizar agora
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
