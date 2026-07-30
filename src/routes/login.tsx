@@ -138,7 +138,7 @@ function LoginPage() {
           <img
             src="/logo.png"
             alt="Imobiliária New Palace"
-            className="h-16 w-auto max-w-[220px] rounded-lg shadow-lg shadow-black/25 object-contain bg-black ring-1 ring-white/10"
+            className="h-16 w-auto max-w-[220px] rounded-lg object-contain drop-shadow-md"
           />
         </div>
 
@@ -204,7 +204,7 @@ function LoginPage() {
             <img
               src="/logo.png"
               alt="New Palace"
-              className="h-9 w-auto max-w-[140px] rounded-md object-contain bg-black"
+              className="h-9 w-auto max-w-[140px] rounded-md object-contain"
             />
             <div>
               <div className="font-semibold text-foreground leading-tight">
