@@ -40,7 +40,7 @@ const COLUMN_STEP_PX = 288 + 12;
 
 const STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Pendente",
-  aprovado: "Aprovado",
+  aprovado: "Vender",
   reprovado: "Reprovado",
 };
 
@@ -439,7 +439,7 @@ function AnalisePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="aprovado">Aprovado</SelectItem>
+                      <SelectItem value="aprovado">Vender</SelectItem>
                       <SelectItem value="reprovado">Reprovado</SelectItem>
                     </SelectContent>
                   </Select>

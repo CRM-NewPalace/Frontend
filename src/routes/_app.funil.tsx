@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Análise pendente",
-  aprovado: "Análise aprovada",
+  aprovado: "Vender",
   reprovado: "Análise reprovada",
 };
 
