@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -97,7 +97,7 @@ type LayoutMode = "tabela" | "calendario";
 type AgendaSection = "agenda" | "solicitacoes";
 
 export const Route = createFileRoute("/_app/agenda")({
-  head: () => ({ meta: [{ title: "Agenda — Imob CRM" }] }),
+  head: () => ({ meta: [{ title: "Agenda — NP Connect" }] }),
   component: AgendaPage,
 });
 

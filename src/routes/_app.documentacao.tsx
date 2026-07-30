@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/documentacao")({
-  head: () => ({ meta: [{ title: "Documentação — Imob CRM" }] }),
+  head: () => ({ meta: [{ title: "Documentação — NP Connect" }] }),
   component: DocumentacaoPage,
 });
 

@@ -21,16 +21,16 @@ export const Route = createFileRoute("/login")({
   // SSR ativo: evita mismatch Suspense (servidor) vs página (cliente) no React 19.
   head: () => ({
     meta: [
-      { title: "Entrar — New Palace" },
+      { title: "Entrar — NP Connect" },
       {
         name: "description",
         content:
-          "Acesse o CRM New Palace para gerenciar leads, funil, imóveis e corretores.",
+          "Acesse o NP Connect para gerenciar leads, funil, imóveis e corretores.",
       },
-      { property: "og:title", content: "Entrar — New Palace" },
+      { property: "og:title", content: "Entrar — NP Connect" },
       {
         property: "og:description",
-        content: "Acesse o CRM da Imobiliária New Palace.",
+        content: "Acesse o NP Connect da Imobiliária New Palace.",
       },
     ],
     links: [
@@ -137,7 +137,7 @@ function LoginPage() {
         <div className="relative z-10 animate-[login-fade_0.7s_ease-out]">
           <img
             src="/logo.png"
-            alt="Imobiliária New Palace"
+            alt="NP Connect"
             className="h-16 w-auto max-w-[220px] rounded-lg object-contain drop-shadow-md"
           />
         </div>
@@ -145,7 +145,7 @@ function LoginPage() {
         <div className="relative z-10 max-w-lg space-y-8 animate-[login-fade_0.9s_ease-out]">
           <div className="space-y-4">
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/70">
-              New Palace · Operação comercial
+              NP Connect · Operação comercial
             </p>
             <h1
               className="text-4xl xl:text-5xl font-semibold leading-[1.12] tracking-tight"
@@ -177,7 +177,7 @@ function LoginPage() {
         </div>
 
         <div className="relative z-10 flex items-end justify-between gap-4 animate-[login-fade_1.1s_ease-out]">
-          <p className="text-xs text-white/60">© 2026 New Palace</p>
+          <p className="text-xs text-white/60">© 2026 NP Connect</p>
           <div className="hidden xl:flex items-center gap-2 text-xs text-white/70">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-200 animate-pulse" />
             Ambiente de demonstração
@@ -203,15 +203,15 @@ function LoginPage() {
           <div className="lg:hidden flex items-center gap-2.5">
             <img
               src="/logo.png"
-              alt="New Palace"
+              alt="NP Connect"
               className="h-9 w-auto max-w-[140px] rounded-md object-contain"
             />
             <div>
               <div className="font-semibold text-foreground leading-tight">
-                New Palace
+                NP Connect
               </div>
               <div className="text-[11px] text-muted-foreground">
-                Gestão Imobiliária
+                New Palace
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -41,7 +41,7 @@ type TriagemSearch = {
 };
 
 export const Route = createFileRoute("/_app/triagem")({
-  head: () => ({ meta: [{ title: "Triagem — Imob CRM" }] }),
+  head: () => ({ meta: [{ title: "Triagem — NP Connect" }] }),
   validateSearch: (search: Record<string, unknown>): TriagemSearch => ({
     leadId: typeof search.leadId === "string" ? search.leadId : undefined,
     stage: typeof search.stage === "string" ? search.stage : undefined,

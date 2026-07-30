@@ -47,7 +47,7 @@ const LOST_STAGE_SLUG = "perdido";
 const COLUMN_STEP_PX = 288 + 12;
 
 export const Route = createFileRoute("/_app/funil")({
-  head: () => ({ meta: [{ title: "Funil de Vendas — Imob CRM" }] }),
+  head: () => ({ meta: [{ title: "Funil de Vendas — NP Connect" }] }),
   component: Funil,
 });
 

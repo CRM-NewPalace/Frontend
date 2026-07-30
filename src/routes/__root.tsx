@@ -109,14 +109,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "New Palace — Gestão Imobiliária" },
+      { title: "NP Connect — Gestão Imobiliária" },
       {
         name: "description",
         content:
-          "CRM da Imobiliária New Palace: gestão de leads, funil de vendas, corretores, imóveis e propostas.",
+          "NP Connect: CRM da Imobiliária New Palace para leads, funil, corretores, imóveis e propostas.",
       },
-      { name: "author", content: "New Palace" },
-      { property: "og:title", content: "New Palace — Gestão Imobiliária" },
+      { name: "author", content: "NP Connect" },
+      { property: "og:title", content: "NP Connect — Gestão Imobiliária" },
       {
         property: "og:description",
         content:

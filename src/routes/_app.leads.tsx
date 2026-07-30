@@ -40,7 +40,7 @@ import {
 } from "@/components/form-dialog";
 
 export const Route = createFileRoute("/_app/leads")({
-  head: () => ({ meta: [{ title: "Leads — Imob CRM" }] }),
+  head: () => ({ meta: [{ title: "Leads — NP Connect" }] }),
   component: LeadsPage,
 });
 

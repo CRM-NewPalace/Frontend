@@ -1,10 +1,10 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { Plus } from "lucide-react";
 import { SemConexao, BotaoSemConexao } from "@/components/sem-conexao";
 
 export const Route = createFileRoute("/_app/financeiro/contas-a-pagar")({
-  head: () => ({ meta: [{ title: "Contas a pagar — Imob CRM" }] }),
+  head: () => ({ meta: [{ title: "Contas a pagar — NP Connect" }] }),
   component: Page,
 });
 

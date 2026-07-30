@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import {
   useCallback, useEffect, useMemo, useRef, useState,
 } from "react";
@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { phoneDigits } from "@/lib/phone";
 
 export const Route = createFileRoute("/_app/resultado")({
-  head: () => ({ meta: [{ title: "Análise — Imob CRM" }] }),
+  head: () => ({ meta: [{ title: "Análise — NP Connect" }] }),
   component: AnalisePage,
 });
 
