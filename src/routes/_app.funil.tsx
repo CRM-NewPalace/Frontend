@@ -29,6 +29,7 @@ import {
   type Construtora,
 } from "@/lib/construtoras-api";
 import {
+  createEmpreendimento,
   fetchEmpreendimentos,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
@@ -47,7 +48,7 @@ import {
   type DocumentacaoStatus1,
   type DocumentacaoStatus2,
 } from "@/lib/documentacao-api";
-import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight, ClipboardList, Loader2 } from "lucide-react";
+import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight, ClipboardList, Loader2, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -116,6 +117,10 @@ function ComercialFunilBoard() {
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
   const [analiseSaving, setAnaliseSaving] = useState(false);
+  const [quickEmpreendimentoOpen, setQuickEmpreendimentoOpen] = useState(false);
+  const [quickEmpreendimentoNome, setQuickEmpreendimentoNome] = useState("");
+  const [quickEmpreendimentoCidade, setQuickEmpreendimentoCidade] = useState("");
+  const [quickEmpreendimentoSaving, setQuickEmpreendimentoSaving] = useState(false);
 
   /** Após mudar etapa (só corretor): pergunta se quer registrar histórico na Triagem. */
   const [triagemPrompt, setTriagemPrompt] = useState<{
@@ -140,9 +145,9 @@ function ComercialFunilBoard() {
   }, []);
 
   const empreendimentosFiltrados = useMemo(() => {
-    if (!analiseConstrutoraId) return empreendimentos;
+    if (!analiseConstrutoraId) return [];
     return empreendimentos.filter(
-      (e) => !e.construtoraId || e.construtoraId === analiseConstrutoraId,
+      (e) => e.construtoraId === analiseConstrutoraId,
     );
   }, [empreendimentos, analiseConstrutoraId]);
 
@@ -161,6 +166,50 @@ function ComercialFunilBoard() {
     setAnaliseTarget(lead);
     setAnaliseConstrutoraId(lead.construtoraId ?? "");
     setAnaliseEmpreendimentoId(lead.empreendimentoId ?? "");
+  }
+
+  const canQuickCreateEmpreendimento =
+    user?.role === "admin" || user?.role === "gerente";
+
+  function openQuickEmpreendimento() {
+    if (!analiseConstrutoraId) {
+      toast.error("Selecione a construtora antes de cadastrar um empreendimento.");
+      return;
+    }
+    setQuickEmpreendimentoNome("");
+    setQuickEmpreendimentoCidade("");
+    setQuickEmpreendimentoOpen(true);
+  }
+
+  async function handleQuickCreateEmpreendimento() {
+    if (!analiseConstrutoraId) return;
+    if (quickEmpreendimentoNome.trim().length < 2) {
+      toast.error("Informe o nome do empreendimento.");
+      return;
+    }
+
+    setQuickEmpreendimentoSaving(true);
+    try {
+      const created = await createEmpreendimento({
+        nome: quickEmpreendimentoNome.trim(),
+        construtoraId: analiseConstrutoraId,
+        cidade: quickEmpreendimentoCidade.trim() || undefined,
+      });
+      setEmpreendimentos((current) =>
+        [...current, created].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+      );
+      setAnaliseEmpreendimentoId(created.id);
+      setQuickEmpreendimentoOpen(false);
+      toast.success("Empreendimento cadastrado e selecionado.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível cadastrar o empreendimento.",
+      );
+    } finally {
+      setQuickEmpreendimentoSaving(false);
+    }
   }
 
   async function confirmAnaliseSend() {
@@ -756,15 +805,37 @@ function ComercialFunilBoard() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Empreendimento *</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Empreendimento *</Label>
+                {canQuickCreateEmpreendimento && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={openQuickEmpreendimento}
+                    title="Cadastrar empreendimento"
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Novo imóvel
+                  </Button>
+                )}
+              </div>
               <Select
                 value={analiseEmpreendimentoId || "__none__"}
                 onValueChange={(v) =>
                   setAnaliseEmpreendimentoId(v === "__none__" ? "" : v)
                 }
+                disabled={!analiseConstrutoraId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue
+                    placeholder={
+                      analiseConstrutoraId
+                        ? "Selecione"
+                        : "Selecione a construtora primeiro"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">—</SelectItem>
@@ -795,6 +866,64 @@ function ComercialFunilBoard() {
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               )}
               Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={quickEmpreendimentoOpen}
+        onOpenChange={setQuickEmpreendimentoOpen}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Novo empreendimento</DialogTitle>
+            <DialogDescription>
+              O imóvel será vinculado à construtora selecionada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-empreendimento-nome">Nome *</Label>
+              <Input
+                id="quick-empreendimento-nome"
+                value={quickEmpreendimentoNome}
+                onChange={(event) =>
+                  setQuickEmpreendimentoNome(event.target.value)
+                }
+                placeholder="Ex.: Reserva dos Ipês"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-empreendimento-cidade">Cidade</Label>
+              <Input
+                id="quick-empreendimento-cidade"
+                value={quickEmpreendimentoCidade}
+                onChange={(event) =>
+                  setQuickEmpreendimentoCidade(event.target.value)
+                }
+                placeholder="Ex.: Recife"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQuickEmpreendimentoOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={quickEmpreendimentoSaving}
+              onClick={() => void handleQuickCreateEmpreendimento()}
+            >
+              {quickEmpreendimentoSaving && (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              )}
+              Cadastrar
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -26,6 +26,12 @@ export type SyncEmpreendimentosResult = {
   updated: number;
 };
 
+export type CreateEmpreendimentoInput = {
+  nome: string;
+  construtoraId: string;
+  cidade?: string;
+};
+
 export async function fetchEmpreendimentos(params?: {
   construtoraId?: string;
   ativo?: boolean;
@@ -37,6 +43,15 @@ export async function fetchEmpreendimentos(params?: {
   return apiFetch<Empreendimento[]>(
     `/empreendimentos${query ? `?${query}` : ""}`,
   );
+}
+
+export async function createEmpreendimento(
+  input: CreateEmpreendimentoInput,
+): Promise<Empreendimento> {
+  return apiFetch<Empreendimento>("/empreendimentos", {
+    method: "POST",
+    body: input,
+  });
 }
 
 export async function syncEmpreendimentosFromSite(): Promise<SyncEmpreendimentosResult> {
