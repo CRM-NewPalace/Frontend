@@ -42,7 +42,11 @@ type LeadsContextValue = {
     id: string,
     patch: UpdateLeadInput & { corretor?: string },
   ) => Promise<Lead>;
-  updateLeadStage: (id: string, stage: StageId) => Promise<Lead>;
+  updateLeadStage: (
+    id: string,
+    stage: StageId,
+    extra?: { construtoraId?: string; empreendimentoId?: string },
+  ) => Promise<Lead>;
   /** Marca como perdido (sai das listas operacionais). */
   markLeadLost: (id: string, motivo: string) => Promise<void>;
   /** Exclusão definitiva (admin, lead já perdido). */
@@ -211,7 +215,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   );
 
   const updateLeadStage = useCallback(
-    async (id: string, stage: StageId) => {
+    async (
+      id: string,
+      stage: StageId,
+      extra?: { construtoraId?: string; empreendimentoId?: string },
+    ) => {
       const previous = leads.find((l) => l.id === id);
       setLeads((prev) =>
         prev.map((l) =>
@@ -220,7 +228,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       );
 
       try {
-        const updated = await updateLeadStageApi(id, stage);
+        const updated = await updateLeadStageApi(id, stage, extra);
         const mapped = mapApiLead(updated);
         setLeads((prev) => prev.map((l) => (l.id === id ? mapped : l)));
         return mapped;

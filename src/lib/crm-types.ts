@@ -7,7 +7,11 @@ export type StageId = string;
 
 export type ContatoTipo = "lead" | "cliente";
 
-export type AnaliseStatus = "pendente" | "aprovado" | "reprovado";
+export type AnaliseStatus =
+  | "pendente"
+  | "em_analise"
+  | "aprovado"
+  | "reprovado";
 
 export interface Lead {
   id: string;
@@ -24,6 +28,10 @@ export interface Lead {
   corretor: string;
   /** UUID do corretor no backend. */
   corretorId?: string | null;
+  construtoraId?: string | null;
+  construtora?: { id: string; nome: string } | null;
+  empreendimentoId?: string | null;
+  empreendimento?: { id: string; nome: string; cidade?: string | null } | null;
   stage: StageId;
   prioridade: "Alta" | "Média" | "Baixa";
   /** Renda mensal do cliente (opcional). */
@@ -31,7 +39,12 @@ export interface Lead {
   updatedAt: string;
   tags: string[];
   /** Ficha de análise, se existir. */
-  analise?: { status: AnaliseStatus; parecer: string | null } | null;
+  analise?: {
+    id?: string;
+    status: AnaliseStatus;
+    parecer: string | null;
+    analistaId?: string | null;
+  } | null;
 }
 
 export function brl(n: number) {

@@ -122,6 +122,7 @@ const ROLE_LABEL: Record<Role, string> = {
   admin: "Administrador",
   gerente: "Gerente",
   corretor: "Corretor",
+  analista: "Analista",
 };
 
 const STATUS_LABEL: Record<UserStatus, string> = {
@@ -180,6 +181,7 @@ function initials(name: string) {
 function roleBadgeClass(role: Role) {
   if (role === "admin") return "bg-primary/15 text-primary border-primary/30";
   if (role === "gerente") return "bg-info/15 text-info border-info/30";
+  if (role === "analista") return "bg-sky-500/15 text-sky-700 border-sky-500/30";
   return "bg-muted text-muted-foreground";
 }
 
@@ -508,6 +510,7 @@ function Usuarios() {
               <SelectItem value="all">Todos os perfis</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
               <SelectItem value="gerente">Gerente</SelectItem>
+              <SelectItem value="analista">Analista</SelectItem>
               <SelectItem value="corretor">Corretor</SelectItem>
             </SelectContent>
           </Select>
@@ -790,6 +793,7 @@ function Usuarios() {
                     <SelectContent>
                       <SelectItem value="admin">Administrador</SelectItem>
                       <SelectItem value="gerente">Gerente</SelectItem>
+                      <SelectItem value="analista">Analista</SelectItem>
                       <SelectItem value="corretor">Corretor</SelectItem>
                     </SelectContent>
                   </Select>

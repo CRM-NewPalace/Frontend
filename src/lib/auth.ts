@@ -1,6 +1,6 @@
 import { apiFetch, sessionCache, storeCsrfToken } from "@/lib/api";
 
-export type Role = "admin" | "gerente" | "corretor";
+export type Role = "admin" | "gerente" | "corretor" | "analista";
 export type UserStatus = "ativo" | "inativo";
 
 export interface AuthUser {

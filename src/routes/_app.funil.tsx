@@ -20,16 +20,41 @@ import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import { ApiError } from "@/lib/api";
 import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
 } from "@/components/form-dialog";
-import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  fetchConstrutoras,
+  type Construtora,
+} from "@/lib/construtoras-api";
+import {
+  fetchEmpreendimentos,
+  type Empreendimento,
+} from "@/lib/empreendimentos-api";
+import {
+  assumirAnalise,
+  fetchAnalises,
+  updateAnalise,
+  type Analise,
+} from "@/lib/analise-api";
+import {
+  createDocumentacao,
+  FONTE_LABELS,
+  STATUS1_LABELS,
+  STATUS2_LABELS,
+  type DocumentacaoFonte,
+  type DocumentacaoStatus1,
+  type DocumentacaoStatus2,
+} from "@/lib/documentacao-api";
+import { Clock, User, Eye, Sparkles, Wallet, MapPin, ChevronLeft, ChevronRight, ClipboardList, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Análise pendente",
+  em_analise: "Em análise",
   aprovado: "Análise aprovada",
   reprovado: "Análise reprovada",
 };
@@ -37,11 +62,14 @@ const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
 function analiseBadgeClass(status: AnaliseStatus) {
   if (status === "aprovado") return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
   if (status === "reprovado") return "border-destructive/40 bg-destructive/10 text-destructive";
+  if (status === "em_analise") return "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300";
   return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
 }
 
 /** Slug da etapa que dispara o fluxo de "lead perdido". */
 const LOST_STAGE_SLUG = "perdido";
+/** Slug da etapa que exige construtora/empreendimento. */
+const ANALISE_STAGE_SLUG = "em-analise";
 
 /** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
 const COLUMN_STEP_PX = 288 + 12;
@@ -52,6 +80,14 @@ export const Route = createFileRoute("/_app/funil")({
 });
 
 function Funil() {
+  const user = getSession();
+  if (user?.role === "analista") {
+    return <AnalistaFunilBoard />;
+  }
+  return <ComercialFunilBoard />;
+}
+
+function ComercialFunilBoard() {
   const navigate = useNavigate();
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
@@ -73,6 +109,14 @@ function Funil() {
   const [lostMotivo, setLostMotivo] = useState("");
   const [lostMotivoOutro, setLostMotivoOutro] = useState("");
 
+  /** Envio para análise: exige construtora + empreendimento. */
+  const [analiseTarget, setAnaliseTarget] = useState<Lead | null>(null);
+  const [analiseConstrutoraId, setAnaliseConstrutoraId] = useState("");
+  const [analiseEmpreendimentoId, setAnaliseEmpreendimentoId] = useState("");
+  const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
+  const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
+  const [analiseSaving, setAnaliseSaving] = useState(false);
+
   /** Após mudar etapa (só corretor): pergunta se quer registrar histórico na Triagem. */
   const [triagemPrompt, setTriagemPrompt] = useState<{
     leadId: string;
@@ -80,6 +124,27 @@ function Funil() {
     stage: StageId;
     stageName: string;
   } | null>(null);
+
+  useEffect(() => {
+    void Promise.all([
+      fetchConstrutoras(),
+      fetchEmpreendimentos({ ativo: true }),
+    ])
+      .then(([c, e]) => {
+        setConstrutoras(c);
+        setEmpreendimentos(e);
+      })
+      .catch(() => {
+        /* selects vazios — erro só no envio */
+      });
+  }, []);
+
+  const empreendimentosFiltrados = useMemo(() => {
+    if (!analiseConstrutoraId) return empreendimentos;
+    return empreendimentos.filter(
+      (e) => !e.construtoraId || e.construtoraId === analiseConstrutoraId,
+    );
+  }, [empreendimentos, analiseConstrutoraId]);
 
   function offerTriagemHistory(lead: Lead, stage: StageId) {
     if (!isCorretor) return;
@@ -90,6 +155,43 @@ function Funil() {
       stage,
       stageName,
     });
+  }
+
+  function openAnaliseDialog(lead: Lead) {
+    setAnaliseTarget(lead);
+    setAnaliseConstrutoraId(lead.construtoraId ?? "");
+    setAnaliseEmpreendimentoId(lead.empreendimentoId ?? "");
+  }
+
+  async function confirmAnaliseSend() {
+    if (!analiseTarget) return;
+    if (!analiseConstrutoraId || !analiseEmpreendimentoId) {
+      toast.error("Selecione a construtora e o empreendimento.");
+      return;
+    }
+    const lead = analiseTarget;
+    const stageName =
+      funnelStages.find((s) => s.id === ANALISE_STAGE_SLUG)?.name ?? "Em análise";
+    setAnaliseSaving(true);
+    try {
+      await updateLeadStage(lead.id, ANALISE_STAGE_SLUG, {
+        construtoraId: analiseConstrutoraId,
+        empreendimentoId: analiseEmpreendimentoId,
+      });
+      setAnaliseTarget(null);
+      toast.success(`${lead.nome} enviado para ${stageName}`);
+      offerTriagemHistory(lead, ANALISE_STAGE_SLUG);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Não foi possível enviar para análise.",
+      );
+    } finally {
+      setAnaliseSaving(false);
+    }
   }
 
   const updateScrollButtons = useCallback(() => {
@@ -135,6 +237,11 @@ function Funil() {
       setLostMotivo("");
       setLostMotivoOutro("");
       setLostTarget(lead);
+      return;
+    }
+
+    if (stage === ANALISE_STAGE_SLUG) {
+      openAnaliseDialog(lead);
       return;
     }
 
@@ -190,6 +297,13 @@ function Funil() {
       setLostMotivo("");
       setLostMotivoOutro("");
       setLostTarget(target);
+      return;
+    }
+
+    if (stage === ANALISE_STAGE_SLUG) {
+      const target = detailLead;
+      setDetailLead(null);
+      openAnaliseDialog(target);
       return;
     }
 
@@ -598,6 +712,491 @@ function Funil() {
               }}
             >
               Adicionar relato
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(analiseTarget)}
+        onOpenChange={(open) => {
+          if (!open) setAnaliseTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar para análise</DialogTitle>
+            <DialogDescription>
+              {analiseTarget
+                ? `Informe a construtora e o empreendimento de ${analiseTarget.nome} antes de subir o processo.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-1">
+            <div className="space-y-1.5">
+              <Label>Construtora *</Label>
+              <Select
+                value={analiseConstrutoraId || "__none__"}
+                onValueChange={(v) => {
+                  setAnaliseConstrutoraId(v === "__none__" ? "" : v);
+                  setAnaliseEmpreendimentoId("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">—</SelectItem>
+                  {construtoras.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Empreendimento *</Label>
+              <Select
+                value={analiseEmpreendimentoId || "__none__"}
+                onValueChange={(v) =>
+                  setAnaliseEmpreendimentoId(v === "__none__" ? "" : v)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">—</SelectItem>
+                  {empreendimentosFiltrados.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.nome}
+                      {e.cidade ? ` · ${e.cidade}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAnaliseTarget(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={analiseSaving}
+              onClick={() => void confirmAnaliseSend()}
+            >
+              {analiseSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+const ANALISTA_COLUMNS: {
+  id: AnaliseStatus;
+  label: string;
+}[] = [
+  { id: "pendente", label: "Pendente" },
+  { id: "em_analise", label: "Em análise" },
+  { id: "aprovado", label: "Aprovado" },
+  { id: "reprovado", label: "Reprovado" },
+];
+
+function AnalistaFunilBoard() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<Analise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [docPrompt, setDocPrompt] = useState<Analise | null>(null);
+  const [docOpen, setDocOpen] = useState(false);
+  const [docTarget, setDocTarget] = useState<Analise | null>(null);
+  const [docSaving, setDocSaving] = useState(false);
+  const [docFonte, setDocFonte] = useState<DocumentacaoFonte>("outro");
+  const [docStatus1, setDocStatus1] = useState<DocumentacaoStatus1>("analise");
+  const [docStatus2, setDocStatus2] = useState<DocumentacaoStatus2>("andamento");
+  const [docObs, setDocObs] = useState("");
+  const [docVgv, setDocVgv] = useState("");
+  const [parecerTarget, setParecerTarget] = useState<Analise | null>(null);
+  const [parecerStatus, setParecerStatus] = useState<AnaliseStatus>("aprovado");
+  const [parecerTexto, setParecerTexto] = useState("");
+  const [parecerSaving, setParecerSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setItems(await fetchAnalises());
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar a fila de análise.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleAssumir(item: Analise) {
+    try {
+      const updated = await assumirAnalise(item.id);
+      setItems((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      toast.success("Processo assumido (Em análise).");
+      setDocPrompt(updated);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível assumir.",
+      );
+    }
+  }
+
+  function openDocForm(item: Analise) {
+    setDocTarget(item);
+    setDocFonte("outro");
+    setDocStatus1("analise");
+    setDocStatus2("andamento");
+    setDocObs("");
+    setDocVgv("");
+    setDocOpen(true);
+  }
+
+  async function saveDoc() {
+    if (!docTarget) return;
+    setDocSaving(true);
+    try {
+      const vgvDigits = docVgv.replace(/\D/g, "");
+      await createDocumentacao({
+        leadId: docTarget.leadId,
+        nome: docTarget.nome,
+        construtoraId: docTarget.lead.construtoraId,
+        empreendimentoId: docTarget.lead.empreendimentoId,
+        fonte: docFonte,
+        status1: docStatus1,
+        status2: docStatus2,
+        corretorId: docTarget.lead.corretorId,
+        vgv: vgvDigits ? Number(vgvDigits) : null,
+        obs: docObs.trim() || null,
+        dataAnalise: new Date().toISOString().slice(0, 10),
+      });
+      toast.success("Documentação registrada.");
+      setDocOpen(false);
+      setDocTarget(null);
+      void navigate({ to: "/documentacao" });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível registrar a documentação.",
+      );
+    } finally {
+      setDocSaving(false);
+    }
+  }
+
+  async function saveParecer() {
+    if (!parecerTarget) return;
+    setParecerSaving(true);
+    try {
+      const updated = await updateAnalise(parecerTarget.id, {
+        status: parecerStatus,
+        parecer: parecerTexto.trim() || null,
+      });
+      setItems((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      toast.success("Parecer registrado.");
+      setParecerTarget(null);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível salvar.",
+      );
+    } finally {
+      setParecerSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Fila de Análise"
+        description="Processos de todos os corretores: pendentes, em análise e com resultado."
+        actions={
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/resultado">Abrir Análise</Link>
+          </Button>
+        }
+      />
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          Carregando…
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6">
+          {ANALISTA_COLUMNS.map((col) => {
+            const colItems = items.filter((i) => i.status === col.id);
+            return (
+              <div
+                key={col.id}
+                className="w-72 shrink-0 flex flex-col bg-muted/40 rounded-xl p-3"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <Badge variant="secondary">{col.label}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {colItems.length}
+                  </span>
+                </div>
+                <div className="space-y-2 min-h-16 flex-1">
+                  {colItems.map((item) => (
+                    <Card key={item.id} className="p-3 space-y-2 shadow-sm">
+                      <div className="text-sm font-medium truncate">
+                        {item.nome}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {item.lead.corretor?.name ?? "—"}
+                        {item.lead.empreendimento
+                          ? ` · ${item.lead.empreendimento.nome}`
+                          : ""}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {col.id === "pendente" && (
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => void handleAssumir(item)}
+                          >
+                            Assumir
+                          </Button>
+                        )}
+                        {col.id === "em_analise" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => openDocForm(item)}
+                            >
+                              Documentação
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setParecerTarget(item);
+                                setParecerStatus("aprovado");
+                                setParecerTexto(item.parecer ?? "");
+                              }}
+                            >
+                              Parecer
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <AlertDialog
+        open={Boolean(docPrompt)}
+        onOpenChange={(o) => !o && setDocPrompt(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Registrar documentação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {docPrompt
+                ? `O processo de ${docPrompt.nome} foi assumido. Deseja registrar a documentação agora? Construtora e empreendimento já vêm do lead.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Agora não</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!docPrompt) return;
+                const target = docPrompt;
+                setDocPrompt(null);
+                openDocForm(target);
+              }}
+            >
+              Registrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <FormDialogShell
+        open={docOpen}
+        onOpenChange={setDocOpen}
+        icon={<ClipboardList className="w-5 h-5" />}
+        title="Registrar documentação"
+        description={
+          docTarget
+            ? `${docTarget.nome} · ${docTarget.lead.construtora?.nome ?? "Sem construtora"} · ${docTarget.lead.empreendimento?.nome ?? "Sem empreendimento"}`
+            : undefined
+        }
+      >
+        <FormDialogBody>
+          <FormSection title="Dados restantes">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Fonte</Label>
+                <Select
+                  value={docFonte}
+                  onValueChange={(v) => setDocFonte(v as DocumentacaoFonte)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(FONTE_LABELS) as DocumentacaoFonte[]).map(
+                      (k) => (
+                        <SelectItem key={k} value={k}>
+                          {FONTE_LABELS[k]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status 1</Label>
+                <Select
+                  value={docStatus1}
+                  onValueChange={(v) =>
+                    setDocStatus1(v as DocumentacaoStatus1)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(STATUS1_LABELS) as DocumentacaoStatus1[]).map(
+                      (k) => (
+                        <SelectItem key={k} value={k}>
+                          {STATUS1_LABELS[k]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status 2</Label>
+                <Select
+                  value={docStatus2}
+                  onValueChange={(v) =>
+                    setDocStatus2(v as DocumentacaoStatus2)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(STATUS2_LABELS) as DocumentacaoStatus2[]).map(
+                      (k) => (
+                        <SelectItem key={k} value={k}>
+                          {STATUS2_LABELS[k]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>VGV (R$)</Label>
+                <Input
+                  inputMode="numeric"
+                  value={docVgv}
+                  onChange={(e) => setDocVgv(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>OBS</Label>
+                <Input
+                  value={docObs}
+                  onChange={(e) => setDocObs(e.target.value)}
+                />
+              </div>
+            </div>
+          </FormSection>
+        </FormDialogBody>
+        <FormDialogActions>
+          <Button type="button" variant="outline" onClick={() => setDocOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="button" disabled={docSaving} onClick={() => void saveDoc()}>
+            {docSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+            Salvar documentação
+          </Button>
+        </FormDialogActions>
+      </FormDialogShell>
+
+      <Dialog
+        open={Boolean(parecerTarget)}
+        onOpenChange={(o) => !o && setParecerTarget(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Parecer da análise</DialogTitle>
+            <DialogDescription>
+              {parecerTarget?.nome}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-1.5">
+              <Label>Resultado</Label>
+              <Select
+                value={parecerStatus}
+                onValueChange={(v) => setParecerStatus(v as AnaliseStatus)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="aprovado">Aprovado</SelectItem>
+                  <SelectItem value="reprovado">Reprovado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Parecer</Label>
+              <Input
+                value={parecerTexto}
+                onChange={(e) => setParecerTexto(e.target.value)}
+                placeholder="Observações do parecer"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setParecerTarget(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={parecerSaving}
+              onClick={() => void saveParecer()}
+            >
+              {parecerSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

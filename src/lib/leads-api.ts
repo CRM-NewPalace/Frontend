@@ -18,7 +18,16 @@ export interface ApiLead {
   tags: string[];
   corretorId: string | null;
   corretor: { id: string; name: string } | null;
-  analise?: { status: AnaliseStatus; parecer: string | null } | null;
+  construtoraId?: string | null;
+  construtora?: { id: string; nome: string } | null;
+  empreendimentoId?: string | null;
+  empreendimento?: { id: string; nome: string; cidade: string | null } | null;
+  analise?: {
+    id?: string;
+    status: AnaliseStatus;
+    parecer: string | null;
+    analistaId?: string | null;
+  } | null;
   perdidoAt?: string | null;
   motivoPerda?: string | null;
   perdidoPorId?: string | null;
@@ -72,6 +81,10 @@ export function mapApiLead(api: ApiLead): Lead {
     bairro: api.bairro,
     corretor: api.corretor?.name ?? "—",
     corretorId: api.corretorId,
+    construtoraId: api.construtoraId ?? null,
+    construtora: api.construtora ?? null,
+    empreendimentoId: api.empreendimentoId ?? null,
+    empreendimento: api.empreendimento ?? null,
     stage: api.stage,
     prioridade: api.prioridade,
     renda: api.renda ?? null,
@@ -127,10 +140,17 @@ export async function updateLeadApi(
 export async function updateLeadStageApi(
   id: string,
   stage: StageId,
+  extra?: { construtoraId?: string; empreendimentoId?: string },
 ): Promise<ApiLead> {
   return apiFetch<ApiLead>(`/leads/${id}/stage`, {
     method: "PATCH",
-    body: { stage },
+    body: {
+      stage,
+      ...(extra?.construtoraId ? { construtoraId: extra.construtoraId } : {}),
+      ...(extra?.empreendimentoId
+        ? { empreendimentoId: extra.empreendimentoId }
+        : {}),
+    },
   });
 }
 

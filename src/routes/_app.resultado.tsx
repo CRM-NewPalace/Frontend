@@ -20,9 +20,11 @@ import { useLeads } from "@/lib/leads-store";
 import {
   fetchAnalises,
   updateAnalise,
+  assumirAnalise,
   type Analise,
   type AnaliseStatus,
 } from "@/lib/analise-api";
+import { getSession } from "@/lib/auth";
 import {
   SearchCheck, Loader2, ChevronLeft, ChevronRight, Users, User,
   Wallet, FileText, MapPin, MessageCircle,
@@ -40,6 +42,7 @@ const COLUMN_STEP_PX = 288 + 12;
 
 const STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Pendente",
+  em_analise: "Em análise",
   aprovado: "Aprovado",
   reprovado: "Reprovado",
 };
@@ -47,6 +50,7 @@ const STATUS_LABEL: Record<AnaliseStatus, string> = {
 function statusBadgeClass(status: AnaliseStatus) {
   if (status === "aprovado") return "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
   if (status === "reprovado") return "bg-destructive/15 text-destructive border-destructive/30";
+  if (status === "em_analise") return "bg-sky-500/15 text-sky-700 border-sky-500/30";
   return "bg-amber-500/15 text-amber-800 border-amber-500/30";
 }
 
@@ -389,6 +393,14 @@ function AnalisePage() {
                     label="Renda"
                     value={detail.renda != null ? brl(detail.renda) : "—"}
                   />
+                  <DetailField
+                    label="Construtora"
+                    value={detail.lead.construtora?.nome ?? "—"}
+                  />
+                  <DetailField
+                    label="Empreendimento"
+                    value={detail.lead.empreendimento?.nome ?? "—"}
+                  />
                 </div>
               </FormSection>
 
@@ -439,6 +451,7 @@ function AnalisePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="em_analise">Em análise</SelectItem>
                       <SelectItem value="aprovado">Aprovado</SelectItem>
                       <SelectItem value="reprovado">Reprovado</SelectItem>
                     </SelectContent>
@@ -459,6 +472,37 @@ function AnalisePage() {
               <Button type="button" variant="outline" onClick={() => setDetail(null)}>
                 Fechar
               </Button>
+              {detail.status === "pendente" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={() => {
+                    void (async () => {
+                      setSaving(true);
+                      try {
+                        const updated = await assumirAnalise(detail.id);
+                        setItems((prev) =>
+                          prev.map((x) => (x.id === updated.id ? updated : x)),
+                        );
+                        setDetail(updated);
+                        setStatusDraft(updated.status);
+                        toast.success("Processo assumido (Em análise).");
+                      } catch (err) {
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Não foi possível assumir.",
+                        );
+                      } finally {
+                        setSaving(false);
+                      }
+                    })();
+                  }}
+                >
+                  Assumir
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="secondary"

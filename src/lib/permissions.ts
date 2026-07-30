@@ -3,8 +3,9 @@ import type { Role } from "@/lib/auth";
 /**
  * Rotas por perfil:
  * - admin: tudo, inclusive financeiro
- * - gerente: operação da equipe + administração limitada (usuários/equipes da equipe), sem financeiro
- * - corretor: essencial + imóveis do catálogo New Palace (só os próprios leads/agenda/clientes)
+ * - gerente: operação da equipe + administração limitada, sem financeiro
+ * - corretor: essencial (próprios leads/agenda/clientes)
+ * - analista: funil de análise, documentação e resultado (visão global)
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
   admin: [
@@ -62,6 +63,13 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/documentacao",
     "/perfil",
   ],
+  analista: [
+    "/funil",
+    "/resultado",
+    "/documentacao",
+    "/imoveis",
+    "/perfil",
+  ],
 };
 
 export function getAllowedRoutes(role: Role): readonly string[] {
@@ -75,7 +83,8 @@ export function canAccessRoute(role: Role, pathname: string): boolean {
   );
 }
 
-export function defaultRouteForRole(_role: Role): string {
+export function defaultRouteForRole(role: Role): string {
+  if (role === "analista") return "/funil";
   return "/dashboard";
 }
 
@@ -86,8 +95,9 @@ export function canViewFinancial(role: Role): boolean {
 
 /**
  * Admin vê todos; gerente vê a própria equipe (escopo aplicado na API).
+ * Analista tem visão global de processos de análise.
  * Corretor fica restrito aos próprios registros.
  */
 export function canViewTeamData(role: Role): boolean {
-  return role === "admin" || role === "gerente";
+  return role === "admin" || role === "gerente" || role === "analista";
 }

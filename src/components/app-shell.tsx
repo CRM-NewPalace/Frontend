@@ -42,7 +42,6 @@ import {
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSession, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
-import { setTheme } from "@/lib/theme";
 import { ApiError } from "@/lib/api";
 import {
   fetchNotificacoes,
@@ -213,6 +212,7 @@ const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
   gerente: "Gerente",
   corretor: "Corretor",
+  analista: "Analista",
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -427,7 +427,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   async function handleSignOut() {
     await signOut();
     sessionStorage.removeItem(SESSION_LEMBRETE_KEY);
-    setTheme("light");
     toast.success("Você saiu da conta");
     navigate({ to: "/login", replace: true });
   }

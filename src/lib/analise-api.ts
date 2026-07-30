@@ -1,7 +1,11 @@
 import { apiFetch } from "@/lib/api";
 import type { ContatoTipo, Lead, StageId } from "@/lib/crm-types";
 
-export type AnaliseStatus = "pendente" | "aprovado" | "reprovado";
+export type AnaliseStatus =
+  | "pendente"
+  | "em_analise"
+  | "aprovado"
+  | "reprovado";
 
 export interface Analise {
   id: string;
@@ -25,9 +29,11 @@ export interface Analise {
   temDependente: boolean;
   status: AnaliseStatus;
   parecer: string | null;
+  analistaId: string | null;
   createdAt: string;
   updatedAt: string;
   autor: { id: string; name: string };
+  analista: { id: string; name: string } | null;
   lead: {
     id: string;
     tipo: ContatoTipo;
@@ -35,6 +41,10 @@ export interface Analise {
     stage: StageId;
     corretorId: string | null;
     corretor: { id: string; name: string; whatsapp?: string | null } | null;
+    construtoraId: string | null;
+    construtora: { id: string; nome: string } | null;
+    empreendimentoId: string | null;
+    empreendimento: { id: string; nome: string; cidade: string | null } | null;
   };
 }
 
@@ -43,15 +53,23 @@ export type UpdateAnaliseInput = {
   parecer?: string | null;
 };
 
-export async function fetchAnalises(corretorId?: string): Promise<Analise[]> {
+export async function fetchAnalises(params?: {
+  corretorId?: string;
+  status?: AnaliseStatus;
+}): Promise<Analise[]> {
   const qs = new URLSearchParams();
-  if (corretorId) qs.set("corretorId", corretorId);
+  if (params?.corretorId) qs.set("corretorId", params.corretorId);
+  if (params?.status) qs.set("status", params.status);
   const query = qs.toString();
   return apiFetch<Analise[]>(`/analise${query ? `?${query}` : ""}`);
 }
 
 export async function fetchAnalise(id: string): Promise<Analise> {
   return apiFetch<Analise>(`/analise/${id}`);
+}
+
+export async function assumirAnalise(id: string): Promise<Analise> {
+  return apiFetch<Analise>(`/analise/${id}/assumir`, { method: "POST" });
 }
 
 export async function updateAnalise(
