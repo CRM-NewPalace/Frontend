@@ -1,7 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import {
-  Eye, EyeOff, Loader2, ArrowRight, Building2, Kanban, Users,
+  Eye,
+  EyeOff,
+  Loader2,
+  ArrowRight,
+  Building2,
+  Kanban,
+  Users,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,13 +22,24 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Entrar — Imob CRM" },
-      { name: "description", content: "Acesse o Imob CRM para gerenciar leads, funil, imóveis e corretores." },
+      {
+        name: "description",
+        content:
+          "Acesse o Imob CRM para gerenciar leads, funil, imóveis e corretores.",
+      },
       { property: "og:title", content: "Entrar — Imob CRM" },
-      { property: "og:description", content: "Acesse o Imob CRM da sua imobiliária." },
+      {
+        property: "og:description",
+        content: "Acesse o Imob CRM da sua imobiliária.",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous",
+      },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap",
@@ -37,14 +54,31 @@ export const Route = createFileRoute("/login")({
 const SHOW_DEMO_ACCOUNTS = import.meta.env.DEV;
 
 const DEMO = [
-  { email: "admin@imob.com", password: "admin", role: "Administrador", hint: "Acesso total" },
-  { email: "gerente@imob.com", password: "gerente", role: "Gerente", hint: "Equipe e operação" },
-  { email: "corretor@imob.com", password: "corretor", role: "Corretor", hint: "Carteira própria" },
+  {
+    email: "admin@imob.com",
+    password: "admin",
+    role: "Administrador",
+    hint: "Acesso total",
+  },
+  {
+    email: "gerente@imob.com",
+    password: "gerente",
+    role: "Gerente",
+    hint: "Equipe e operação",
+  },
+  {
+    email: "corretor@imob.com",
+    password: "corretor",
+    role: "Corretor",
+    hint: "Carteira própria",
+  },
 ] as const;
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState(SHOW_DEMO_ACCOUNTS ? "admin@imob.com" : "");
+  const [email, setEmail] = useState(
+    SHOW_DEMO_ACCOUNTS ? "admin@imob.com" : "",
+  );
   const [password, setPassword] = useState(SHOW_DEMO_ACCOUNTS ? "admin" : "");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -74,15 +108,16 @@ function LoginPage() {
       <aside className="hidden lg:flex relative flex-col justify-between overflow-hidden text-white p-10 xl:p-14 bg-[linear-gradient(155deg,#1f8f5a_0%,#2dad6b_42%,#1a7a4c_100%)]">
         {/* Atmosfera */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -left-16 w-[28rem] h-[28rem] rounded-full bg-white/10 blur-3xl animate-[login-float_8s_ease-in-out_infinite]" />
-          <div className="absolute bottom-10 -right-20 w-[22rem] h-[22rem] rounded-full bg-emerald-950/30 blur-3xl animate-[login-float_10s_ease-in-out_infinite_reverse]" />
+          <div className="absolute -top-24 -left-16 w-28rem h-28rem rounded-full bg-white/10 blur-3xl animate-[login-float_8s_ease-in-out_infinite]" />
+          <div className="absolute bottom-10 -right-20 w-22rem h-22rem rounded-full bg-emerald-950/30 blur-3xl animate-[login-float_10s_ease-in-out_infinite_reverse]" />
           <div
             className="absolute inset-0 opacity-[0.12]"
             style={{
               backgroundImage:
                 "linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)",
               backgroundSize: "48px 48px",
-              maskImage: "radial-gradient(ellipse at 30% 20%, black 20%, transparent 70%)",
+              maskImage:
+                "radial-gradient(ellipse at 30% 20%, black 20%, transparent 70%)",
             }}
           />
           {/* Skyline sutil */}
@@ -113,7 +148,9 @@ function LoginPage() {
               >
                 Imob CRM
               </div>
-              <div className="text-xs text-white/75 tracking-wide">Gestão Imobiliária</div>
+              <div className="text-xs text-white/75 tracking-wide">
+                Gestão Imobiliária
+              </div>
             </div>
           </div>
         </div>
@@ -130,8 +167,8 @@ function LoginPage() {
               O ritmo da imobiliária, num só painel.
             </h1>
             <p className="text-base text-white/85 leading-relaxed max-w-md">
-              Leads, funil, visitas e financeiro conectados — para a equipe vender
-              com clareza e a gestão acompanhar de perto.
+              Leads, funil, visitas e financeiro conectados — para a equipe
+              vender com clareza e a gestão acompanhar de perto.
             </p>
           </div>
 
@@ -174,13 +211,21 @@ function LoginPage() {
 
         <form
           onSubmit={onSubmit}
-          className="relative w-full max-w-[400px] space-y-8 animate-[login-fade_0.6s_ease-out]"
+          className="relative w-full max-w-400px space-y-8 animate-[login-fade_0.6s_ease-out]"
         >
           <div className="lg:hidden flex items-center gap-2.5">
-            <img src="/favicon-32.png" alt="Imob CRM" className="w-9 h-9 rounded-lg" />
+            <img
+              src="/favicon-32.png"
+              alt="Imob CRM"
+              className="w-9 h-9 rounded-lg"
+            />
             <div>
-              <div className="font-semibold text-foreground leading-tight">Imob CRM</div>
-              <div className="text-[11px] text-muted-foreground">Gestão Imobiliária</div>
+              <div className="font-semibold text-foreground leading-tight">
+                Imob CRM
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Gestão Imobiliária
+              </div>
             </div>
           </div>
 
@@ -198,7 +243,9 @@ function LoginPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground/80">Email</Label>
+              <Label htmlFor="email" className="text-foreground/80">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -210,8 +257,13 @@ function LoginPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-foreground/80">Senha</Label>
-                <button type="button" className="text-xs font-medium text-primary hover:underline">
+                <Label htmlFor="password" className="text-foreground/80">
+                  Senha
+                </Label>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
                   Esqueci minha senha
                 </button>
               </div>
@@ -232,13 +284,20 @@ function LoginPage() {
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
             </div>
             <div className="flex items-center gap-2 pt-0.5">
               <Checkbox id="remember" defaultChecked />
-              <Label htmlFor="remember" className="text-sm font-normal cursor-pointer text-muted-foreground">
+              <Label
+                htmlFor="remember"
+                className="text-sm font-normal cursor-pointer text-muted-foreground"
+              >
                 Lembrar acesso neste dispositivo
               </Label>
             </div>
@@ -258,40 +317,43 @@ function LoginPage() {
           </Button>
 
           {SHOW_DEMO_ACCOUNTS && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <div className="h-px flex-1 bg-border" />
-              Contas demo
-              <div className="h-px flex-1 bg-border" />
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
+                <div className="h-px flex-1 bg-border" />
+                Contas demo
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <div className="grid gap-2">
+                {DEMO.map((d) => (
+                  <button
+                    key={d.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(d.email);
+                      setPassword(d.password);
+                    }}
+                    className={cn(
+                      "group w-full rounded-xl border bg-white px-3.5 py-3 text-left transition-all",
+                      "hover:border-primary/40 hover:bg-primary/3 hover:shadow-sm",
+                      email === d.email &&
+                        "border-primary/50 bg-primary/4 ring-1 ring-primary/20",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-foreground">
+                        {d.role}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
+                        usar →
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {d.hint} · {d.email}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid gap-2">
-              {DEMO.map((d) => (
-                <button
-                  key={d.email}
-                  type="button"
-                  onClick={() => {
-                    setEmail(d.email);
-                    setPassword(d.password);
-                  }}
-                  className={cn(
-                    "group w-full rounded-xl border bg-white px-3.5 py-3 text-left transition-all",
-                    "hover:border-primary/40 hover:bg-primary/[0.03] hover:shadow-sm",
-                    email === d.email && "border-primary/50 bg-primary/[0.04] ring-1 ring-primary/20",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">{d.role}</span>
-                    <span className="text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
-                      usar →
-                    </span>
-                  </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    {d.hint} · {d.email}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
           )}
         </form>
       </main>

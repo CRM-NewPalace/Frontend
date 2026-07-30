@@ -2,40 +2,84 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
+  DetailField,
 } from "@/components/form-dialog";
 import {
-  Plus, MoreHorizontal, KeyRound, Ban, Pencil, Trash2, Eye, UserPlus,
-  Search, CheckCircle2, Sparkles, Shield, Copy, Check,
+  Plus,
+  MoreHorizontal,
+  KeyRound,
+  Ban,
+  Pencil,
+  Trash2,
+  Eye,
+  UserPlus,
+  Search,
+  CheckCircle2,
+  Sparkles,
+  Shield,
+  Copy,
+  Check,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import { useLeads } from "@/lib/leads-store";
 import {
-  createUser, deleteUser, fetchUsers, resetUserPassword,
-  updateUser, updateUserStatus, type ApiUser,
+  createUser,
+  deleteUser,
+  fetchUsers,
+  resetUserPassword,
+  updateUser,
+  updateUserStatus,
+  type ApiUser,
 } from "@/lib/users-api";
 import {
-  formatPhone, isValidPhone, PHONE_INVALID_MESSAGE, PHONE_PLACEHOLDER,
+  formatPhone,
+  isValidPhone,
+  PHONE_INVALID_MESSAGE,
+  PHONE_PLACEHOLDER,
 } from "@/lib/phone";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -124,7 +168,13 @@ function userToForm(u: ApiUser): FormState {
 }
 
 function initials(name: string) {
-  return name.split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 function roleBadgeClass(role: Role) {
@@ -167,16 +217,13 @@ function Usuarios() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   /** Atualiza estado + cache juntos. */
-  const setUsers = useCallback(
-    (updater: (prev: ApiUser[]) => ApiUser[]) => {
-      setUsersState((prev) => {
-        const next = updater(prev);
-        setUsersCache(next);
-        return next;
-      });
-    },
-    [],
-  );
+  const setUsers = useCallback((updater: (prev: ApiUser[]) => ApiUser[]) => {
+    setUsersState((prev) => {
+      const next = updater(prev);
+      setUsersCache(next);
+      return next;
+    });
+  }, []);
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
@@ -192,21 +239,30 @@ function Usuarios() {
     password: string;
     title: string;
   } | null>(null);
-  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(null);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(
+    null,
+  );
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
-    try {
-      const page = await fetchUsers({ page: 1, limit: 100 });
-      setUsers(() => page.data);
-    } catch (err) {
-      if (!opts?.silent) {
-        toast.error(err instanceof ApiError ? err.message : "Não foi possível carregar os usuários.");
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      try {
+        const page = await fetchUsers({ page: 1, limit: 100 });
+        setUsers(() => page.data);
+      } catch (err) {
+        if (!opts?.silent) {
+          toast.error(
+            err instanceof ApiError
+              ? err.message
+              : "Não foi possível carregar os usuários.",
+          );
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [setUsers]);
+    },
+    [setUsers],
+  );
 
   useEffect(() => {
     void load({ silent: Boolean(cachedUsers) });
@@ -218,7 +274,8 @@ function Usuarios() {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
       if (q) {
-        const hay = `${u.name} ${u.email} ${u.phone ?? ""} ${u.cargo ?? ""}`.toLowerCase();
+        const hay =
+          `${u.name} ${u.email} ${u.phone ?? ""} ${u.cargo ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (roleFilter !== "all" && u.role !== roleFilter) return false;
@@ -304,7 +361,10 @@ function Usuarios() {
           role: form.role,
           status: form.status,
         });
-        setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
+        setUsers((prev) => [
+          created,
+          ...prev.filter((u) => u.id !== created.id),
+        ]);
         setFormOpen(false);
         setCredentials({
           name: created.name,
@@ -322,13 +382,17 @@ function Usuarios() {
           role: form.role,
           status: form.status,
         });
-        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+        setUsers((prev) =>
+          prev.map((u) => (u.id === updated.id ? updated : u)),
+        );
         toast.success("Usuário atualizado.");
         setFormOpen(false);
       }
       void syncTeam();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Não foi possível salvar.");
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível salvar.",
+      );
     } finally {
       setSaving(false);
     }
@@ -347,7 +411,9 @@ function Usuarios() {
       void syncTeam();
     } catch (err) {
       setUsers((prev) => [target, ...prev.filter((u) => u.id !== target.id)]);
-      toast.error(err instanceof ApiError ? err.message : "Não foi possível excluir.");
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível excluir.",
+      );
     }
   }
 
@@ -358,7 +424,9 @@ function Usuarios() {
       prev.map((x) => (x.id === u.id ? { ...x, status: next } : x)),
     );
     if (detail?.id === u.id) setDetail((d) => (d ? { ...d, status: next } : d));
-    toast.success(next === "ativo" ? `${u.name} reativado.` : `${u.name} inativado.`);
+    toast.success(
+      next === "ativo" ? `${u.name} reativado.` : `${u.name} inativado.`,
+    );
     try {
       const updated = await updateUserStatus(u.id, next);
       setUsers((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
@@ -367,8 +435,13 @@ function Usuarios() {
       setUsers((prev) =>
         prev.map((x) => (x.id === u.id ? { ...x, status: u.status } : x)),
       );
-      if (detail?.id === u.id) setDetail((d) => (d ? { ...d, status: u.status } : d));
-      toast.error(err instanceof ApiError ? err.message : "Não foi possível alterar o status.");
+      if (detail?.id === u.id)
+        setDetail((d) => (d ? { ...d, status: u.status } : d));
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível alterar o status.",
+      );
     }
   }
 
@@ -387,7 +460,11 @@ function Usuarios() {
         toast.success(`Senha de ${u.name} redefinida.`);
       }
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Não foi possível resetar a senha.");
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível resetar a senha.",
+      );
     }
   }
 
@@ -405,7 +482,8 @@ function Usuarios() {
         actions={
           isAdmin ? (
             <Button size="sm" onClick={openCreate}>
-              <Plus className="w-4 h-4 mr-1" />Novo usuário
+              <Plus className="w-4 h-4 mr-1" />
+              Novo usuário
             </Button>
           ) : undefined
         }
@@ -413,7 +491,7 @@ function Usuarios() {
 
       <Card className="mb-4">
         <div className="p-3 flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-[220px]">
+          <div className="relative flex-1 min-w-220px">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, e-mail, telefone..."
@@ -423,7 +501,9 @@ function Usuarios() {
             />
           </div>
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-44 h-9">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os perfis</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
@@ -432,7 +512,9 @@ function Usuarios() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-36 h-9">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos status</SelectItem>
               <SelectItem value="ativo">Ativo</SelectItem>
@@ -459,13 +541,19 @@ function Usuarios() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={8}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
                   Carregando usuários...
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={8}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
@@ -475,7 +563,9 @@ function Usuarios() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">{initials(u.name)}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          {initials(u.name)}
+                        </AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-medium">{u.name}</span>
                     </div>
@@ -484,40 +574,63 @@ function Usuarios() {
                   <TableCell className="text-sm">{u.phone || "—"}</TableCell>
                   <TableCell className="text-sm">{u.cargo || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={roleBadgeClass(u.role)}>{ROLE_LABEL[u.role]}</Badge>
+                    <Badge variant="outline" className={roleBadgeClass(u.role)}>
+                      {ROLE_LABEL[u.role]}
+                    </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={u.status === "ativo" ? "default" : "secondary"}>{STATUS_LABEL[u.status]}</Badge>
+                    <Badge
+                      variant={u.status === "ativo" ? "default" : "secondary"}
+                    >
+                      {STATUS_LABEL[u.status]}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{formatLastAccess(u.lastLoginAt)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {formatLastAccess(u.lastLoginAt)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setDetail(u)}>
-                          <Eye className="w-3.5 h-3.5 mr-2" />Ver detalhes
+                          <Eye className="w-3.5 h-3.5 mr-2" />
+                          Ver detalhes
                         </DropdownMenuItem>
                         {isAdmin && (
                           <DropdownMenuItem onClick={() => openEdit(u)}>
-                            <Pencil className="w-3.5 h-3.5 mr-2" />Editar
+                            <Pencil className="w-3.5 h-3.5 mr-2" />
+                            Editar
                           </DropdownMenuItem>
                         )}
                         {(isAdmin || (isManager && u.role === "corretor")) && (
-                          <DropdownMenuItem onClick={() => void handleResetPassword(u)}>
-                            <KeyRound className="w-3.5 h-3.5 mr-2" />Gerar senha temporária
+                          <DropdownMenuItem
+                            onClick={() => void handleResetPassword(u)}
+                          >
+                            <KeyRound className="w-3.5 h-3.5 mr-2" />
+                            Gerar senha temporária
                           </DropdownMenuItem>
                         )}
                         {isAdmin && (
                           <DropdownMenuItem
-                            disabled={session?.id === u.id && u.status === "ativo"}
+                            disabled={
+                              session?.id === u.id && u.status === "ativo"
+                            }
                             onClick={() => void toggleStatus(u)}
                           >
                             {u.status === "ativo" ? (
-                              <><Ban className="w-3.5 h-3.5 mr-2" />Inativar</>
+                              <>
+                                <Ban className="w-3.5 h-3.5 mr-2" />
+                                Inativar
+                              </>
                             ) : (
-                              <><CheckCircle2 className="w-3.5 h-3.5 mr-2" />Reativar</>
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                                Reativar
+                              </>
                             )}
                           </DropdownMenuItem>
                         )}
@@ -529,7 +642,8 @@ function Usuarios() {
                               disabled={session?.id === u.id}
                               onClick={() => setDeleteTarget(u)}
                             >
-                              <Trash2 className="w-3.5 h-3.5 mr-2" />Excluir
+                              <Trash2 className="w-3.5 h-3.5 mr-2" />
+                              Excluir
                             </DropdownMenuItem>
                           </>
                         )}
@@ -546,34 +660,94 @@ function Usuarios() {
       <FormDialogShell
         open={formOpen}
         onOpenChange={setFormOpen}
-        icon={formMode === "edit" ? <Pencil className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+        icon={
+          formMode === "edit" ? (
+            <Pencil className="w-5 h-5" />
+          ) : (
+            <UserPlus className="w-5 h-5" />
+          )
+        }
         title={formMode === "edit" ? "Editar usuário" : "Novo usuário"}
-        description={formMode === "edit" ? "Atualize os dados de acesso da equipe." : "Cadastre um novo acesso ao CRM."}
+        description={
+          formMode === "edit"
+            ? "Atualize os dados de acesso da equipe."
+            : "Cadastre um novo acesso ao CRM."
+        }
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
-            <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Dados">
+            <FormSection
+              icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
+              title="Dados"
+            >
               <div className="space-y-1.5">
-                <Label htmlFor="usr-nome" className="text-xs text-muted-foreground">Nome completo</Label>
-                <Input id="usr-nome" value={form.name} onChange={(e) => setField("name", e.target.value)} placeholder="Ex.: Marina Alves" className="h-10 bg-background" autoFocus required />
+                <Label
+                  htmlFor="usr-nome"
+                  className="text-xs text-muted-foreground"
+                >
+                  Nome completo
+                </Label>
+                <Input
+                  id="usr-nome"
+                  value={form.name}
+                  onChange={(e) => setField("name", e.target.value)}
+                  placeholder="Ex.: Marina Alves"
+                  className="h-10 bg-background"
+                  autoFocus
+                  required
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="usr-email" className="text-xs text-muted-foreground">E-mail</Label>
-                  <Input id="usr-email" type="email" value={form.email} onChange={(e) => setField("email", e.target.value)} placeholder="nome@imob.com" className="h-10 bg-background" required />
+                  <Label
+                    htmlFor="usr-email"
+                    className="text-xs text-muted-foreground"
+                  >
+                    E-mail
+                  </Label>
+                  <Input
+                    id="usr-email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setField("email", e.target.value)}
+                    placeholder="nome@imob.com"
+                    className="h-10 bg-background"
+                    required
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="usr-tel" className="text-xs text-muted-foreground">Telefone</Label>
-                  <Input id="usr-tel" type="tel" value={form.phone} onChange={(e) => setField("phone", formatPhone(e.target.value))} placeholder={PHONE_PLACEHOLDER} className="h-10 bg-background" />
+                  <Label
+                    htmlFor="usr-tel"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Telefone
+                  </Label>
+                  <Input
+                    id="usr-tel"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setField("phone", formatPhone(e.target.value))
+                    }
+                    placeholder={PHONE_PLACEHOLDER}
+                    className="h-10 bg-background"
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="usr-wa" className="text-xs text-muted-foreground">WhatsApp</Label>
+                <Label
+                  htmlFor="usr-wa"
+                  className="text-xs text-muted-foreground"
+                >
+                  WhatsApp
+                </Label>
                 <Input
                   id="usr-wa"
                   type="tel"
                   value={form.whatsapp}
-                  onChange={(e) => setField("whatsapp", formatPhone(e.target.value))}
+                  onChange={(e) =>
+                    setField("whatsapp", formatPhone(e.target.value))
+                  }
                   placeholder={PHONE_PLACEHOLDER}
                   className="h-10 bg-background"
                 />
@@ -582,16 +756,37 @@ function Usuarios() {
                 </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="usr-cargo" className="text-xs text-muted-foreground">Cargo</Label>
-                <Input id="usr-cargo" value={form.cargo} onChange={(e) => setField("cargo", e.target.value)} placeholder="Ex.: Corretor sênior" className="h-10 bg-background" />
+                <Label
+                  htmlFor="usr-cargo"
+                  className="text-xs text-muted-foreground"
+                >
+                  Cargo
+                </Label>
+                <Input
+                  id="usr-cargo"
+                  value={form.cargo}
+                  onChange={(e) => setField("cargo", e.target.value)}
+                  placeholder="Ex.: Corretor sênior"
+                  className="h-10 bg-background"
+                />
               </div>
             </FormSection>
-            <FormSection icon={<Shield className="w-3.5 h-3.5 text-primary" />} title="Acesso">
+            <FormSection
+              icon={<Shield className="w-3.5 h-3.5 text-primary" />}
+              title="Acesso"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Perfil</Label>
-                  <Select value={form.role} onValueChange={(v) => setField("role", v as Role)}>
-                    <SelectTrigger className="h-10 bg-background"><SelectValue /></SelectTrigger>
+                  <Label className="text-xs text-muted-foreground">
+                    Perfil
+                  </Label>
+                  <Select
+                    value={form.role}
+                    onValueChange={(v) => setField("role", v as Role)}
+                  >
+                    <SelectTrigger className="h-10 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Administrador</SelectItem>
                       <SelectItem value="gerente">Gerente</SelectItem>
@@ -600,9 +795,17 @@ function Usuarios() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Status</Label>
-                  <Select value={form.status} onValueChange={(v) => setField("status", v as UserStatus)} disabled={formMode === "edit" && editingId === session?.id}>
-                    <SelectTrigger className="h-10 bg-background"><SelectValue /></SelectTrigger>
+                  <Label className="text-xs text-muted-foreground">
+                    Status
+                  </Label>
+                  <Select
+                    value={form.status}
+                    onValueChange={(v) => setField("status", v as UserStatus)}
+                    disabled={formMode === "edit" && editingId === session?.id}
+                  >
+                    <SelectTrigger className="h-10 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ativo">Ativo</SelectItem>
                       <SelectItem value="inativo">Inativo</SelectItem>
@@ -612,16 +815,52 @@ function Usuarios() {
               </div>
               {formMode === "create" && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="usr-senha" className="text-xs text-muted-foreground">Senha inicial</Label>
-                  <Input id="usr-senha" type="text" autoComplete="new-password" value={form.password} onChange={(e) => setField("password", e.target.value)} placeholder="Ex.: Senha@123" className="h-10 bg-background" required />
-                  <p className={cn("text-[11px]", form.password && !isStrongPassword(form.password) ? "text-destructive" : "text-muted-foreground")}>{PASSWORD_HINT}</p>
+                  <Label
+                    htmlFor="usr-senha"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Senha inicial
+                  </Label>
+                  <Input
+                    id="usr-senha"
+                    type="text"
+                    autoComplete="new-password"
+                    value={form.password}
+                    onChange={(e) => setField("password", e.target.value)}
+                    placeholder="Ex.: Senha@123"
+                    className="h-10 bg-background"
+                    required
+                  />
+                  <p
+                    className={cn(
+                      "text-[11px]",
+                      form.password && !isStrongPassword(form.password)
+                        ? "text-destructive"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {PASSWORD_HINT}
+                  </p>
                 </div>
               )}
             </FormSection>
           </FormDialogBody>
           <FormDialogActions hint="As alterações são salvas no banco.">
-            <Button type="button" variant="outline" onClick={() => setFormOpen(false)} disabled={saving}>Cancelar</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : formMode === "edit" ? "Salvar alterações" : "Criar usuário"}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFormOpen(false)}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving
+                ? "Salvando..."
+                : formMode === "edit"
+                  ? "Salvar alterações"
+                  : "Criar usuário"}
+            </Button>
           </FormDialogActions>
         </form>
       </FormDialogShell>
@@ -631,22 +870,37 @@ function Usuarios() {
         onOpenChange={(o) => !o && setDetail(null)}
         icon={<Eye className="w-5 h-5" />}
         title={detail?.name ?? "Detalhes do usuário"}
-        description={detail ? (
-          <span className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={roleBadgeClass(detail.role)}>{ROLE_LABEL[detail.role]}</Badge>
-            <Badge variant={detail.status === "ativo" ? "default" : "secondary"}>{STATUS_LABEL[detail.status]}</Badge>
-          </span>
-        ) : undefined}
+        description={
+          detail ? (
+            <span className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={roleBadgeClass(detail.role)}>
+                {ROLE_LABEL[detail.role]}
+              </Badge>
+              <Badge
+                variant={detail.status === "ativo" ? "default" : "secondary"}
+              >
+                {STATUS_LABEL[detail.status]}
+              </Badge>
+            </span>
+          ) : undefined
+        }
       >
         {detail && (
           <>
             <FormDialogBody>
-              <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
+              <FormSection
+                icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
+                title="Contato"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <div className="text-[11px] text-muted-foreground">E-mail</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      E-mail
+                    </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium break-all">{detail.email}</span>
+                      <span className="text-sm font-medium break-all">
+                        {detail.email}
+                      </span>
                       <Button
                         type="button"
                         variant="ghost"
@@ -664,24 +918,43 @@ function Usuarios() {
                     </div>
                   </div>
                   <DetailField label="Telefone" value={detail.phone || "—"} />
-                  <DetailField label="WhatsApp" value={detail.whatsapp || "—"} />
+                  <DetailField
+                    label="WhatsApp"
+                    value={detail.whatsapp || "—"}
+                  />
                   <DetailField label="Cargo" value={detail.cargo || "—"} />
-                  <DetailField label="Último acesso" value={formatLastAccess(detail.lastLoginAt)} />
+                  <DetailField
+                    label="Último acesso"
+                    value={formatLastAccess(detail.lastLoginAt)}
+                  />
                 </div>
               </FormSection>
-              <FormSection icon={<Shield className="w-3.5 h-3.5 text-primary" />} title="Acesso">
+              <FormSection
+                icon={<Shield className="w-3.5 h-3.5 text-primary" />}
+                title="Acesso"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Perfil" value={ROLE_LABEL[detail.role]} />
-                  <DetailField label="Status" value={STATUS_LABEL[detail.status]} />
+                  <DetailField
+                    label="Status"
+                    value={STATUS_LABEL[detail.status]}
+                  />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  A senha original não pode ser visualizada (fica criptografada). Use{" "}
-                  <strong>Gerar senha temporária</strong> se o usuário esquecer.
+                  A senha original não pode ser visualizada (fica
+                  criptografada). Use <strong>Gerar senha temporária</strong> se
+                  o usuário esquecer.
                 </p>
               </FormSection>
             </FormDialogBody>
             <FormDialogActions>
-              <Button type="button" variant="outline" onClick={() => setDetail(null)}>Fechar</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDetail(null)}
+              >
+                Fechar
+              </Button>
               {(isAdmin || (isManager && detail.role === "corretor")) && (
                 <Button
                   type="button"
@@ -694,7 +967,8 @@ function Usuarios() {
               )}
               {isAdmin && (
                 <Button type="button" onClick={() => openEdit(detail)}>
-                  <Pencil className="w-4 h-4 mr-1" />Editar
+                  <Pencil className="w-4 h-4 mr-1" />
+                  Editar
                 </Button>
               )}
             </FormDialogActions>
@@ -716,18 +990,27 @@ function Usuarios() {
         {credentials && (
           <>
             <FormDialogBody>
-              <FormSection icon={<Shield className="w-3.5 h-3.5 text-primary" />} title="Acesso">
+              <FormSection
+                icon={<Shield className="w-3.5 h-3.5 text-primary" />}
+                title="Acesso"
+              >
                 <div className="space-y-3">
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                    <div className="text-[11px] text-muted-foreground">E-mail</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      E-mail
+                    </div>
                     <div className="flex items-center justify-between gap-2">
-                      <code className="text-sm break-all">{credentials.email}</code>
+                      <code className="text-sm break-all">
+                        {credentials.email}
+                      </code>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="shrink-0"
-                        onClick={() => void copyText(credentials.email, "email")}
+                        onClick={() =>
+                          void copyText(credentials.email, "email")
+                        }
                       >
                         {copiedField === "email" ? (
                           <Check className="w-3.5 h-3.5 mr-1" />
@@ -739,7 +1022,9 @@ function Usuarios() {
                     </div>
                   </div>
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1">
-                    <div className="text-[11px] text-muted-foreground">Senha temporária</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Senha temporária
+                    </div>
                     <div className="flex items-center justify-between gap-2">
                       <code className="text-sm font-semibold tracking-wide break-all">
                         {credentials.password}
@@ -749,7 +1034,9 @@ function Usuarios() {
                         variant="outline"
                         size="sm"
                         className="shrink-0"
-                        onClick={() => void copyText(credentials.password, "password")}
+                        onClick={() =>
+                          void copyText(credentials.password, "password")
+                        }
                       >
                         {copiedField === "password" ? (
                           <Check className="w-3.5 h-3.5 mr-1" />
@@ -772,17 +1059,25 @@ function Usuarios() {
         )}
       </FormDialogShell>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget ? `Tem certeza que deseja excluir ${deleteTarget.name}? Esta ação não pode ser desfeita.` : null}
+              {deleteTarget
+                ? `Tem certeza que deseja excluir ${deleteTarget.name}? Esta ação não pode ser desfeita.`
+                : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmDelete()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => void confirmDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>

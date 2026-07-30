@@ -41,7 +41,8 @@ clearLegacyTokens();
 export const sessionCache = {
   getUser: <T>(): T | null => {
     if (!isBrowser()) return null;
-    const raw = sessionStorage.getItem(USER_KEY) ?? localStorage.getItem(USER_KEY);
+    const raw =
+      sessionStorage.getItem(USER_KEY) ?? localStorage.getItem(USER_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as T;
@@ -74,7 +75,10 @@ function readCookie(name: string): string | null {
 
 /** Cookie same-origin ou token salvo no sessionStorage (cross-origin Vercel→Render). */
 function readCsrfToken(): string | null {
-  return readCookie(CSRF_COOKIE) ?? (isBrowser() ? sessionStorage.getItem(CSRF_STORAGE_KEY) : null);
+  return (
+    readCookie(CSRF_COOKIE) ??
+    (isBrowser() ? sessionStorage.getItem(CSRF_STORAGE_KEY) : null)
+  );
 }
 
 export function storeCsrfToken(token: string | null | undefined) {

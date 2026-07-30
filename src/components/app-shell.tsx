@@ -1,11 +1,43 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, Kanban, Calendar, Building2, UserCircle2,
-  UsersRound, FileText, DollarSign, BarChart3, Settings, User as UserIcon,
-  LogOut, Search, Bell, ChevronsLeft, ChevronDown, ChevronRight,
-  Target, ClipboardList, Briefcase, Shield, CircleUser, ArrowLeftRight,
-  Banknote, ScrollText, ArrowUpRight, ArrowDownRight, FolderKanban,
-  FolderOpen, SearchCheck, Percent, Goal, UserX, Network, type LucideIcon,
+  LayoutDashboard,
+  Users,
+  Kanban,
+  Calendar,
+  Building2,
+  UserCircle2,
+  UsersRound,
+  FileText,
+  DollarSign,
+  BarChart3,
+  Settings,
+  User as UserIcon,
+  LogOut,
+  Search,
+  Bell,
+  ChevronsLeft,
+  ChevronDown,
+  ChevronRight,
+  Target,
+  ClipboardList,
+  Briefcase,
+  Shield,
+  CircleUser,
+  ArrowLeftRight,
+  Banknote,
+  ScrollText,
+  ArrowUpRight,
+  ArrowDownRight,
+  FolderKanban,
+  FolderOpen,
+  SearchCheck,
+  Percent,
+  Goal,
+  UserX,
+  Network,
+  Menu,
+  X,
+  type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSession, signOut, type AuthUser } from "@/lib/auth";
@@ -29,8 +61,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -56,7 +92,12 @@ const AGENDA_DOT_BY_URGENCIA: Record<
 const SESSION_LEMBRETE_KEY = "agenda-lembretes-card-shown";
 
 type NavLeaf = { to: string; label: string; icon: LucideIcon };
-type NavGroup = { id: string; label: string; icon: LucideIcon; children: NavLeaf[] };
+type NavGroup = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  children: NavLeaf[];
+};
 type NavItem = NavLeaf | NavGroup;
 
 function isNavGroup(item: NavItem): item is NavGroup {
@@ -65,21 +106,51 @@ function isNavGroup(item: NavItem): item is NavGroup {
 
 function itemMatchesPath(item: NavItem, pathname: string) {
   if (isNavGroup(item)) {
-    return item.children.some((c) => pathname === c.to || pathname.startsWith(`${c.to}/`));
+    return item.children.some(
+      (c) => pathname === c.to || pathname.startsWith(`${c.to}/`),
+    );
   }
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
 
 const FINANCEIRO_MODULES: NavLeaf[] = [
-  { to: "/financeiro/visao-geral", label: "Visão geral", icon: LayoutDashboard },
-  { to: "/financeiro/clientes-fornecedores", label: "Clientes e fornecedores", icon: Users },
-  { to: "/financeiro/movimentacao", label: "Movimentação financeira", icon: ArrowLeftRight },
+  {
+    to: "/financeiro/visao-geral",
+    label: "Visão geral",
+    icon: LayoutDashboard,
+  },
+  {
+    to: "/financeiro/clientes-fornecedores",
+    label: "Clientes e fornecedores",
+    icon: Users,
+  },
+  {
+    to: "/financeiro/movimentacao",
+    label: "Movimentação financeira",
+    icon: ArrowLeftRight,
+  },
   { to: "/financeiro/fluxo-caixa", label: "Fluxo de caixa", icon: Banknote },
-  { to: "/financeiro/contas-a-receber", label: "Contas a receber", icon: ArrowUpRight },
-  { to: "/financeiro/contas-a-pagar", label: "Contas a pagar", icon: ArrowDownRight },
-  { to: "/financeiro/centro-despesas", label: "Centro de despesas", icon: FolderKanban },
+  {
+    to: "/financeiro/contas-a-receber",
+    label: "Contas a receber",
+    icon: ArrowUpRight,
+  },
+  {
+    to: "/financeiro/contas-a-pagar",
+    label: "Contas a pagar",
+    icon: ArrowDownRight,
+  },
+  {
+    to: "/financeiro/centro-despesas",
+    label: "Centro de despesas",
+    icon: FolderKanban,
+  },
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
-  { to: "/financeiro/demonstrativo", label: "Demonstrativo de resultado", icon: ScrollText },
+  {
+    to: "/financeiro/demonstrativo",
+    label: "Demonstrativo de resultado",
+    icon: ScrollText,
+  },
 ];
 
 const NAV_SECTIONS: {
@@ -133,9 +204,7 @@ const NAV_SECTIONS: {
     id: "conta",
     label: "Conta",
     icon: CircleUser,
-    items: [
-      { to: "/perfil", label: "Perfil", icon: UserIcon },
-    ],
+    items: [{ to: "/perfil", label: "Perfil", icon: UserIcon }],
   },
 ];
 
@@ -147,6 +216,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
@@ -154,7 +224,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [agendaSolicitacoesCount, setAgendaSolicitacoesCount] = useState(0);
-  const [agendaUrgencia, setAgendaUrgencia] = useState<AgendaUrgencia>("nenhuma");
+  const [agendaUrgencia, setAgendaUrgencia] =
+    useState<AgendaUrgencia>("nenhuma");
   const [agendaProximosCount, setAgendaProximosCount] = useState(0);
   const [agendaProximos, setAgendaProximos] = useState<AgendaProximo[]>([]);
   const [lembretesOpen, setLembretesOpen] = useState(false);
@@ -162,7 +233,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  useEffect(() => { setUser(getSession()); }, []);
+  useEffect(() => {
+    setUser(getSession());
+  }, []);
 
   const loadNotificacoes = useCallback(async () => {
     try {
@@ -172,31 +245,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const loadAgendaBadge = useCallback(async (opts?: { showCard?: boolean }) => {
-    try {
-      const data = await fetchAgendaLembretes();
-      setAgendaSolicitacoesCount(data.solicitacoesCount);
-      setAgendaUrgencia(data.urgencia);
-      setAgendaProximosCount(data.proximosCount);
-      setAgendaProximos(data.proximos);
+  const loadAgendaBadge = useCallback(
+    async (opts?: { showCard?: boolean }) => {
+      try {
+        const data = await fetchAgendaLembretes();
+        setAgendaSolicitacoesCount(data.solicitacoesCount);
+        setAgendaUrgencia(data.urgencia);
+        setAgendaProximosCount(data.proximosCount);
+        setAgendaProximos(data.proximos);
 
-      if (opts?.showCard && data.proximos.length > 0) {
-        const already =
-          typeof sessionStorage !== "undefined" &&
-          sessionStorage.getItem(SESSION_LEMBRETE_KEY) === "1";
-        if (!already) {
-          sessionStorage.setItem(SESSION_LEMBRETE_KEY, "1");
-          setLembretesOpen(true);
+        if (opts?.showCard && data.proximos.length > 0) {
+          const already =
+            typeof sessionStorage !== "undefined" &&
+            sessionStorage.getItem(SESSION_LEMBRETE_KEY) === "1";
+          if (!already) {
+            sessionStorage.setItem(SESSION_LEMBRETE_KEY, "1");
+            setLembretesOpen(true);
+          }
         }
-      }
 
-      if (data.novasNotificacoes.length > 0) {
-        void loadNotificacoes();
+        if (data.novasNotificacoes.length > 0) {
+          void loadNotificacoes();
+        }
+      } catch {
+        // silencioso
       }
-    } catch {
-      // silencioso
-    }
-  }, [loadNotificacoes]);
+    },
+    [loadNotificacoes],
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -221,22 +297,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       : agendaSolicitacoesCount;
   const showAgendaBadge = agendaBadgeCount > 0;
   // Admin: badge neutro (sem vermelho/laranja de urgência pessoal).
-  const agendaBadgeClass =
-    isAdmin
-      ? agendaUrgencia !== "nenhuma"
-        ? "bg-slate-500 text-white hover:bg-slate-500"
-        : "bg-primary"
-      : agendaUrgencia !== "nenhuma"
-        ? AGENDA_BADGE_BY_URGENCIA[agendaUrgencia]
-        : "bg-primary";
-  const agendaDotClass =
-    isAdmin
-      ? agendaUrgencia !== "nenhuma"
-        ? "bg-slate-500"
-        : "bg-primary"
-      : agendaUrgencia !== "nenhuma"
-        ? AGENDA_DOT_BY_URGENCIA[agendaUrgencia]
-        : "bg-primary";
+  const agendaBadgeClass = isAdmin
+    ? agendaUrgencia !== "nenhuma"
+      ? "bg-slate-500 text-white hover:bg-slate-500"
+      : "bg-primary"
+    : agendaUrgencia !== "nenhuma"
+      ? AGENDA_BADGE_BY_URGENCIA[agendaUrgencia]
+      : "bg-primary";
+  const agendaDotClass = isAdmin
+    ? agendaUrgencia !== "nenhuma"
+      ? "bg-slate-500"
+      : "bg-primary"
+    : agendaUrgencia !== "nenhuma"
+      ? AGENDA_DOT_BY_URGENCIA[agendaUrgencia]
+      : "bg-primary";
 
   async function handleOpenNotif(n: Notificacao) {
     try {
@@ -248,7 +322,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.message : "Não foi possível marcar como lida.",
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível marcar como lida.",
       );
     }
     setNotifOpen(false);
@@ -271,25 +347,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setNotificacoes((prev) => prev.map((n) => ({ ...n, lida: true })));
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.message : "Não foi possível marcar todas.",
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível marcar todas.",
       );
     }
   }
 
   const navSections = useMemo(() => {
     if (!user) return [];
-    return NAV_SECTIONS
-      .filter((section) => {
-        if (section.adminOnly) return user.role === "admin";
-        if (section.gerenteOnly) return user.role === "gerente";
-        return true;
-      })
+    return NAV_SECTIONS.filter((section) => {
+      if (section.adminOnly) return user.role === "admin";
+      if (section.gerenteOnly) return user.role === "gerente";
+      return true;
+    })
       .map((section) => ({
         ...section,
         items: section.items
           .map((item) => {
             if (isNavGroup(item)) {
-              const children = item.children.filter((c) => canAccessRoute(user.role, c.to));
+              const children = item.children.filter((c) =>
+                canAccessRoute(user.role, c.to),
+              );
               return children.length ? { ...item, children } : null;
             }
             return canAccessRoute(user.role, item.to) ? item : null;
@@ -315,6 +394,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, navSections]);
 
+  // Fecha o menu mobile automaticamente quando a rota muda.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
+  // Trava o scroll do body enquanto o drawer mobile está aberto.
+  useEffect(() => {
+    if (mobileNavOpen) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }
+  }, [mobileNavOpen]);
+
   function toggleSection(id: string) {
     if (collapsed) {
       setCollapsed(false);
@@ -336,13 +431,182 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     navigate({ to: "/login", replace: true });
   }
 
-  const initials = user?.name.split(" ").map((n) => n[0]).slice(0, 2).join("") ?? "U";
-  const canSettings = user ? canAccessRoute(user.role, "/configuracoes") : false;
+  const initials =
+    user?.name
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("") ?? "U";
+  const canSettings = user
+    ? canAccessRoute(user.role, "/configuracoes")
+    : false;
+
+  // Renderiza as seções de navegação. Reaproveitado tanto pelo <aside> fixo
+  // do desktop quanto pelo drawer mobile, para não duplicar a lógica.
+  function renderNavSections(collapsedView: boolean, onNavigate?: () => void) {
+    return (
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+        {navSections.map((section) => {
+          const SectionIcon = section.icon;
+          const isOpen = !!openSections[section.id];
+          const sectionActive = section.items.some((item) =>
+            itemMatchesPath(item, pathname),
+          );
+
+          return (
+            <div key={section.id} className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => toggleSection(section.id)}
+                title={collapsedView ? section.label : undefined}
+                className={cn(
+                  "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  sectionActive
+                    ? "text-sidebar-accent-foreground bg-sidebar-accent/50"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60",
+                )}
+              >
+                <SectionIcon className="w-4 h-4 shrink-0" />
+                {!collapsedView && (
+                  <>
+                    <span className="flex-1 text-left truncate">
+                      {section.label}
+                    </span>
+                    {isOpen ? (
+                      <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    )}
+                  </>
+                )}
+              </button>
+
+              {isOpen && !collapsedView && (
+                <div className="space-y-0.5 ml-4 border-l border-sidebar-border pl-2">
+                  {section.items.map((item) => {
+                    if (isNavGroup(item)) {
+                      const groupOpen = !!openGroups[item.id];
+                      const groupActive = itemMatchesPath(item, pathname);
+                      const GroupIcon = item.icon;
+                      return (
+                        <div key={item.id} className="space-y-0.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(item.id)}
+                            className={cn(
+                              "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                              groupActive
+                                ? "bg-sidebar-accent/70 text-sidebar-accent-foreground font-medium"
+                                : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
+                            )}
+                          >
+                            <GroupIcon className="w-4 h-4 shrink-0" />
+                            <span className="flex-1 text-left truncate">
+                              {item.label}
+                            </span>
+                            {groupOpen ? (
+                              <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                            )}
+                          </button>
+                          {groupOpen && (
+                            <div className="space-y-0.5 ml-2 border-l border-sidebar-border pl-1">
+                              {item.children.map((child) => {
+                                const active =
+                                  pathname === child.to ||
+                                  pathname.startsWith(`${child.to}/`);
+                                const ChildIcon = child.icon;
+                                return (
+                                  <Link
+                                    key={child.to}
+                                    to={child.to}
+                                    onClick={onNavigate}
+                                    className={cn(
+                                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                      active
+                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                                        : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
+                                    )}
+                                  >
+                                    <ChildIcon className="w-4 h-4 shrink-0" />
+                                    <span className="truncate">
+                                      {child.label}
+                                    </span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    const active =
+                      pathname === item.to ||
+                      pathname.startsWith(`${item.to}/`);
+                    const Icon = item.icon;
+                    const isAgenda = item.to === "/agenda";
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                          active
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
+                        )}
+                      >
+                        <span className="relative shrink-0">
+                          <Icon className="w-4 h-4" />
+                          {isAgenda && showAgendaBadge && collapsedView ? (
+                            <span
+                              className={cn(
+                                "absolute -top-1.5 -right-1.5 size-2 rounded-full",
+                                agendaDotClass,
+                              )}
+                            />
+                          ) : null}
+                        </span>
+                        {!collapsedView && (
+                          <>
+                            <span className="truncate flex-1">
+                              {item.label}
+                            </span>
+                            {isAgenda && showAgendaBadge ? (
+                              <Badge
+                                className={cn(
+                                  "h-5 min-w-5 px-1.5 text-[10px]",
+                                  agendaBadgeClass,
+                                )}
+                              >
+                                {agendaBadgeCount > 9 ? "9+" : agendaBadgeCount}
+                              </Badge>
+                            ) : null}
+                          </>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    );
+  }
 
   return (
     <div className="flex min-h-screen w-full bg-background">
+      {/* Sidebar fixa — visível apenas em telas md e acima */}
       <aside
-        className={`${collapsed ? "w-16" : "w-60"} shrink-0 border-r bg-sidebar text-sidebar-foreground transition-all duration-200 sticky top-0 h-screen flex flex-col`}
+        className={cn(
+          collapsed ? "w-16" : "w-60",
+          "hidden md:flex shrink-0 border-r bg-sidebar text-sidebar-foreground transition-all duration-200 sticky top-0 h-screen flex-col",
+        )}
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b">
           <img
@@ -352,143 +616,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold leading-tight">Imob CRM</div>
-              <div className="text-[10px] text-muted-foreground">Gestão Imobiliária</div>
+              <div className="text-sm font-semibold leading-tight">
+                Imob CRM
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Gestão Imobiliária
+              </div>
             </div>
           )}
         </div>
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
-          {navSections.map((section) => {
-            const SectionIcon = section.icon;
-            const isOpen = !!openSections[section.id];
-            const sectionActive = section.items.some((item) => itemMatchesPath(item, pathname));
-
-            return (
-              <div key={section.id} className="space-y-0.5">
-                <button
-                  type="button"
-                  onClick={() => toggleSection(section.id)}
-                  title={collapsed ? section.label : undefined}
-                  className={cn(
-                    "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    sectionActive
-                      ? "text-sidebar-accent-foreground bg-sidebar-accent/50"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60",
-                  )}
-                >
-                  <SectionIcon className="w-4 h-4 shrink-0" />
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1 text-left truncate">{section.label}</span>
-                      {isOpen
-                        ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                        : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />}
-                    </>
-                  )}
-                </button>
-
-                {isOpen && !collapsed && (
-                  <div className="space-y-0.5 ml-2 border-l border-sidebar-border pl-1">
-                    {section.items.map((item) => {
-                      if (isNavGroup(item)) {
-                        const groupOpen = !!openGroups[item.id];
-                        const groupActive = itemMatchesPath(item, pathname);
-                        const GroupIcon = item.icon;
-                        return (
-                          <div key={item.id} className="space-y-0.5">
-                            <button
-                              type="button"
-                              onClick={() => toggleGroup(item.id)}
-                              className={cn(
-                                "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                groupActive
-                                  ? "bg-sidebar-accent/70 text-sidebar-accent-foreground font-medium"
-                                  : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
-                              )}
-                            >
-                              <GroupIcon className="w-4 h-4 shrink-0" />
-                              <span className="flex-1 text-left truncate">{item.label}</span>
-                              {groupOpen
-                                ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                                : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />}
-                            </button>
-                            {groupOpen && (
-                              <div className="space-y-0.5 ml-2 border-l border-sidebar-border pl-1">
-                                {item.children.map((child) => {
-                                  const active =
-                                    pathname === child.to || pathname.startsWith(`${child.to}/`);
-                                  const ChildIcon = child.icon;
-                                  return (
-                                    <Link
-                                      key={child.to}
-                                      to={child.to}
-                                      className={cn(
-                                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                                        active
-                                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                                          : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
-                                      )}
-                                    >
-                                      <ChildIcon className="w-4 h-4 shrink-0" />
-                                      <span className="truncate">{child.label}</span>
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-                      const Icon = item.icon;
-                      const isAgenda = item.to === "/agenda";
-                      return (
-                        <Link
-                          key={item.to}
-                          to={item.to}
-                          className={cn(
-                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                            active
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                              : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
-                          )}
-                        >
-                          <span className="relative shrink-0">
-                            <Icon className="w-4 h-4" />
-                            {isAgenda && showAgendaBadge && collapsed ? (
-                              <span
-                                className={cn(
-                                  "absolute -top-1.5 -right-1.5 size-2 rounded-full",
-                                  agendaDotClass,
-                                )}
-                              />
-                            ) : null}
-                          </span>
-                          {!collapsed && (
-                            <>
-                              <span className="truncate flex-1">{item.label}</span>
-                              {isAgenda && showAgendaBadge ? (
-                                <Badge
-                                  className={cn(
-                                    "h-5 min-w-5 px-1.5 text-[10px]",
-                                    agendaBadgeClass,
-                                  )}
-                                >
-                                  {agendaBadgeCount > 9 ? "9+" : agendaBadgeCount}
-                                </Badge>
-                              ) : null}
-                            </>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+        {renderNavSections(collapsed)}
         <div className="border-t">
           <button
             type="button"
@@ -504,111 +641,212 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setCollapsed((c) => !c)}
             className="w-full border-t p-3 flex items-center gap-2 text-xs text-muted-foreground hover:bg-sidebar-accent"
           >
-            <ChevronsLeft className={`w-4 h-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
+            <ChevronsLeft
+              className={`w-4 h-4 transition-transform ${collapsed ? "rotate-180" : ""}`}
+            />
             {!collapsed && "Recolher"}
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-card/70 backdrop-blur sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
-          <div className="relative flex-1 max-w-md min-w-0">
-            <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar..." className="pl-8 sm:pl-9 h-9 bg-background text-sm" />
+      {/* Backdrop do menu mobile */}
+      <div
+        className={cn(
+          "fixed inset-0 z-40 bg-black/50 transition-opacity md:hidden",
+          mobileNavOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none",
+        )}
+        onClick={() => setMobileNavOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Drawer do menu mobile */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-sidebar text-sidebar-foreground border-r flex flex-col transition-transform duration-200 ease-out md:hidden",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu de navegação"
+      >
+        <div className="flex items-center gap-2 px-4 h-14 border-b">
+          <img
+            src="/favicon-32.png"
+            alt="Imob CRM"
+            className="w-8 h-8 rounded-lg object-cover shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold leading-tight">Imob CRM</div>
+            <div className="text-[10px] text-muted-foreground">
+              Gestão Imobiliária
+            </div>
           </div>
-          <DropdownMenu open={notifOpen} onOpenChange={(o) => {
-            setNotifOpen(o);
-            if (o) void loadNotificacoes();
-          }}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
-                <Bell className="w-4 h-4" />
-                {unreadCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] bg-primary">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="flex items-center justify-between px-3 py-2 border-b">
-                <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
-                {unreadCount > 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => void handleMarkAllRead()}
-                  >
-                    Marcar todas
-                  </Button>
-                )}
-              </div>
-              <div className="max-h-80 overflow-y-auto">
-                {notificacoes.length === 0 ? (
-                  <div className="px-3 py-8 text-center text-xs text-muted-foreground">
-                    Nenhuma notificação
-                  </div>
-                ) : (
-                  notificacoes.map((n) => (
-                    <button
-                      key={n.id}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Fechar menu"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+        {renderNavSections(false, () => setMobileNavOpen(false))}
+        <div className="border-t">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="w-full p-3 flex items-center gap-2 text-xs text-destructive hover:bg-destructive/10"
+            title="Sair"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span>Sair da conta</span>
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-14 border-b bg-card/70 backdrop-blur sticky top-0 z-30 flex justify-between items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 md:hidden"
+              aria-label="Abrir menu"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            <div className="relative flex-1 max-w-md min-w-0">
+              <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                className="pl-8 sm:pl-9 h-9 bg-background text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center">
+            <DropdownMenu
+              open={notifOpen}
+              onOpenChange={(o) => {
+                setNotifOpen(o);
+                if (o) void loadNotificacoes();
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  aria-label="Notificações"
+                >
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] bg-primary">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 p-0">
+                <div className="flex items-center justify-between px-3 py-2 border-b">
+                  <DropdownMenuLabel className="p-0">
+                    Notificações
+                  </DropdownMenuLabel>
+                  {unreadCount > 0 && (
+                    <Button
                       type="button"
-                      className={cn(
-                        "w-full text-left px-3 py-2.5 border-b last:border-0 hover:bg-accent/60 transition-colors",
-                        !n.lida && "bg-primary/5",
-                      )}
-                      onClick={() => void handleOpenNotif(n)}
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => void handleMarkAllRead()}
                     >
-                      <div className="text-xs font-medium leading-snug">{n.titulo}</div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                        {n.corpo}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 hover:bg-accent"
-                aria-label="Menu da conta"
-              >
-                <Avatar className="w-7 h-7">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
-                </Avatar>
-                <div className="text-left leading-tight hidden sm:block">
-                  <div className="text-xs font-medium">{user?.name ?? "Usuário"}</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {user ? ROLE_LABEL[user.role] ?? user.role : ""}
-                  </div>
+                      Marcar todas
+                    </Button>
+                  )}
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel>Minha conta</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate({ to: "/perfil" })}>
-                <UserIcon className="w-4 h-4 mr-2" /> Perfil
-              </DropdownMenuItem>
-              {canSettings && (
-                <DropdownMenuItem onClick={() => navigate({ to: "/configuracoes" })}>
-                  <Settings className="w-4 h-4 mr-2" /> Configurações
+                <div className="max-h-80 overflow-y-auto">
+                  {notificacoes.length === 0 ? (
+                    <div className="px-3 py-8 text-center text-xs text-muted-foreground">
+                      Nenhuma notificação
+                    </div>
+                  ) : (
+                    notificacoes.map((n) => (
+                      <button
+                        key={n.id}
+                        type="button"
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 border-b last:border-0 hover:bg-accent/60 transition-colors",
+                          !n.lida && "bg-primary/5",
+                        )}
+                        onClick={() => void handleOpenNotif(n)}
+                      >
+                        <div className="text-xs font-medium leading-snug">
+                          {n.titulo}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                          {n.corpo}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full px-2.5 py-1.5 hover:bg-accent"
+                  aria-label="Menu da conta"
+                >
+                  <Avatar className="w-7 h-7">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left leading-tight hidden sm:block">
+                    <div className="text-xs font-medium">
+                      {user?.name ?? "Usuário"}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
+                    </div>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel>Minha conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate({ to: "/perfil" })}>
+                  <UserIcon className="w-4 h-4 mr-2" /> Perfil
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                <LogOut className="w-4 h-4 mr-2" /> Sair
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {canSettings && (
+                  <DropdownMenuItem
+                    onClick={() => navigate({ to: "/configuracoes" })}
+                  >
+                    <Settings className="w-4 h-4 mr-2" /> Configurações
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="text-destructive"
+                >
+                  <LogOut className="w-4 h-4 mr-2" /> Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
-        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-hidden">{children}</main>
+        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-hidden">
+          {children}
+        </main>
       </div>
 
       <AgendaLembretesDialog
@@ -627,13 +865,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export function PageHeader({
-  title, description, actions,
-}: { title: string; description?: string; actions?: React.ReactNode }) {
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
       <div className="min-w-0">
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+          {title}
+        </h1>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+        )}
       </div>
       {actions && (
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
