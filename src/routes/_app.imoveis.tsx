@@ -5,15 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import {
+  createEmpreendimento,
   fetchEmpreendimentos,
   syncEmpreendimentosFromSite,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import {
-  Building2, ExternalLink, Loader2, RefreshCw, Bath, BedDouble, Ruler,
+  fetchConstrutoras,
+  type Construtora,
+} from "@/lib/construtoras-api";
+import {
+  Building2, ExternalLink, Loader2, RefreshCw, Bath, BedDouble, Ruler, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,11 +37,18 @@ export const Route = createFileRoute("/_app/imoveis")({
 function ImoveisPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
+  const canCreate = isAdmin || user?.role === "gerente";
 
   const [items, setItems] = useState<Empreendimento[]>([]);
+  const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickNome, setQuickNome] = useState("");
+  const [quickConstrutoraId, setQuickConstrutoraId] = useState("");
+  const [quickCidade, setQuickCidade] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -73,6 +92,53 @@ function ImoveisPage() {
     }
   }
 
+  async function openQuickCreate() {
+    setQuickNome("");
+    setQuickConstrutoraId("");
+    setQuickCidade("");
+    setQuickOpen(true);
+    try {
+      setConstrutoras(await fetchConstrutoras());
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar as construtoras.",
+      );
+    }
+  }
+
+  async function handleQuickCreate() {
+    if (quickNome.trim().length < 2) {
+      toast.error("Informe o nome do empreendimento.");
+      return;
+    }
+    if (!quickConstrutoraId) {
+      toast.error("Selecione a construtora.");
+      return;
+    }
+
+    setQuickSaving(true);
+    try {
+      await createEmpreendimento({
+        nome: quickNome.trim(),
+        construtoraId: quickConstrutoraId,
+        cidade: quickCidade.trim() || undefined,
+      });
+      setQuickOpen(false);
+      await loadItems();
+      toast.success("Empreendimento cadastrado.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível cadastrar o empreendimento.",
+      );
+    } finally {
+      setQuickSaving(false);
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return items;
@@ -91,15 +157,23 @@ function ImoveisPage() {
         title="Imóveis"
         description="Empreendimentos sincronizados do site New Palace."
         actions={
-          isAdmin ? (
-            <Button onClick={() => void handleSync()} disabled={syncing}>
-              {syncing ? (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-1" />
+          canCreate ? (
+            <div className="flex gap-2">
+              <Button onClick={() => void openQuickCreate()}>
+                <Plus className="w-4 h-4 mr-1" />
+                Novo imóvel
+              </Button>
+              {isAdmin && (
+                <Button onClick={() => void handleSync()} disabled={syncing}>
+                  {syncing ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                  )}
+                  Sincronizar do site
+                </Button>
               )}
-              Sincronizar do site
-            </Button>
+            </div>
           ) : undefined
         }
       />
@@ -207,6 +281,78 @@ function ImoveisPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Novo empreendimento</DialogTitle>
+            <DialogDescription>
+              Cadastre rapidamente um imóvel e vincule-o à construtora.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-imovel-nome">Nome *</Label>
+              <Input
+                id="quick-imovel-nome"
+                value={quickNome}
+                onChange={(event) => setQuickNome(event.target.value)}
+                placeholder="Ex.: Reserva dos Ipês"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Construtora *</Label>
+              <Select
+                value={quickConstrutoraId || "__none__"}
+                onValueChange={(value) =>
+                  setQuickConstrutoraId(value === "__none__" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Selecione</SelectItem>
+                  {construtoras.map((construtora) => (
+                    <SelectItem key={construtora.id} value={construtora.id}>
+                      {construtora.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-imovel-cidade">Cidade</Label>
+              <Input
+                id="quick-imovel-cidade"
+                value={quickCidade}
+                onChange={(event) => setQuickCidade(event.target.value)}
+                placeholder="Ex.: Recife"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQuickOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={quickSaving}
+              onClick={() => void handleQuickCreate()}
+            >
+              {quickSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Cadastrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
