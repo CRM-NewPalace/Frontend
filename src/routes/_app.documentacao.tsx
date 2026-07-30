@@ -147,12 +147,28 @@ function DocumentacaoPage() {
     () => assignees.filter((a) => !a.role || a.role === "corretor"),
     [assignees],
   );
-  const gerenteOptions = useMemo(() => {
-    if (gerentes.length > 0) return gerentes;
-    return assignees.filter(
-      (a) => a.role === "gerente" || a.role === "admin",
+  const gerenteOptions = useMemo<EquipeOptionUser[]>(() => {
+    const options =
+      gerentes.length > 0
+        ? gerentes
+        : assignees.filter(
+            (a) => a.role === "gerente" || a.role === "admin",
+          ).map((a) => ({
+            id: a.id,
+            name: a.name,
+            email: "",
+            status: "ativo" as const,
+          }));
+    const managerFromDocs = items.flatMap((doc) =>
+      doc.gerente
+        ? [{ id: doc.gerente.id, name: doc.gerente.name, email: "", status: "ativo" as const }]
+        : [],
     );
-  }, [gerentes, assignees]);
+    return [...options, ...managerFromDocs].filter(
+      (option, index, all) =>
+        all.findIndex((candidate) => candidate.id === option.id) === index,
+    );
+  }, [gerentes, assignees, items]);
 
   const filteredEmpreendimentos = useMemo(() => {
     if (!form.construtoraId) return empreendimentos;
