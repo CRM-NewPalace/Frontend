@@ -401,6 +401,10 @@ function AnalisePage() {
                     label="Empreendimento"
                     value={detail.lead.empreendimento?.nome ?? "—"}
                   />
+                  <DetailField
+                    label="Gerente do corretor"
+                    value={detail.lead.corretor?.equipe?.gerente.name ?? "—"}
+                  />
                 </div>
               </FormSection>
 

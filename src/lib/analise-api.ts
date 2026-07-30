@@ -40,7 +40,12 @@ export interface Analise {
     nome: string;
     stage: StageId;
     corretorId: string | null;
-    corretor: { id: string; name: string; whatsapp?: string | null } | null;
+    corretor: {
+      id: string;
+      name: string;
+      whatsapp?: string | null;
+      equipe: { gerente: { id: string; name: string } } | null;
+    } | null;
     construtoraId: string | null;
     construtora: { id: string; nome: string } | null;
     empreendimentoId: string | null;
