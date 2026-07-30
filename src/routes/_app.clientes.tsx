@@ -42,8 +42,6 @@ export const Route = createFileRoute("/_app/clientes")({
   component: Clientes,
 });
 
-const INTERESSES: Lead["interesse"][] = ["Comprar", "Alugar", "Investir"];
-
 type FormState = {
   nome: string;
   telefone: string;
@@ -476,26 +474,6 @@ function Clientes() {
             </FormSection>
 
             <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Tipo de interesse</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {INTERESSES.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, interesse: opt }))}
-                      className={cn(
-                        "h-10 rounded-lg border text-sm font-medium transition-colors",
-                        form.interesse === opt
-                          ? "border-primary bg-primary/10 text-primary shadow-sm"
-                          : "bg-background text-muted-foreground hover:bg-accent",
-                      )}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cli-renda" className="text-xs text-muted-foreground">
                   Renda mensal <span className="font-normal">(opcional)</span>

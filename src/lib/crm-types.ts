@@ -21,7 +21,7 @@ export interface Lead {
   telefone: string;
   email: string;
   origem: string;
-  interesse: "Comprar" | "Alugar" | "Investir";
+  interesse: "Comprar";
   cidade: string;
   bairro: string;
   /** Nome do corretor (exibição). */
