@@ -27,6 +27,12 @@ import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { ApiError } from "@/lib/api";
 import {
+  formatPhone,
+  isValidPhone,
+  PHONE_INVALID_MESSAGE,
+  PHONE_PLACEHOLDER,
+} from "@/lib/phone";
+import {
   createDocumentacao,
   deleteDocumentacao,
   fetchDocumentacoes,
@@ -371,6 +377,10 @@ function DocumentacaoPage() {
     if (!isAdmin) return;
     if (quickNome.trim().length < 2) {
       toast.error("Informe o nome da construtora.");
+      return;
+    }
+    if (quickContato.trim() && !isValidPhone(quickContato)) {
+      toast.error(PHONE_INVALID_MESSAGE);
       return;
     }
     setQuickSaving(true);
@@ -871,8 +881,12 @@ function DocumentacaoPage() {
                 <Label htmlFor="quickContato">Contato</Label>
                 <Input
                   id="quickContato"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder={PHONE_PLACEHOLDER}
                   value={quickContato}
-                  onChange={(e) => setQuickContato(e.target.value)}
+                  onChange={(e) => setQuickContato(formatPhone(e.target.value))}
+                  maxLength={15}
                 />
               </div>
             </div>

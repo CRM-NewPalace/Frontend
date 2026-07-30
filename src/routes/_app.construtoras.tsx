@@ -29,6 +29,12 @@ import {
   Building, Plus, Loader2, Pencil, Trash2, Eye, Phone, MapPin, User,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  formatPhone,
+  isValidPhone,
+  PHONE_INVALID_MESSAGE,
+  PHONE_PLACEHOLDER,
+} from "@/lib/phone";
 
 export const Route = createFileRoute("/_app/construtoras")({
   head: () => ({ meta: [{ title: "Construtoras — NP Connect" }] }),
@@ -99,10 +105,12 @@ function ConstrutorasPage() {
     setEditingId(item.id);
     setForm({
       nome: item.nome,
-      contato: item.contato ?? "",
+      contato: item.contato ? formatPhone(item.contato) : "",
       endereco: item.endereco ?? "",
       viabilizadorNome: item.viabilizadorNome ?? "",
-      viabilizadorContato: item.viabilizadorContato ?? "",
+      viabilizadorContato: item.viabilizadorContato
+        ? formatPhone(item.viabilizadorContato)
+        : "",
     });
     setOpen(true);
   }
@@ -117,6 +125,18 @@ function ConstrutorasPage() {
     if (!isAdmin || formMode === "view") return;
     if (form.nome.trim().length < 2) {
       toast.error("Informe o nome da construtora.");
+      return;
+    }
+
+    if (form.contato.trim() && !isValidPhone(form.contato)) {
+      toast.error(PHONE_INVALID_MESSAGE);
+      return;
+    }
+    if (
+      form.viabilizadorContato.trim() &&
+      !isValidPhone(form.viabilizadorContato)
+    ) {
+      toast.error("Contato do viabilizador inválido. " + PHONE_INVALID_MESSAGE);
       return;
     }
 
@@ -288,7 +308,7 @@ function ConstrutorasPage() {
               : "Construtora"
         }
       >
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
             <FormSection title="Dados">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -310,9 +330,15 @@ function ConstrutorasPage() {
                   </Label>
                   <Input
                     id="contato"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder={PHONE_PLACEHOLDER}
                     value={form.contato}
-                    onChange={(e) => setField("contato", e.target.value)}
+                    onChange={(e) =>
+                      setField("contato", formatPhone(e.target.value))
+                    }
                     disabled={readOnly}
+                    maxLength={15}
                   />
                 </div>
                 <div className="space-y-2">
@@ -349,11 +375,18 @@ function ConstrutorasPage() {
                   </Label>
                   <Input
                     id="viabilizadorContato"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder={PHONE_PLACEHOLDER}
                     value={form.viabilizadorContato}
                     onChange={(e) =>
-                      setField("viabilizadorContato", e.target.value)
+                      setField(
+                        "viabilizadorContato",
+                        formatPhone(e.target.value),
+                      )
                     }
                     disabled={readOnly}
+                    maxLength={15}
                   />
                 </div>
               </div>
