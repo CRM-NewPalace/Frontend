@@ -19,6 +19,12 @@ import {
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import {
+  fetchEmpreendimentos,
+  updateEmpreendimento,
+  type Empreendimento,
+} from "@/lib/empreendimentos-api";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   createConstrutora,
   deleteConstrutora,
   fetchConstrutoras,
@@ -69,6 +75,9 @@ function ConstrutorasPage() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
+  const [selectedEmpreendimentos, setSelectedEmpreendimentos] = useState<string[]>([]);
+  const [loadingEmpreendimentos, setLoadingEmpreendimentos] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -97,6 +106,8 @@ function ConstrutorasPage() {
     setFormMode("create");
     setEditingId(null);
     setForm(emptyForm());
+    setEmpreendimentos([]);
+    setSelectedEmpreendimentos([]);
     setOpen(true);
   }
 
@@ -112,6 +123,18 @@ function ConstrutorasPage() {
         ? formatPhone(item.viabilizadorContato)
         : "",
     });
+    setLoadingEmpreendimentos(true);
+    void fetchEmpreendimentos()
+      .then((result) => {
+        setEmpreendimentos(result);
+        setSelectedEmpreendimentos(
+          result
+            .filter((empreendimento) => empreendimento.construtoraId === item.id)
+            .map((empreendimento) => empreendimento.id),
+        );
+      })
+      .catch(() => toast.error("Não foi possível carregar os empreendimentos."))
+      .finally(() => setLoadingEmpreendimentos(false));
     setOpen(true);
   }
 
@@ -155,6 +178,24 @@ function ConstrutorasPage() {
         toast.success("Construtora cadastrada.");
       } else if (editingId) {
         await updateConstrutora(editingId, payload);
+        const selected = new Set(selectedEmpreendimentos);
+        await Promise.all(
+          empreendimentos
+            .filter(
+              (empreendimento) =>
+                (selected.has(empreendimento.id) &&
+                  empreendimento.construtoraId !== editingId) ||
+                (!selected.has(empreendimento.id) &&
+                  empreendimento.construtoraId === editingId),
+            )
+            .map((empreendimento) =>
+              updateEmpreendimento(empreendimento.id, {
+                construtoraId: selected.has(empreendimento.id)
+                  ? editingId
+                  : null,
+              }),
+            ),
+        );
         toast.success("Construtora atualizada.");
       }
       setOpen(false);
@@ -183,6 +224,12 @@ function ConstrutorasPage() {
   }
 
   const readOnly = formMode === "view" || !isAdmin;
+
+  function toggleEmpreendimento(id: string, checked: boolean) {
+    setSelectedEmpreendimentos((previous) =>
+      checked ? [...previous, id] : previous.filter((itemId) => itemId !== id),
+    );
+  }
 
   return (
     <div>
@@ -391,6 +438,64 @@ function ConstrutorasPage() {
                 </div>
               </div>
             </FormSection>
+            {formMode !== "create" && (
+              <FormSection title="Empreendimentos vinculados">
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Selecione os empreendimentos desta construtora.
+                </p>
+                {loadingEmpreendimentos ? (
+                  <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Carregando empreendimentos…
+                  </div>
+                ) : empreendimentos.length === 0 ? (
+                  <p className="py-3 text-sm text-muted-foreground">
+                    Nenhum empreendimento disponível.
+                  </p>
+                ) : (
+                  <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">
+                    {empreendimentos.map((empreendimento) => {
+                      const checked = selectedEmpreendimentos.includes(
+                        empreendimento.id,
+                      );
+                      return (
+                        <label
+                          key={empreendimento.id}
+                          className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 hover:bg-muted"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(value) =>
+                              toggleEmpreendimento(
+                                empreendimento.id,
+                                value === true,
+                              )
+                            }
+                            disabled={readOnly}
+                          />
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="truncate text-sm">
+                              {empreendimento.nome}
+                            </span>
+                            {empreendimento.cidade && (
+                              <span className="text-xs text-muted-foreground">
+                                {empreendimento.cidade}
+                              </span>
+                            )}
+                          </span>
+                          {empreendimento.construtora &&
+                            empreendimento.construtoraId !== editingId && (
+                              <span className="text-xs text-muted-foreground">
+                                {empreendimento.construtora.nome}
+                              </span>
+                            )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </FormSection>
+            )}
           </FormDialogBody>
           <FormDialogActions>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

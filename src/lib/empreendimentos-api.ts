@@ -44,3 +44,13 @@ export async function syncEmpreendimentosFromSite(): Promise<SyncEmpreendimentos
     method: "POST",
   });
 }
+
+export async function updateEmpreendimento(
+  id: string,
+  input: { construtoraId: string | null },
+): Promise<Empreendimento> {
+  return apiFetch<Empreendimento>(`/empreendimentos/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
