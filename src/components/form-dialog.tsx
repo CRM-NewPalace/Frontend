@@ -85,7 +85,7 @@ export function FormDialogBody({ children, className }: { children: ReactNode; c
   return (
     <div
       className={cn(
-        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-5 space-y-5",
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-5 space-y-5 [scrollbar-gutter:stable]",
         className,
       )}
     >

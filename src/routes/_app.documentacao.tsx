@@ -532,8 +532,9 @@ function DocumentacaoPage() {
               ? "Editar documentação"
               : "Documentação"
         }
+        className="max-w-2xl"
       >
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
             <FormSection title="Lead / Cliente">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -854,7 +855,7 @@ function DocumentacaoPage() {
         icon={<Building className="w-5 h-5" />}
         title="Nova construtora"
       >
-        <form onSubmit={handleQuickCreate}>
+        <form onSubmit={handleQuickCreate} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
             <div className="grid gap-4">
               <div className="space-y-2">
