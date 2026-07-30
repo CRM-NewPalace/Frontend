@@ -100,23 +100,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     return {
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico?v=7", sizes: "any" },
-      { rel: "icon", href: "/favicon-32.png?v=7", type: "image/png", sizes: "32x32" },
-      { rel: "apple-touch-icon", href: "/favicon-48.png?v=7", sizes: "48x48" },
+      { rel: "icon", href: "/favicon.ico?v=9", sizes: "any" },
+      { rel: "icon", href: "/favicon-32.png?v=9", type: "image/png", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/favicon-48.png?v=9", sizes: "48x48" },
     ],
     // CSP do frontend: bloqueia scripts/iframes de terceiros (mitigação XSS).
     // 'unsafe-inline' no script-src só cobre o bootstrap de tema acima — sem eval.
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Imob CRM — Gestão Imobiliária" },
+      { title: "New Palace — Gestão Imobiliária" },
       {
         name: "description",
         content:
-          "CRM moderno para imobiliárias: gestão de leads, funil de vendas, corretores, imóveis e propostas.",
+          "CRM da Imobiliária New Palace: gestão de leads, funil de vendas, corretores, imóveis e propostas.",
       },
-      { name: "author", content: "Imob CRM" },
-      { property: "og:title", content: "Imob CRM — Gestão Imobiliária" },
+      { name: "author", content: "New Palace" },
+      { property: "og:title", content: "New Palace — Gestão Imobiliária" },
       {
         property: "og:description",
         content:
@@ -155,8 +155,8 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <link rel="icon" href="/favicon.ico?v=7" sizes="any" />
-        <link rel="icon" type="image/png" href="/favicon-32.png?v=7" sizes="32x32" />
+        <link rel="icon" href="/favicon.ico?v=9" sizes="any" />
+        <link rel="icon" type="image/png" href="/favicon-32.png?v=9" sizes="32x32" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.style.colorScheme="light"}}catch(e){}})();`,

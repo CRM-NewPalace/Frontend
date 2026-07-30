@@ -40,7 +40,7 @@ const DAY_HOURS = [
 
 const STATUS_BADGE: Record<AgendamentoStatus, string> = {
   agendado: "bg-cyan-100 text-cyan-800",
-  concluido: "bg-emerald-100 text-emerald-800",
+  concluido: "bg-amber-100 text-amber-900",
   cancelado: "bg-red-100 text-red-800",
 };
 
@@ -380,7 +380,7 @@ export function AgendaDayTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                            className="h-8 w-8 text-amber-700 hover:text-amber-800 hover:bg-amber-500/10"
                             onClick={() => onComplete(item)}
                             disabled={
                               completingId === item.id ||

@@ -611,13 +611,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2 px-4 h-14 border-b">
           <img
             src="/favicon-32.png"
-            alt="Imob CRM"
-            className="w-8 h-8 rounded-lg object-cover shrink-0"
+            alt="New Palace"
+            className="w-8 h-8 rounded-lg object-cover shrink-0 bg-black"
           />
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold leading-tight">
-                Imob CRM
+                New Palace
               </div>
               <div className="text-[10px] text-muted-foreground">
                 Gestão Imobiliária
@@ -674,11 +674,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2 px-4 h-14 border-b">
           <img
             src="/favicon-32.png"
-            alt="Imob CRM"
-            className="w-8 h-8 rounded-lg object-cover shrink-0"
+            alt="New Palace"
+            className="w-8 h-8 rounded-lg object-cover shrink-0 bg-black"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold leading-tight">Imob CRM</div>
+            <div className="text-sm font-semibold leading-tight">New Palace</div>
             <div className="text-[10px] text-muted-foreground">
               Gestão Imobiliária
             </div>

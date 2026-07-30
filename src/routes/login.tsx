@@ -21,16 +21,16 @@ export const Route = createFileRoute("/login")({
   // SSR ativo: evita mismatch Suspense (servidor) vs página (cliente) no React 19.
   head: () => ({
     meta: [
-      { title: "Entrar — Imob CRM" },
+      { title: "Entrar — New Palace" },
       {
         name: "description",
         content:
-          "Acesse o Imob CRM para gerenciar leads, funil, imóveis e corretores.",
+          "Acesse o CRM New Palace para gerenciar leads, funil, imóveis e corretores.",
       },
-      { property: "og:title", content: "Entrar — Imob CRM" },
+      { property: "og:title", content: "Entrar — New Palace" },
       {
         property: "og:description",
-        content: "Acesse o Imob CRM da sua imobiliária.",
+        content: "Acesse o CRM da Imobiliária New Palace.",
       },
     ],
     links: [
@@ -101,15 +101,15 @@ function LoginPage() {
 
   return (
     <div
-      className="min-h-screen grid lg:grid-cols-2 bg-[#f7f8f6]"
+      className="min-h-screen grid lg:grid-cols-2 bg-[#faf8f2]"
       style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}
     >
-      {/* Painel verde */}
-      <aside className="hidden lg:flex relative flex-col justify-between overflow-hidden text-white p-10 xl:p-14 bg-[linear-gradient(155deg,#1f8f5a_0%,#2dad6b_42%,#1a7a4c_100%)]">
+      {/* Painel dourado New Palace */}
+      <aside className="hidden lg:flex relative flex-col justify-between overflow-hidden text-white p-10 xl:p-14 bg-[linear-gradient(155deg,#6B5018_0%,#C9A227_42%,#8B6914_100%)]">
         {/* Atmosfera */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -left-16 w-28rem h-28rem rounded-full bg-white/10 blur-3xl animate-[login-float_8s_ease-in-out_infinite]" />
-          <div className="absolute bottom-10 -right-20 w-22rem h-22rem rounded-full bg-emerald-950/30 blur-3xl animate-[login-float_10s_ease-in-out_infinite_reverse]" />
+          <div className="absolute -top-24 -left-16 w-[28rem] h-[28rem] rounded-full bg-white/10 blur-3xl animate-[login-float_8s_ease-in-out_infinite]" />
+          <div className="absolute bottom-10 -right-20 w-[22rem] h-[22rem] rounded-full bg-amber-950/35 blur-3xl animate-[login-float_10s_ease-in-out_infinite_reverse]" />
           <div
             className="absolute inset-0 opacity-[0.12]"
             style={{
@@ -135,24 +135,11 @@ function LoginPage() {
         </div>
 
         <div className="relative z-10 animate-[login-fade_0.7s_ease-out]">
-          <div className="flex items-center gap-3">
-            <img
-              src="/favicon-32.png"
-              alt=""
-              className="w-11 h-11 rounded-xl shadow-lg shadow-black/15 ring-1 ring-white/25"
-            />
-            <div>
-              <div
-                className="text-xl font-semibold tracking-tight"
-                style={{ fontFamily: '"Fraunces", Georgia, serif' }}
-              >
-                Imob CRM
-              </div>
-              <div className="text-xs text-white/75 tracking-wide">
-                Gestão Imobiliária
-              </div>
-            </div>
-          </div>
+          <img
+            src="/logo.png"
+            alt="Imobiliária New Palace"
+            className="h-16 w-auto max-w-[220px] rounded-lg shadow-lg shadow-black/25 object-contain bg-black ring-1 ring-white/10"
+          />
         </div>
 
         <div className="relative z-10 max-w-lg space-y-8 animate-[login-fade_0.9s_ease-out]">
@@ -190,9 +177,9 @@ function LoginPage() {
         </div>
 
         <div className="relative z-10 flex items-end justify-between gap-4 animate-[login-fade_1.1s_ease-out]">
-          <p className="text-xs text-white/60">© 2026 Imob CRM</p>
+          <p className="text-xs text-white/60">© 2026 New Palace</p>
           <div className="hidden xl:flex items-center gap-2 text-xs text-white/70">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-200 animate-pulse" />
             Ambiente de demonstração
           </div>
         </div>
@@ -204,24 +191,24 @@ function LoginPage() {
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(15,80,45,0.06) 1px, transparent 0)",
+              "radial-gradient(circle at 1px 1px, rgba(160,120,30,0.08) 1px, transparent 0)",
             backgroundSize: "22px 22px",
           }}
         />
 
         <form
           onSubmit={onSubmit}
-          className="relative w-full max-w-400px space-y-8 animate-[login-fade_0.6s_ease-out]"
+          className="relative w-full max-w-[400px] space-y-8 animate-[login-fade_0.6s_ease-out]"
         >
           <div className="lg:hidden flex items-center gap-2.5">
             <img
-              src="/favicon-32.png"
-              alt="Imob CRM"
-              className="w-9 h-9 rounded-lg"
+              src="/logo.png"
+              alt="New Palace"
+              className="h-9 w-auto max-w-[140px] rounded-md object-contain bg-black"
             />
             <div>
               <div className="font-semibold text-foreground leading-tight">
-                Imob CRM
+                New Palace
               </div>
               <div className="text-[11px] text-muted-foreground">
                 Gestão Imobiliária
