@@ -612,7 +612,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src="/favicon-32.png"
             alt="NP Connect"
-            className="w-8 h-8 rounded-lg object-contain shrink-0"
+            className="w-8 h-8 rounded-none object-contain shrink-0"
           />
           {!collapsed && (
             <div className="flex-1 min-w-0">
@@ -675,7 +675,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src="/favicon-32.png"
             alt="NP Connect"
-            className="w-8 h-8 rounded-lg object-contain shrink-0"
+            className="w-8 h-8 rounded-none object-contain shrink-0"
           />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold leading-tight">NP Connect</div>

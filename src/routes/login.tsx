@@ -138,7 +138,7 @@ function LoginPage() {
           <img
             src="/logo.png"
             alt="NP Connect"
-            className="h-16 w-auto max-w-[220px] rounded-lg object-contain drop-shadow-md"
+            className="h-16 w-auto max-w-[220px] rounded-none object-contain drop-shadow-md"
           />
         </div>
 
@@ -204,7 +204,7 @@ function LoginPage() {
             <img
               src="/logo.png"
               alt="NP Connect"
-              className="h-9 w-auto max-w-[140px] rounded-md object-contain"
+              className="h-9 w-auto max-w-[140px] rounded-none object-contain"
             />
             <div>
               <div className="font-semibold text-foreground leading-tight">
