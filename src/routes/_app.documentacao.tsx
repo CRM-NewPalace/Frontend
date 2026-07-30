@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -30,19 +31,29 @@ import {
   deleteDocumentacao,
   fetchDocumentacoes,
   updateDocumentacao,
+  FONTE_LABELS,
+  STATUS1_LABELS,
+  STATUS2_LABELS,
+  type CreateDocumentacaoInput,
   type Documentacao,
+  type DocumentacaoFonte,
+  type DocumentacaoStatus1,
+  type DocumentacaoStatus2,
 } from "@/lib/documentacao-api";
 import {
-  formatPhone,
-  isValidPhone,
-  PHONE_INVALID_MESSAGE,
-  PHONE_PLACEHOLDER,
-} from "@/lib/phone";
+  createConstrutora,
+  fetchConstrutoras,
+  type Construtora,
+} from "@/lib/construtoras-api";
 import {
-  FolderOpen, Plus, Loader2, User, Users, Wallet, FileText, Trash2, Pencil, Eye,
+  fetchEmpreendimentos,
+  type Empreendimento,
+} from "@/lib/empreendimentos-api";
+import { fetchEquipeGerentes, type EquipeOptionUser } from "@/lib/equipes-api";
+import {
+  FolderOpen, Plus, Loader2, Trash2, Pencil, Eye, Building,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/documentacao")({
   head: () => ({ meta: [{ title: "Documentação — NP Connect" }] }),
@@ -53,47 +64,52 @@ type FormState = {
   leadId: string;
   clienteId: string;
   nome: string;
-  telefone: string;
-  email: string;
-  origem: string;
-  interesse: Lead["interesse"];
-  cidade: string;
-  bairro: string;
-  prioridade: Lead["prioridade"];
-  renda: string;
-  temFgts: "sim" | "nao" | "";
-  valorFgts: string;
-  temEntrada: "sim" | "nao" | "";
-  valorEntrada: string;
-  temDependente: "sim" | "nao" | "";
+  construtoraId: string;
+  empreendimentoId: string;
+  fonte: DocumentacaoFonte;
+  status1: DocumentacaoStatus1;
+  status2: DocumentacaoStatus2;
+  corretorId: string;
+  gerenteId: string;
+  dataAnalise: string;
+  dataVenda: string;
+  vgv: string;
+  obs: string;
 };
 
 const emptyForm = (): FormState => ({
   leadId: "",
   clienteId: "",
   nome: "",
-  telefone: "",
-  email: "",
-  origem: "",
-  interesse: "Comprar",
-  cidade: "",
-  bairro: "",
-  prioridade: "Média",
-  renda: "",
-  temFgts: "",
-  valorFgts: "",
-  temEntrada: "",
-  valorEntrada: "",
-  temDependente: "",
+  construtoraId: "",
+  empreendimentoId: "",
+  fonte: "outro",
+  status1: "analise",
+  status2: "andamento",
+  corretorId: "",
+  gerenteId: "",
+  dataAnalise: "",
+  dataVenda: "",
+  vgv: "",
+  obs: "",
 });
+
+function toDateInput(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
 
 function DocumentacaoPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
+  const isAdmin = user?.role === "admin";
   const { leads, assignees, loading: leadsLoading } = useLeads();
-  const { funnelStages, origens } = useCatalog();
+  const { funnelStages } = useCatalog();
 
   const [items, setItems] = useState<Documentacao[]>([]);
+  const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
+  const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
+  const [gerentes, setGerentes] = useState<EquipeOptionUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCorretorId, setFilterCorretorId] = useState<string>("__all__");
 
@@ -103,6 +119,11 @@ function DocumentacaoPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickNome, setQuickNome] = useState("");
+  const [quickContato, setQuickContato] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
 
   const stageLabel = useCallback(
     (slug: string) => funnelStages.find((s) => s.id === slug)?.name ?? slug,
@@ -115,6 +136,24 @@ function DocumentacaoPage() {
       "bg-secondary text-secondary-foreground",
     [funnelStages],
   );
+
+  const corretorOptions = useMemo(
+    () => assignees.filter((a) => !a.role || a.role === "corretor"),
+    [assignees],
+  );
+  const gerenteOptions = useMemo(() => {
+    if (gerentes.length > 0) return gerentes;
+    return assignees.filter(
+      (a) => a.role === "gerente" || a.role === "admin",
+    );
+  }, [gerentes, assignees]);
+
+  const filteredEmpreendimentos = useMemo(() => {
+    if (!form.construtoraId) return empreendimentos;
+    return empreendimentos.filter(
+      (e) => !e.construtoraId || e.construtoraId === form.construtoraId,
+    );
+  }, [empreendimentos, form.construtoraId]);
 
   const visibleLeads = useMemo(() => {
     if (!user) return [];
@@ -138,11 +177,29 @@ function DocumentacaoPage() {
     [visibleLeads],
   );
 
-  const selectedContact = useMemo(() => {
-    const id = form.leadId || form.clienteId;
-    if (!id) return null;
-    return leads.find((l) => l.id === id) ?? null;
-  }, [form.leadId, form.clienteId, leads]);
+  const loadLookups = useCallback(async () => {
+    try {
+      const [c, e] = await Promise.all([
+        fetchConstrutoras(),
+        fetchEmpreendimentos({ ativo: true }),
+      ]);
+      setConstrutoras(c);
+      setEmpreendimentos(e);
+      if (isManager) {
+        try {
+          setGerentes(await fetchEquipeGerentes());
+        } catch {
+          setGerentes([]);
+        }
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar construtoras/empreendimentos.",
+      );
+    }
+  }, [isManager]);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -151,8 +208,7 @@ function DocumentacaoPage() {
         isManager && filterCorretorId !== "__all__"
           ? filterCorretorId
           : undefined;
-      const data = await fetchDocumentacoes(corretorId);
-      setItems(data);
+      setItems(await fetchDocumentacoes(corretorId));
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -168,6 +224,10 @@ function DocumentacaoPage() {
     void loadItems();
   }, [loadItems]);
 
+  useEffect(() => {
+    void loadLookups();
+  }, [loadLookups]);
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -176,14 +236,7 @@ function DocumentacaoPage() {
     setForm((prev) => ({
       ...prev,
       nome: contact.nome,
-      telefone: contact.telefone,
-      email: contact.email,
-      origem: contact.origem,
-      interesse: contact.interesse,
-      cidade: contact.cidade,
-      bairro: contact.bairro,
-      prioridade: contact.prioridade,
-      renda: contact.renda != null ? String(contact.renda) : "",
+      corretorId: contact.corretorId ?? prev.corretorId,
     }));
   }
 
@@ -202,135 +255,87 @@ function DocumentacaoPage() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    setForm(emptyForm());
+    const base = emptyForm();
+    if (user?.role === "corretor") {
+      base.corretorId = user.id;
+    }
+    setForm(base);
     setOpen(true);
+  }
+
+  function fillFromDoc(doc: Documentacao) {
+    setForm({
+      leadId: doc.tipoContato === "lead" ? doc.leadId : "",
+      clienteId: doc.tipoContato === "cliente" ? doc.leadId : "",
+      nome: doc.nome,
+      construtoraId: doc.construtoraId ?? "",
+      empreendimentoId: doc.empreendimentoId ?? "",
+      fonte: doc.fonte,
+      status1: doc.status1,
+      status2: doc.status2,
+      corretorId: doc.corretorId ?? "",
+      gerenteId: doc.gerenteId ?? "",
+      dataAnalise: toDateInput(doc.dataAnalise),
+      dataVenda: toDateInput(doc.dataVenda),
+      vgv: doc.vgv != null ? String(doc.vgv) : "",
+      obs: doc.obs ?? "",
+    });
   }
 
   function openView(doc: Documentacao) {
     setFormMode("view");
     setEditingId(doc.id);
-    setForm({
-      leadId: doc.tipoContato === "lead" ? doc.leadId : "",
-      clienteId: doc.tipoContato === "cliente" ? doc.leadId : "",
-      nome: doc.nome,
-      telefone: doc.telefone,
-      email: doc.email,
-      origem: doc.origem,
-      interesse: doc.interesse,
-      cidade: doc.cidade,
-      bairro: doc.bairro,
-      prioridade: doc.prioridade,
-      renda: doc.renda != null ? String(doc.renda) : "",
-      temFgts: doc.temFgts ? "sim" : "nao",
-      valorFgts: doc.valorFgts != null ? String(doc.valorFgts) : "",
-      temEntrada: doc.temEntrada ? "sim" : "nao",
-      valorEntrada: doc.valorEntrada != null ? String(doc.valorEntrada) : "",
-      temDependente: doc.temDependente ? "sim" : "nao",
-    });
+    fillFromDoc(doc);
     setOpen(true);
   }
 
   function openEdit(doc: Documentacao) {
-    openView(doc);
     setFormMode("edit");
+    setEditingId(doc.id);
+    fillFromDoc(doc);
+    setOpen(true);
   }
 
-  function validateForm(): CreatePayload | null {
+  function buildPayload(): CreateDocumentacaoInput | null {
     const leadId = form.leadId || form.clienteId;
     if (!leadId) {
-      toast.error("Selecione um lead ou um cliente.");
+      toast.error("Selecione um lead ou cliente.");
       return null;
     }
-    if (!form.nome.trim() || form.nome.trim().length < 2) {
-      toast.error("Informe o nome completo.");
-      return null;
-    }
-    if (!isValidPhone(form.telefone)) {
-      toast.error(PHONE_INVALID_MESSAGE);
-      return null;
-    }
-    if (!form.email.trim()) {
-      toast.error("Informe o e-mail.");
-      return null;
-    }
-    if (!form.origem.trim()) {
-      toast.error("Informe a origem.");
-      return null;
-    }
-    if (!form.cidade.trim() || !form.bairro.trim()) {
-      toast.error("Informe cidade e bairro.");
-      return null;
-    }
-    if (!form.temFgts || !form.temEntrada || !form.temDependente) {
-      toast.error("Responda FGTS, entrada e dependente.");
+    if (form.nome.trim().length < 2) {
+      toast.error("Informe o nome.");
       return null;
     }
 
-    const temFgts = form.temFgts === "sim";
-    const temEntrada = form.temEntrada === "sim";
-    const temDependente = form.temDependente === "sim";
-
-    const valorFgtsDigits = form.valorFgts.replace(/\D/g, "");
-    const valorEntradaDigits = form.valorEntrada.replace(/\D/g, "");
-    const rendaDigits = form.renda.replace(/\D/g, "");
-
-    if (temFgts && !valorFgtsDigits) {
-      toast.error("Informe o valor do FGTS.");
-      return null;
-    }
-    if (temEntrada && !valorEntradaDigits) {
-      toast.error("Informe o valor da entrada.");
-      return null;
-    }
-
+    const vgvDigits = form.vgv.replace(/\D/g, "");
     return {
       leadId,
       nome: form.nome.trim(),
-      telefone: form.telefone.trim(),
-      email: form.email.trim(),
-      origem: form.origem.trim(),
-      interesse: form.interesse,
-      cidade: form.cidade.trim(),
-      bairro: form.bairro.trim(),
-      prioridade: form.prioridade,
-      renda: rendaDigits ? Number(rendaDigits) : null,
-      temFgts,
-      valorFgts: temFgts ? Number(valorFgtsDigits) : null,
-      temEntrada,
-      valorEntrada: temEntrada ? Number(valorEntradaDigits) : null,
-      temDependente,
+      construtoraId: form.construtoraId || null,
+      empreendimentoId: form.empreendimentoId || null,
+      fonte: form.fonte,
+      status1: form.status1,
+      status2: form.status2,
+      corretorId: form.corretorId || null,
+      gerenteId: form.gerenteId || null,
+      dataAnalise: form.dataAnalise || null,
+      dataVenda: form.dataVenda || null,
+      vgv: vgvDigits ? Number(vgvDigits) : null,
+      obs: form.obs.trim() || null,
     };
   }
-
-  type CreatePayload = {
-    leadId: string;
-    nome: string;
-    telefone: string;
-    email: string;
-    origem: string;
-    interesse: Lead["interesse"];
-    cidade: string;
-    bairro: string;
-    prioridade: Lead["prioridade"];
-    renda: number | null;
-    temFgts: boolean;
-    valorFgts: number | null;
-    temEntrada: boolean;
-    valorEntrada: number | null;
-    temDependente: boolean;
-  };
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (formMode === "view") return;
-    const payload = validateForm();
+    const payload = buildPayload();
     if (!payload) return;
 
     setSaving(true);
     try {
       if (formMode === "create") {
         await createDocumentacao(payload);
-        toast.success("Documentação cadastrada.");
+        toast.success("Documentação criada.");
       } else if (editingId) {
         const { leadId: _leadId, ...patch } = payload;
         await updateDocumentacao(editingId, patch);
@@ -340,16 +345,14 @@ function DocumentacaoPage() {
       await loadItems();
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível salvar a documentação.",
+        err instanceof ApiError ? err.message : "Não foi possível salvar.",
       );
     } finally {
       setSaving(false);
     }
   }
 
-  async function confirmDelete() {
+  async function handleDelete() {
     if (!deleteId) return;
     try {
       await deleteDocumentacao(deleteId);
@@ -358,51 +361,64 @@ function DocumentacaoPage() {
       await loadItems();
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível excluir a documentação.",
+        err instanceof ApiError ? err.message : "Não foi possível excluir.",
       );
     }
   }
 
-  const readOnly = formMode === "view";
-  const origemOptions = origens;
-
-  function formatWhen(iso: string) {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  async function handleQuickCreate(e: FormEvent) {
+    e.preventDefault();
+    if (!isAdmin) return;
+    if (quickNome.trim().length < 2) {
+      toast.error("Informe o nome da construtora.");
+      return;
+    }
+    setQuickSaving(true);
+    try {
+      const created = await createConstrutora({
+        nome: quickNome.trim(),
+        contato: quickContato.trim() || undefined,
+      });
+      await loadLookups();
+      setField("construtoraId", created.id);
+      setQuickOpen(false);
+      setQuickNome("");
+      setQuickContato("");
+      toast.success("Construtora criada.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível criar.",
+      );
+    } finally {
+      setQuickSaving(false);
+    }
   }
+
+  const readOnly = formMode === "view";
 
   return (
     <div>
       <PageHeader
         title="Documentação"
-        description="Cadastre a ficha documental do lead ou cliente, com FGTS, entrada e dependentes."
+        description="Fichas operacionais vinculadas a leads e clientes."
         actions={
-          <Button size="sm" onClick={openCreate}>
+          <Button onClick={openCreate} disabled={leadsLoading}>
             <Plus className="w-4 h-4 mr-1" />
-            Novo
+            Nova documentação
           </Button>
         }
       />
 
       {isManager && (
         <div className="mb-4 max-w-xs">
-          <Label className="text-xs text-muted-foreground">Filtrar por corretor</Label>
+          <Label className="mb-1.5 block">Filtrar por corretor</Label>
           <Select value={filterCorretorId} onValueChange={setFilterCorretorId}>
-            <SelectTrigger className="h-10 mt-1.5 bg-background">
+            <SelectTrigger>
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Todos os corretores</SelectItem>
-              {assignees.map((a) => (
+              <SelectItem value="__all__">Todos</SelectItem>
+              {corretorOptions.map((a) => (
                 <SelectItem key={a.id} value={a.id}>
                   {a.name}
                 </SelectItem>
@@ -414,116 +430,93 @@ function DocumentacaoPage() {
 
       <Card>
         <CardContent className="p-0">
-          {loading || leadsLoading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Carregando documentações...
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              Carregando…
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                <FolderOpen className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium">Nenhuma documentação cadastrada</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Clique em Novo e selecione um lead ou cliente.
-              </p>
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+              <FolderOpen className="w-8 h-8 opacity-40" />
+              <p>Nenhuma documentação cadastrada.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Situação</TableHead>
-                    <TableHead>FGTS</TableHead>
-                    <TableHead>Entrada</TableHead>
-                    <TableHead>Dependente</TableHead>
-                    <TableHead>Criado em</TableHead>
-                    <TableHead className="w-[100px]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <div className="font-medium">{doc.nome}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {doc.telefone}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize text-[10px]">
-                          {doc.tipoContato}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Construtora</TableHead>
+                  <TableHead>Empreendimento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Corretor</TableHead>
+                  <TableHead>VGV</TableHead>
+                  <TableHead className="w-[120px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((doc) => (
+                  <TableRow key={doc.id}>
+                    <TableCell>
+                      <div className="font-medium">{doc.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"} ·{" "}
                         <Badge
-                          className={cn(
-                            "text-[10px] border-transparent",
-                            stageBadgeClass(doc.stageSituacao),
-                          )}
+                          variant="secondary"
+                          className={stageBadgeClass(doc.stageSituacao)}
                         >
                           {stageLabel(doc.stageSituacao)}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {doc.temFgts
-                          ? doc.valorFgts != null
-                            ? brl(doc.valorFgts)
-                            : "Sim"
-                          : "Não"}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {doc.temEntrada
-                          ? doc.valorEntrada != null
-                            ? brl(doc.valorEntrada)
-                            : "Sim"
-                          : "Não"}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {doc.temDependente ? "Sim" : "Não"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground tabular-nums">
-                        {formatWhen(doc.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openView(doc)}
-                            title="Ver"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEdit(doc)}
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => setDeleteId(doc.id)}
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>{doc.construtora?.nome ?? "—"}</TableCell>
+                    <TableCell>{doc.empreendimento?.nome ?? "—"}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Badge variant="outline">
+                          {STATUS1_LABELS[doc.status1]}
+                        </Badge>
+                        <div>
+                          <Badge variant="secondary">
+                            {STATUS2_LABELS[doc.status2]}
+                          </Badge>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {doc.corretor?.name ?? doc.lead.corretor?.name ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      {doc.vgv != null ? brl(doc.vgv) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openView(doc)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEdit(doc)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteId(doc.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
@@ -539,22 +532,13 @@ function DocumentacaoPage() {
               ? "Editar documentação"
               : "Documentação"
         }
-        description={
-          formMode === "create"
-            ? "Selecione o contato — os dados do cadastro serão preenchidos automaticamente."
-            : undefined
-        }
-        className="max-w-2xl"
       >
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <form onSubmit={handleSubmit}>
           <FormDialogBody>
-            <FormSection
-              icon={<Users className="w-3.5 h-3.5 text-primary" />}
-              title="Contato"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Lead</Label>
+            <FormSection title="Lead / Cliente">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Lead</Label>
                   <Select
                     value={form.leadId || "__none__"}
                     onValueChange={(v) =>
@@ -562,11 +546,11 @@ function DocumentacaoPage() {
                     }
                     disabled={readOnly || formMode === "edit"}
                   >
-                    <SelectTrigger className="h-10 bg-background">
-                      <SelectValue placeholder="Selecionar lead" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">Nenhum</SelectItem>
+                      <SelectItem value="__none__">—</SelectItem>
                       {leadOptions.map((l) => (
                         <SelectItem key={l.id} value={l.id}>
                           {l.nome}
@@ -575,8 +559,8 @@ function DocumentacaoPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Cliente</Label>
+                <div className="space-y-2">
+                  <Label>Cliente</Label>
                   <Select
                     value={form.clienteId || "__none__"}
                     onValueChange={(v) =>
@@ -586,11 +570,11 @@ function DocumentacaoPage() {
                     }
                     disabled={readOnly || formMode === "edit"}
                   >
-                    <SelectTrigger className="h-10 bg-background">
-                      <SelectValue placeholder="Selecionar cliente" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">Nenhum</SelectItem>
+                      <SelectItem value="__none__">—</SelectItem>
                       {clienteOptions.map((l) => (
                         <SelectItem key={l.id} value={l.id}>
                           {l.nome}
@@ -600,253 +584,320 @@ function DocumentacaoPage() {
                   </Select>
                 </div>
               </div>
-
-              {(selectedContact || formMode !== "create") && (
-                <div className="rounded-lg border bg-muted/30 p-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Situação atual:</span>
-                  <Badge
-                    className={cn(
-                      "text-[10px] border-transparent",
-                      stageBadgeClass(
-                        selectedContact?.stage ??
-                          items.find((d) => d.id === editingId)?.stageSituacao ??
-                          "",
-                      ),
-                    )}
-                  >
-                    {stageLabel(
-                      selectedContact?.stage ??
-                        items.find((d) => d.id === editingId)?.stageSituacao ??
-                        "—",
-                    )}
-                  </Badge>
-                  {selectedContact && (
-                    <Badge variant="outline" className="text-[10px] capitalize">
-                      {selectedContact.tipo}
-                    </Badge>
-                  )}
-                </div>
-              )}
             </FormSection>
 
-            <FormSection
-              icon={<User className="w-3.5 h-3.5 text-primary" />}
-              title="Dados cadastrais"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs text-muted-foreground">Nome</Label>
+            <FormSection title="Dados da planilha">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="nome">Nome *</Label>
                   <Input
+                    id="nome"
                     value={form.nome}
                     onChange={(e) => setField("nome", e.target.value)}
                     disabled={readOnly}
-                    className="h-10 bg-background"
+                    required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Telefone</Label>
-                  <Input
-                    value={form.telefone}
-                    onChange={(e) => setField("telefone", formatPhone(e.target.value))}
-                    placeholder={PHONE_PLACEHOLDER}
-                    disabled={readOnly}
-                    className="h-10 bg-background"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">E-mail</Label>
-                  <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setField("email", e.target.value)}
-                    disabled={readOnly}
-                    className="h-10 bg-background"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Origem</Label>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Construtora</Label>
+                    {isAdmin && !readOnly && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => setQuickOpen(true)}
+                      >
+                        + Nova construtora
+                      </Button>
+                    )}
+                  </div>
                   <Select
-                    value={form.origem || "__none__"}
-                    onValueChange={(v) =>
-                      setField("origem", v === "__none__" ? "" : v)
-                    }
+                    value={form.construtoraId || "__none__"}
+                    onValueChange={(v) => {
+                      setField(
+                        "construtoraId",
+                        v === "__none__" ? "" : v,
+                      );
+                      setField("empreendimentoId", "");
+                    }}
                     disabled={readOnly}
                   >
-                    <SelectTrigger className="h-10 bg-background">
-                      <SelectValue placeholder="Origem" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__" disabled>
-                        Selecione
-                      </SelectItem>
-                      {origemOptions.map((o) => (
-                        <SelectItem key={o} value={o}>
-                          {o}
+                      <SelectItem value="__none__">—</SelectItem>
+                      {construtoras.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome}
                         </SelectItem>
                       ))}
-                      {form.origem && !origemOptions.includes(form.origem) && (
-                        <SelectItem value={form.origem}>{form.origem}</SelectItem>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Interesse</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["Comprar", "Alugar", "Investir"] as const).map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        disabled={readOnly}
-                        onClick={() => setField("interesse", opt)}
-                        className={cn(
-                          "h-10 rounded-lg border text-sm font-medium transition-colors",
-                          form.interesse === opt
-                            ? "border-primary bg-primary/10 text-primary shadow-sm"
-                            : "bg-background text-muted-foreground hover:bg-accent",
-                          readOnly && "opacity-60 pointer-events-none",
-                        )}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
+
+                <div className="space-y-2">
+                  <Label>Empreendimento</Label>
+                  <Select
+                    value={form.empreendimentoId || "__none__"}
+                    onValueChange={(v) =>
+                      setField(
+                        "empreendimentoId",
+                        v === "__none__" ? "" : v,
+                      )
+                    }
+                    disabled={readOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">—</SelectItem>
+                      {filteredEmpreendimentos.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.nome}
+                          {e.cidade ? ` · ${e.cidade}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Cidade</Label>
+
+                <div className="space-y-2">
+                  <Label>Fonte</Label>
+                  <Select
+                    value={form.fonte}
+                    onValueChange={(v) =>
+                      setField("fonte", v as DocumentacaoFonte)
+                    }
+                    disabled={readOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(
+                        Object.keys(FONTE_LABELS) as DocumentacaoFonte[]
+                      ).map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {FONTE_LABELS[k]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status 1</Label>
+                  <Select
+                    value={form.status1}
+                    onValueChange={(v) =>
+                      setField("status1", v as DocumentacaoStatus1)
+                    }
+                    disabled={readOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(
+                        Object.keys(STATUS1_LABELS) as DocumentacaoStatus1[]
+                      ).map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {STATUS1_LABELS[k]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status 2</Label>
+                  <Select
+                    value={form.status2}
+                    onValueChange={(v) =>
+                      setField("status2", v as DocumentacaoStatus2)
+                    }
+                    disabled={readOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(
+                        Object.keys(STATUS2_LABELS) as DocumentacaoStatus2[]
+                      ).map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {STATUS2_LABELS[k]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Corretor</Label>
+                  <Select
+                    value={form.corretorId || "__none__"}
+                    onValueChange={(v) =>
+                      setField("corretorId", v === "__none__" ? "" : v)
+                    }
+                    disabled={readOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">—</SelectItem>
+                      {corretorOptions.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Gerente</Label>
+                  <Select
+                    value={form.gerenteId || "__none__"}
+                    onValueChange={(v) =>
+                      setField("gerenteId", v === "__none__" ? "" : v)
+                    }
+                    disabled={readOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">—</SelectItem>
+                      {gerenteOptions.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dataAnalise">Data análise</Label>
                   <Input
-                    value={form.cidade}
-                    onChange={(e) => setField("cidade", e.target.value)}
+                    id="dataAnalise"
+                    type="date"
+                    value={form.dataAnalise}
+                    onChange={(e) => setField("dataAnalise", e.target.value)}
                     disabled={readOnly}
-                    className="h-10 bg-background"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Bairro</Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dataVenda">Data venda</Label>
                   <Input
-                    value={form.bairro}
-                    onChange={(e) => setField("bairro", e.target.value)}
-                    disabled={readOnly}
-                    className="h-10 bg-background"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Renda mensal <span className="font-normal">(opcional)</span>
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
-                      R$
-                    </span>
-                    <Input
-                      inputMode="numeric"
-                      value={form.renda}
-                      onChange={(e) =>
-                        setField("renda", e.target.value.replace(/\D/g, ""))
-                      }
-                      disabled={readOnly}
-                      className="h-10 bg-background pl-9"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Prioridade</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["Alta", "Média", "Baixa"] as const).map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        disabled={readOnly}
-                        onClick={() => setField("prioridade", opt)}
-                        className={cn(
-                          "h-10 rounded-lg border text-sm font-medium transition-colors",
-                          form.prioridade === opt
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "bg-background text-muted-foreground hover:bg-accent",
-                          readOnly && "opacity-60 pointer-events-none",
-                        )}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </FormSection>
-
-            <FormSection
-              icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
-              title="Documentação financeira"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
-                <div className="space-y-3">
-                  <YesNoField
-                    label="Possui FGTS?"
-                    value={form.temFgts}
-                    onChange={(v) => {
-                      setField("temFgts", v);
-                      if (v === "nao") setField("valorFgts", "");
-                    }}
+                    id="dataVenda"
+                    type="date"
+                    value={form.dataVenda}
+                    onChange={(e) => setField("dataVenda", e.target.value)}
                     disabled={readOnly}
                   />
-                  {form.temFgts === "sim" && (
-                    <MoneyField
-                      label="Valor do FGTS"
-                      value={form.valorFgts}
-                      onChange={(v) => setField("valorFgts", v)}
-                      disabled={readOnly}
-                    />
-                  )}
                 </div>
 
-                <div className="space-y-3">
-                  <YesNoField
-                    label="Possui entrada?"
-                    value={form.temEntrada}
-                    onChange={(v) => {
-                      setField("temEntrada", v);
-                      if (v === "nao") setField("valorEntrada", "");
-                    }}
+                <div className="space-y-2">
+                  <Label htmlFor="vgv">VGV (R$)</Label>
+                  <Input
+                    id="vgv"
+                    inputMode="numeric"
+                    value={form.vgv}
+                    onChange={(e) => setField("vgv", e.target.value)}
                     disabled={readOnly}
+                    placeholder="Ex: 250000"
                   />
-                  {form.temEntrada === "sim" && (
-                    <MoneyField
-                      label="Valor da entrada"
-                      value={form.valorEntrada}
-                      onChange={(v) => setField("valorEntrada", v)}
-                      disabled={readOnly}
-                    />
-                  )}
                 </div>
 
-                <div className="sm:col-span-2">
-                  <YesNoField
-                    label="Possui dependente?"
-                    value={form.temDependente}
-                    onChange={(v) => setField("temDependente", v)}
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="obs">OBS</Label>
+                  <Textarea
+                    id="obs"
+                    value={form.obs}
+                    onChange={(e) => setField("obs", e.target.value)}
                     disabled={readOnly}
+                    rows={3}
                   />
                 </div>
               </div>
             </FormSection>
           </FormDialogBody>
-
           <FormDialogActions>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               {readOnly ? "Fechar" : "Cancelar"}
             </Button>
             {!readOnly && (
               <Button type="submit" disabled={saving}>
                 {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                <FileText className="w-4 h-4 mr-1" />
-                {formMode === "create" ? "Cadastrar" : "Salvar"}
+                Salvar
               </Button>
             )}
           </FormDialogActions>
         </form>
       </FormDialogShell>
 
-      <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
+      <FormDialogShell
+        open={quickOpen}
+        onOpenChange={setQuickOpen}
+        icon={<Building className="w-5 h-5" />}
+        title="Nova construtora"
+      >
+        <form onSubmit={handleQuickCreate}>
+          <FormDialogBody>
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="quickNome">Nome *</Label>
+                <Input
+                  id="quickNome"
+                  value={quickNome}
+                  onChange={(e) => setQuickNome(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quickContato">Contato</Label>
+                <Input
+                  id="quickContato"
+                  value={quickContato}
+                  onChange={(e) => setQuickContato(e.target.value)}
+                />
+              </div>
+            </div>
+          </FormDialogBody>
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQuickOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={quickSaving}>
+              {quickSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Criar
+            </Button>
+          </FormDialogActions>
+        </form>
+      </FormDialogShell>
+
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(v) => !v && setDeleteId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir documentação?</AlertDialogTitle>
@@ -856,80 +907,12 @@ function DocumentacaoPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmDelete()}>
+            <AlertDialogAction onClick={() => void handleDelete()}>
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function YesNoField({
-  label,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  value: "sim" | "nao" | "";
-  onChange: (v: "sim" | "nao") => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="space-y-1.5 w-full">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="grid grid-cols-2 gap-2 w-full">
-        {(["sim", "nao"] as const).map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(opt)}
-            className={cn(
-              "h-10 w-full rounded-lg border text-sm font-medium transition-colors",
-              value === opt
-                ? "border-primary bg-primary/10 text-primary shadow-sm"
-                : "bg-background text-muted-foreground hover:bg-accent",
-              disabled && "opacity-60 pointer-events-none",
-            )}
-          >
-            {opt === "sim" ? "Sim" : "Não"}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MoneyField({
-  label,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="space-y-1.5 w-full">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="relative w-full">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
-          R$
-        </span>
-        <Input
-          inputMode="numeric"
-          value={value}
-          onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
-          disabled={disabled}
-          className="h-10 w-full bg-background pl-9"
-          placeholder="0"
-        />
-      </div>
     </div>
   );
 }

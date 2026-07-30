@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
+import { Route as AppConstrutorasRouteImport } from './routes/_app.construtoras'
 import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppDocumentacaoRouteImport } from './routes/_app.documentacao'
@@ -69,6 +70,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
 const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConstrutorasRoute = AppConstrutorasRouteImport.update({
+  id: '/construtoras',
+  path: '/construtoras',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCorretoresRoute = AppCorretoresRouteImport.update({
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/configuracoes': typeof AppConfiguracoesRoute
+  '/construtoras': typeof AppConstrutorasRoute
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
   '/documentacao': typeof AppDocumentacaoRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/configuracoes': typeof AppConfiguracoesRoute
+  '/construtoras': typeof AppConstrutorasRoute
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
   '/documentacao': typeof AppDocumentacaoRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/clientes': typeof AppClientesRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
+  '/_app/construtoras': typeof AppConstrutorasRoute
   '/_app/corretores': typeof AppCorretoresRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/documentacao': typeof AppDocumentacaoRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/clientes'
     | '/configuracoes'
+    | '/construtoras'
     | '/corretores'
     | '/dashboard'
     | '/documentacao'
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/clientes'
     | '/configuracoes'
+    | '/construtoras'
     | '/corretores'
     | '/dashboard'
     | '/documentacao'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/_app/agenda'
     | '/_app/clientes'
     | '/_app/configuracoes'
+    | '/_app/construtoras'
     | '/_app/corretores'
     | '/_app/dashboard'
     | '/_app/documentacao'
@@ -460,6 +472,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/construtoras': {
+      id: '/_app/construtoras'
+      path: '/construtoras'
+      fullPath: '/construtoras'
+      preLoaderRoute: typeof AppConstrutorasRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/corretores': {
@@ -680,6 +699,7 @@ interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppClientesRoute: typeof AppClientesRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
+  AppConstrutorasRoute: typeof AppConstrutorasRoute
   AppCorretoresRoute: typeof AppCorretoresRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDocumentacaoRoute: typeof AppDocumentacaoRoute
@@ -703,6 +723,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppClientesRoute: AppClientesRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
+  AppConstrutorasRoute: AppConstrutorasRoute,
   AppCorretoresRoute: AppCorretoresRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDocumentacaoRoute: AppDocumentacaoRoute,

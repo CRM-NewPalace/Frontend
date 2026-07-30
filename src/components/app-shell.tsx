@@ -187,6 +187,7 @@ const NAV_SECTIONS: {
     items: [
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
       { to: "/equipes", label: "Equipes", icon: Network },
+      { to: "/construtoras", label: "Construtoras", icon: Building2 },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
