@@ -44,6 +44,10 @@ function ImoveisPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
+  const [localidade, setLocalidade] = useState("");
+  const [quartos, setQuartos] = useState("");
+  const [construtoraId, setConstrutoraId] = useState("");
+  const [somenteLitoral, setSomenteLitoral] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickNome, setQuickNome] = useState("");
   const [quickConstrutoraId, setQuickConstrutoraId] = useState("");
@@ -139,17 +143,80 @@ function ImoveisPage() {
     }
   }
 
+  const localidades = useMemo(
+    () =>
+      [
+        ...new Set(
+          items
+            .map((item) => item.cidade)
+            .filter((cidade): cidade is string => Boolean(cidade)),
+        ),
+      ]
+        .sort((a, b) => a.localeCompare(b, "pt-BR")) as string[],
+    [items],
+  );
+  const opcoesQuartos = useMemo(
+    () =>
+      [...new Set(items.flatMap((item) => item.quartos ?? []))].sort(
+        (a, b) => a - b,
+      ),
+    [items],
+  );
+  const opcoesConstrutoras = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          items.flatMap((item) =>
+            item.construtora
+              ? [[item.construtora.id, item.construtora.nome] as const]
+              : [],
+          ),
+        ),
+      )
+        .map(([id, nome]) => ({ id, nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [items],
+  );
+  const hasActiveFilters =
+    Boolean(localidade || quartos || construtoraId || somenteLitoral);
+
+  function clearFilters() {
+    setSearch("");
+    setLocalidade("");
+    setQuartos("");
+    setConstrutoraId("");
+    setSomenteLitoral(false);
+  }
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (i) =>
-        i.nome.toLowerCase().includes(q) ||
-        (i.cidade ?? "").toLowerCase().includes(q) ||
-        (i.endereco ?? "").toLowerCase().includes(q) ||
-        (i.construtora?.nome ?? "").toLowerCase().includes(q),
-    );
-  }, [items, search]);
+    const q = search.trim().toLocaleLowerCase("pt-BR");
+    return items.filter((item) => {
+      const searchable = [
+        item.nome,
+        item.cidade ?? "",
+        item.endereco ?? "",
+        item.construtora?.nome ?? "",
+      ]
+        .join(" ")
+        .toLocaleLowerCase("pt-BR");
+      const isLitoral = searchable.includes("praia");
+
+      return (
+        (!q || searchable.includes(q)) &&
+        (!localidade || item.cidade === localidade) &&
+        (!quartos || item.quartos === Number(quartos)) &&
+        (!construtoraId || item.construtoraId === construtoraId) &&
+        (!somenteLitoral || isLitoral)
+      );
+    });
+  }, [
+    items,
+    search,
+    localidade,
+    quartos,
+    construtoraId,
+    somenteLitoral,
+  ]);
 
   return (
     <div>
@@ -178,12 +245,94 @@ function ImoveisPage() {
         }
       />
 
-      <div className="mb-4 max-w-md">
-        <Input
-          placeholder="Buscar por nome, cidade ou endereço…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="sm:col-span-2 xl:col-span-1">
+          <Label htmlFor="buscar-imovel" className="mb-1.5 block text-xs">
+            Buscar
+          </Label>
+          <Input
+            id="buscar-imovel"
+            placeholder="Nome ou endereço…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Localidade</Label>
+          <Select
+            value={localidade || "__all__"}
+            onValueChange={(value) =>
+              setLocalidade(value === "__all__" ? "" : value)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas</SelectItem>
+              {localidades.map((cidade) => (
+                <SelectItem key={cidade} value={cidade}>
+                  {cidade}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Quartos</Label>
+          <Select
+            value={quartos || "__all__"}
+            onValueChange={(value) => setQuartos(value === "__all__" ? "" : value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {opcoesQuartos.map((quantidade) => (
+                <SelectItem key={quantidade} value={String(quantidade)}>
+                  {quantidade} quarto{quantidade === 1 ? "" : "s"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Construtora</Label>
+          <Select
+            value={construtoraId || "__all__"}
+            onValueChange={(value) =>
+              setConstrutoraId(value === "__all__" ? "" : value)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas</SelectItem>
+              {opcoesConstrutoras.map((construtora) => (
+                <SelectItem key={construtora.id} value={construtora.id}>
+                  {construtora.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-end gap-2">
+          <Button
+            type="button"
+            variant={somenteLitoral ? "default" : "outline"}
+            className="flex-1"
+            onClick={() => setSomenteLitoral((current) => !current)}
+          >
+            Litoral
+          </Button>
+          {(hasActiveFilters || search) && (
+            <Button type="button" variant="ghost" onClick={clearFilters}>
+              Limpar
+            </Button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -200,7 +349,9 @@ function ImoveisPage() {
                 ? isAdmin
                   ? "Nenhum empreendimento ainda. Clique em “Sincronizar do site” para importar a listagem da New Palace."
                   : "Nenhum empreendimento cadastrado ainda. Peça a um administrador para sincronizar do site New Palace."
-                : "Nenhum resultado para a busca."}
+                : hasActiveFilters
+                  ? "Nenhum empreendimento encontrado para os filtros selecionados."
+                  : "Nenhum resultado para a busca."}
             </p>
             {items.length === 0 && isAdmin && (
               <Button
