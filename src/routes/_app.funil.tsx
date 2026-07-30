@@ -30,12 +30,12 @@ import { cn } from "@/lib/utils";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Análise pendente",
-  aprovado: "Vender",
+  aprovado: "Análise aprovada",
   reprovado: "Análise reprovada",
 };
 
 function analiseBadgeClass(status: AnaliseStatus) {
-  if (status === "aprovado") return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
+  if (status === "aprovado") return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
   if (status === "reprovado") return "border-destructive/40 bg-destructive/10 text-destructive";
   return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
 }

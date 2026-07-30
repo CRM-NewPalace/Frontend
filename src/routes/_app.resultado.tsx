@@ -40,12 +40,12 @@ const COLUMN_STEP_PX = 288 + 12;
 
 const STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Pendente",
-  aprovado: "Vender",
+  aprovado: "Aprovado",
   reprovado: "Reprovado",
 };
 
 function statusBadgeClass(status: AnaliseStatus) {
-  if (status === "aprovado") return "bg-amber-500/15 text-amber-800 border-amber-500/30";
+  if (status === "aprovado") return "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
   if (status === "reprovado") return "bg-destructive/15 text-destructive border-destructive/30";
   return "bg-amber-500/15 text-amber-800 border-amber-500/30";
 }
@@ -439,7 +439,7 @@ function AnalisePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="aprovado">Vender</SelectItem>
+                      <SelectItem value="aprovado">Aprovado</SelectItem>
                       <SelectItem value="reprovado">Reprovado</SelectItem>
                     </SelectContent>
                   </Select>
