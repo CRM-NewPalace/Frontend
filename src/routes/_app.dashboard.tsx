@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
   ChartTooltip,
@@ -81,6 +82,9 @@ function DashboardCorretor() {
   const { funnelStages } = useCatalog();
   const [summary, setSummary] = useState<DashboardCorretor | null>(null);
   const [loading, setLoading] = useState(true);
+  const [agendaFiltro, setAgendaFiltro] = useState<
+    "todos" | "pessoal" | "compartilhada"
+  >("todos");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,6 +123,14 @@ function DashboardCorretor() {
         total: item.total,
       })) ?? [],
     [summary],
+  );
+  const agendaItens = useMemo(
+    () =>
+      summary?.agenda.itens.filter(
+        (item) =>
+          agendaFiltro === "todos" || item.categoria === agendaFiltro,
+      ) ?? [],
+    [summary, agendaFiltro],
   );
 
   if (loading) {
@@ -298,13 +310,41 @@ function DashboardCorretor() {
                 {summary.agenda.concluidosHoje === 1 ? "" : "s"}
               </span>
             </div>
-            {summary.agenda.itens.length === 0 ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={agendaFiltro === "todos" ? "default" : "outline"}
+                onClick={() => setAgendaFiltro("todos")}
+              >
+                Todos
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={agendaFiltro === "pessoal" ? "default" : "outline"}
+                onClick={() => setAgendaFiltro("pessoal")}
+              >
+                Pessoal
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={
+                  agendaFiltro === "compartilhada" ? "default" : "outline"
+                }
+                onClick={() => setAgendaFiltro("compartilhada")}
+              >
+                Com gerente/superior
+              </Button>
+            </div>
+            {agendaItens.length === 0 ? (
               <p className="py-5 text-sm text-muted-foreground">
-                Nenhuma atividade marcada para hoje.
+                Nenhuma atividade nesta categoria para hoje.
               </p>
             ) : (
               <div className="divide-y rounded-lg border">
-                {summary.agenda.itens.slice(0, 4).map((item) => (
+                {agendaItens.slice(0, 4).map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center gap-3 px-3 py-2.5"

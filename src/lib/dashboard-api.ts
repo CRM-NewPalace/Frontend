@@ -28,6 +28,7 @@ export type DashboardCorretor = {
       status: string;
       startsAt: string;
       contato: string | null;
+      categoria: "pessoal" | "compartilhada";
     }[];
   };
 };
