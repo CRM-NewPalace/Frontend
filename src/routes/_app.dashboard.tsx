@@ -196,69 +196,6 @@ function DashboardCorretor() {
       <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,1fr)]">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base">Minha agenda de hoje</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {summary.agenda.totalHoje} compromisso
-                  {summary.agenda.totalHoje === 1 ? "" : "s"} marcado
-                  {summary.agenda.totalHoje === 1 ? "" : "s"} para hoje.
-                </p>
-              </div>
-              <CalendarCheck className="h-5 w-5 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                {summary.agenda.pendentesHoje} pendente
-                {summary.agenda.pendentesHoje === 1 ? "" : "s"}
-              </span>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
-                {summary.agenda.concluidosHoje} concluído
-                {summary.agenda.concluidosHoje === 1 ? "" : "s"}
-              </span>
-            </div>
-            {summary.agenda.itens.length === 0 ? (
-              <p className="py-5 text-sm text-muted-foreground">
-                Nenhuma atividade marcada para hoje.
-              </p>
-            ) : (
-              <div className="divide-y rounded-lg border">
-                {summary.agenda.itens.slice(0, 4).map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 px-3 py-2.5"
-                  >
-                    {item.status === "concluido" ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                    ) : (
-                      <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{item.titulo}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.contato ?? item.tipo}
-                      </p>
-                    </div>
-                    <time className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-      </section>
-
-      <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,1fr)]">
-        <Card>
-          <CardHeader>
             <CardTitle className="text-base">Funil atual</CardTitle>
             <p className="text-sm text-muted-foreground">
               {summary.conversaoEmAnalise}% da carteira está em análise.
@@ -333,6 +270,68 @@ function DashboardCorretor() {
           icon={Wallet}
           tone="teal"
         />
+      </section>
+
+      <section className="mt-5">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Minha agenda de hoje</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {summary.agenda.totalHoje} compromisso
+                  {summary.agenda.totalHoje === 1 ? "" : "s"} marcado
+                  {summary.agenda.totalHoje === 1 ? "" : "s"} para hoje.
+                </p>
+              </div>
+              <CalendarCheck className="h-5 w-5 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
+                {summary.agenda.pendentesHoje} pendente
+                {summary.agenda.pendentesHoje === 1 ? "" : "s"}
+              </span>
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+                {summary.agenda.concluidosHoje} concluído
+                {summary.agenda.concluidosHoje === 1 ? "" : "s"}
+              </span>
+            </div>
+            {summary.agenda.itens.length === 0 ? (
+              <p className="py-5 text-sm text-muted-foreground">
+                Nenhuma atividade marcada para hoje.
+              </p>
+            ) : (
+              <div className="divide-y rounded-lg border">
+                {summary.agenda.itens.slice(0, 4).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 px-3 py-2.5"
+                  >
+                    {item.status === "concluido" ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                    ) : (
+                      <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{item.titulo}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.contato ?? item.tipo}
+                      </p>
+                    </div>
+                    <time className="shrink-0 text-xs text-muted-foreground">
+                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
     </div>
   );
