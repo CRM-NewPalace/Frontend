@@ -372,17 +372,34 @@ function ImoveisPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((item) => (
-            <Card key={item.id} className="overflow-hidden">
-              <CardHeader className="pb-2">
+            <Card key={item.id} className="group overflow-hidden transition-shadow hover:shadow-lg">
+              <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary/25 via-primary/10 to-muted">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Building2 className="h-10 w-10 text-primary/35" />
+                </div>
+                {item.imagemUrl && (
+                  <img
+                    src={item.imagemUrl}
+                    alt={`Fachada do empreendimento ${item.nome}`}
+                    className="relative h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+                {item.cidade && (
+                  <Badge className="absolute bottom-3 right-3 border-white/20 bg-black/45 text-white hover:bg-black/55">
+                    {item.cidade}
+                  </Badge>
+                )}
+              </div>
+              <CardHeader className="pb-2 pt-4">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base leading-snug">
                     {item.nome}
                   </CardTitle>
-                  {item.cidade && (
-                    <Badge variant="secondary" className="shrink-0">
-                      {item.cidade}
-                    </Badge>
-                  )}
                 </div>
                 {item.construtora && (
                   <p className="text-xs text-muted-foreground">

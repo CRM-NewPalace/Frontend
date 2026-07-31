@@ -10,6 +10,7 @@ export type Empreendimento = {
   banheiros: number | null;
   areaM2: number | null;
   externalUrl: string | null;
+  imagemUrl: string | null;
   externalKey: string;
   ativo: boolean;
   createdAt: string;
