@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -82,9 +82,6 @@ function DashboardCorretor() {
   const { funnelStages } = useCatalog();
   const [summary, setSummary] = useState<DashboardCorretor | null>(null);
   const [loading, setLoading] = useState(true);
-  const [agendaFiltro, setAgendaFiltro] = useState<
-    "todos" | "pessoal" | "compartilhada"
-  >("todos");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -124,13 +121,18 @@ function DashboardCorretor() {
       })) ?? [],
     [summary],
   );
-  const agendaItens = useMemo(
+  const agendaPessoal = useMemo(
+    () =>
+      summary?.agenda.itens.filter((item) => item.categoria === "pessoal") ??
+      [],
+    [summary],
+  );
+  const agendaCompartilhada = useMemo(
     () =>
       summary?.agenda.itens.filter(
-        (item) =>
-          agendaFiltro === "todos" || item.categoria === agendaFiltro,
+        (item) => item.categoria === "compartilhada",
       ) ?? [],
-    [summary, agendaFiltro],
+    [summary],
   );
 
   if (loading) {
@@ -310,69 +312,77 @@ function DashboardCorretor() {
                 {summary.agenda.concluidosHoje === 1 ? "" : "s"}
               </span>
             </div>
-            <div className="mb-3 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={agendaFiltro === "todos" ? "default" : "outline"}
-                onClick={() => setAgendaFiltro("todos")}
-              >
-                Todos
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={agendaFiltro === "pessoal" ? "default" : "outline"}
-                onClick={() => setAgendaFiltro("pessoal")}
-              >
-                Pessoal
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={
-                  agendaFiltro === "compartilhada" ? "default" : "outline"
-                }
-                onClick={() => setAgendaFiltro("compartilhada")}
-              >
-                Com gerente/superior
-              </Button>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <AgendaCategoria
+                title="Atividades pessoais"
+                items={agendaPessoal}
+                emptyMessage="Nenhuma atividade pessoal marcada para hoje."
+              />
+              <AgendaCategoria
+                title="Com gerente ou superior"
+                items={agendaCompartilhada}
+                emptyMessage="Nenhuma atividade compartilhada marcada para hoje."
+              />
             </div>
-            {agendaItens.length === 0 ? (
-              <p className="py-5 text-sm text-muted-foreground">
-                Nenhuma atividade nesta categoria para hoje.
-              </p>
-            ) : (
-              <div className="divide-y rounded-lg border">
-                {agendaItens.slice(0, 4).map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 px-3 py-2.5"
-                  >
-                    {item.status === "concluido" ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                    ) : (
-                      <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{item.titulo}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.contato ?? item.tipo}
-                      </p>
-                    </div>
-                    <time className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                  </div>
-                ))}
-              </div>
-            )}
           </CardContent>
         </Card>
       </section>
+    </div>
+  );
+}
+
+function AgendaCategoria({
+  title,
+  items,
+  emptyMessage,
+}: {
+  title: string;
+  items: DashboardCorretor["agenda"]["itens"];
+  emptyMessage: string;
+}) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className="text-xs text-muted-foreground">{items.length}</span>
+      </div>
+      {items.length === 0 ? (
+        <p className="py-4 text-sm text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        <>
+          <div className="divide-y rounded-md border">
+            {items.slice(0, 7).map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 px-3 py-2.5"
+              >
+                {item.status === "concluido" ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                ) : (
+                  <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{item.titulo}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {item.contato ?? item.tipo}
+                  </p>
+                </div>
+                <time className="shrink-0 text-xs text-muted-foreground">
+                  {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
+              </div>
+            ))}
+          </div>
+          {items.length > 7 && (
+            <Button asChild type="button" variant="outline" size="sm" className="mt-3">
+              <Link to="/agenda">Exibir mais</Link>
+            </Button>
+          )}
+        </>
+      )}
     </div>
   );
 }
