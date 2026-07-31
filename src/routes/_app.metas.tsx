@@ -207,7 +207,12 @@ function Page() {
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Carregando metas...</div>
       ) : !isAdmin && !isGerente ? (
-        <MetaList metas={metas} canEdit={(meta) => meta.origem === "pessoal"} onEdit={openEdit} onRemove={remove} />
+        <MetasPorOrigem
+          metas={metas}
+          canEdit={(meta) => meta.origem === "pessoal"}
+          onEdit={openEdit}
+          onRemove={remove}
+        />
       ) : grupos.length === 0 ? (
         <EmptyState admin={isAdmin} />
       ) : (
@@ -219,7 +224,7 @@ function Page() {
                 <h2 className="font-semibold">{corretor.name}</h2>
                 <span className="text-sm text-muted-foreground">{corretor.equipe?.name ?? "Sem equipe"}</span>
               </div>
-              <MetaList
+              <MetasPorOrigem
                 metas={metasDoCorretor}
                 canEdit={(meta) => isGerente && meta.origem === "gerente" && meta.criadorId === user?.id}
                 onEdit={openEdit}
@@ -284,8 +289,59 @@ function Page() {
   );
 }
 
-function MetaList({ metas, canEdit, onEdit, onRemove }: { metas: Meta[]; canEdit: (meta: Meta) => boolean; onEdit: (meta: Meta) => void; onRemove: (meta: Meta) => void }) {
+function MetasPorOrigem({
+  metas,
+  canEdit,
+  onEdit,
+  onRemove,
+}: {
+  metas: Meta[];
+  canEdit: (meta: Meta) => boolean;
+  onEdit: (meta: Meta) => void;
+  onRemove: (meta: Meta) => void;
+}) {
+  const metasGerencia = metas.filter((meta) => meta.origem === "gerente");
+  const metasPessoais = metas.filter((meta) => meta.origem === "pessoal");
+
   if (metas.length === 0) return <EmptyState />;
+
+  return (
+    <div className="space-y-6">
+      <section className="space-y-3">
+        <div>
+          <h3 className="font-medium">Metas da gerência</h3>
+          <p className="text-sm text-muted-foreground">
+            Metas definidas pelo gerente para este corretor.
+          </p>
+        </div>
+        {metasGerencia.length > 0 ? (
+          <MetaList metas={metasGerencia} canEdit={canEdit} onEdit={onEdit} onRemove={onRemove} />
+        ) : (
+          <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
+            Nenhuma meta da gerência para este período.
+          </p>
+        )}
+      </section>
+      <section className="space-y-3">
+        <div>
+          <h3 className="font-medium">Metas pessoais</h3>
+          <p className="text-sm text-muted-foreground">
+            Metas definidas pelo próprio corretor.
+          </p>
+        </div>
+        {metasPessoais.length > 0 ? (
+          <MetaList metas={metasPessoais} canEdit={canEdit} onEdit={onEdit} onRemove={onRemove} />
+        ) : (
+          <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
+            Nenhuma meta pessoal para este período.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MetaList({ metas, canEdit, onEdit, onRemove }: { metas: Meta[]; canEdit: (meta: Meta) => boolean; onEdit: (meta: Meta) => void; onRemove: (meta: Meta) => void }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {metas.map((meta) => {
