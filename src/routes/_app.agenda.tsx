@@ -48,7 +48,6 @@ import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
   AGENDAMENTO_ALVO_LABEL,
-  AGENDAMENTO_ESCOPO_LABEL,
   AGENDAMENTO_ORIGEM_DOT,
   AGENDAMENTO_ORIGEM_LABEL,
   AGENDAMENTO_STATUS,
@@ -83,6 +82,7 @@ import {
   Plus,
   Trash2,
   User,
+  UsersRound,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -1287,25 +1287,32 @@ function AgendaPage() {
                 {!isAdmin ? (
                   <div className="space-y-2">
                     <Label>Participação</Label>
-                    <Select
-                      value={form.escopo}
-                      onValueChange={(v) =>
-                        setField("escopo", v as AgendamentoEscopo)
-                      }
-                      disabled={formMode === "edit"}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pessoal">
-                          {AGENDAMENTO_ESCOPO_LABEL.pessoal}
-                        </SelectItem>
-                        <SelectItem value="com_gerente">
-                          {AGENDAMENTO_ESCOPO_LABEL.com_gerente}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={
+                          form.escopo === "pessoal" ? "default" : "outline"
+                        }
+                        className="h-auto min-h-16 flex-col gap-1 whitespace-normal py-2 text-xs"
+                        onClick={() => setField("escopo", "pessoal")}
+                        disabled={formMode === "edit"}
+                      >
+                        <User className="h-4 w-4" />
+                        Tarefa pessoal
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={
+                          form.escopo === "com_gerente" ? "default" : "outline"
+                        }
+                        className="h-auto min-h-16 flex-col gap-1 whitespace-normal py-2 text-xs"
+                        onClick={() => setField("escopo", "com_gerente")}
+                        disabled={formMode === "edit"}
+                      >
+                        <UsersRound className="h-4 w-4" />
+                        Com gerente
+                      </Button>
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
                       {form.escopo === "com_gerente"
                         ? user?.role === "corretor"
