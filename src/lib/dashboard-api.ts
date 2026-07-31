@@ -17,6 +17,19 @@ export type DashboardCorretor = {
     emAndamento: number;
     vgvVendidoMes: number;
   };
+  agenda: {
+    totalHoje: number;
+    pendentesHoje: number;
+    concluidosHoje: number;
+    itens: {
+      id: string;
+      titulo: string;
+      tipo: string;
+      status: string;
+      startsAt: string;
+      contato: string | null;
+    }[];
+  };
 };
 
 export async function fetchDashboardCorretor(): Promise<DashboardCorretor> {
