@@ -618,7 +618,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b">
           <img
-            src={logoUrl || "/favicon-32.png"}
+            src={logoUrl}
             alt={brandName}
             className="w-8 h-8 rounded-none object-contain shrink-0"
           />
@@ -681,7 +681,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b">
           <img
-            src={logoUrl || "/favicon-32.png"}
+            src={logoUrl}
             alt={brandName}
             className="w-8 h-8 rounded-none object-contain shrink-0"
           />

@@ -142,7 +142,7 @@ function LoginPage() {
 
         <div className="relative z-10 animate-[login-fade_0.7s_ease-out]">
           <img
-            src="/logo.png"
+            src="/brand/zone-connection-logo.png"
             alt="NP Connect"
             className="h-16 w-auto max-w-[220px] rounded-none object-contain drop-shadow-md"
           />
@@ -208,7 +208,7 @@ function LoginPage() {
         >
           <div className="lg:hidden flex items-center gap-2.5">
             <img
-              src="/logo.png"
+              src="/brand/zone-connection-logo.png"
               alt="NP Connect"
               className="h-9 w-auto max-w-[140px] rounded-none object-contain"
             />

@@ -7,10 +7,13 @@ import {
 } from "react";
 import type { AuthUser, TenantBranding } from "@/lib/auth";
 
+/** Logo padrão Zone Connection (fundo transparente). */
+export const DEFAULT_TENANT_LOGO = "/brand/zone-connection-logo.png";
+
 type TenantThemeContextValue = {
   tenant: TenantBranding | null;
   brandName: string;
-  logoUrl: string | null;
+  logoUrl: string;
   homePath: string;
   modules: Record<string, boolean>;
   isModuleEnabled: (key: string) => boolean;
@@ -18,19 +21,18 @@ type TenantThemeContextValue = {
 
 const TenantThemeContext = createContext<TenantThemeContextValue | null>(null);
 
-const PRIMARY_VARS = [
-  "--primary",
-  "--ring",
-  "--sidebar-primary",
-  "--sidebar-ring",
-  "--chart-1",
-  "--success",
-] as const;
-
-function clearTenantTheme() {
+/** Remove overrides visuais antigos (cor/sidebar/densidade por tenant). */
+function clearTenantThemeOverrides() {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  for (const key of PRIMARY_VARS) {
+  for (const key of [
+    "--primary",
+    "--ring",
+    "--sidebar-primary",
+    "--sidebar-ring",
+    "--chart-1",
+    "--success",
+  ] as const) {
     root.style.removeProperty(key);
   }
   root.classList.remove(
@@ -38,29 +40,6 @@ function clearTenantTheme() {
     "tenant-sidebar-compact",
     "tenant-density-compact",
   );
-}
-
-function applyTenantTheme(tenant: TenantBranding | null) {
-  if (typeof document === "undefined") return;
-  clearTenantTheme();
-  if (!tenant) return;
-
-  const root = document.documentElement;
-  if (tenant.primaryColor) {
-    for (const key of PRIMARY_VARS) {
-      root.style.setProperty(key, tenant.primaryColor);
-    }
-  }
-
-  if (tenant.sidebarStyle === "dark") {
-    root.classList.add("tenant-sidebar-dark");
-  } else if (tenant.sidebarStyle === "compact") {
-    root.classList.add("tenant-sidebar-compact");
-  }
-
-  if (tenant.density === "compact") {
-    root.classList.add("tenant-density-compact");
-  }
 }
 
 function normalizeModules(
@@ -72,6 +51,11 @@ function normalizeModules(
     if (typeof enabled === "boolean") out[key] = enabled;
   }
   return out;
+}
+
+function resolveLogoUrl(tenant: TenantBranding | null): string {
+  const custom = tenant?.logoUrl?.trim();
+  return custom || DEFAULT_TENANT_LOGO;
 }
 
 export function TenantThemeProvider({
@@ -88,16 +72,15 @@ export function TenantThemeProvider({
     return {
       tenant,
       brandName: tenant?.name ?? "NP Connect",
-      logoUrl: tenant?.logoUrl ?? null,
-      homePath: tenant?.homePath || "/dashboard",
+      logoUrl: resolveLogoUrl(tenant),
+      homePath: "/dashboard",
       modules,
       isModuleEnabled: (key: string) => modules[key] !== false,
     };
   }, [tenant]);
 
   useEffect(() => {
-    applyTenantTheme(tenant);
-    return () => clearTenantTheme();
+    clearTenantThemeOverrides();
   }, [tenant]);
 
   return (
@@ -113,7 +96,7 @@ export function useTenantTheme() {
     return {
       tenant: null,
       brandName: "NP Connect",
-      logoUrl: null,
+      logoUrl: DEFAULT_TENANT_LOGO,
       homePath: "/dashboard",
       modules: {} as Record<string, boolean>,
       isModuleEnabled: () => true,

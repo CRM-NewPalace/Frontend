@@ -87,10 +87,6 @@ type TenantForm = {
   slug: string;
   status: UserStatus;
   logoUrl: string;
-  primaryColor: string;
-  sidebarStyle: "default" | "dark" | "compact";
-  density: "comfortable" | "compact";
-  homePath: string;
   moduleMetas: boolean;
   moduleFinanceiro: boolean;
   modulePropostas: boolean;
@@ -104,10 +100,6 @@ const emptyTenantForm = (): TenantForm => ({
   slug: "",
   status: "ativo",
   logoUrl: "",
-  primaryColor: "",
-  sidebarStyle: "default",
-  density: "comfortable",
-  homePath: "/dashboard",
   moduleMetas: true,
   moduleFinanceiro: true,
   modulePropostas: true,
@@ -117,16 +109,7 @@ const emptyTenantForm = (): TenantForm => ({
 });
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
-
-const HOME_OPTIONS = [
-  { value: "/dashboard", label: "Dashboard" },
-  { value: "/funil", label: "Funil" },
-  { value: "/leads", label: "Leads" },
-  { value: "/agenda", label: "Agenda" },
-  { value: "/clientes", label: "Clientes" },
-  { value: "/imoveis", label: "Imóveis" },
-] as const;
+const LOGO_URL_REGEX = /^https?:\/\/.+/i;
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -219,11 +202,6 @@ function TenantsPage() {
       slug: item.slug,
       status: item.status,
       logoUrl: item.logoUrl ?? "",
-      primaryColor: item.primaryColor ?? "",
-      sidebarStyle:
-        (item.sidebarStyle as TenantForm["sidebarStyle"]) || "default",
-      density: (item.density as TenantForm["density"]) || "comfortable",
-      homePath: item.homePath || "/dashboard",
       moduleMetas: modules.metas !== false,
       moduleFinanceiro: modules.financeiro !== false,
       modulePropostas: modules.propostas !== false,
@@ -314,41 +292,19 @@ function TenantsPage() {
       return;
     }
 
-    const primaryColor = form.primaryColor.trim().toUpperCase();
-    if (primaryColor && !HEX_REGEX.test(primaryColor)) {
-      toast.error("Cor primária inválida. Use #RRGGBB.");
+    const logoUrl = form.logoUrl.trim();
+    if (logoUrl && !LOGO_URL_REGEX.test(logoUrl)) {
+      toast.error("A URL do logo deve começar com http:// ou https://.");
       return;
     }
 
-    const sidebarAllowed = ["default", "dark", "compact"] as const;
-    const densityAllowed = ["comfortable", "compact"] as const;
-    const sidebarStyle = sidebarAllowed.includes(
-      form.sidebarStyle as (typeof sidebarAllowed)[number],
-    )
-      ? (form.sidebarStyle as (typeof sidebarAllowed)[number])
-      : "default";
-    const density = densityAllowed.includes(
-      form.density as (typeof densityAllowed)[number],
-    )
-      ? (form.density as (typeof densityAllowed)[number])
-      : "comfortable";
-    const homePath = HOME_OPTIONS.some((o) => o.value === form.homePath)
-      ? form.homePath
-      : "/dashboard";
-    const branding = {
-      logoUrl: form.logoUrl.trim() || null,
-      primaryColor: primaryColor || null,
-      sidebarStyle,
-      density,
-      homePath,
-      modules: {
-        metas: form.moduleMetas,
-        financeiro: form.moduleFinanceiro,
-        propostas: form.modulePropostas,
-        relatorios: form.moduleRelatorios,
-        taxaConversao: form.moduleTaxaConversao,
-        corretores: form.moduleCorretores,
-      },
+    const modules = {
+      metas: form.moduleMetas,
+      financeiro: form.moduleFinanceiro,
+      propostas: form.modulePropostas,
+      relatorios: form.moduleRelatorios,
+      taxaConversao: form.moduleTaxaConversao,
+      corretores: form.moduleCorretores,
     };
 
     if (formMode === "create") {
@@ -358,7 +314,8 @@ function TenantsPage() {
           name,
           slug,
           status: form.status,
-          ...branding,
+          logoUrl: logoUrl || null,
+          modules,
         });
         setFormOpen(false);
         setCredentials({
@@ -386,7 +343,8 @@ function TenantsPage() {
       await updateTenant(editingId, {
         name,
         status: form.status,
-        ...branding,
+        logoUrl: logoUrl || null,
+        modules,
       });
       toast.success("Tenant atualizado.");
       setFormOpen(false);
@@ -697,8 +655,8 @@ function TenantsPage() {
         title={formMode === "create" ? "Novo tenant" : "Editar tenant"}
         description={
           formMode === "create"
-            ? "Cadastre a imobiliária, personalize a aparência e o admin será gerado automaticamente."
-            : "Atualize dados, aparência e layout do tenant."
+            ? "Cadastre a imobiliária, logo, módulos e o admin será gerado automaticamente."
+            : "Atualize dados, logo e módulos do tenant."
         }
         className={formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined}
       >
@@ -877,154 +835,78 @@ function TenantsPage() {
               </FormSection>
             )}
 
-            <>
-                <FormSection title="Aparência">
-                  <div className="space-y-2">
-                    <Label htmlFor="tenant-logo">URL do logo</Label>
-                    <Input
-                      id="tenant-logo"
-                      value={form.logoUrl}
+            <FormSection title="Logo">
+              <p className="text-xs text-muted-foreground -mt-1">
+                URL da logo da imobiliária. Se vazio, usa a logo da Zone
+                Connection.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="tenant-logo">URL do logo</Label>
+                <Input
+                  id="tenant-logo"
+                  value={form.logoUrl}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      logoUrl: e.target.value,
+                    }))
+                  }
+                  placeholder="https://..."
+                />
+              </div>
+              {form.logoUrl.trim() ? (
+                <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-3">
+                  <img
+                    src={form.logoUrl.trim()}
+                    alt="Prévia do logo"
+                    className="h-10 w-10 object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display =
+                        "none";
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Prévia (se a URL for válida)
+                  </span>
+                </div>
+              ) : null}
+            </FormSection>
+
+            <FormSection title="Módulos">
+              <p className="text-xs text-muted-foreground -mt-1">
+                Marque os módulos ativos para este tenant. Desmarcados ficam
+                ocultos no menu.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                {(
+                  [
+                    ["moduleMetas", "Metas"],
+                    ["moduleFinanceiro", "Financeiro"],
+                    ["modulePropostas", "Propostas"],
+                    ["moduleRelatorios", "Relatórios"],
+                    ["moduleTaxaConversao", "Taxa de conversão"],
+                    ["moduleCorretores", "Corretores"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label
+                    key={key}
+                    className="flex items-center gap-2 rounded-md border px-3 py-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form[key]}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,
-                          logoUrl: e.target.value,
+                          [key]: e.target.checked,
                         }))
                       }
-                      placeholder="https://..."
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tenant-color">Cor primária</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="tenant-color"
-                        value={form.primaryColor}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            primaryColor: e.target.value,
-                          }))
-                        }
-                        placeholder="#0F766E"
-                      />
-                      <Input
-                        type="color"
-                        className="h-9 w-12 cursor-pointer p-1"
-                        value={
-                          HEX_REGEX.test(form.primaryColor)
-                            ? form.primaryColor
-                            : "#C9A227"
-                        }
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            primaryColor: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        aria-label="Seletor de cor"
-                      />
-                    </div>
-                  </div>
-                </FormSection>
-
-                <FormSection title="Layout">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Sidebar</Label>
-                      <Select
-                        value={form.sidebarStyle}
-                        onValueChange={(value) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            sidebarStyle: value as TenantForm["sidebarStyle"],
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Padrão</SelectItem>
-                          <SelectItem value="dark">Escura</SelectItem>
-                          <SelectItem value="compact">Compacta</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Densidade</Label>
-                      <Select
-                        value={form.density}
-                        onValueChange={(value) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            density: value as TenantForm["density"],
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="comfortable">Confortável</SelectItem>
-                          <SelectItem value="compact">Compacta</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tela inicial</Label>
-                    <Select
-                      value={form.homePath}
-                      onValueChange={(value) =>
-                        setForm((prev) => ({ ...prev, homePath: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {HOME_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Módulos visíveis</Label>
-                    <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                      {(
-                        [
-                          ["moduleMetas", "Metas"],
-                          ["moduleFinanceiro", "Financeiro"],
-                          ["modulePropostas", "Propostas"],
-                          ["moduleRelatorios", "Relatórios"],
-                          ["moduleTaxaConversao", "Taxa de conversão"],
-                          ["moduleCorretores", "Corretores"],
-                        ] as const
-                      ).map(([key, label]) => (
-                        <label
-                          key={key}
-                          className="flex items-center gap-2 rounded-md border px-3 py-2"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={form[key]}
-                            onChange={(e) =>
-                              setForm((prev) => ({
-                                ...prev,
-                                [key]: e.target.checked,
-                              }))
-                            }
-                          />
-                          {label}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </FormSection>
-              </>
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </FormSection>
           </FormDialogBody>
           <FormDialogActions>
             <Button
