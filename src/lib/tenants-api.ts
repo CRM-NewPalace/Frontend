@@ -1,6 +1,15 @@
 import { apiFetch } from "@/lib/api";
 import type { UserStatus } from "@/lib/auth";
 
+export type TenantAdminUser = {
+  id: string;
+  tenantId?: string | null;
+  name: string;
+  email: string;
+  role: string;
+  status: UserStatus;
+};
+
 export type Tenant = {
   id: string;
   name: string;
@@ -12,8 +21,15 @@ export type Tenant = {
   density: string;
   homePath: string;
   modules: Record<string, boolean> | null;
+  admin: TenantAdminUser | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TenantDetail = Tenant & {
+  userCount: number;
+  metaConnections: TenantMetaConnection[];
+  ozapConnections: TenantOzapConnection[];
 };
 
 export type TenantMetaConnection = {
@@ -35,12 +51,6 @@ export type TenantOzapConnection = {
   updatedAt: string;
 };
 
-export type TenantDetail = Tenant & {
-  userCount: number;
-  metaConnections: TenantMetaConnection[];
-  ozapConnections: TenantOzapConnection[];
-};
-
 export type CreateTenantInput = {
   name: string;
   slug: string;
@@ -54,15 +64,6 @@ export type CreateTenantAdminInput = {
   name: string;
   email: string;
   password: string;
-};
-
-export type TenantAdminUser = {
-  id: string;
-  tenantId: string | null;
-  name: string;
-  email: string;
-  role: string;
-  status: UserStatus;
 };
 
 export type CreateTenantResult = Tenant & {
@@ -100,6 +101,11 @@ export type UpdateOzapConnectionInput = {
   ativo?: boolean;
 };
 
+export type ResetTenantAdminPasswordResult = {
+  user: TenantAdminUser;
+  temporaryPassword: string;
+};
+
 export async function fetchTenants(): Promise<Tenant[]> {
   return apiFetch<Tenant[]>("/tenants");
 }
@@ -125,6 +131,15 @@ export async function createTenantInitialAdmin(
     method: "POST",
     body: input,
   });
+}
+
+export async function resetTenantAdminPassword(
+  tenantId: string,
+): Promise<ResetTenantAdminPasswordResult> {
+  return apiFetch<ResetTenantAdminPasswordResult>(
+    `/tenants/${tenantId}/admin/reset-password`,
+    { method: "POST" },
+  );
 }
 
 export async function updateTenant(

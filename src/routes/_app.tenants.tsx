@@ -48,23 +48,29 @@ import {
   deleteOzapConnection,
   fetchTenant,
   fetchTenants,
+  resetTenantAdminPassword,
   slugifyTenantName,
   updateMetaConnection,
   updateOzapConnection,
   updateTenant,
   type Tenant,
+  type TenantAdminUser,
   type TenantDetail,
   type TenantMetaConnection,
   type TenantOzapConnection,
 } from "@/lib/tenants-api";
 import {
   Building2,
+  Check,
+  Copy,
+  KeyRound,
   Link2,
   Loader2,
   MessageCircle,
   Pencil,
   Plus,
   Share2,
+  Shield,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -167,6 +173,20 @@ function TenantsPage() {
     null,
   );
 
+  const [editingAdmin, setEditingAdmin] = useState<TenantAdminUser | null>(
+    null,
+  );
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [credentials, setCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    slug: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(
+    null,
+  );
+
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
@@ -189,6 +209,7 @@ function TenantsPage() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
+    setEditingAdmin(null);
     setForm(emptyTenantForm());
     setSlugTouched(false);
     setFormOpen(true);
@@ -197,6 +218,7 @@ function TenantsPage() {
   function openEdit(item: Tenant) {
     setFormMode("edit");
     setEditingId(item.id);
+    setEditingAdmin(item.admin);
     const modules = item.modules ?? {};
     setForm({
       name: item.name,
@@ -220,6 +242,43 @@ function TenantsPage() {
     });
     setSlugTouched(true);
     setFormOpen(true);
+  }
+
+  async function copyText(value: string, field: "email" | "password") {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      toast.error("Não foi possível copiar.");
+    }
+  }
+
+  async function handleResetAdminPassword() {
+    if (!editingId || !editingAdmin) return;
+    setResettingPassword(true);
+    try {
+      const result = await resetTenantAdminPassword(editingId);
+      setCredentials({
+        name: result.user.name,
+        email: result.user.email,
+        password: result.temporaryPassword,
+        slug: form.slug,
+      });
+      setEditingAdmin({
+        ...editingAdmin,
+        ...result.user,
+      });
+      toast.success("Senha temporária gerada.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Falha ao gerar senha temporária.",
+      );
+    } finally {
+      setResettingPassword(false);
+    }
   }
 
   async function openDetail(item: Tenant) {
@@ -565,6 +624,7 @@ function TenantsPage() {
                 <TableRow>
                   <TableHead>Imobiliária</TableHead>
                   <TableHead>Slug</TableHead>
+                  <TableHead>Admin (e-mail)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
                   <TableHead className="w-[160px] text-right">Ações</TableHead>
@@ -578,6 +638,20 @@ function TenantsPage() {
                       <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                         {item.slug}
                       </code>
+                    </TableCell>
+                    <TableCell>
+                      {item.admin ? (
+                        <div className="min-w-0">
+                          <div className="truncate text-sm">{item.admin.name}</div>
+                          <code className="text-xs text-muted-foreground break-all">
+                            {item.admin.email}
+                          </code>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Sem admin
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -700,6 +774,76 @@ function TenantsPage() {
                 </Select>
               </div>
             </FormSection>
+
+            {formMode === "edit" && (
+              <FormSection title="Administrador">
+                {editingAdmin ? (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                      <div className="text-[11px] text-muted-foreground">
+                        Nome
+                      </div>
+                      <div className="text-sm font-medium">
+                        {editingAdmin.name}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                      <div className="text-[11px] text-muted-foreground">
+                        E-mail de login
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <code className="text-sm break-all">
+                          {editingAdmin.email}
+                        </code>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() =>
+                            void copyText(editingAdmin.email, "email")
+                          }
+                        >
+                          {copiedField === "email" ? (
+                            <Check className="w-3.5 h-3.5 mr-1" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 mr-1" />
+                          )}
+                          Copiar
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground pt-1">
+                        Slug no login (opcional):{" "}
+                        <code className="rounded bg-muted px-1">{form.slug}</code>
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={resettingPassword}
+                      onClick={() => void handleResetAdminPassword()}
+                    >
+                      {resettingPassword ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Gerando…
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound className="h-4 w-4" />
+                          Gerar senha temporária
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Este tenant ainda não tem administrador. Abra as conexões e
+                    use o bloco “Administrador inicial”.
+                  </p>
+                )}
+              </FormSection>
+            )}
 
             {formMode === "create" && (
               <FormSection title="Administrador inicial">
@@ -1176,6 +1320,95 @@ function TenantsPage() {
             Fechar
           </Button>
         </FormDialogActions>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={!!credentials}
+        onOpenChange={(o) => !o && setCredentials(null)}
+        icon={<KeyRound className="w-5 h-5" />}
+        title="Senha temporária gerada"
+        description={
+          credentials
+            ? `Anote e entregue a ${credentials.name}. A senha só aparece agora.`
+            : undefined
+        }
+      >
+        {credentials && (
+          <>
+            <FormDialogBody>
+              <FormSection
+                icon={<Shield className="w-3.5 h-3.5 text-primary" />}
+                title="Acesso do admin"
+              >
+                <div className="space-y-3">
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                    <div className="text-[11px] text-muted-foreground">
+                      E-mail
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-sm break-all">
+                        {credentials.email}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() =>
+                          void copyText(credentials.email, "email")
+                        }
+                      >
+                        {copiedField === "email" ? (
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1">
+                    <div className="text-[11px] text-muted-foreground">
+                      Senha temporária
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-sm font-semibold tracking-wide break-all">
+                        {credentials.password}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() =>
+                          void copyText(credentials.password, "password")
+                        }
+                      >
+                        {copiedField === "password" ? (
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Login em /login com este e-mail. Slug opcional:{" "}
+                    <code className="rounded bg-muted px-1">
+                      {credentials.slug}
+                    </code>
+                  </p>
+                </div>
+              </FormSection>
+            </FormDialogBody>
+            <FormDialogActions hint="Peça ao admin para trocar a senha no perfil após o login.">
+              <Button type="button" onClick={() => setCredentials(null)}>
+                Entendi
+              </Button>
+            </FormDialogActions>
+          </>
+        )}
       </FormDialogShell>
 
       <AlertDialog
