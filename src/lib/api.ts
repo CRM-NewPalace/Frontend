@@ -18,11 +18,6 @@ function resolveApiUrl(): string {
 
   // Absolute URL só é segura em SSR/server; no browser força same-origin.
   if (typeof window !== "undefined") {
-    if (/^https?:\/\//i.test(configured)) {
-      console.warn(
-        "[api] VITE_API_URL cross-origin ignorada no browser; usando /api (proxy same-origin).",
-      );
-    }
     return "/api";
   }
 
