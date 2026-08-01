@@ -46,6 +46,7 @@ import {
   createTenantInitialAdmin,
   deleteMetaConnection,
   deleteOzapConnection,
+  deleteTenant,
   fetchTenant,
   fetchTenants,
   resetTenantAdminPassword,
@@ -85,9 +86,6 @@ type TenantForm = {
   name: string;
   slug: string;
   status: UserStatus;
-  adminName: string;
-  adminEmail: string;
-  adminPassword: string;
   logoUrl: string;
   primaryColor: string;
   sidebarStyle: "default" | "dark" | "compact";
@@ -105,9 +103,6 @@ const emptyTenantForm = (): TenantForm => ({
   name: "",
   slug: "",
   status: "ativo",
-  adminName: "",
-  adminEmail: "",
-  adminPassword: "",
   logoUrl: "",
   primaryColor: "",
   sidebarStyle: "default",
@@ -123,8 +118,6 @@ const emptyTenantForm = (): TenantForm => ({
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const HOME_OPTIONS = [
   { value: "/dashboard", label: "Dashboard" },
@@ -161,9 +154,6 @@ function TenantsPage() {
   const [ozapInstanceId, setOzapInstanceId] = useState("");
   const [savingConnection, setSavingConnection] = useState(false);
 
-  const [adminName, setAdminName] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
   const [savingAdmin, setSavingAdmin] = useState(false);
 
   const [deleteMeta, setDeleteMeta] = useState<TenantMetaConnection | null>(
@@ -172,6 +162,10 @@ function TenantsPage() {
   const [deleteOzap, setDeleteOzap] = useState<TenantOzapConnection | null>(
     null,
   );
+  const [deleteTenantTarget, setDeleteTenantTarget] = useState<Tenant | null>(
+    null,
+  );
+  const [deletingTenant, setDeletingTenant] = useState(false);
 
   const [editingAdmin, setEditingAdmin] = useState<TenantAdminUser | null>(
     null,
@@ -224,9 +218,6 @@ function TenantsPage() {
       name: item.name,
       slug: item.slug,
       status: item.status,
-      adminName: "",
-      adminEmail: "",
-      adminPassword: "",
       logoUrl: item.logoUrl ?? "",
       primaryColor: item.primaryColor ?? "",
       sidebarStyle:
@@ -287,9 +278,6 @@ function TenantsPage() {
     setMetaPageId("");
     setMetaToken("");
     setOzapInstanceId("");
-    setAdminName("");
-    setAdminEmail("");
-    setAdminPassword("");
     setDetailLoading(true);
     try {
       setDetail(await fetchTenant(item.id));
@@ -327,38 +315,21 @@ function TenantsPage() {
     }
 
     if (formMode === "create") {
-      const adminNameValue = form.adminName.trim();
-      const adminEmailValue = form.adminEmail.trim().toLowerCase();
-      const adminPasswordValue = form.adminPassword;
-      if (adminNameValue.length < 2) {
-        toast.error("Informe o nome do administrador.");
-        return;
-      }
-      if (!EMAIL_REGEX.test(adminEmailValue)) {
-        toast.error("Informe um e-mail válido para o admin.");
-        return;
-      }
-      if (!PASSWORD_REGEX.test(adminPasswordValue)) {
-        toast.error(
-          "A senha do admin deve ter ao menos 8 caracteres, com maiúscula, minúscula e número.",
-        );
-        return;
-      }
-
       setSaving(true);
       try {
         const created = await createTenant({
           name,
           slug,
           status: form.status,
-          adminName: adminNameValue,
-          adminEmail: adminEmailValue,
-          adminPassword: adminPasswordValue,
         });
-        toast.success(
-          `Tenant criado. Login: ${created.admin.email} (slug: ${created.slug})`,
-        );
         setFormOpen(false);
+        setCredentials({
+          name: created.admin.name,
+          email: created.admin.email,
+          password: created.temporaryPassword,
+          slug: created.slug,
+        });
+        toast.success("Tenant criado com administrador.");
         await loadItems();
       } catch (err) {
         toast.error(
@@ -425,41 +396,25 @@ function TenantsPage() {
     }
   }
 
-  async function handleCreateInitialAdmin(e: FormEvent) {
-    e.preventDefault();
-    if (!detail) return;
-
-    const name = adminName.trim();
-    const email = adminEmail.trim().toLowerCase();
-    if (name.length < 2) {
-      toast.error("Informe o nome do administrador.");
-      return;
-    }
-    if (!EMAIL_REGEX.test(email)) {
-      toast.error("Informe um e-mail válido.");
-      return;
-    }
-    if (!PASSWORD_REGEX.test(adminPassword)) {
-      toast.error(
-        "A senha deve ter ao menos 8 caracteres, com maiúscula, minúscula e número.",
-      );
-      return;
-    }
-
+  async function handleCreateInitialAdmin(tenantId: string, slug: string) {
     setSavingAdmin(true);
     try {
-      const admin = await createTenantInitialAdmin(detail.id, {
-        name,
-        email,
-        password: adminPassword,
+      const result = await createTenantInitialAdmin(tenantId);
+      setCredentials({
+        name: result.user.name,
+        email: result.user.email,
+        password: result.temporaryPassword,
+        slug,
       });
-      toast.success(
-        `Admin criado. Login: ${admin.email} (slug: ${detail.slug})`,
-      );
-      setAdminName("");
-      setAdminEmail("");
-      setAdminPassword("");
-      await reloadDetail(detail.id);
+      if (editingId === tenantId) {
+        setEditingAdmin(result.user);
+      }
+      toast.success("Administrador gerado.");
+      if (detail?.id === tenantId) {
+        await reloadDetail(tenantId);
+      } else {
+        await loadItems();
+      }
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -468,6 +423,32 @@ function TenantsPage() {
       );
     } finally {
       setSavingAdmin(false);
+    }
+  }
+
+  async function confirmDeleteTenant() {
+    if (!deleteTenantTarget) return;
+    setDeletingTenant(true);
+    try {
+      await deleteTenant(deleteTenantTarget.id);
+      toast.success(`Tenant "${deleteTenantTarget.name}" removido.`);
+      setDeleteTenantTarget(null);
+      if (editingId === deleteTenantTarget.id) {
+        setFormOpen(false);
+      }
+      if (detail?.id === deleteTenantTarget.id) {
+        setDetailOpen(false);
+        setDetail(null);
+      }
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Falha ao remover o tenant.",
+      );
+    } finally {
+      setDeletingTenant(false);
     }
   }
 
@@ -627,7 +608,7 @@ function TenantsPage() {
                   <TableHead>Admin (e-mail)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
-                  <TableHead className="w-[160px] text-right">Ações</TableHead>
+                  <TableHead className="w-[200px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -685,6 +666,16 @@ function TenantsPage() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title="Excluir"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTenantTarget(item)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -702,7 +693,7 @@ function TenantsPage() {
         title={formMode === "create" ? "Novo tenant" : "Editar tenant"}
         description={
           formMode === "create"
-            ? "Cadastre a imobiliária e o administrador que fará o primeiro login."
+            ? "Cadastre a imobiliária. O administrador (e-mail e senha) é gerado automaticamente."
             : "Atualize dados, aparência e layout do tenant."
         }
         className={formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined}
@@ -837,68 +828,46 @@ function TenantsPage() {
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Este tenant ainda não tem administrador. Abra as conexões e
-                    use o bloco “Administrador inicial”.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Este tenant ainda não tem administrador. Gere um com
+                      e-mail e senha temporária.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={savingAdmin || !editingId}
+                      onClick={() => {
+                        if (!editingId) return;
+                        void handleCreateInitialAdmin(editingId, form.slug);
+                      }}
+                    >
+                      {savingAdmin ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Gerando…
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4" />
+                          Gerar administrador
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </FormSection>
             )}
 
             {formMode === "create" && (
-              <FormSection title="Administrador inicial">
-                <p className="text-xs text-muted-foreground -mt-1">
-                  Esse usuário entra em /login com o e-mail e senha abaixo.
-                  Senha: mínimo 8 caracteres, com maiúscula, minúscula e número.
+              <FormSection title="Administrador">
+                <p className="text-sm text-muted-foreground">
+                  Ao criar o tenant, um admin é gerado automaticamente (e-mail{" "}
+                  <code className="rounded bg-muted px-1">
+                    admin.{form.slug || "slug"}@zoneconnection.com
+                  </code>{" "}
+                  e senha temporária). As credenciais aparecem na tela seguinte.
                 </p>
-                <div className="space-y-2">
-                  <Label htmlFor="admin-name">Nome</Label>
-                  <Input
-                    id="admin-name"
-                    value={form.adminName}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        adminName: e.target.value,
-                      }))
-                    }
-                    placeholder="Maria Silva"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="admin-email">E-mail</Label>
-                  <Input
-                    id="admin-email"
-                    type="email"
-                    value={form.adminEmail}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        adminEmail: e.target.value,
-                      }))
-                    }
-                    placeholder="admin@imobiliaria.com"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="admin-password">Senha</Label>
-                  <Input
-                    id="admin-password"
-                    type="password"
-                    value={form.adminPassword}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        adminPassword: e.target.value,
-                      }))
-                    }
-                    placeholder="SenhaSegura1"
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
               </FormSection>
             )}
 
@@ -1094,66 +1063,32 @@ function TenantsPage() {
           ) : (
             <div className="space-y-6">
               {detail.userCount === 0 && (
-                <FormSection title="Administrador inicial">
+                <FormSection title="Administrador">
                   <p className="text-xs text-muted-foreground -mt-1">
-                    Este tenant ainda não tem usuários. Crie o admin para
+                    Este tenant ainda não tem usuários. Gere o admin para
                     liberar o login em /login (slug:{" "}
                     <code className="rounded bg-muted px-1">{detail.slug}</code>
                     ).
                   </p>
-                  <form
-                    className="space-y-3"
-                    onSubmit={(e) => void handleCreateInitialAdmin(e)}
+                  <Button
+                    type="button"
+                    disabled={savingAdmin}
+                    onClick={() =>
+                      void handleCreateInitialAdmin(detail.id, detail.slug)
+                    }
                   >
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="boot-admin-name">Nome</Label>
-                        <Input
-                          id="boot-admin-name"
-                          value={adminName}
-                          onChange={(e) => setAdminName(e.target.value)}
-                          placeholder="Maria Silva"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="boot-admin-email">E-mail</Label>
-                        <Input
-                          id="boot-admin-email"
-                          type="email"
-                          value={adminEmail}
-                          onChange={(e) => setAdminEmail(e.target.value)}
-                          placeholder="admin@imobiliaria.com"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="boot-admin-password">Senha</Label>
-                      <Input
-                        id="boot-admin-password"
-                        type="password"
-                        value={adminPassword}
-                        onChange={(e) => setAdminPassword(e.target.value)}
-                        placeholder="SenhaSegura1"
-                        required
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    <Button type="submit" disabled={savingAdmin}>
-                      {savingAdmin ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Criando…
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="h-4 w-4" />
-                          Criar admin
-                        </>
-                      )}
-                    </Button>
-                  </form>
+                    {savingAdmin ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Gerando…
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4" />
+                        Gerar administrador
+                      </>
+                    )}
+                  </Button>
                 </FormSection>
               )}
 
@@ -1326,7 +1261,7 @@ function TenantsPage() {
         open={!!credentials}
         onOpenChange={(o) => !o && setCredentials(null)}
         icon={<KeyRound className="w-5 h-5" />}
-        title="Senha temporária gerada"
+        title="Credenciais do administrador"
         description={
           credentials
             ? `Anote e entregue a ${credentials.name}. A senha só aparece agora.`
@@ -1410,6 +1345,39 @@ function TenantsPage() {
           </>
         )}
       </FormDialogShell>
+
+      <AlertDialog
+        open={Boolean(deleteTenantTarget)}
+        onOpenChange={(open) => !open && !deletingTenant && setDeleteTenantTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tenant?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso remove permanentemente{" "}
+              <strong>{deleteTenantTarget?.name}</strong> (
+              <code>{deleteTenantTarget?.slug}</code>), incluindo usuários,
+              leads, conexões Meta/OZap e demais dados vinculados. Esta ação não
+              pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingTenant}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingTenant}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDeleteTenant();
+              }}
+            >
+              {deletingTenant ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={Boolean(deleteMeta)}

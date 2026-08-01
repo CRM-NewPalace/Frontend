@@ -55,19 +55,22 @@ export type CreateTenantInput = {
   name: string;
   slug: string;
   status?: UserStatus;
-  adminName: string;
-  adminEmail: string;
-  adminPassword: string;
 };
 
 export type CreateTenantAdminInput = {
-  name: string;
-  email: string;
-  password: string;
+  name?: string;
+  email?: string;
+  password?: string;
 };
 
 export type CreateTenantResult = Tenant & {
   admin: TenantAdminUser;
+  temporaryPassword: string;
+};
+
+export type CreateTenantAdminResult = {
+  user: TenantAdminUser;
+  temporaryPassword: string;
 };
 
 export type UpdateTenantInput = {
@@ -125,9 +128,9 @@ export async function createTenant(
 
 export async function createTenantInitialAdmin(
   tenantId: string,
-  input: CreateTenantAdminInput,
-): Promise<TenantAdminUser> {
-  return apiFetch<TenantAdminUser>(`/tenants/${tenantId}/admin`, {
+  input: CreateTenantAdminInput = {},
+): Promise<CreateTenantAdminResult> {
+  return apiFetch<CreateTenantAdminResult>(`/tenants/${tenantId}/admin`, {
     method: "POST",
     body: input,
   });
@@ -147,6 +150,12 @@ export async function updateTenant(
   input: UpdateTenantInput,
 ): Promise<Tenant> {
   return apiFetch<Tenant>(`/tenants/${id}`, { method: "PATCH", body: input });
+}
+
+export async function deleteTenant(
+  id: string,
+): Promise<{ id: string; name: string; slug: string }> {
+  return apiFetch(`/tenants/${id}`, { method: "DELETE" });
 }
 
 export async function createMetaConnection(
