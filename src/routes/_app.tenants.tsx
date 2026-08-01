@@ -313,10 +313,27 @@ function TenantsPage() {
 
     if (!editingId) return;
 
-    if (form.primaryColor && !HEX_REGEX.test(form.primaryColor)) {
+    const primaryColor = form.primaryColor.trim().toUpperCase();
+    if (primaryColor && !HEX_REGEX.test(primaryColor)) {
       toast.error("Cor primária inválida. Use #RRGGBB.");
       return;
     }
+
+    const sidebarAllowed = ["default", "dark", "compact"] as const;
+    const densityAllowed = ["comfortable", "compact"] as const;
+    const sidebarStyle = sidebarAllowed.includes(
+      form.sidebarStyle as (typeof sidebarAllowed)[number],
+    )
+      ? (form.sidebarStyle as (typeof sidebarAllowed)[number])
+      : "default";
+    const density = densityAllowed.includes(
+      form.density as (typeof densityAllowed)[number],
+    )
+      ? (form.density as (typeof densityAllowed)[number])
+      : "comfortable";
+    const homePath = HOME_OPTIONS.some((o) => o.value === form.homePath)
+      ? form.homePath
+      : "/dashboard";
 
     setSaving(true);
     try {
@@ -324,10 +341,10 @@ function TenantsPage() {
         name,
         status: form.status,
         logoUrl: form.logoUrl.trim() || null,
-        primaryColor: form.primaryColor.trim().toUpperCase() || null,
-        sidebarStyle: form.sidebarStyle,
-        density: form.density,
-        homePath: form.homePath,
+        primaryColor: primaryColor || null,
+        sidebarStyle,
+        density,
+        homePath,
         modules: {
           metas: form.moduleMetas,
           financeiro: form.moduleFinanceiro,
