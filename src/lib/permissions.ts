@@ -8,6 +8,7 @@ import type { Role } from "@/lib/auth";
  * - analista: funil de análise, documentação e resultado (visão global)
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
+  super_admin: ["/perfil"],
   admin: [
     "/dashboard",
     "/leads",
@@ -84,6 +85,7 @@ export function canAccessRoute(role: Role, pathname: string): boolean {
 }
 
 export function defaultRouteForRole(role: Role): string {
+  if (role === "super_admin") return "/perfil";
   if (role === "analista") return "/funil";
   return "/dashboard";
 }

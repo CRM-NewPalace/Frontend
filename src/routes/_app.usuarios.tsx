@@ -119,6 +119,7 @@ function setUsersCache(users: ApiUser[]) {
 }
 
 const ROLE_LABEL: Record<Role, string> = {
+  super_admin: "Super Admin",
   admin: "Administrador",
   gerente: "Gerente",
   corretor: "Corretor",
