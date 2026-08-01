@@ -55,6 +55,12 @@ export type CreateTenantInput = {
   name: string;
   slug: string;
   status?: UserStatus;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  sidebarStyle?: "default" | "dark" | "compact";
+  density?: "comfortable" | "compact";
+  homePath?: string;
+  modules?: Record<string, boolean> | null;
 };
 
 export type CreateTenantAdminInput = {

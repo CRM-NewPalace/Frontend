@@ -314,6 +314,43 @@ function TenantsPage() {
       return;
     }
 
+    const primaryColor = form.primaryColor.trim().toUpperCase();
+    if (primaryColor && !HEX_REGEX.test(primaryColor)) {
+      toast.error("Cor primária inválida. Use #RRGGBB.");
+      return;
+    }
+
+    const sidebarAllowed = ["default", "dark", "compact"] as const;
+    const densityAllowed = ["comfortable", "compact"] as const;
+    const sidebarStyle = sidebarAllowed.includes(
+      form.sidebarStyle as (typeof sidebarAllowed)[number],
+    )
+      ? (form.sidebarStyle as (typeof sidebarAllowed)[number])
+      : "default";
+    const density = densityAllowed.includes(
+      form.density as (typeof densityAllowed)[number],
+    )
+      ? (form.density as (typeof densityAllowed)[number])
+      : "comfortable";
+    const homePath = HOME_OPTIONS.some((o) => o.value === form.homePath)
+      ? form.homePath
+      : "/dashboard";
+    const branding = {
+      logoUrl: form.logoUrl.trim() || null,
+      primaryColor: primaryColor || null,
+      sidebarStyle,
+      density,
+      homePath,
+      modules: {
+        metas: form.moduleMetas,
+        financeiro: form.moduleFinanceiro,
+        propostas: form.modulePropostas,
+        relatorios: form.moduleRelatorios,
+        taxaConversao: form.moduleTaxaConversao,
+        corretores: form.moduleCorretores,
+      },
+    };
+
     if (formMode === "create") {
       setSaving(true);
       try {
@@ -321,6 +358,7 @@ function TenantsPage() {
           name,
           slug,
           status: form.status,
+          ...branding,
         });
         setFormOpen(false);
         setCredentials({
@@ -343,46 +381,12 @@ function TenantsPage() {
 
     if (!editingId) return;
 
-    const primaryColor = form.primaryColor.trim().toUpperCase();
-    if (primaryColor && !HEX_REGEX.test(primaryColor)) {
-      toast.error("Cor primária inválida. Use #RRGGBB.");
-      return;
-    }
-
-    const sidebarAllowed = ["default", "dark", "compact"] as const;
-    const densityAllowed = ["comfortable", "compact"] as const;
-    const sidebarStyle = sidebarAllowed.includes(
-      form.sidebarStyle as (typeof sidebarAllowed)[number],
-    )
-      ? (form.sidebarStyle as (typeof sidebarAllowed)[number])
-      : "default";
-    const density = densityAllowed.includes(
-      form.density as (typeof densityAllowed)[number],
-    )
-      ? (form.density as (typeof densityAllowed)[number])
-      : "comfortable";
-    const homePath = HOME_OPTIONS.some((o) => o.value === form.homePath)
-      ? form.homePath
-      : "/dashboard";
-
     setSaving(true);
     try {
       await updateTenant(editingId, {
         name,
         status: form.status,
-        logoUrl: form.logoUrl.trim() || null,
-        primaryColor: primaryColor || null,
-        sidebarStyle,
-        density,
-        homePath,
-        modules: {
-          metas: form.moduleMetas,
-          financeiro: form.moduleFinanceiro,
-          propostas: form.modulePropostas,
-          relatorios: form.moduleRelatorios,
-          taxaConversao: form.moduleTaxaConversao,
-          corretores: form.moduleCorretores,
-        },
+        ...branding,
       });
       toast.success("Tenant atualizado.");
       setFormOpen(false);
@@ -693,7 +697,7 @@ function TenantsPage() {
         title={formMode === "create" ? "Novo tenant" : "Editar tenant"}
         description={
           formMode === "create"
-            ? "Cadastre a imobiliária. O administrador (e-mail e senha) é gerado automaticamente."
+            ? "Cadastre a imobiliária, personalize a aparência e o admin será gerado automaticamente."
             : "Atualize dados, aparência e layout do tenant."
         }
         className={formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined}
@@ -864,15 +868,16 @@ function TenantsPage() {
                 <p className="text-sm text-muted-foreground">
                   Ao criar o tenant, um admin é gerado automaticamente (e-mail{" "}
                   <code className="rounded bg-muted px-1">
-                    admin.{form.slug || "slug"}@zoneconnection.com
+                    admin@
+                    {(form.slug || "slug").replace(/-/g, "")}
+                    .com
                   </code>{" "}
                   e senha temporária). As credenciais aparecem na tela seguinte.
                 </p>
               </FormSection>
             )}
 
-            {formMode === "edit" && (
-              <>
+            <>
                 <FormSection title="Aparência">
                   <div className="space-y-2">
                     <Label htmlFor="tenant-logo">URL do logo</Label>
@@ -1020,7 +1025,6 @@ function TenantsPage() {
                   </div>
                 </FormSection>
               </>
-            )}
           </FormDialogBody>
           <FormDialogActions>
             <Button
