@@ -38,6 +38,7 @@ function ImoveisPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const canCreate = isAdmin || user?.role === "gerente";
+  const canSyncFromSite = isAdmin && user?.tenant?.slug === "new-palace";
 
   const [items, setItems] = useState<Empreendimento[]>([]);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
@@ -74,7 +75,7 @@ function ImoveisPage() {
   }, [loadItems]);
 
   async function handleSync() {
-    if (!isAdmin) return;
+    if (!canSyncFromSite) return;
     setSyncing(true);
     try {
       const result = await syncEmpreendimentosFromSite();
@@ -222,7 +223,11 @@ function ImoveisPage() {
     <div>
       <PageHeader
         title="Imóveis"
-        description="Empreendimentos sincronizados do site New Palace."
+        description={
+          canSyncFromSite
+            ? "Empreendimentos da imobiliária (com opção de sincronizar do site)."
+            : "Cadastre e gerencie os empreendimentos desta imobiliária."
+        }
         actions={
           canCreate ? (
             <div className="flex gap-2">
@@ -230,7 +235,7 @@ function ImoveisPage() {
                 <Plus className="w-4 h-4 mr-1" />
                 Novo imóvel
               </Button>
-              {isAdmin && (
+              {canSyncFromSite && (
                 <Button onClick={() => void handleSync()} disabled={syncing}>
                   {syncing ? (
                     <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -346,16 +351,23 @@ function ImoveisPage() {
             <Building2 className="w-8 h-8 opacity-40" />
             <p className="text-center max-w-sm">
               {items.length === 0
-                ? isAdmin
-                  ? "Nenhum empreendimento ainda. Clique em “Sincronizar do site” para importar a listagem da New Palace."
-                  : "Nenhum empreendimento cadastrado ainda. Peça a um administrador para sincronizar do site New Palace."
+                ? canCreate
+                  ? "Nenhum empreendimento cadastrado. Use “Novo imóvel” para começar."
+                  : "Nenhum empreendimento cadastrado ainda."
                 : hasActiveFilters
                   ? "Nenhum empreendimento encontrado para os filtros selecionados."
                   : "Nenhum resultado para a busca."}
             </p>
-            {items.length === 0 && isAdmin && (
+            {items.length === 0 && canCreate && (
+              <Button className="mt-2" onClick={() => void openQuickCreate()}>
+                <Plus className="w-4 h-4 mr-1" />
+                Novo imóvel
+              </Button>
+            )}
+            {items.length === 0 && canSyncFromSite && (
               <Button
                 className="mt-2"
+                variant="outline"
                 onClick={() => void handleSync()}
                 disabled={syncing}
               >
@@ -364,7 +376,7 @@ function ImoveisPage() {
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-1" />
                 )}
-                Sincronizar agora
+                Sincronizar do site
               </Button>
             )}
           </CardContent>

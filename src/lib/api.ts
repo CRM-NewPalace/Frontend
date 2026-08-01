@@ -157,6 +157,8 @@ export async function apiFetch<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   const { body, skipAuth, headers, ...rest } = options;
+  const method = (rest.method ?? "GET").toString().toUpperCase();
+  const isMutation = !["GET", "HEAD", "OPTIONS"].includes(method);
 
   const send = async (): Promise<Response> => {
     const csrf = skipAuth ? null : readCsrfToken();
@@ -172,9 +174,28 @@ export async function apiFetch<T>(
     });
   };
 
+  // Mutações sem CSRF no jar → renova sessão antes (evita 403 intermitente).
+  if (!skipAuth && isMutation && !readCsrfToken()) {
+    refreshInFlight ??= refreshSession().finally(() => {
+      refreshInFlight = null;
+    });
+    await refreshInFlight;
+  }
+
   let response = await send();
 
   if (response.status === 401 && !skipAuth) {
+    refreshInFlight ??= refreshSession().finally(() => {
+      refreshInFlight = null;
+    });
+    const refreshed = await refreshInFlight;
+    if (refreshed) {
+      response = await send();
+    }
+  }
+
+  // 403 em mutação: renova CSRF/sessão e tenta uma vez (CSRF desatualizado ou sessão parcial).
+  if (response.status === 403 && !skipAuth && isMutation) {
     refreshInFlight ??= refreshSession().finally(() => {
       refreshInFlight = null;
     });
