@@ -184,6 +184,7 @@ const NAV_SECTIONS: {
     label: "Administração",
     icon: Shield,
     items: [
+      { to: "/tenants", label: "Tenants", icon: Building2 },
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
       { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/construtoras", label: "Construtoras", icon: Building2 },
@@ -209,6 +210,7 @@ const NAV_SECTIONS: {
 ];
 
 const ROLE_LABEL: Record<string, string> = {
+  super_admin: "Super Admin",
   admin: "Administrador",
   gerente: "Gerente",
   corretor: "Corretor",
