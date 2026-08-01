@@ -279,6 +279,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
+    // Super admin não usa notificações/agenda do CRM operacional.
+    if (user.role === "super_admin") return;
+
     void loadNotificacoes();
     void loadAgendaBadge({ showCard: true });
     const id = window.setInterval(() => {
@@ -294,6 +297,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const isAdmin = user?.role === "admin";
+  const isPlatformAdmin = user?.role === "super_admin";
   const agendaBadgeCount =
     agendaUrgencia !== "nenhuma"
       ? agendaProximosCount
@@ -732,6 +736,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center justify-center">
+            {!isPlatformAdmin && (
             <DropdownMenu
               open={notifOpen}
               onOpenChange={(o) => {
@@ -799,6 +804,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

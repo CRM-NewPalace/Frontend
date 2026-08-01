@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import {
   createCatalogItem,
   deleteCatalogItem,
@@ -66,6 +67,13 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
+    if (getSession()?.role === "super_admin") {
+      setCatalog(emptyGrouped());
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     if (!opts?.silent) setLoading(true);
     setError(null);
     try {
