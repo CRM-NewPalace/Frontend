@@ -655,7 +655,7 @@ function TenantsPage() {
         title={formMode === "create" ? "Novo tenant" : "Editar tenant"}
         description={
           formMode === "create"
-            ? "Cadastre a imobiliária, logo, módulos e o admin será gerado automaticamente."
+            ? "Cadastre a imobiliária, defina a logo e os módulos. O admin é gerado automaticamente."
             : "Atualize dados, logo e módulos do tenant."
         }
         className={formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined}
