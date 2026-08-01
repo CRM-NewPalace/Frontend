@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signIn } from "@/lib/auth";
+import { defaultRouteForRole } from "@/lib/permissions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -89,7 +90,7 @@ function LoginPage() {
     try {
       const user = await signIn(email, password);
       toast.success(`Bem-vindo(a), ${user.name.split(" ")[0]}!`);
-      navigate({ to: "/dashboard" });
+      navigate({ to: defaultRouteForRole(user.role) });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Não foi possível entrar",
