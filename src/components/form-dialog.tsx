@@ -30,7 +30,8 @@ export function FormDialogShell({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "w-[calc(100vw-1.5rem)] max-w-xl sm:w-full p-0 gap-0 overflow-hidden max-h-[90dvh] flex flex-col",
+          // !flex sobrescreve o `grid` padrão do DialogContent (necessário pro scroll interno).
+          "w-[calc(100vw-1.5rem)] max-w-xl sm:w-full p-0 gap-0 overflow-hidden max-h-[90dvh] !flex flex-col",
           className,
         )}
       >
@@ -85,7 +86,7 @@ export function FormDialogBody({ children, className }: { children: ReactNode; c
   return (
     <div
       className={cn(
-        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-5 space-y-5 [scrollbar-gutter:stable]",
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-5 space-y-5 [scrollbar-gutter:stable] [scrollbar-width:thin]",
         className,
       )}
     >

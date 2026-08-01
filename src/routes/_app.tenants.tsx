@@ -616,7 +616,10 @@ function TenantsPage() {
         }
         className={formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined}
       >
-        <form onSubmit={(e) => void handleSubmit(e)}>
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
           <FormDialogBody>
             <FormSection title="Dados">
               <div className="space-y-2">
