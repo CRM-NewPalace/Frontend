@@ -3,6 +3,18 @@ import { apiFetch, sessionCache, storeCsrfToken } from "@/lib/api";
 export type Role = "super_admin" | "admin" | "gerente" | "corretor" | "analista";
 export type UserStatus = "ativo" | "inativo";
 
+export type TenantBranding = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  sidebarStyle: "default" | "dark" | "compact" | string;
+  density: "comfortable" | "compact" | string;
+  homePath: string;
+  modules: Record<string, boolean> | null;
+};
+
 export interface AuthUser {
   id: string;
   tenantId?: string | null;
@@ -14,6 +26,7 @@ export interface AuthUser {
   cargo?: string | null;
   avatar?: string | null;
   lastLoginAt?: string | null;
+  tenant?: TenantBranding | null;
 }
 
 interface LoginResponse {

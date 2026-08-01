@@ -77,15 +77,47 @@ type TenantForm = {
   name: string;
   slug: string;
   status: UserStatus;
+  logoUrl: string;
+  primaryColor: string;
+  sidebarStyle: "default" | "dark" | "compact";
+  density: "comfortable" | "compact";
+  homePath: string;
+  moduleMetas: boolean;
+  moduleFinanceiro: boolean;
+  modulePropostas: boolean;
+  moduleRelatorios: boolean;
+  moduleTaxaConversao: boolean;
+  moduleCorretores: boolean;
 };
 
 const emptyTenantForm = (): TenantForm => ({
   name: "",
   slug: "",
   status: "ativo",
+  logoUrl: "",
+  primaryColor: "",
+  sidebarStyle: "default",
+  density: "comfortable",
+  homePath: "/dashboard",
+  moduleMetas: true,
+  moduleFinanceiro: true,
+  modulePropostas: true,
+  moduleRelatorios: true,
+  moduleTaxaConversao: true,
+  moduleCorretores: true,
 });
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
+
+const HOME_OPTIONS = [
+  { value: "/dashboard", label: "Dashboard" },
+  { value: "/funil", label: "Funil" },
+  { value: "/leads", label: "Leads" },
+  { value: "/agenda", label: "Agenda" },
+  { value: "/clientes", label: "Clientes" },
+  { value: "/imoveis", label: "Imóveis" },
+] as const;
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -150,10 +182,23 @@ function TenantsPage() {
   function openEdit(item: Tenant) {
     setFormMode("edit");
     setEditingId(item.id);
+    const modules = item.modules ?? {};
     setForm({
       name: item.name,
       slug: item.slug,
       status: item.status,
+      logoUrl: item.logoUrl ?? "",
+      primaryColor: item.primaryColor ?? "",
+      sidebarStyle:
+        (item.sidebarStyle as TenantForm["sidebarStyle"]) || "default",
+      density: (item.density as TenantForm["density"]) || "comfortable",
+      homePath: item.homePath || "/dashboard",
+      moduleMetas: modules.metas !== false,
+      moduleFinanceiro: modules.financeiro !== false,
+      modulePropostas: modules.propostas !== false,
+      moduleRelatorios: modules.relatorios !== false,
+      moduleTaxaConversao: modules.taxaConversao !== false,
+      moduleCorretores: modules.corretores !== false,
     });
     setSlugTouched(true);
     setFormOpen(true);
@@ -207,7 +252,28 @@ function TenantsPage() {
         await createTenant({ name, slug, status: form.status });
         toast.success("Tenant criado.");
       } else if (editingId) {
-        await updateTenant(editingId, { name, status: form.status });
+        if (form.primaryColor && !HEX_REGEX.test(form.primaryColor)) {
+          toast.error("Cor primária inválida. Use #RRGGBB.");
+          setSaving(false);
+          return;
+        }
+        await updateTenant(editingId, {
+          name,
+          status: form.status,
+          logoUrl: form.logoUrl.trim() || null,
+          primaryColor: form.primaryColor.trim().toUpperCase() || null,
+          sidebarStyle: form.sidebarStyle,
+          density: form.density,
+          homePath: form.homePath,
+          modules: {
+            metas: form.moduleMetas,
+            financeiro: form.moduleFinanceiro,
+            propostas: form.modulePropostas,
+            relatorios: form.moduleRelatorios,
+            taxaConversao: form.moduleTaxaConversao,
+            corretores: form.moduleCorretores,
+          },
+        });
         toast.success("Tenant atualizado.");
       }
       setFormOpen(false);
@@ -438,8 +504,9 @@ function TenantsPage() {
         description={
           formMode === "create"
             ? "Cadastre uma imobiliária na plataforma Zone Connection."
-            : "Atualize nome e status. O slug não pode ser alterado."
+            : "Atualize dados, aparência e layout do tenant."
         }
+        className={formMode === "edit" ? "max-w-2xl" : undefined}
       >
         <form onSubmit={(e) => void handleSubmit(e)}>
           <FormDialogBody>
@@ -505,6 +572,157 @@ function TenantsPage() {
                 </Select>
               </div>
             </FormSection>
+
+            {formMode === "edit" && (
+              <>
+                <FormSection title="Aparência">
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant-logo">URL do logo</Label>
+                    <Input
+                      id="tenant-logo"
+                      value={form.logoUrl}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          logoUrl: e.target.value,
+                        }))
+                      }
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant-color">Cor primária</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="tenant-color"
+                        value={form.primaryColor}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            primaryColor: e.target.value,
+                          }))
+                        }
+                        placeholder="#0F766E"
+                      />
+                      <Input
+                        type="color"
+                        className="h-9 w-12 cursor-pointer p-1"
+                        value={
+                          HEX_REGEX.test(form.primaryColor)
+                            ? form.primaryColor
+                            : "#C9A227"
+                        }
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            primaryColor: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        aria-label="Seletor de cor"
+                      />
+                    </div>
+                  </div>
+                </FormSection>
+
+                <FormSection title="Layout">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Sidebar</Label>
+                      <Select
+                        value={form.sidebarStyle}
+                        onValueChange={(value) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            sidebarStyle: value as TenantForm["sidebarStyle"],
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Padrão</SelectItem>
+                          <SelectItem value="dark">Escura</SelectItem>
+                          <SelectItem value="compact">Compacta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Densidade</Label>
+                      <Select
+                        value={form.density}
+                        onValueChange={(value) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            density: value as TenantForm["density"],
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="comfortable">Confortável</SelectItem>
+                          <SelectItem value="compact">Compacta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tela inicial</Label>
+                    <Select
+                      value={form.homePath}
+                      onValueChange={(value) =>
+                        setForm((prev) => ({ ...prev, homePath: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOME_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Módulos visíveis</Label>
+                    <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                      {(
+                        [
+                          ["moduleMetas", "Metas"],
+                          ["moduleFinanceiro", "Financeiro"],
+                          ["modulePropostas", "Propostas"],
+                          ["moduleRelatorios", "Relatórios"],
+                          ["moduleTaxaConversao", "Taxa de conversão"],
+                          ["moduleCorretores", "Corretores"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 rounded-md border px-3 py-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form[key]}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                [key]: e.target.checked,
+                              }))
+                            }
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </FormSection>
+              </>
+            )}
           </FormDialogBody>
           <FormDialogActions>
             <Button

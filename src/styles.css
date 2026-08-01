@@ -136,6 +136,31 @@
   --sidebar-ring: oklch(0.72 0.13 85);
 }
 
+/* Layout por tenant (nível 2) */
+html.tenant-sidebar-dark {
+  --sidebar: oklch(0.16 0.02 260);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-accent: oklch(0.24 0.03 260);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(1 0 0 / 12%);
+}
+
+html.tenant-sidebar-compact aside {
+  --tenant-sidebar-pad: 0.35rem;
+}
+
+html.tenant-density-compact {
+  --radius: 0.4rem;
+}
+
+html.tenant-density-compact .p-6 {
+  padding: 1rem;
+}
+
+html.tenant-density-compact .space-y-6 {
+  gap: 1rem;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

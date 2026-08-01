@@ -6,6 +6,12 @@ export type Tenant = {
   name: string;
   slug: string;
   status: UserStatus;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  sidebarStyle: string;
+  density: string;
+  homePath: string;
+  modules: Record<string, boolean> | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -43,6 +49,12 @@ export type CreateTenantInput = {
 export type UpdateTenantInput = {
   name?: string;
   status?: UserStatus;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  sidebarStyle?: "default" | "dark" | "compact";
+  density?: "comfortable" | "compact";
+  homePath?: string;
+  modules?: Record<string, boolean> | null;
 };
 
 export type CreateMetaConnectionInput = {

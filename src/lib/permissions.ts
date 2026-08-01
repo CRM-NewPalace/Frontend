@@ -1,4 +1,4 @@
-import type { Role } from "@/lib/auth";
+import type { AuthUser, Role } from "@/lib/auth";
 
 /**
  * Rotas por perfil:
@@ -73,20 +73,52 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
   ],
 };
 
+/** Mapeia rota → chave de módulo no Tenant.modules (false = oculto). */
+const ROUTE_MODULE_KEY: Record<string, string> = {
+  "/metas": "metas",
+  "/propostas": "propostas",
+  "/financeiro": "financeiro",
+  "/relatorios": "relatorios",
+  "/taxa-conversao": "taxaConversao",
+  "/corretores": "corretores",
+};
+
 export function getAllowedRoutes(role: Role): readonly string[] {
   return ROLE_ROUTES[role];
 }
 
-export function canAccessRoute(role: Role, pathname: string): boolean {
+export function canAccessRoute(
+  role: Role,
+  pathname: string,
+  modules?: Record<string, boolean> | null,
+): boolean {
   const path = pathname.split("?")[0].replace(/\/$/, "") || "/";
-  return ROLE_ROUTES[role].some(
+  const allowedByRole = ROLE_ROUTES[role].some(
     (route) => path === route || path.startsWith(`${route}/`),
   );
+  if (!allowedByRole) return false;
+
+  if (modules) {
+    const moduleKey = Object.entries(ROUTE_MODULE_KEY).find(
+      ([route]) => path === route || path.startsWith(`${route}/`),
+    )?.[1];
+    if (moduleKey && modules[moduleKey] === false) return false;
+  }
+
+  return true;
 }
 
-export function defaultRouteForRole(role: Role): string {
+export function defaultRouteForRole(
+  role: Role,
+  user?: Pick<AuthUser, "tenant"> | null,
+): string {
   if (role === "super_admin") return "/tenants";
   if (role === "analista") return "/funil";
+
+  const home = user?.tenant?.homePath?.trim();
+  if (home && canAccessRoute(role, home, user?.tenant?.modules ?? null)) {
+    return home;
+  }
   return "/dashboard";
 }
 

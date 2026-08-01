@@ -42,6 +42,7 @@ import {
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSession, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
+import { useTenantTheme } from "@/lib/tenant-theme";
 import { ApiError } from "@/lib/api";
 import {
   fetchNotificacoes,
@@ -221,6 +222,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const { brandName, logoUrl, modules } = useTenantTheme();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
   });
@@ -374,16 +376,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .map((item) => {
             if (isNavGroup(item)) {
               const children = item.children.filter((c) =>
-                canAccessRoute(user.role, c.to),
+                canAccessRoute(user.role, c.to, modules),
               );
               return children.length ? { ...item, children } : null;
             }
-            return canAccessRoute(user.role, item.to) ? item : null;
+            return canAccessRoute(user.role, item.to, modules) ? item : null;
           })
           .filter((item): item is NavItem => item !== null),
       }))
       .filter((section) => section.items.length > 0);
-  }, [user]);
+  }, [user, modules]);
 
   useEffect(() => {
     const active = navSections.find((section) =>
@@ -616,17 +618,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b">
           <img
-            src="/favicon-32.png"
-            alt="NP Connect"
+            src={logoUrl || "/favicon-32.png"}
+            alt={brandName}
             className="w-8 h-8 rounded-none object-contain shrink-0"
           />
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold leading-tight">
-                NP Connect
+              <div className="text-sm font-semibold leading-tight truncate">
+                {brandName}
               </div>
-              <div className="text-[10px] text-muted-foreground">
-                New Palace
+              <div className="text-[10px] text-muted-foreground truncate">
+                {user?.role === "super_admin" ? "Zone Connection" : "CRM"}
               </div>
             </div>
           )}
@@ -679,14 +681,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center gap-2 px-4 h-14 border-b">
           <img
-            src="/favicon-32.png"
-            alt="NP Connect"
+            src={logoUrl || "/favicon-32.png"}
+            alt={brandName}
             className="w-8 h-8 rounded-none object-contain shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold leading-tight">NP Connect</div>
-            <div className="text-[10px] text-muted-foreground">
-              New Palace
+            <div className="text-sm font-semibold leading-tight truncate">
+              {brandName}
+            </div>
+            <div className="text-[10px] text-muted-foreground truncate">
+              {user?.role === "super_admin" ? "Zone Connection" : "CRM"}
             </div>
           </div>
           <Button

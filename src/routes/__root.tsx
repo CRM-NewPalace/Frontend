@@ -132,7 +132,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "base-uri 'self'",
           "object-src 'none'",
           "form-action 'self'",
-          "img-src 'self' data: blob:",
+          "img-src 'self' data: blob: https:",
           "font-src 'self' https://fonts.gstatic.com data:",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "script-src 'self' 'unsafe-inline'",

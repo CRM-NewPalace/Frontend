@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
   beforeLoad: () => {
     const user = getSession();
     throw redirect({
-      to: user ? defaultRouteForRole(user.role) : "/login",
+      to: user ? defaultRouteForRole(user.role, user) : "/login",
     });
   },
   component: () => null,

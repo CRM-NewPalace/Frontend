@@ -90,7 +90,7 @@ function LoginPage() {
     try {
       const user = await signIn(email, password);
       toast.success(`Bem-vindo(a), ${user.name.split(" ")[0]}!`);
-      navigate({ to: defaultRouteForRole(user.role) });
+      navigate({ to: defaultRouteForRole(user.role, user) });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Não foi possível entrar",
