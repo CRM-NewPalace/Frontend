@@ -4,9 +4,32 @@
  * Autenticação via cookies httpOnly (JS não consegue ler o JWT — anti-XSS).
  * Mutações autenticadas enviam o header X-CSRF-Token (double-submit cookie).
  * credentials: "include" é obrigatório para o browser anexar os cookies.
+ *
+ * A URL da API no browser é SEMPRE same-origin `/api`:
+ * - Dev: proxy do Vite → Nest
+ * - Prod (Vercel): rewrite em vercel.json → Render
+ * Apontar VITE_API_URL para o domínio do Render torna o cookie third-party
+ * (Firefox/Chrome bloqueiam → 401 em /auth/me após login).
  */
 
-export const API_URL = import.meta.env.VITE_API_URL ?? "/api";
+function resolveApiUrl(): string {
+  const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  if (!configured || configured === "/api") return "/api";
+
+  // Absolute URL só é segura em SSR/server; no browser força same-origin.
+  if (typeof window !== "undefined") {
+    if (/^https?:\/\//i.test(configured)) {
+      console.warn(
+        "[api] VITE_API_URL cross-origin ignorada no browser; usando /api (proxy same-origin).",
+      );
+    }
+    return "/api";
+  }
+
+  return configured;
+}
+
+export const API_URL = resolveApiUrl();
 
 const USER_KEY = "crm_session_user";
 const CSRF_COOKIE = "crm_csrf";
