@@ -167,6 +167,16 @@ export async function apiFetch<T>(
   }
 
   if (!response.ok) {
+    // Sessão morta (cookie ausente/expirado): limpa cache e manda pro login.
+    if (response.status === 401 && !skipAuth) {
+      sessionCache.clear();
+      if (
+        isBrowser() &&
+        !window.location.pathname.startsWith("/login")
+      ) {
+        window.location.assign("/login");
+      }
+    }
     throw new ApiError(await parseError(response), response.status);
   }
 

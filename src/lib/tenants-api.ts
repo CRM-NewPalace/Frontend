@@ -36,6 +36,7 @@ export type TenantOzapConnection = {
 };
 
 export type TenantDetail = Tenant & {
+  userCount: number;
   metaConnections: TenantMetaConnection[];
   ozapConnections: TenantOzapConnection[];
 };
@@ -44,6 +45,28 @@ export type CreateTenantInput = {
   name: string;
   slug: string;
   status?: UserStatus;
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
+};
+
+export type CreateTenantAdminInput = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type TenantAdminUser = {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  email: string;
+  role: string;
+  status: UserStatus;
+};
+
+export type CreateTenantResult = Tenant & {
+  admin: TenantAdminUser;
 };
 
 export type UpdateTenantInput = {
@@ -87,8 +110,21 @@ export async function fetchTenant(id: string): Promise<TenantDetail> {
 
 export async function createTenant(
   input: CreateTenantInput,
-): Promise<Tenant> {
-  return apiFetch<Tenant>("/tenants", { method: "POST", body: input });
+): Promise<CreateTenantResult> {
+  return apiFetch<CreateTenantResult>("/tenants", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function createTenantInitialAdmin(
+  tenantId: string,
+  input: CreateTenantAdminInput,
+): Promise<TenantAdminUser> {
+  return apiFetch<TenantAdminUser>(`/tenants/${tenantId}/admin`, {
+    method: "POST",
+    body: input,
+  });
 }
 
 export async function updateTenant(

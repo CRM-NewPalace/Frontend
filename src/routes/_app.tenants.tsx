@@ -43,6 +43,7 @@ import {
   createMetaConnection,
   createOzapConnection,
   createTenant,
+  createTenantInitialAdmin,
   deleteMetaConnection,
   deleteOzapConnection,
   fetchTenant,
@@ -65,6 +66,7 @@ import {
   Plus,
   Share2,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -77,6 +79,9 @@ type TenantForm = {
   name: string;
   slug: string;
   status: UserStatus;
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
   logoUrl: string;
   primaryColor: string;
   sidebarStyle: "default" | "dark" | "compact";
@@ -94,6 +99,9 @@ const emptyTenantForm = (): TenantForm => ({
   name: "",
   slug: "",
   status: "ativo",
+  adminName: "",
+  adminEmail: "",
+  adminPassword: "",
   logoUrl: "",
   primaryColor: "",
   sidebarStyle: "default",
@@ -109,6 +117,8 @@ const emptyTenantForm = (): TenantForm => ({
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const HOME_OPTIONS = [
   { value: "/dashboard", label: "Dashboard" },
@@ -144,6 +154,11 @@ function TenantsPage() {
   const [metaToken, setMetaToken] = useState("");
   const [ozapInstanceId, setOzapInstanceId] = useState("");
   const [savingConnection, setSavingConnection] = useState(false);
+
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [savingAdmin, setSavingAdmin] = useState(false);
 
   const [deleteMeta, setDeleteMeta] = useState<TenantMetaConnection | null>(
     null,
@@ -187,6 +202,9 @@ function TenantsPage() {
       name: item.name,
       slug: item.slug,
       status: item.status,
+      adminName: "",
+      adminEmail: "",
+      adminPassword: "",
       logoUrl: item.logoUrl ?? "",
       primaryColor: item.primaryColor ?? "",
       sidebarStyle:
@@ -210,6 +228,9 @@ function TenantsPage() {
     setMetaPageId("");
     setMetaToken("");
     setOzapInstanceId("");
+    setAdminName("");
+    setAdminEmail("");
+    setAdminPassword("");
     setDetailLoading(true);
     try {
       setDetail(await fetchTenant(item.id));
@@ -246,36 +267,77 @@ function TenantsPage() {
       return;
     }
 
+    if (formMode === "create") {
+      const adminNameValue = form.adminName.trim();
+      const adminEmailValue = form.adminEmail.trim().toLowerCase();
+      const adminPasswordValue = form.adminPassword;
+      if (adminNameValue.length < 2) {
+        toast.error("Informe o nome do administrador.");
+        return;
+      }
+      if (!EMAIL_REGEX.test(adminEmailValue)) {
+        toast.error("Informe um e-mail válido para o admin.");
+        return;
+      }
+      if (!PASSWORD_REGEX.test(adminPasswordValue)) {
+        toast.error(
+          "A senha do admin deve ter ao menos 8 caracteres, com maiúscula, minúscula e número.",
+        );
+        return;
+      }
+
+      setSaving(true);
+      try {
+        const created = await createTenant({
+          name,
+          slug,
+          status: form.status,
+          adminName: adminNameValue,
+          adminEmail: adminEmailValue,
+          adminPassword: adminPasswordValue,
+        });
+        toast.success(
+          `Tenant criado. Login: ${created.admin.email} (slug: ${created.slug})`,
+        );
+        setFormOpen(false);
+        await loadItems();
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError ? err.message : "Falha ao salvar o tenant.",
+        );
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (!editingId) return;
+
+    if (form.primaryColor && !HEX_REGEX.test(form.primaryColor)) {
+      toast.error("Cor primária inválida. Use #RRGGBB.");
+      return;
+    }
+
     setSaving(true);
     try {
-      if (formMode === "create") {
-        await createTenant({ name, slug, status: form.status });
-        toast.success("Tenant criado.");
-      } else if (editingId) {
-        if (form.primaryColor && !HEX_REGEX.test(form.primaryColor)) {
-          toast.error("Cor primária inválida. Use #RRGGBB.");
-          setSaving(false);
-          return;
-        }
-        await updateTenant(editingId, {
-          name,
-          status: form.status,
-          logoUrl: form.logoUrl.trim() || null,
-          primaryColor: form.primaryColor.trim().toUpperCase() || null,
-          sidebarStyle: form.sidebarStyle,
-          density: form.density,
-          homePath: form.homePath,
-          modules: {
-            metas: form.moduleMetas,
-            financeiro: form.moduleFinanceiro,
-            propostas: form.modulePropostas,
-            relatorios: form.moduleRelatorios,
-            taxaConversao: form.moduleTaxaConversao,
-            corretores: form.moduleCorretores,
-          },
-        });
-        toast.success("Tenant atualizado.");
-      }
+      await updateTenant(editingId, {
+        name,
+        status: form.status,
+        logoUrl: form.logoUrl.trim() || null,
+        primaryColor: form.primaryColor.trim().toUpperCase() || null,
+        sidebarStyle: form.sidebarStyle,
+        density: form.density,
+        homePath: form.homePath,
+        modules: {
+          metas: form.moduleMetas,
+          financeiro: form.moduleFinanceiro,
+          propostas: form.modulePropostas,
+          relatorios: form.moduleRelatorios,
+          taxaConversao: form.moduleTaxaConversao,
+          corretores: form.moduleCorretores,
+        },
+      });
+      toast.success("Tenant atualizado.");
       setFormOpen(false);
       await loadItems();
     } catch (err) {
@@ -284,6 +346,52 @@ function TenantsPage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCreateInitialAdmin(e: FormEvent) {
+    e.preventDefault();
+    if (!detail) return;
+
+    const name = adminName.trim();
+    const email = adminEmail.trim().toLowerCase();
+    if (name.length < 2) {
+      toast.error("Informe o nome do administrador.");
+      return;
+    }
+    if (!EMAIL_REGEX.test(email)) {
+      toast.error("Informe um e-mail válido.");
+      return;
+    }
+    if (!PASSWORD_REGEX.test(adminPassword)) {
+      toast.error(
+        "A senha deve ter ao menos 8 caracteres, com maiúscula, minúscula e número.",
+      );
+      return;
+    }
+
+    setSavingAdmin(true);
+    try {
+      const admin = await createTenantInitialAdmin(detail.id, {
+        name,
+        email,
+        password: adminPassword,
+      });
+      toast.success(
+        `Admin criado. Login: ${admin.email} (slug: ${detail.slug})`,
+      );
+      setAdminName("");
+      setAdminEmail("");
+      setAdminPassword("");
+      await reloadDetail(detail.id);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Falha ao criar o administrador.",
+      );
+    } finally {
+      setSavingAdmin(false);
     }
   }
 
@@ -503,10 +611,10 @@ function TenantsPage() {
         title={formMode === "create" ? "Novo tenant" : "Editar tenant"}
         description={
           formMode === "create"
-            ? "Cadastre uma imobiliária na plataforma Zone Connection."
+            ? "Cadastre a imobiliária e o administrador que fará o primeiro login."
             : "Atualize dados, aparência e layout do tenant."
         }
-        className={formMode === "edit" ? "max-w-2xl" : undefined}
+        className={formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined}
       >
         <form onSubmit={(e) => void handleSubmit(e)}>
           <FormDialogBody>
@@ -572,6 +680,63 @@ function TenantsPage() {
                 </Select>
               </div>
             </FormSection>
+
+            {formMode === "create" && (
+              <FormSection title="Administrador inicial">
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Esse usuário entra em /login com o e-mail e senha abaixo.
+                  Senha: mínimo 8 caracteres, com maiúscula, minúscula e número.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-name">Nome</Label>
+                  <Input
+                    id="admin-name"
+                    value={form.adminName}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        adminName: e.target.value,
+                      }))
+                    }
+                    placeholder="Maria Silva"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-email">E-mail</Label>
+                  <Input
+                    id="admin-email"
+                    type="email"
+                    value={form.adminEmail}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        adminEmail: e.target.value,
+                      }))
+                    }
+                    placeholder="admin@imobiliaria.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-password">Senha</Label>
+                  <Input
+                    id="admin-password"
+                    type="password"
+                    value={form.adminPassword}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        adminPassword: e.target.value,
+                      }))
+                    }
+                    placeholder="SenhaSegura1"
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+              </FormSection>
+            )}
 
             {formMode === "edit" && (
               <>
@@ -764,6 +929,70 @@ function TenantsPage() {
             </div>
           ) : (
             <div className="space-y-6">
+              {detail.userCount === 0 && (
+                <FormSection title="Administrador inicial">
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    Este tenant ainda não tem usuários. Crie o admin para
+                    liberar o login em /login (slug:{" "}
+                    <code className="rounded bg-muted px-1">{detail.slug}</code>
+                    ).
+                  </p>
+                  <form
+                    className="space-y-3"
+                    onSubmit={(e) => void handleCreateInitialAdmin(e)}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="boot-admin-name">Nome</Label>
+                        <Input
+                          id="boot-admin-name"
+                          value={adminName}
+                          onChange={(e) => setAdminName(e.target.value)}
+                          placeholder="Maria Silva"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="boot-admin-email">E-mail</Label>
+                        <Input
+                          id="boot-admin-email"
+                          type="email"
+                          value={adminEmail}
+                          onChange={(e) => setAdminEmail(e.target.value)}
+                          placeholder="admin@imobiliaria.com"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="boot-admin-password">Senha</Label>
+                      <Input
+                        id="boot-admin-password"
+                        type="password"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        placeholder="SenhaSegura1"
+                        required
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    <Button type="submit" disabled={savingAdmin}>
+                      {savingAdmin ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Criando…
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4" />
+                          Criar admin
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </FormSection>
+              )}
+
               <FormSection title="Meta Lead Ads">
                 <form
                   className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"

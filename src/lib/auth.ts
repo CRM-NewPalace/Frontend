@@ -53,6 +53,8 @@ function writeValidatedAt(ts: number) {
 
 let lastValidatedAt = 0;
 let revalidateInFlight: Promise<AuthUser | null> | null = null;
+/** Uma validação obrigatória por carregamento da página (evita cache morto). */
+let validatedThisDocument = false;
 
 /**
  * Sessão em cache (sessionStorage), preenchida no login.
@@ -67,17 +69,23 @@ export function getSession(): AuthUser | null {
 export async function signIn(
   email: string,
   password: string,
+  tenantSlug?: string,
 ): Promise<AuthUser> {
   const data = await apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
     skipAuth: true,
-    body: { email, password },
+    body: {
+      email,
+      password,
+      ...(tenantSlug ? { tenantSlug } : {}),
+    },
   });
 
   sessionCache.setUser(data.user);
   storeCsrfToken(data.csrfToken);
   lastValidatedAt = Date.now();
   writeValidatedAt(lastValidatedAt);
+  validatedThisDocument = true;
   return data.user;
 }
 
@@ -90,6 +98,7 @@ export async function signOut(): Promise<void> {
     sessionCache.clear();
     lastValidatedAt = 0;
     writeValidatedAt(0);
+    validatedThisDocument = false;
   }
 }
 
@@ -126,9 +135,8 @@ function revalidateSessionInBackground(): void {
 /**
  * Valida a sessão para o beforeLoad das rotas autenticadas.
  *
- * Com usuário em cache: retorna na hora (navegação instantânea) e
- * revalida /auth/me em background se o cache estiver velho.
- * Sem cache: aí sim espera a API (primeiro acesso / deep link).
+ * No primeiro acesso da página (ou com force), confirma cookies via /auth/me.
+ * Nas navegações seguintes, usa o cache e revalida em background se estiver velho.
  */
 export async function ensureSession(options?: {
   force?: boolean;
@@ -136,14 +144,18 @@ export async function ensureSession(options?: {
   if (!lastValidatedAt) lastValidatedAt = readValidatedAt();
 
   const cached = getSession();
+  const mustValidate = options?.force || !validatedThisDocument;
 
-  if (options?.force) {
+  if (mustValidate) {
     try {
-      return await fetchMe();
+      const user = await fetchMe();
+      validatedThisDocument = true;
+      return user;
     } catch {
       sessionCache.clear();
       lastValidatedAt = 0;
       writeValidatedAt(0);
+      validatedThisDocument = false;
       return null;
     }
   }
@@ -156,7 +168,9 @@ export async function ensureSession(options?: {
   }
 
   try {
-    return await fetchMe();
+    const user = await fetchMe();
+    validatedThisDocument = true;
+    return user;
   } catch {
     sessionCache.clear();
     lastValidatedAt = 0;

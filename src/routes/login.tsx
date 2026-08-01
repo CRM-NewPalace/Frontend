@@ -81,6 +81,7 @@ function LoginPage() {
     SHOW_DEMO_ACCOUNTS ? "admin@imob.com" : "",
   );
   const [password, setPassword] = useState(SHOW_DEMO_ACCOUNTS ? "admin" : "");
+  const [tenantSlug, setTenantSlug] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -88,7 +89,11 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const user = await signIn(email, password);
+      const user = await signIn(
+        email,
+        password,
+        tenantSlug.trim() || undefined,
+      );
       toast.success(`Bem-vindo(a), ${user.name.split(" ")[0]}!`);
       navigate({ to: defaultRouteForRole(user.role, user) });
     } catch (error) {
@@ -242,6 +247,25 @@ function LoginPage() {
                 className="h-11 bg-white border-border/80 shadow-sm focus-visible:ring-primary/30"
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tenant-slug" className="text-foreground/80">
+                Imobiliária{" "}
+                <span className="font-normal text-muted-foreground">
+                  (opcional)
+                </span>
+              </Label>
+              <Input
+                id="tenant-slug"
+                value={tenantSlug}
+                onChange={(e) => setTenantSlug(e.target.value.toLowerCase())}
+                placeholder="ex.: new-palace"
+                className="h-11 bg-white border-border/80 shadow-sm focus-visible:ring-primary/30"
+                autoComplete="organization"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use o slug se o mesmo e-mail existir em mais de uma imobiliária.
+              </p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
