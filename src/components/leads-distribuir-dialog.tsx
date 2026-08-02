@@ -146,7 +146,9 @@ export function LeadsDistribuirDialog({
           <DialogDescription>
             {resumo?.modo === "equipes"
               ? "Divida os leads sem dono entre as equipes. O gerente de cada equipe redistribui aos corretores."
-              : "Defina quantos leads cada corretor recebe por rodada da fila (round-robin)."}
+              : resumo?.equipeId
+                ? "Defina quantos leads cada corretor recebe por rodada da fila (round-robin)."
+                : "Não há equipes cadastradas. Defina quantos leads cada corretor recebe por rodada da fila."}
           </DialogDescription>
         </DialogHeader>
 
@@ -178,7 +180,9 @@ export function LeadsDistribuirDialog({
                 </div>
                 {resumo.equipes.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Nenhuma equipe ativa cadastrada.
+                    Nenhuma equipe cadastrada. Crie equipes em Administração →
+                    Equipes, ou feche e abra de novo para distribuir direto aos
+                    corretores.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -222,11 +226,17 @@ export function LeadsDistribuirDialog({
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Equipe: <span className="text-foreground">{resumo.equipeNome}</span>
+                  {resumo.equipeId ? "Equipe: " : "Escopo: "}
+                  <span className="text-foreground">{resumo.equipeNome}</span>
                   {" · "}
                   {resumo.corretores.length} corretor
                   {resumo.corretores.length === 1 ? "" : "es"}
                 </p>
+                {resumo.corretores.length === 0 ? (
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    Cadastre corretores ativos em Usuários para poder distribuir.
+                  </p>
+                ) : null}
                 <div className="space-y-1.5">
                   <Label htmlFor="por-corretor">
                     Leads por corretor em cada rodada da fila

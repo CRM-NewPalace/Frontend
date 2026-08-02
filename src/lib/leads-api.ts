@@ -169,13 +169,14 @@ export type DistribuirResumoEquipes = {
     nome: string;
     gerente: string;
     corretores: number;
+    status?: string;
   }>;
 };
 
 export type DistribuirResumoCorretores = {
   modo: "corretores";
   disponiveis: number;
-  equipeId: string;
+  equipeId: string | null;
   equipeNome: string;
   corretores: Array<{ id: string; nome: string }>;
 };
