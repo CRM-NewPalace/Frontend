@@ -133,3 +133,68 @@ export async function fetchDashboardCorretor(): Promise<DashboardCorretor> {
 export async function fetchDashboardAdmin(): Promise<DashboardAdmin> {
   return apiFetch<DashboardAdmin>("/dashboard/admin");
 }
+
+export type DashboardRankingMeta = {
+  tipo: string;
+  valor: number;
+  atual: number;
+  percentual: number;
+};
+
+export type DashboardRankingCorretor = {
+  posicao: number;
+  corretorId: string;
+  nome: string;
+  equipeId: string | null;
+  equipe: string | null;
+  gerenteId: string | null;
+  gerente: string | null;
+  leads: number;
+  entradas: DashboardMetric;
+  visitas: number;
+  documentacoes: number;
+  vendas: DashboardMetric;
+  vgv: DashboardMetric;
+  taxaConversao: DashboardMetric;
+  perdidos: number;
+  meta: DashboardRankingMeta | null;
+};
+
+export type DashboardRankingGerente = {
+  posicao: number;
+  gerenteId: string;
+  nome: string;
+  equipeId: string;
+  equipe: string;
+  corretores: number;
+  leads: number;
+  entradas: DashboardMetric;
+  visitas: number;
+  vendas: DashboardMetric;
+  vgv: DashboardMetric;
+  taxaConversao: DashboardMetric;
+  perdidos: number;
+};
+
+export type DashboardRanking = {
+  periodo: {
+    mesAtual: { inicio: string; fim: string };
+    mesAnterior: { inicio: string; fim: string };
+  };
+  totais: {
+    entradas: number;
+    vendas: number;
+    vgv: number;
+    visitas: number;
+    perdidos: number;
+    taxaConversao: number;
+    corretores: number;
+    gerentes: number;
+  };
+  corretores: DashboardRankingCorretor[];
+  gerentes: DashboardRankingGerente[];
+};
+
+export async function fetchDashboardRanking(): Promise<DashboardRanking> {
+  return apiFetch<DashboardRanking>("/dashboard/ranking");
+}
