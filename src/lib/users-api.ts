@@ -58,6 +58,20 @@ export async function fetchUsers(params?: {
   return apiFetch<PaginatedUsers>(`/users?${qs.toString()}`);
 }
 
+export type UsersQuota = {
+  plano: "bronze" | "prata" | "ouro";
+  maxUsuarios: number;
+  usuariosExtras: number;
+  limite: number;
+  usados: number;
+  restantes: number;
+  iaBotEnabled: boolean;
+};
+
+export async function fetchUsersQuota(): Promise<UsersQuota> {
+  return apiFetch<UsersQuota>("/users/quota");
+}
+
 export async function createUser(input: CreateUserInput): Promise<ApiUser> {
   return apiFetch<ApiUser>("/users", { method: "POST", body: input });
 }

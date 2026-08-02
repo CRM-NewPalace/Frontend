@@ -62,11 +62,14 @@ import {
 } from "@/lib/tenants-api";
 import {
   adminGroupEnabled,
-  defaultModulesRecord,
   modulesFromTenantJson,
+  modulesPresetForPlano,
+  PLANO_LABELS,
+  PLANO_MAX_USUARIOS,
   setAdminGroupEnabled,
   TENANT_MODULE_GROUPS,
   type TenantModuleKey,
+  type TenantPlano,
 } from "@/lib/tenant-modules";
 import {
   Building2,
@@ -95,6 +98,9 @@ type TenantForm = {
   slug: string;
   status: UserStatus;
   logoUrl: string;
+  plano: TenantPlano;
+  usuariosExtras: number;
+  iaBotEnabled: boolean;
   modules: Record<TenantModuleKey, boolean>;
 };
 
@@ -103,7 +109,10 @@ const emptyTenantForm = (): TenantForm => ({
   slug: "",
   status: "ativo",
   logoUrl: "",
-  modules: defaultModulesRecord(true),
+  plano: "bronze",
+  usuariosExtras: 0,
+  iaBotEnabled: false,
+  modules: modulesPresetForPlano("bronze"),
 });
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -199,6 +208,9 @@ function TenantsPage() {
       slug: item.slug,
       status: item.status,
       logoUrl: item.logoUrl ?? "",
+      plano: item.plano ?? "bronze",
+      usuariosExtras: item.usuariosExtras ?? 0,
+      iaBotEnabled: item.iaBotEnabled ?? false,
       modules: modulesFromTenantJson(item.modules),
     });
     setSlugTouched(true);
@@ -300,6 +312,9 @@ function TenantsPage() {
           slug,
           status: form.status,
           logoUrl: logoUrl || null,
+          plano: form.plano,
+          usuariosExtras: form.usuariosExtras,
+          iaBotEnabled: form.iaBotEnabled,
           modules,
         });
         setFormOpen(false);
@@ -329,6 +344,9 @@ function TenantsPage() {
         name,
         status: form.status,
         logoUrl: logoUrl || null,
+        plano: form.plano,
+        usuariosExtras: form.usuariosExtras,
+        iaBotEnabled: form.iaBotEnabled,
         modules,
       });
       toast.success("Tenant atualizado.");
@@ -550,6 +568,7 @@ function TenantsPage() {
                 <TableRow>
                   <TableHead>Imobiliária</TableHead>
                   <TableHead>Slug</TableHead>
+                  <TableHead>Plano</TableHead>
                   <TableHead>Admin (e-mail)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
@@ -564,6 +583,12 @@ function TenantsPage() {
                       <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                         {item.slug}
                       </code>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize text-[10px]">
+                        {item.plano ?? "—"}
+                        {item.iaBotEnabled ? " · IA" : ""}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {item.admin ? (
@@ -640,8 +665,8 @@ function TenantsPage() {
         title={formMode === "create" ? "Novo tenant" : "Editar tenant"}
         description={
           formMode === "create"
-            ? "Cadastre a imobiliária, defina a logo e os módulos. O admin é gerado automaticamente."
-            : "Atualize dados, logo e módulos do tenant."
+            ? "Cadastre a imobiliária, o plano, a logo e os módulos. O admin é gerado automaticamente."
+            : "Atualize plano, cota, logo e módulos do tenant."
         }
         className={
           formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined
@@ -712,6 +737,77 @@ function TenantsPage() {
                     <SelectItem value="inativo">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Plano</Label>
+                <Select
+                  value={form.plano}
+                  onValueChange={(value) => {
+                    const plano = value as TenantPlano;
+                    setForm((prev) => ({
+                      ...prev,
+                      plano,
+                      modules: modulesPresetForPlano(plano),
+                      iaBotEnabled:
+                        plano === "ouro" ? true : prev.iaBotEnabled,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(PLANO_LABELS) as TenantPlano[]).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PLANO_LABELS[p]} ({PLANO_MAX_USUARIOS[p]} users)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Cota base: {PLANO_MAX_USUARIOS[form.plano]} usuários. Extras
+                  liberam além do limite para o admin da imobiliária.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="tenant-extras">Usuários extras</Label>
+                  <Input
+                    id="tenant-extras"
+                    type="number"
+                    min={0}
+                    value={form.usuariosExtras}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        usuariosExtras: Math.max(
+                          0,
+                          Number(e.target.value) || 0,
+                        ),
+                      }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Limite total:{" "}
+                    {PLANO_MAX_USUARIOS[form.plano] + form.usuariosExtras}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Bot de IA</Label>
+                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.iaBotEnabled}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          iaBotEnabled: e.target.checked,
+                        }))
+                      }
+                    />
+                    Conexão com bot de IA liberada
+                  </label>
+                </div>
               </div>
             </FormSection>
 

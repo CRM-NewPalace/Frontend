@@ -158,3 +158,39 @@ export function setAdminGroupEnabled(
   }
   return next;
 }
+
+export type TenantPlano = "bronze" | "prata" | "ouro";
+
+export const PLANO_MAX_USUARIOS: Record<TenantPlano, number> = {
+  bronze: 5,
+  prata: 15,
+  ouro: 30,
+};
+
+export const PLANO_LABELS: Record<TenantPlano, string> = {
+  bronze: "Bronze — CRM",
+  prata: "Prata — CRM + Administrativo",
+  ouro: "Ouro — Todos os módulos",
+};
+
+/** Preset de módulos por plano (espelha o backend). */
+export function modulesPresetForPlano(
+  plano: TenantPlano,
+): Record<TenantModuleKey, boolean> {
+  const next = defaultModulesRecord(false);
+  for (const key of TENANT_MODULE_GROUPS.find((g) => g.id === "operacional")!
+    .modules.map((m) => m.key)) {
+    next[key] = true;
+  }
+  next.usuarios = true;
+  if (plano === "prata" || plano === "ouro") {
+    for (const mod of TENANT_MODULE_GROUPS.find((g) => g.id === "administrativo")!
+      .modules) {
+      next[mod.key] = true;
+    }
+  }
+  if (plano === "ouro") {
+    next.financeiro = true;
+  }
+  return next;
+}

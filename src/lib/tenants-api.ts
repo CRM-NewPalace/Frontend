@@ -21,6 +21,10 @@ export type Tenant = {
   density: string;
   homePath: string;
   modules: Record<string, boolean> | null;
+  plano: "bronze" | "prata" | "ouro";
+  maxUsuarios: number;
+  usuariosExtras: number;
+  iaBotEnabled: boolean;
   admin: TenantAdminUser | null;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +61,10 @@ export type CreateTenantInput = {
   status?: UserStatus;
   logoUrl?: string | null;
   modules?: Record<string, boolean> | null;
+  plano?: "bronze" | "prata" | "ouro";
+  maxUsuarios?: number;
+  usuariosExtras?: number;
+  iaBotEnabled?: boolean;
 };
 
 export type CreateTenantAdminInput = {
@@ -80,6 +88,10 @@ export type UpdateTenantInput = {
   status?: UserStatus;
   logoUrl?: string | null;
   modules?: Record<string, boolean> | null;
+  plano?: "bronze" | "prata" | "ouro";
+  maxUsuarios?: number;
+  usuariosExtras?: number;
+  iaBotEnabled?: boolean;
 };
 
 export type CreateMetaConnectionInput = {
@@ -129,6 +141,29 @@ export async function createTenantInitialAdmin(
   input: CreateTenantAdminInput = {},
 ): Promise<CreateTenantAdminResult> {
   return apiFetch<CreateTenantAdminResult>(`/tenants/${tenantId}/admin`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function createTenantUser(
+  tenantId: string,
+  input: {
+    name: string;
+    email: string;
+    password?: string;
+    phone?: string;
+    whatsapp?: string;
+    cargo?: string;
+    role: "admin" | "gerente" | "corretor" | "analista";
+    status?: UserStatus;
+  },
+): Promise<{
+  user: TenantAdminUser;
+  temporaryPassword?: string;
+  usuariosExtrasIncremented: boolean;
+}> {
+  return apiFetch(`/tenants/${tenantId}/users`, {
     method: "POST",
     body: input,
   });

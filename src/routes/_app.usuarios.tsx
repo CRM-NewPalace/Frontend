@@ -70,11 +70,14 @@ import {
   createUser,
   deleteUser,
   fetchUsers,
+  fetchUsersQuota,
   resetUserPassword,
   updateUser,
   updateUserStatus,
   type ApiUser,
+  type UsersQuota,
 } from "@/lib/users-api";
+import { PLANO_LABELS } from "@/lib/tenant-modules";
 import {
   formatPhone,
   isValidPhone,
@@ -219,6 +222,7 @@ function Usuarios() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [quota, setQuota] = useState<UsersQuota | null>(null);
 
   /** Atualiza estado + cache juntos. */
   const setUsers = useCallback((updater: (prev: ApiUser[]) => ApiUser[]) => {
@@ -251,8 +255,12 @@ function Usuarios() {
     async (opts?: { silent?: boolean }) => {
       if (!opts?.silent) setLoading(true);
       try {
-        const page = await fetchUsers({ page: 1, limit: 100 });
+        const [page, q] = await Promise.all([
+          fetchUsers({ page: 1, limit: 100 }),
+          isAdmin ? fetchUsersQuota().catch(() => null) : Promise.resolve(null),
+        ]);
         setUsers(() => page.data);
+        if (q) setQuota(q);
       } catch (err) {
         if (!opts?.silent) {
           toast.error(
@@ -265,7 +273,7 @@ function Usuarios() {
         setLoading(false);
       }
     },
-    [setUsers],
+    [setUsers, isAdmin],
   );
 
   useEffect(() => {
@@ -289,6 +297,12 @@ function Usuarios() {
   }, [users, search, roleFilter, statusFilter]);
 
   function openCreate() {
+    if (quota && quota.restantes <= 0) {
+      toast.error(
+        `Limite do plano atingido (${quota.usados}/${quota.limite}). Peça usuários extras ao administrador da plataforma.`,
+      );
+      return;
+    }
     setFormMode("create");
     setEditingId(null);
     setForm(emptyForm());
@@ -376,6 +390,9 @@ function Usuarios() {
           password: form.password,
           title: "Credenciais do novo usuário",
         });
+        void fetchUsersQuota()
+          .then(setQuota)
+          .catch(() => undefined);
       } else if (editingId) {
         const updated = await updateUser(editingId, {
           name,
@@ -480,12 +497,23 @@ function Usuarios() {
           loading
             ? "Carregando usuários..."
             : isAdmin
-              ? `${filtered.length} de ${users.length} usuários`
+              ? quota
+                ? `${filtered.length} de ${users.length} · ${quota.usados}/${quota.limite} no plano ${PLANO_LABELS[quota.plano].split(" — ")[0]}`
+                : `${filtered.length} de ${users.length} usuários`
               : `Membros da sua equipe — ${filtered.length} usuário(s). E-mail visível; use Resetar senha se alguém esquecer.`
         }
         actions={
           isAdmin ? (
-            <Button size="sm" onClick={openCreate}>
+            <Button
+              size="sm"
+              onClick={openCreate}
+              disabled={Boolean(quota && quota.restantes <= 0)}
+              title={
+                quota && quota.restantes <= 0
+                  ? "Limite do plano atingido"
+                  : undefined
+              }
+            >
               <Plus className="w-4 h-4 mr-1" />
               Novo usuário
             </Button>
