@@ -408,8 +408,14 @@ function LeadsPage() {
       setImportRows([]);
       await refresh({ silent: true });
       if (result.failed > 0) {
-        toast.message(
-          `${result.created} importado(s), ${result.failed} com erro.`,
+        const sample = result.errors
+          .slice(0, 3)
+          .map((e) => `${e.nome}: ${e.message}`)
+          .join(" · ");
+        toast.error(
+          `${result.created} importado(s), ${result.failed} com erro.${
+            sample ? ` ${sample}` : ""
+          }`,
         );
       } else {
         toast.success(`${result.created} lead(s) importado(s).`);
