@@ -9,6 +9,15 @@ import {
   phoneDigits,
 } from "@/lib/phone";
 
+/** Formato único de import/export (SupremoCRM simplificado). */
+export const LEAD_IO_COLUMNS = [
+  "Data Captura",
+  "Nome do Cliente",
+  "Telefone",
+  "E-mail",
+  "Origem",
+] as const;
+
 export type ParsedImportLead = {
   nome: string;
   telefone: string;
@@ -23,11 +32,20 @@ export type ParsedImportLead = {
   error?: string;
 };
 
-const HEADER_ALIASES: Record<string, keyof ParsedImportLead | "skip"> = {
+type CellMap = Partial<Record<string, unknown>>;
+
+const HEADER_ALIASES: Record<string, string> = {
+  // formato unificado / Supremo
+  "data captura": "data",
+  data: "data",
+  "hora captura": "hora",
+  hora: "hora",
+  "nome do cliente": "nome",
   nome: "nome",
   name: "nome",
   lead: "nome",
   cliente: "nome",
+  ddd: "ddd",
   telefone: "telefone",
   phone: "telefone",
   celular: "telefone",
@@ -38,14 +56,25 @@ const HEADER_ALIASES: Record<string, keyof ParsedImportLead | "skip"> = {
   mail: "email",
   origem: "origem",
   source: "origem",
-  interesse: "interesse",
+  // ignorados no mapeamento útil (não importamos)
+  "imovel seminovo de interesse": "skip",
+  "imóvel seminovo de interesse": "skip",
+  "empreendimento de interesse": "empreendimento",
+  empreendimento: "empreendimento",
+  "mensagem inicial da captura do lead": "skip",
+  mensagem: "skip",
+  // legado nosso
+  interesse: "skip",
   cidade: "cidade",
   city: "cidade",
   bairro: "bairro",
-  prioridade: "prioridade",
-  priority: "prioridade",
+  prioridade: "skip",
+  priority: "skip",
   renda: "renda",
   income: "renda",
+  etapa: "skip",
+  corretor: "skip",
+  atualizado: "skip",
 };
 
 function normalizeHeader(value: unknown): string {
@@ -66,29 +95,39 @@ function parseRenda(value: unknown): number | null {
   return Number(digits);
 }
 
-function parsePrioridade(value: unknown): "Alta" | "Média" | "Baixa" {
-  const raw = String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
-  if (raw.startsWith("alt") || raw === "high") return "Alta";
-  if (raw.startsWith("baix") || raw === "low") return "Baixa";
-  return "Média";
+/** Remove hora colada no nome (ex.: "13:56 Fernando" → "Fernando"). */
+function stripTimePrefix(nome: string): string {
+  return nome.replace(/^\d{1,2}:\d{2}\s+/, "").trim();
+}
+
+/** Junta DDD + telefone em um único número formatado. */
+function mergePhone(ddd: unknown, telefone: unknown): string {
+  const dddDigits = String(ddd ?? "").replace(/\D/g, "").slice(0, 2);
+  const phoneDigitsOnly = String(telefone ?? "").replace(/\D/g, "");
+  // Se o telefone já traz DDD (10–11 dígitos), usa direto
+  if (phoneDigitsOnly.length >= 10) {
+    return formatPhone(phoneDigitsOnly);
+  }
+  const combined = `${dddDigits}${phoneDigitsOnly}`;
+  return combined ? formatPhone(combined) : "";
 }
 
 function buildLeadFromCells(
-  cells: Partial<Record<string, unknown>>,
+  cells: CellMap,
   defaults: { origem: string },
 ): ParsedImportLead {
-  const nome = String(cells.nome ?? "").trim();
-  const telefoneRaw = String(cells.telefone ?? "").trim();
-  const telefone = telefoneRaw ? formatPhone(telefoneRaw) : "";
+  let nome = stripTimePrefix(String(cells.nome ?? "").trim());
+  const telefone = mergePhone(cells.ddd, cells.telefone);
   const email = String(cells.email ?? "").trim();
-  const origem = String(cells.origem ?? "").trim() || defaults.origem;
+  const empreendimento = String(cells.empreendimento ?? "").trim();
+  const origem =
+    String(cells.origem ?? "").trim() ||
+    (empreendimento && !empreendimento.startsWith("[")
+      ? empreendimento
+      : "") ||
+    defaults.origem;
   const cidade = String(cells.cidade ?? "").trim();
   const bairro = String(cells.bairro ?? "").trim();
-  const prioridade = parsePrioridade(cells.prioridade);
   const renda = parseRenda(cells.renda);
 
   const lead: ParsedImportLead = {
@@ -99,7 +138,7 @@ function buildLeadFromCells(
     interesse: "Comprar",
     cidade,
     bairro,
-    prioridade,
+    prioridade: "Média",
     renda,
   };
 
@@ -109,15 +148,22 @@ function buildLeadFromCells(
   return lead;
 }
 
+function mapHeaderKeys(headerRow: unknown[]): (string | null)[] {
+  return headerRow.map((h) => {
+    const key = HEADER_ALIASES[normalizeHeader(h)];
+    if (!key || key === "skip") return null;
+    return key;
+  });
+}
+
 function rowsFromMatrix(
   matrix: unknown[][],
   defaults: { origem: string },
 ): ParsedImportLead[] {
   if (matrix.length === 0) return [];
 
-  const headerRow = matrix[0].map(normalizeHeader);
-  const mapped = headerRow.map((h) => HEADER_ALIASES[h]);
-  const hasHeaders = mapped.some((m) => m && m !== "skip");
+  const mapped = mapHeaderKeys(matrix[0]);
+  const hasHeaders = mapped.some(Boolean);
 
   const start = hasHeaders ? 1 : 0;
   const results: ParsedImportLead[] = [];
@@ -126,30 +172,29 @@ function rowsFromMatrix(
     const row = matrix[i] ?? [];
     if (row.every((c) => String(c ?? "").trim() === "")) continue;
 
-    const cells: Partial<Record<string, unknown>> = {};
+    const cells: CellMap = {};
     if (hasHeaders) {
       mapped.forEach((key, idx) => {
-        if (!key || key === "skip") return;
+        if (!key) return;
         cells[key] = row[idx];
       });
     } else {
-      // Sem cabeçalho: nome | telefone | email | origem | cidade | bairro
-      cells.nome = row[0];
-      cells.telefone = row[1];
-      cells.email = row[2];
-      cells.origem = row[3];
-      cells.cidade = row[4];
-      cells.bairro = row[5];
-      cells.prioridade = row[6];
-      cells.renda = row[7];
+      // Formato unificado sem cabeçalho:
+      // Data | Nome | Telefone | E-mail | Origem
+      cells.data = row[0];
+      cells.nome = row[1];
+      cells.telefone = row[2];
+      cells.email = row[3];
+      cells.origem = row[4];
     }
 
-    // Se não achou telefone em coluna, tenta achar em qualquer célula
-    if (!cells.telefone) {
+    // Fallback: achar telefone em qualquer célula
+    if (!mergePhone(cells.ddd, cells.telefone) || !isValidPhone(mergePhone(cells.ddd, cells.telefone))) {
       for (const cell of row) {
         const formatted = formatPhone(String(cell ?? ""));
         if (isValidPhone(formatted)) {
           cells.telefone = formatted;
+          cells.ddd = "";
           break;
         }
       }
@@ -158,7 +203,17 @@ function rowsFromMatrix(
     results.push(buildLeadFromCells(cells, defaults));
   }
 
-  return results;
+  return dedupeByPhone(results);
+}
+
+function dedupeByPhone(rows: ParsedImportLead[]): ParsedImportLead[] {
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    const key = phoneDigits(r.telefone);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function parseLeadsFromExcel(
@@ -197,6 +252,70 @@ function parseHtmlTables(
   return all;
 }
 
+/**
+ * Parser do PDF SupremoCRM (e similares):
+ * Data | (Hora+)Nome | Telefone(com DDD) | E-mail? | tags...
+ */
+function parseSupremoPdfLines(
+  lines: string[],
+  defaults: { origem: string },
+): ParsedImportLead[] {
+  const results: ParsedImportLead[] = [];
+  const dateRe = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/;
+  const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+  const phoneRe = /\b\d{2}\s*\d{4,5}[-\s]?\d{4}\b/;
+
+  for (const line of lines) {
+    const parts = line
+      .split(/\s{2,}|\t|\|/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length < 2) continue;
+    if (normalizeHeader(parts[0]).includes("data captura")) continue;
+
+    let idx = 0;
+    if (dateRe.test(parts[0])) idx = 1;
+    if (idx >= parts.length) continue;
+
+    let nome = stripTimePrefix(parts[idx] ?? "");
+    idx += 1;
+
+    let telefone = "";
+    let email = "";
+    for (; idx < parts.length; idx++) {
+      const part = parts[idx];
+      if (!telefone && phoneRe.test(part)) {
+        telefone = formatPhone(part);
+        continue;
+      }
+      if (!email && emailRe.test(part)) {
+        email = part.match(emailRe)?.[0] ?? "";
+        continue;
+      }
+    }
+
+    if (!telefone) {
+      const m = line.match(phoneRe);
+      if (m) telefone = formatPhone(m[0]);
+    }
+    if (!email) {
+      const m = line.match(emailRe);
+      if (m) email = m[0];
+    }
+
+    if (nome.length < 2 || !isValidPhone(telefone)) continue;
+
+    results.push(
+      buildLeadFromCells(
+        { nome, telefone, email, origem: defaults.origem },
+        defaults,
+      ),
+    );
+  }
+
+  return dedupeByPhone(results);
+}
+
 function parseTextLines(
   text: string,
   defaults: { origem: string },
@@ -206,6 +325,10 @@ function parseTextLines(
     .map((l) => l.trim())
     .filter(Boolean);
 
+  const supremo = parseSupremoPdfLines(lines, defaults);
+  if (supremo.length > 0) return supremo;
+
+  // Fallback genérico: linhas com telefone
   const results: ParsedImportLead[] = [];
   const phoneRe = /(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}/g;
   const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
@@ -217,14 +340,15 @@ function parseTextLines(
     if (!isValidPhone(telefone)) continue;
 
     const emailMatch = line.match(emailRe);
-    let nome = line
-      .replace(phones[0], " ")
-      .replace(emailMatch?.[0] ?? "", " ")
-      .replace(/[|,;]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    // Remove restos numéricos soltos
+    let nome = stripTimePrefix(
+      line
+        .replace(phones[0], " ")
+        .replace(emailMatch?.[0] ?? "", " ")
+        .replace(/[|,;]+/g, " ")
+        .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    );
     nome = nome.replace(/\b\d{2,}\b/g, "").replace(/\s+/g, " ").trim();
     if (nome.length < 2) continue;
 
@@ -241,14 +365,7 @@ function parseTextLines(
     );
   }
 
-  // Dedup por telefone
-  const seen = new Set<string>();
-  return results.filter((r) => {
-    const key = phoneDigits(r.telefone);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return dedupeByPhone(results);
 }
 
 export async function parseLeadsFromWord(
@@ -274,16 +391,32 @@ export async function parseLeadsFromPdf(
   ).toString();
 
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
-  const chunks: string[] = [];
+  const lineBuckets: string[] = [];
+
   for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
     const page = await doc.getPage(pageNum);
     const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ");
-    chunks.push(pageText);
+    const byY = new Map<number, Array<{ x: number; str: string }>>();
+
+    for (const item of content.items) {
+      if (!("str" in item) || !item.str?.trim()) continue;
+      const y = Math.round(item.transform[5]);
+      const x = item.transform[4];
+      const list = byY.get(y) ?? [];
+      list.push({ x, str: item.str.trim() });
+      byY.set(y, list);
+    }
+
+    const sortedYs = [...byY.keys()].sort((a, b) => b - a);
+    for (const y of sortedYs) {
+      const parts = (byY.get(y) ?? [])
+        .sort((a, b) => a.x - b.x)
+        .map((p) => p.str);
+      lineBuckets.push(parts.join("  "));
+    }
   }
-  return parseTextLines(chunks.join("\n"), defaults);
+
+  return parseTextLines(lineBuckets.join("\n"), defaults);
 }
 
 export async function parseLeadsFromFile(
@@ -318,22 +451,18 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function exportLeadsToExcel(leads: Lead[], filename = "leads.xlsx") {
-  const rows = leads.map((l) => ({
-    Nome: l.nome,
+function toIoRows(leads: Lead[]) {
+  return leads.map((l) => ({
+    "Data Captura": l.updatedAt,
+    "Nome do Cliente": l.nome,
     Telefone: l.telefone,
-    Email: l.email,
+    "E-mail": l.email,
     Origem: l.origem,
-    Interesse: l.interesse,
-    Etapa: l.stage,
-    Corretor: l.corretor,
-    Cidade: l.cidade,
-    Bairro: l.bairro,
-    Renda: l.renda ?? "",
-    Prioridade: l.prioridade,
-    Atualizado: l.updatedAt,
   }));
-  const sheet = XLSX.utils.json_to_sheet(rows);
+}
+
+export function exportLeadsToExcel(leads: Lead[], filename = "leads.xlsx") {
+  const sheet = XLSX.utils.json_to_sheet(toIoRows(leads));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "Leads");
   const data = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
@@ -356,40 +485,20 @@ export function exportLeadsToPdf(
   doc.setFontSize(9);
   doc.setTextColor(100);
   doc.text(
-    `Exportado em ${new Date().toLocaleString("pt-BR")} · ${leads.length} lead(s)`,
+    `Exportado em ${new Date().toLocaleDateString("pt-BR")} · ${leads.length} lead(s)`,
     40,
     52,
   );
 
   autoTable(doc, {
     startY: 64,
-    head: [
-      [
-        "Nome",
-        "Telefone",
-        "Origem",
-        "Etapa",
-        "Corretor",
-        "Renda",
-        "Prioridade",
-        "Atualizado",
-      ],
-    ],
+    head: [Array.from(LEAD_IO_COLUMNS)],
     body: leads.map((l) => [
+      l.updatedAt,
       l.nome,
       l.telefone,
-      l.origem,
-      l.stage,
-      l.corretor,
-      l.renda != null
-        ? l.renda.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-            maximumFractionDigits: 0,
-          })
-        : "—",
-      l.prioridade,
-      l.updatedAt,
+      l.email || "—",
+      l.origem || "—",
     ]),
     styles: { fontSize: 8, cellPadding: 4 },
     headStyles: { fillColor: [7, 158, 212] },
@@ -400,25 +509,13 @@ export function exportLeadsToPdf(
 
 export function downloadImportTemplate() {
   const sheet = XLSX.utils.aoa_to_sheet([
+    Array.from(LEAD_IO_COLUMNS),
     [
-      "Nome",
-      "Telefone",
-      "Email",
-      "Origem",
-      "Cidade",
-      "Bairro",
-      "Prioridade",
-      "Renda",
-    ],
-    [
+      "02/08/2026",
       "Maria Silva",
       "(81) 98888-7777",
       "maria@email.com",
       "WhatsApp",
-      "Recife",
-      "Boa Viagem",
-      "Alta",
-      "8000",
     ],
   ]);
   const workbook = XLSX.utils.book_new();

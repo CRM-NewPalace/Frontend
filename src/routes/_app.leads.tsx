@@ -1111,8 +1111,8 @@ function LeadsPage() {
               {importFileName
                 ? `Arquivo: ${importFileName}. `
                 : ""}
-              Revise os leads detectados antes de cadastrar.
-              Excel funciona melhor; PDF/Word usam extração automática.
+              Formato: Data Captura, Nome do Cliente, Telefone (com DDD),
+              E-mail e Origem. Hora, imóvel e mensagem são ignorados.
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto flex-1 min-h-0 border rounded-md">
