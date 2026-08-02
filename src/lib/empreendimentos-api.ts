@@ -61,12 +61,32 @@ export async function syncEmpreendimentosFromSite(): Promise<SyncEmpreendimentos
   });
 }
 
+export type UpdateEmpreendimentoInput = {
+  nome?: string;
+  construtoraId?: string | null;
+  cidade?: string | null;
+  endereco?: string | null;
+  quartos?: number | null;
+  banheiros?: number | null;
+  areaM2?: number | null;
+  externalUrl?: string | null;
+  ativo?: boolean;
+};
+
 export async function updateEmpreendimento(
   id: string,
-  input: { construtoraId: string | null },
+  input: UpdateEmpreendimentoInput,
 ): Promise<Empreendimento> {
   return apiFetch<Empreendimento>(`/empreendimentos/${id}`, {
     method: "PATCH",
     body: input,
+  });
+}
+
+export async function deleteEmpreendimento(
+  id: string,
+): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>(`/empreendimentos/${id}`, {
+    method: "DELETE",
   });
 }

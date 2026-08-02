@@ -12,12 +12,18 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import {
   createEmpreendimento,
+  deleteEmpreendimento,
   fetchEmpreendimentos,
   syncEmpreendimentosFromSite,
+  updateEmpreendimento,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import {
@@ -26,7 +32,8 @@ import {
   type Construtora,
 } from "@/lib/construtoras-api";
 import {
-  Building2, ExternalLink, Loader2, RefreshCw, Bath, BedDouble, Ruler, Plus,
+  Building2, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Bath, BedDouble,
+  Ruler, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,12 +58,15 @@ function ImoveisPage() {
   const [construtoraId, setConstrutoraId] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [quickNome, setQuickNome] = useState("");
   const [quickConstrutoraId, setQuickConstrutoraId] = useState("");
   const [quickNovaConstrutora, setQuickNovaConstrutora] = useState(false);
   const [quickConstrutoraNome, setQuickConstrutoraNome] = useState("");
   const [quickCidade, setQuickCidade] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -100,13 +110,7 @@ function ImoveisPage() {
     }
   }
 
-  async function openQuickCreate() {
-    setQuickNome("");
-    setQuickConstrutoraId("");
-    setQuickNovaConstrutora(false);
-    setQuickConstrutoraNome("");
-    setQuickCidade("");
-    setQuickOpen(true);
+  async function loadConstrutoras() {
     try {
       setConstrutoras(await fetchConstrutoras());
     } catch (err) {
@@ -118,7 +122,30 @@ function ImoveisPage() {
     }
   }
 
-  async function handleQuickCreate() {
+  async function openQuickCreate() {
+    setEditingId(null);
+    setQuickNome("");
+    setQuickConstrutoraId("");
+    setQuickNovaConstrutora(false);
+    setQuickConstrutoraNome("");
+    setQuickCidade("");
+    setQuickOpen(true);
+    await loadConstrutoras();
+  }
+
+  async function openEdit(item: Empreendimento) {
+    if (!isAdmin) return;
+    setEditingId(item.id);
+    setQuickNome(item.nome);
+    setQuickConstrutoraId(item.construtoraId ?? "");
+    setQuickNovaConstrutora(false);
+    setQuickConstrutoraNome("");
+    setQuickCidade(item.cidade ?? "");
+    setQuickOpen(true);
+    await loadConstrutoras();
+  }
+
+  async function handleQuickSave() {
     if (quickNome.trim().length < 2) {
       toast.error("Informe o nome do empreendimento.");
       return;
@@ -149,26 +176,57 @@ function ImoveisPage() {
         );
       }
 
-      await createEmpreendimento({
-        nome: quickNome.trim(),
-        construtoraId,
-        cidade: quickCidade.trim() || undefined,
-      });
+      if (editingId) {
+        await updateEmpreendimento(editingId, {
+          nome: quickNome.trim(),
+          construtoraId,
+          cidade: quickCidade.trim() || null,
+        });
+        toast.success("Empreendimento atualizado.");
+      } else {
+        await createEmpreendimento({
+          nome: quickNome.trim(),
+          construtoraId,
+          cidade: quickCidade.trim() || undefined,
+        });
+        toast.success(
+          quickNovaConstrutora
+            ? "Construtora e empreendimento cadastrados."
+            : "Empreendimento cadastrado.",
+        );
+      }
       setQuickOpen(false);
+      setEditingId(null);
       await loadItems();
-      toast.success(
-        quickNovaConstrutora
-          ? "Construtora e empreendimento cadastrados."
-          : "Empreendimento cadastrado.",
-      );
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Não foi possível cadastrar.",
+          : editingId
+            ? "Não foi possível atualizar."
+            : "Não foi possível cadastrar.",
       );
     } finally {
       setQuickSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteId || !isAdmin) return;
+    setDeleting(true);
+    try {
+      await deleteEmpreendimento(deleteId);
+      setDeleteId(null);
+      await loadItems();
+      toast.success("Empreendimento excluído.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível excluir.",
+      );
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -440,6 +498,30 @@ function ImoveisPage() {
                   <CardTitle className="text-base leading-snug">
                     {item.nome}
                   </CardTitle>
+                  {isAdmin && (
+                    <div className="flex shrink-0 gap-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Editar"
+                        onClick={() => void openEdit(item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Excluir"
+                        onClick={() => setDeleteId(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 {item.construtora && (
                   <p className="text-xs text-muted-foreground">
@@ -490,12 +572,22 @@ function ImoveisPage() {
         </div>
       )}
 
-      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+      <Dialog
+        open={quickOpen}
+        onOpenChange={(open) => {
+          setQuickOpen(open);
+          if (!open) setEditingId(null);
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Novo empreendimento</DialogTitle>
+            <DialogTitle>
+              {editingId ? "Editar empreendimento" : "Novo empreendimento"}
+            </DialogTitle>
             <DialogDescription>
-              Cadastre rapidamente um imóvel e vincule-o à construtora.
+              {editingId
+                ? "Atualize os dados do imóvel e o vínculo com a construtora."
+                : "Cadastre rapidamente um imóvel e vincule-o à construtora."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-1">
@@ -574,16 +666,46 @@ function ImoveisPage() {
             <Button
               type="button"
               disabled={quickSaving}
-              onClick={() => void handleQuickCreate()}
+              onClick={() => void handleQuickSave()}
             >
               {quickSaving && (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               )}
-              Cadastrar
+              {editingId ? "Salvar" : "Cadastrar"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir empreendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Leads e documentações vinculadas
+              ficarão sem empreendimento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
