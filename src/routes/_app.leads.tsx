@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,18 +14,30 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Plus, Search, Filter, Download, MoreHorizontal, Phone, MessageSquare, Mail,
-  UserPlus, MapPin, Wallet, Sparkles, Eye, Pencil, Trash2, X,
+  UserPlus, MapPin, Wallet, Sparkles, Eye, Pencil, Trash2, X, Upload, FileSpreadsheet,
+  FileText, Loader2,
 } from "lucide-react";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import { importLeads } from "@/lib/leads-api";
+import {
+  downloadImportTemplate,
+  exportLeadsToExcel,
+  exportLeadsToPdf,
+  parseLeadsFromFile,
+  type ParsedImportLead,
+} from "@/lib/leads-io";
 import {
   formatPhone,
   isValidPhone,
@@ -38,6 +50,7 @@ import { cn } from "@/lib/utils";
 import {
   FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
 } from "@/components/form-dialog";
+import { ApiError } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/leads")({
   head: () => ({ meta: [{ title: "Leads — Zone Connection" }] }),
@@ -105,6 +118,7 @@ function LeadsPage() {
     loading,
     resolveCorretorId,
     assignees,
+    refresh,
   } = useLeads();
   const { funnelStages, origens: origemOptions, motivos: motivoOptions, colorByLabel } = useCatalog();
   // Backend atribui a etapa inicial (Novo lead) quando stage é omitido.
@@ -112,6 +126,13 @@ function LeadsPage() {
     funnelStages.find((s) => s.id === "novo")?.name ??
     funnelStages[0]?.name ??
     "Novo lead";
+
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ParsedImportLead[]>([]);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importSaving, setImportSaving] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
 
   const leads = useMemo(
     () => {
@@ -336,6 +357,73 @@ function LeadsPage() {
     }
   }
 
+  async function handleImportFile(file: File) {
+    setImportParsing(true);
+    setImportFileName(file.name);
+    try {
+      const rows = await parseLeadsFromFile(file, {
+        origem: origemOptions[0] ?? "Importação",
+      });
+      if (rows.length === 0) {
+        toast.error("Nenhum lead encontrado no arquivo.");
+        return;
+      }
+      setImportRows(rows);
+      setImportOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível ler o arquivo.",
+      );
+    } finally {
+      setImportParsing(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
+  async function confirmImport() {
+    const valid = importRows.filter((r) => !r.error);
+    if (valid.length === 0) {
+      toast.error("Nenhum lead válido para importar.");
+      return;
+    }
+    setImportSaving(true);
+    try {
+      const result = await importLeads(
+        valid.map((r) => ({
+          nome: r.nome,
+          telefone: r.telefone,
+          email: r.email || undefined,
+          origem: r.origem || origemOptions[0] || "Importação",
+          interesse: r.interesse,
+          cidade: r.cidade || undefined,
+          bairro: r.bairro || undefined,
+          prioridade: r.prioridade,
+          renda: r.renda,
+        })),
+      );
+      setImportOpen(false);
+      setImportRows([]);
+      await refresh({ silent: true });
+      if (result.failed > 0) {
+        toast.message(
+          `${result.created} importado(s), ${result.failed} com erro.`,
+        );
+      } else {
+        toast.success(`${result.created} lead(s) importado(s).`);
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível importar os leads.",
+      );
+    } finally {
+      setImportSaving(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -351,9 +439,77 @@ function LeadsPage() {
         }
         actions={
           <>
-            {!isCorretor && (
-              <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" />Exportar</Button>
-            )}
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleImportFile(file);
+              }}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={importParsing}>
+                  {importParsing ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-1" />
+                  )}
+                  Importar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Escolher arquivo (Excel, PDF, Word)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => downloadImportTemplate()}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Baixar modelo Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={filteredLeads.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    exportLeadsToExcel(
+                      filteredLeads,
+                      `leads-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                    )
+                  }
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    exportLeadsToPdf(
+                      filteredLeads,
+                      `leads-${new Date().toISOString().slice(0, 10)}.pdf`,
+                    )
+                  }
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button size="sm" onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />Novo lead
             </Button>
@@ -945,6 +1101,90 @@ function LeadsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Confirmar importação</DialogTitle>
+            <DialogDescription>
+              {importFileName
+                ? `Arquivo: ${importFileName}. `
+                : ""}
+              Revise os leads detectados antes de cadastrar.
+              Excel funciona melhor; PDF/Word usam extração automática.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto flex-1 min-h-0 border rounded-md">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+                <tr className="text-left text-muted-foreground border-b">
+                  <th className="p-2 font-medium">Nome</th>
+                  <th className="p-2 font-medium">Telefone</th>
+                  <th className="p-2 font-medium">E-mail</th>
+                  <th className="p-2 font-medium">Origem</th>
+                  <th className="p-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importRows.map((row, index) => (
+                  <tr
+                    key={`${row.telefone}-${index}`}
+                    className={cn(
+                      "border-b last:border-0",
+                      row.error && "bg-destructive/5",
+                    )}
+                  >
+                    <td className="p-2">{row.nome || "—"}</td>
+                    <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
+                    <td className="p-2 text-muted-foreground">
+                      {row.email || "—"}
+                    </td>
+                    <td className="p-2">{row.origem || "—"}</td>
+                    <td className="p-2">
+                      {row.error ? (
+                        <span className="text-xs text-destructive">
+                          {row.error}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                          OK
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {importRows.filter((r) => !r.error).length} válido(s) ·{" "}
+            {importRows.filter((r) => r.error).length} inválido(s) (serão
+            ignorados)
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={importSaving}
+              onClick={() => setImportOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                importSaving || importRows.every((r) => Boolean(r.error))
+              }
+              onClick={() => void confirmImport()}
+            >
+              {importSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Importar válidos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -130,6 +130,37 @@ export async function createLead(input: CreateLeadInput): Promise<ApiLead> {
   return apiFetch<ApiLead>("/leads", { method: "POST", body: input });
 }
 
+export type ImportLeadInput = {
+  nome: string;
+  telefone: string;
+  email?: string | null;
+  origem?: string;
+  interesse?: Lead["interesse"];
+  cidade?: string;
+  bairro?: string;
+  prioridade?: Lead["prioridade"];
+  renda?: number | null;
+  corretorId?: string;
+};
+
+export type ImportLeadsResult = {
+  ok: boolean;
+  total: number;
+  created: number;
+  failed: number;
+  leads: ApiLead[];
+  errors: Array<{ index: number; nome: string; message: string }>;
+};
+
+export async function importLeads(
+  leads: ImportLeadInput[],
+): Promise<ImportLeadsResult> {
+  return apiFetch<ImportLeadsResult>("/leads/import", {
+    method: "POST",
+    body: { leads },
+  });
+}
+
 export async function updateLeadApi(
   id: string,
   input: UpdateLeadInput,
