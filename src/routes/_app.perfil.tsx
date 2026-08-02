@@ -39,7 +39,12 @@ function Perfil() {
     setDarkMode(getTheme() === "dark");
   }, []);
 
-  const initials = user?.name.split(" ").map((n) => n[0]).slice(0, 2).join("") ?? "U";
+  const initials =
+    user?.name
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("") ?? "U";
 
   async function handleChangePassword() {
     if (!currentPassword || !newPassword) {
@@ -54,7 +59,9 @@ function Perfil() {
       toast.success("Senha alterada com sucesso");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Não foi possível alterar a senha",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível alterar a senha",
       );
     } finally {
       setSavingPassword(false);
@@ -70,25 +77,40 @@ function Perfil() {
 
   return (
     <div>
-      <PageHeader title="Perfil" description="Gerencie suas informações e preferências." />
+      <PageHeader
+        title="Perfil"
+        description="Gerencie suas informações e preferências."
+      />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6 text-center">
             <Avatar className="w-24 h-24 mx-auto mb-3">
-              <AvatarFallback className="bg-primary text-primary-foreground text-2xl">{initials}</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                {initials}
+              </AvatarFallback>
             </Avatar>
             <div className="font-semibold">{user?.name}</div>
             <div className="text-xs text-muted-foreground">
-              {user ? ROLE_LABEL[user.role] ?? user.role : ""}
+              {user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
             </div>
-            <Button variant="outline" size="sm" className="mt-4">Alterar foto</Button>
+            <Button variant="outline" size="sm" className="mt-4">
+              Alterar foto
+            </Button>
           </CardContent>
         </Card>
         <Card className="lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">Dados pessoais</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Dados pessoais</CardTitle>
+          </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5"><Label>Nome</Label><Input defaultValue={user?.name} /></div>
-            <div className="space-y-1.5"><Label>Email</Label><Input defaultValue={user?.email} /></div>
+            <div className="space-y-1.5">
+              <Label>Nome</Label>
+              <Input defaultValue={user?.name} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input defaultValue={user?.email} />
+            </div>
             <div className="space-y-1.5">
               <Label>Telefone</Label>
               <Input defaultValue={user?.phone ?? ""} />
@@ -132,9 +154,15 @@ function Perfil() {
                       size="icon"
                       className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground"
                       onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      aria-label={
+                        showPassword ? "Ocultar senha" : "Mostrar senha"
+                      }
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -143,7 +171,10 @@ function Perfil() {
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button onClick={handleChangePassword} disabled={savingPassword}>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={savingPassword}
+                >
                   {savingPassword ? "Salvando..." : "Alterar senha"}
                 </Button>
               </div>
@@ -151,7 +182,9 @@ function Perfil() {
           </CardContent>
         </Card>
         <Card className="lg:col-span-3">
-          <CardHeader><CardTitle className="text-base">Preferências</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Preferências</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between py-2 border-b">
               <div>

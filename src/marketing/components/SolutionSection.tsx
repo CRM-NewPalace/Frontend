@@ -145,7 +145,7 @@ function PlatformHub({ reducedMotion }: { reducedMotion: boolean }) {
 function SolutionFlow({ reducedMotion }: { reducedMotion: boolean }) {
   return (
     <div className="flex items-center justify-center gap-2 sm:gap-5 lg:gap-8 xl:gap-12">
-      <div className="flex h-[220px] shrink-0 flex-col justify-between sm:h-[280px] lg:h-[320px]">
+      <div className="flex h-55 shrink-0 flex-col justify-between sm:h-70 lg:h-80">
         {MODULES.map((module, index) => (
           <motion.span
             key={module}
@@ -158,9 +158,9 @@ function SolutionFlow({ reducedMotion }: { reducedMotion: boolean }) {
             }}
             className={cn(
               "rounded-lg bg-surface-muted text-center font-medium text-brand-dark",
-              "min-w-[4.5rem] px-1.5 py-1 text-[10px] leading-tight",
-              "sm:min-w-[7rem] sm:rounded-xl sm:px-4 sm:py-1.5 sm:text-xs",
-              "lg:min-w-[9.5rem] lg:px-5 lg:py-2 lg:text-sm xl:min-w-40 xl:text-base",
+              "min-w-18 px-1.5 py-1 text-[10px] leading-tight",
+              "sm:min-w-28 sm:rounded-xl sm:px-4 sm:py-1.5 sm:text-xs",
+              "lg:min-w-38 lg:px-5 lg:py-2 lg:text-sm xl:min-w-40 xl:text-base",
             )}
           >
             {module}

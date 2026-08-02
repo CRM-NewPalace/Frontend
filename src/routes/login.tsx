@@ -108,7 +108,7 @@ function LoginBrandLogo({
         <span
           className={cn(
             "font-semibold leading-none",
-            tone === "light" ? "text-white" : "text-[#053647]",
+            tone === "light" ? "text-white" : "text-brand-dark",
             isLarge ? "text-3xl" : "text-xl",
           )}
         >
@@ -154,14 +154,14 @@ function LoginAuthField({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor={id} className="text-sm font-medium text-[#053647]">
+        <label htmlFor={id} className="text-sm font-medium text-brand-dark">
           {label}
         </label>
         {labelExtra}
       </div>
       <div className="relative">
         <Icon
-          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748b]"
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
           aria-hidden
         />
         <input
@@ -173,16 +173,16 @@ function LoginAuthField({
           required={required}
           autoComplete={isPassword ? "current-password" : "email"}
           className={cn(
-            "h-11 w-full rounded-xl border border-border bg-white pl-10 text-sm text-[#053647] outline-none transition-colors",
+            "h-11 w-full rounded-xl border border-border bg-white pl-10 text-sm text-brand-dark outline-none transition-colors",
             isPassword ? "pr-10" : "pr-3",
-            "placeholder:text-[#64748b]/70 focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20",
+            "placeholder:text-text-muted/70 focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20",
           )}
         />
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword((visible) => !visible)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[#64748b] transition-colors hover:text-[#053647]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-text-muted transition-colors hover:text-brand-dark"
             aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
           >
             {showPassword ? (
@@ -222,7 +222,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row bg-[#f8fafc]">
+    <div className="flex min-h-screen flex-col lg:flex-row bg-surface-muted">
       <aside
         className="relative hidden overflow-hidden px-6 py-8 text-white sm:px-10 lg:flex lg:w-[45%] lg:flex-col lg:px-12 lg:py-10 xl:w-[42%] animate-[login-slide-in_0.6s_ease-out]"
         style={{
@@ -295,7 +295,7 @@ function LoginPage() {
         </div>
       </aside>
 
-      <main className="flex min-h-screen flex-1 items-center justify-center bg-[#f8fafc] px-6 py-8 sm:px-10 lg:min-h-0 lg:py-16">
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-surface-muted px-6 py-8 sm:px-10 lg:min-h-0 lg:py-16">
         <div className="flex w-full max-w-md flex-col items-center gap-5 lg:gap-0 animate-[login-fade_0.55s_ease-out_0.15s_both]">
           <Link
             to="/"
@@ -311,10 +311,10 @@ function LoginPage() {
               <span className="text-xs font-semibold uppercase tracking-widest text-brand-accent">
                 Acesso
               </span>
-              <h2 className="text-2xl font-semibold text-[#053647] sm:text-3xl">
+              <h2 className="text-2xl font-semibold text-brand-dark sm:text-3xl">
                 Entrar na plataforma
               </h2>
-              <p className="text-sm leading-relaxed text-[#64748b] sm:text-base">
+              <p className="text-sm leading-relaxed text-text-muted sm:text-base">
                 Use suas credenciais para continuar na Zone Connection.
               </p>
             </div>
@@ -343,7 +343,7 @@ function LoginPage() {
                 labelExtra={
                   <button
                     type="button"
-                    className="text-xs font-medium text-brand-accent transition-colors hover:text-[#053647]"
+                    className="text-xs font-medium text-brand-accent transition-colors hover:text-brand-dark"
                   >
                     Esqueci minha senha
                   </button>
@@ -354,7 +354,7 @@ function LoginPage() {
                 <Checkbox id="remember" defaultChecked />
                 <Label
                   htmlFor="remember"
-                  className="text-sm font-normal cursor-pointer text-[#64748b]"
+                  className="text-sm font-normal cursor-pointer text-text-muted"
                 >
                   Lembrar acesso neste dispositivo
                 </Label>
@@ -364,8 +364,8 @@ function LoginPage() {
                 type="submit"
                 disabled={loading}
                 className={cn(
-                  "w-full cursor-pointer rounded-full bg-[#053647] px-4 py-3 text-sm font-semibold text-white transition-all",
-                  "hover:bg-[#053647]/90 hover:-translate-y-0.5 hover:shadow-md",
+                  "w-full cursor-pointer rounded-full bg-brand-dark px-4 py-3 text-sm font-semibold text-white transition-all",
+                  "hover:bg-brand-dark/90 hover:-translate-y-0.5 hover:shadow-md",
                   "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none",
                 )}
               >
@@ -381,7 +381,7 @@ function LoginPage() {
 
               {SHOW_DEMO_ACCOUNTS && (
                 <div className="space-y-3 pt-1">
-                  <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-[#64748b]">
+                  <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-text-muted">
                     <div className="h-px flex-1 bg-border" />
                     Contas demo
                     <div className="h-px flex-1 bg-border" />
@@ -396,21 +396,21 @@ function LoginPage() {
                           setPassword(d.password);
                         }}
                         className={cn(
-                          "group w-full rounded-2xl border bg-[#f8fafc] px-3.5 py-3 text-left transition-all",
+                          "group w-full rounded-2xl border bg-surface-muted px-3.5 py-3 text-left transition-all",
                           "hover:border-brand-accent/40 hover:bg-accent hover:shadow-sm",
                           email === d.email &&
                             "border-brand-accent/50 bg-accent ring-1 ring-brand-accent/20",
                         )}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-[#053647]">
+                          <span className="text-sm font-medium text-brand-dark">
                             {d.role}
                           </span>
-                          <span className="text-[11px] text-[#64748b] group-hover:text-brand-accent transition-colors">
+                          <span className="text-[11px] text-text-muted group-hover:text-brand-accent transition-colors">
                             usar →
                           </span>
                         </div>
-                        <div className="mt-0.5 text-xs text-[#64748b]">
+                        <div className="mt-0.5 text-xs text-text-muted">
                           {d.hint} · {d.email}
                         </div>
                       </button>
@@ -420,11 +420,11 @@ function LoginPage() {
               )}
             </form>
 
-            <p className="mt-6 text-center text-sm text-[#64748b]">
+            <p className="mt-6 text-center text-sm text-text-muted">
               Ainda não tem conta?{" "}
               <a
                 href="#contato"
-                className="font-medium text-brand-accent transition-colors hover:text-[#053647]"
+                className="font-medium text-brand-accent transition-colors hover:text-brand-dark"
               >
                 Fale conosco
               </a>

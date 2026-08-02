@@ -7,14 +7,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
@@ -32,8 +47,16 @@ import {
   type Construtora,
 } from "@/lib/construtoras-api";
 import {
-  Building2, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Bath, BedDouble,
-  Ruler, Trash2,
+  Building2,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Bath,
+  BedDouble,
+  Ruler,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -221,9 +244,7 @@ function ImoveisPage() {
       toast.success("Empreendimento excluído.");
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível excluir.",
+        err instanceof ApiError ? err.message : "Não foi possível excluir.",
       );
     } finally {
       setDeleting(false);
@@ -238,8 +259,7 @@ function ImoveisPage() {
             .map((item) => item.cidade)
             .filter((cidade): cidade is string => Boolean(cidade)),
         ),
-      ]
-        .sort((a, b) => a.localeCompare(b, "pt-BR")) as string[],
+      ].sort((a, b) => a.localeCompare(b, "pt-BR")) as string[],
     [items],
   );
   const opcoesQuartos = useMemo(
@@ -264,8 +284,9 @@ function ImoveisPage() {
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [items],
   );
-  const hasActiveFilters =
-    Boolean(localidade || quartos || construtoraId || somenteLitoral);
+  const hasActiveFilters = Boolean(
+    localidade || quartos || construtoraId || somenteLitoral,
+  );
 
   function clearFilters() {
     setSearch("");
@@ -296,14 +317,7 @@ function ImoveisPage() {
         (!somenteLitoral || isLitoral)
       );
     });
-  }, [
-    items,
-    search,
-    localidade,
-    quartos,
-    construtoraId,
-    somenteLitoral,
-  ]);
+  }, [items, search, localidade, quartos, construtoraId, somenteLitoral]);
 
   return (
     <div>
@@ -373,7 +387,9 @@ function ImoveisPage() {
           <Label className="mb-1.5 block text-xs">Quartos</Label>
           <Select
             value={quartos || "__all__"}
-            onValueChange={(value) => setQuartos(value === "__all__" ? "" : value)}
+            onValueChange={(value) =>
+              setQuartos(value === "__all__" ? "" : value)
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="Todos" />
@@ -470,7 +486,10 @@ function ImoveisPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((item) => (
-            <Card key={item.id} className="group overflow-hidden transition-shadow hover:shadow-lg">
+            <Card
+              key={item.id}
+              className="group overflow-hidden transition-shadow hover:shadow-lg"
+            >
               <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary/25 via-primary/10 to-muted">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Building2 className="h-10 w-10 text-primary/35" />
@@ -668,9 +687,7 @@ function ImoveisPage() {
               disabled={quickSaving}
               onClick={() => void handleQuickSave()}
             >
-              {quickSaving && (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              )}
+              {quickSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               {editingId ? "Salvar" : "Cadastrar"}
             </Button>
           </DialogFooter>

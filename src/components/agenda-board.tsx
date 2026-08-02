@@ -37,12 +37,16 @@ export function endOfMonth(d: Date) {
 export function startOfWeek(d: Date) {
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
-  return startOfDay(new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff));
+  return startOfDay(
+    new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff),
+  );
 }
 
 export function endOfWeek(d: Date) {
   const start = startOfWeek(d);
-  return endOfDay(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6));
+  return endOfDay(
+    new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6),
+  );
 }
 
 export function sameDay(a: Date, b: Date) {
@@ -91,16 +95,22 @@ export function formatRangeLabel(view: AgendaViewMode, anchor: Date) {
     const to = addDays(from, 6);
     const sameMonth = from.getMonth() === to.getMonth();
     if (sameMonth) {
-      return `${from.getDate()} – ${to.getDate()} de ${to.toLocaleDateString("pt-BR", {
-        month: "long",
-        year: "numeric",
-      })}`;
+      return `${from.getDate()} – ${to.getDate()} de ${to.toLocaleDateString(
+        "pt-BR",
+        {
+          month: "long",
+          year: "numeric",
+        },
+      )}`;
     }
-    return `${from.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${to.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })}`;
+    return `${from.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${to.toLocaleDateString(
+      "pt-BR",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      },
+    )}`;
   }
   return anchor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
@@ -324,8 +334,14 @@ function TimeGridBoard({
                 let endMin = minutesFromGridStart(end);
                 if (endMin <= topMin) endMin = topMin + DEFAULT_DURATION_MIN;
                 // Clamp to visible grid
-                topMin = Math.max(0, Math.min(topMin, (HOUR_END - HOUR_START + 1) * 60 - 15));
-                endMin = Math.max(topMin + 20, Math.min(endMin, (HOUR_END - HOUR_START + 1) * 60));
+                topMin = Math.max(
+                  0,
+                  Math.min(topMin, (HOUR_END - HOUR_START + 1) * 60 - 15),
+                );
+                endMin = Math.max(
+                  topMin + 20,
+                  Math.min(endMin, (HOUR_END - HOUR_START + 1) * 60),
+                );
 
                 const top = (topMin / 60) * PX_PER_HOUR;
                 const height = ((endMin - topMin) / 60) * PX_PER_HOUR;
@@ -449,7 +465,8 @@ function MonthBoard({
                   onClick={() => onSelectDay(day)}
                   className={cn(
                     "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-muted",
-                    isToday && "bg-primary text-primary-foreground hover:bg-primary",
+                    isToday &&
+                      "bg-primary text-primary-foreground hover:bg-primary",
                   )}
                 >
                   {day.getDate()}

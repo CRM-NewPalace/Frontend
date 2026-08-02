@@ -182,7 +182,8 @@ function initials(name: string) {
 function roleBadgeClass(role: Role) {
   if (role === "admin") return "bg-primary/15 text-primary border-primary/30";
   if (role === "gerente") return "bg-info/15 text-info border-info/30";
-  if (role === "analista") return "bg-sky-500/15 text-sky-700 border-sky-500/30";
+  if (role === "analista")
+    return "bg-sky-500/15 text-sky-700 border-sky-500/30";
   return "bg-muted text-muted-foreground";
 }
 

@@ -3,11 +3,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import mammoth from "mammoth";
 import type { Lead } from "@/lib/crm-types";
-import {
-  formatPhone,
-  isValidPhone,
-  phoneDigits,
-} from "@/lib/phone";
+import { formatPhone, isValidPhone, phoneDigits } from "@/lib/phone";
 
 /** Formato único de import/export (SupremoCRM simplificado). */
 export const LEAD_IO_COLUMNS = [
@@ -101,7 +97,9 @@ function stripTimePrefix(nome: string): string {
 
 /** Junta DDD + telefone em um único número formatado. */
 function mergePhone(ddd: unknown, telefone: unknown): string {
-  const dddDigits = String(ddd ?? "").replace(/\D/g, "").slice(0, 2);
+  const dddDigits = String(ddd ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 2);
   const phoneDigitsOnly = String(telefone ?? "").replace(/\D/g, "");
   // Se o telefone já traz DDD (10–11 dígitos), usa direto
   if (phoneDigitsOnly.length >= 10) {
@@ -115,15 +113,13 @@ function buildLeadFromCells(
   cells: CellMap,
   defaults: { origem: string },
 ): ParsedImportLead {
-  let nome = stripTimePrefix(String(cells.nome ?? "").trim());
+  const nome = stripTimePrefix(String(cells.nome ?? "").trim());
   const telefone = mergePhone(cells.ddd, cells.telefone);
   const email = String(cells.email ?? "").trim();
   const empreendimento = String(cells.empreendimento ?? "").trim();
   const origem =
     String(cells.origem ?? "").trim() ||
-    (empreendimento && !empreendimento.startsWith("[")
-      ? empreendimento
-      : "") ||
+    (empreendimento && !empreendimento.startsWith("[") ? empreendimento : "") ||
     defaults.origem;
   const cidade = String(cells.cidade ?? "").trim();
   const bairro = String(cells.bairro ?? "").trim();
@@ -187,7 +183,10 @@ function rowsFromMatrix(
     }
 
     // Fallback: achar telefone em qualquer célula
-    if (!mergePhone(cells.ddd, cells.telefone) || !isValidPhone(mergePhone(cells.ddd, cells.telefone))) {
+    if (
+      !mergePhone(cells.ddd, cells.telefone) ||
+      !isValidPhone(mergePhone(cells.ddd, cells.telefone))
+    ) {
       for (const cell of row) {
         const formatted = formatPhone(String(cell ?? ""));
         if (isValidPhone(formatted)) {
@@ -275,7 +274,7 @@ function parseSupremoPdfLines(
     if (dateRe.test(parts[0])) idx = 1;
     if (idx >= parts.length) continue;
 
-    let nome = stripTimePrefix(parts[idx] ?? "");
+    const nome = stripTimePrefix(parts[idx] ?? "");
     idx += 1;
 
     let telefone = "";
@@ -347,7 +346,10 @@ function parseTextLines(
         .replace(/\s+/g, " ")
         .trim(),
     );
-    nome = nome.replace(/\b\d{2,}\b/g, "").replace(/\s+/g, " ").trim();
+    nome = nome
+      .replace(/\b\d{2,}\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (nome.length < 2) continue;
 
     results.push(
@@ -423,7 +425,11 @@ export async function parseLeadsFromFile(
 ): Promise<ParsedImportLead[]> {
   const buffer = await file.arrayBuffer();
   const name = file.name.toLowerCase();
-  if (name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv")) {
+  if (
+    name.endsWith(".xlsx") ||
+    name.endsWith(".xls") ||
+    name.endsWith(".csv")
+  ) {
     return parseLeadsFromExcel(buffer, defaults);
   }
   if (name.endsWith(".docx") || name.endsWith(".doc")) {
@@ -522,12 +528,7 @@ export function exportLeadsToPdf(
   autoTable(doc, {
     startY: 64,
     head: [Array.from(LEAD_IO_COLUMNS)],
-    body: leads.map((l) => [
-      l.updatedAt,
-      l.nome,
-      l.telefone,
-      l.origem || "—",
-    ]),
+    body: leads.map((l) => [l.updatedAt, l.nome, l.telefone, l.origem || "—"]),
     styles: { fontSize: 8, cellPadding: 4 },
     headStyles: { fillColor: [7, 158, 212] },
   });
@@ -538,12 +539,7 @@ export function exportLeadsToPdf(
 export function downloadImportTemplate() {
   const workbook = XLSX.utils.book_new();
   const sheet = buildLeadsSheet([
-    [
-      "02/08/2026",
-      "Maria Silva",
-      "(81) 98888-7777",
-      "WhatsApp",
-    ],
+    ["02/08/2026", "Maria Silva", "(81) 98888-7777", "WhatsApp"],
   ]);
   XLSX.utils.book_append_sheet(workbook, sheet, "Modelo");
   const data = XLSX.write(workbook, {

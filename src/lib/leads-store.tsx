@@ -77,8 +77,7 @@ function buildOptimisticLead(
   const assignee =
     (input.corretorId
       ? assignees.find((a) => a.id === input.corretorId)
-      : null) ??
-    (session ? assignees.find((a) => a.id === session.id) : null);
+      : null) ?? (session ? assignees.find((a) => a.id === session.id) : null);
 
   return {
     id: `temp-${crypto.randomUUID()}`,
@@ -198,9 +197,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
                   ...(body.corretorId !== undefined
                     ? { corretorId: body.corretorId, corretor: assigneeName }
                     : {}),
-                  ...(corretor && !body.corretorId
-                    ? { corretor }
-                    : {}),
+                  ...(corretor && !body.corretorId ? { corretor } : {}),
                   updatedAt: todayLabel(),
                 }
               : l,
@@ -315,7 +312,9 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <LeadsContext.Provider value={value}>{children}</LeadsContext.Provider>;
+  return (
+    <LeadsContext.Provider value={value}>{children}</LeadsContext.Provider>
+  );
 }
 
 export function useLeads() {

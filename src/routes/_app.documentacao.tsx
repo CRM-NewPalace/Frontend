@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,17 +14,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
 } from "@/components/form-dialog";
 import { brl, type Lead } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
@@ -57,7 +81,13 @@ import {
 } from "@/lib/empreendimentos-api";
 import { fetchEquipeGerentes, type EquipeOptionUser } from "@/lib/equipes-api";
 import {
-  FolderOpen, Plus, Loader2, Trash2, Pencil, Eye, Building,
+  FolderOpen,
+  Plus,
+  Loader2,
+  Trash2,
+  Pencil,
+  Eye,
+  Building,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -120,7 +150,9 @@ function DocumentacaoPage() {
   const [filterCorretorId, setFilterCorretorId] = useState<string>("__all__");
 
   const [open, setOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
+    "create",
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -151,17 +183,24 @@ function DocumentacaoPage() {
     const options =
       gerentes.length > 0
         ? gerentes
-        : assignees.filter(
-            (a) => a.role === "gerente" || a.role === "admin",
-          ).map((a) => ({
-            id: a.id,
-            name: a.name,
-            email: "",
-            status: "ativo" as const,
-          }));
+        : assignees
+            .filter((a) => a.role === "gerente" || a.role === "admin")
+            .map((a) => ({
+              id: a.id,
+              name: a.name,
+              email: "",
+              status: "ativo" as const,
+            }));
     const managerFromDocs = items.flatMap((doc) =>
       doc.gerente
-        ? [{ id: doc.gerente.id, name: doc.gerente.name, email: "", status: "ativo" as const }]
+        ? [
+            {
+              id: doc.gerente.id,
+              name: doc.gerente.name,
+              email: "",
+              status: "ativo" as const,
+            },
+          ]
         : [],
     );
     return [...options, ...managerFromDocs].filter(
@@ -643,10 +682,7 @@ function DocumentacaoPage() {
                   <Select
                     value={form.construtoraId || "__none__"}
                     onValueChange={(v) => {
-                      setField(
-                        "construtoraId",
-                        v === "__none__" ? "" : v,
-                      );
+                      setField("construtoraId", v === "__none__" ? "" : v);
                       setField("empreendimentoId", "");
                     }}
                     disabled={readOnly}
@@ -670,10 +706,7 @@ function DocumentacaoPage() {
                   <Select
                     value={form.empreendimentoId || "__none__"}
                     onValueChange={(v) =>
-                      setField(
-                        "empreendimentoId",
-                        v === "__none__" ? "" : v,
-                      )
+                      setField("empreendimentoId", v === "__none__" ? "" : v)
                     }
                     disabled={readOnly}
                   >
@@ -705,13 +738,13 @@ function DocumentacaoPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(
-                        Object.keys(FONTE_LABELS) as DocumentacaoFonte[]
-                      ).map((k) => (
-                        <SelectItem key={k} value={k}>
-                          {FONTE_LABELS[k]}
-                        </SelectItem>
-                      ))}
+                      {(Object.keys(FONTE_LABELS) as DocumentacaoFonte[]).map(
+                        (k) => (
+                          <SelectItem key={k} value={k}>
+                            {FONTE_LABELS[k]}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -881,7 +914,10 @@ function DocumentacaoPage() {
         icon={<Building className="w-5 h-5" />}
         title="Nova construtora"
       >
-        <form onSubmit={handleQuickCreate} className="flex flex-col flex-1 min-h-0">
+        <form
+          onSubmit={handleQuickCreate}
+          className="flex flex-col flex-1 min-h-0"
+        >
           <FormDialogBody>
             <div className="grid gap-4">
               <div className="space-y-2">
@@ -916,9 +952,7 @@ function DocumentacaoPage() {
               Cancelar
             </Button>
             <Button type="submit" disabled={quickSaving}>
-              {quickSaving && (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              )}
+              {quickSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Criar
             </Button>
           </FormDialogActions>

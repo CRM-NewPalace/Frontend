@@ -33,7 +33,9 @@ export function SemConexao({
       >
         <Unplug className="h-4 w-4 text-muted-foreground" />
         <p className="text-xs font-medium text-muted-foreground">{title}</p>
-        <p className="text-[11px] text-muted-foreground/80 max-w-[220px]">{description}</p>
+        <p className="text-[11px] text-muted-foreground/80 max-w-[220px]">
+          {description}
+        </p>
       </div>
     );
   }
@@ -62,7 +64,13 @@ export function BotaoSemConexao({
   className?: string;
 }) {
   return (
-    <Button type="button" size="sm" disabled className={cn(className)} title={DEFAULT_MESSAGE}>
+    <Button
+      type="button"
+      size="sm"
+      disabled
+      className={cn(className)}
+      title={DEFAULT_MESSAGE}
+    >
       {children}
     </Button>
   );

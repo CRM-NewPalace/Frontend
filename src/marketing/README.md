@@ -16,21 +16,21 @@ marketing/
 
 ## O que deve ter aqui
 
-| Tipo | Exemplos |
-|------|----------|
-| **Landing pages** | Página inicial, página de produto, captura de leads |
-| **Seções de marketing** | Hero, depoimentos, planos, CTA, footer |
-| **Páginas institucionais** | Sobre, contato, termos, privacidade |
-| **Componentes visuais de conversão** | Banner promocional, formulário de newsletter |
+| Tipo                                 | Exemplos                                            |
+| ------------------------------------ | --------------------------------------------------- |
+| **Landing pages**                    | Página inicial, página de produto, captura de leads |
+| **Seções de marketing**              | Hero, depoimentos, planos, CTA, footer              |
+| **Páginas institucionais**           | Sobre, contato, termos, privacidade                 |
+| **Componentes visuais de conversão** | Banner promocional, formulário de newsletter        |
 
 ## O que **não** colocar aqui
 
-| Tipo | Onde colocar |
-|------|--------------|
-| Login, dashboard, CRM | `core/` ou `products/` |
-| Button, Input genéricos | `shared/components/ui/` |
-| Lógica de autenticação | `core/auth/` |
-| Regras de negócio de produto | `products/` |
+| Tipo                         | Onde colocar            |
+| ---------------------------- | ----------------------- |
+| Login, dashboard, CRM        | `core/` ou `products/`  |
+| Button, Input genéricos      | `shared/components/ui/` |
+| Lógica de autenticação       | `core/auth/`            |
+| Regras de negócio de produto | `products/`             |
 
 ## Convenções
 
@@ -40,6 +40,6 @@ marketing/
 
 ## Páginas atuais
 
-| Página | Rota (quando configurada) |
-|--------|---------------------------|
-| `LeadingPage.tsx` | Landing page principal |
+| Página            | Rota (quando configurada) |
+| ----------------- | ------------------------- |
+| `LeadingPage.tsx` | Landing page principal    |

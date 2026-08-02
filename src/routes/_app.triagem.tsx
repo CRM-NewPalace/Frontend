@@ -7,10 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
 } from "@/components/form-dialog";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
@@ -31,7 +38,14 @@ import {
 } from "@/lib/triagem-history-cache";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ClipboardList, Plus, User, Users, FileText, Loader2 } from "lucide-react";
+import {
+  ClipboardList,
+  Plus,
+  User,
+  Users,
+  FileText,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -64,9 +78,7 @@ function leadToContact(l: Lead): TriagemContact {
     cidade: l.cidade,
     bairro: l.bairro,
     corretorId: l.corretorId ?? null,
-    corretor: l.corretorId
-      ? { id: l.corretorId, name: l.corretor }
-      : null,
+    corretor: l.corretorId ? { id: l.corretorId, name: l.corretor } : null,
     updatedAt: l.updatedAt,
   };
 }
@@ -225,9 +237,7 @@ function ContactButton({
       type="button"
       onClick={onClick}
       className={`w-full text-left rounded-lg border p-3 transition-colors ${
-        active
-          ? "border-primary bg-primary/5"
-          : "bg-card hover:bg-muted/50"
+        active ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/50"
       }`}
     >
       <div className="text-sm font-medium truncate">{contact.nome}</div>
@@ -400,7 +410,10 @@ function CorretorTriagem() {
         ...(createStage !== "__none__" ? { stage: createStage } : {}),
       });
       prependTriagemHistoryCached(leadId, created);
-      setEvents((prev) => [created, ...prev.filter((e) => e.id !== created.id)]);
+      setEvents((prev) => [
+        created,
+        ...prev.filter((e) => e.id !== created.id),
+      ]);
       toast.success("Relato registrado na triagem.");
       closeCreate();
       setSelectedId(leadId);
@@ -418,7 +431,8 @@ function CorretorTriagem() {
     }
   }
 
-  const emptyLists = !leadsLoading && leads.length === 0 && clientes.length === 0;
+  const emptyLists =
+    !leadsLoading && leads.length === 0 && clientes.length === 0;
 
   return (
     <div>
@@ -488,12 +502,16 @@ function CorretorTriagem() {
           {!selectedContact ? (
             <div className="h-full min-h-[24rem] flex flex-col items-center justify-center text-center text-muted-foreground border border-dashed rounded-xl gap-2">
               <ClipboardList className="w-8 h-8 opacity-40" />
-              <p className="text-sm">Selecione um lead ou cliente para ver o histórico.</p>
+              <p className="text-sm">
+                Selecione um lead ou cliente para ver o histórico.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <div className="text-base font-semibold">{selectedContact.nome}</div>
+                <div className="text-base font-semibold">
+                  {selectedContact.nome}
+                </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {selectedContact.tipo === "cliente" ? "Cliente" : "Lead"} ·{" "}
                   {stageName(selectedContact.stage)}
@@ -525,10 +543,19 @@ function CorretorTriagem() {
         }
         footer={
           <FormDialogActions>
-            <Button type="button" variant="outline" onClick={closeCreate} disabled={saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeCreate}
+              disabled={saving}
+            >
               Cancelar
             </Button>
-            <Button type="button" onClick={() => void submitCreate()} disabled={saving}>
+            <Button
+              type="button"
+              onClick={() => void submitCreate()}
+              disabled={saving}
+            >
               {saving ? "Salvando..." : "Registrar"}
             </Button>
           </FormDialogActions>
@@ -646,7 +673,9 @@ function ManagerTriagem() {
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [equipesLoading, setEquipesLoading] = useState(false);
   const [selectedEquipeId, setSelectedEquipeId] = useState<string>("__all__");
-  const [selectedCorretorId, setSelectedCorretorId] = useState<string | null>(null);
+  const [selectedCorretorId, setSelectedCorretorId] = useState<string | null>(
+    null,
+  );
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const { events, loading: historyLoading } = useHistory(selectedLeadId);
 
@@ -692,9 +721,7 @@ function ManagerTriagem() {
   const leads = useMemo(() => {
     if (!selectedCorretorId) return [];
     return allLeads
-      .filter(
-        (l) => l.tipo === "lead" && l.corretorId === selectedCorretorId,
-      )
+      .filter((l) => l.tipo === "lead" && l.corretorId === selectedCorretorId)
       .map(leadToContact);
   }, [allLeads, selectedCorretorId]);
 
@@ -782,7 +809,9 @@ function ManagerTriagem() {
           {!selectedCorretorId ? (
             <div className="h-full min-h-[24rem] flex flex-col items-center justify-center text-center text-muted-foreground border border-dashed rounded-xl gap-2">
               <ClipboardList className="w-8 h-8 opacity-40" />
-              <p className="text-sm">Selecione um corretor para ver os leads.</p>
+              <p className="text-sm">
+                Selecione um corretor para ver os leads.
+              </p>
             </div>
           ) : (
             <>
@@ -794,7 +823,9 @@ function ManagerTriagem() {
               </div>
               <div className="space-y-2 max-h-[28rem] overflow-y-auto">
                 {leads.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Nenhum lead deste corretor.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum lead deste corretor.
+                  </p>
                 )}
                 {leads.map((l) => (
                   <ContactButton
@@ -823,7 +854,9 @@ function ManagerTriagem() {
           ) : (
             <div className="space-y-4">
               <div>
-                <div className="text-base font-semibold">{selectedLead.nome}</div>
+                <div className="text-base font-semibold">
+                  {selectedLead.nome}
+                </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
                   Lead · {stageName(selectedLead.stage)}
                 </div>

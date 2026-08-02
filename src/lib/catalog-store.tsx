@@ -131,7 +131,10 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     setCatalog((prev) => {
       const list = prev[item.type].filter((i) => i.id !== item.id);
       const next = item.active ? [...list, item] : list;
-      next.sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "pt-BR"));
+      next.sort(
+        (a, b) =>
+          a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "pt-BR"),
+      );
       return { ...prev, [item.type]: next };
     });
   }, []);

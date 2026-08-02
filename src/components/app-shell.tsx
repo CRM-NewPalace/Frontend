@@ -634,9 +634,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               </div>
               <div className="text-[10px] text-muted-foreground truncate">
-                {user?.role === "super_admin"
-                  ? "Plataforma"
-                  : "CRM conectado"}
+                {user?.role === "super_admin" ? "Plataforma" : "CRM conectado"}
               </div>
             </div>
           )}
@@ -755,73 +753,73 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center justify-center">
             {!isPlatformAdmin && (
-            <DropdownMenu
-              open={notifOpen}
-              onOpenChange={(o) => {
-                setNotifOpen(o);
-                if (o) void loadNotificacoes();
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative"
-                  aria-label="Notificações"
-                >
-                  <Bell className="w-4 h-4" />
-                  {unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] bg-primary">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-0">
-                <div className="flex items-center justify-between px-3 py-2 border-b">
-                  <DropdownMenuLabel className="p-0">
-                    Notificações
-                  </DropdownMenuLabel>
-                  {unreadCount > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => void handleMarkAllRead()}
-                    >
-                      Marcar todas
-                    </Button>
-                  )}
-                </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {notificacoes.length === 0 ? (
-                    <div className="px-3 py-8 text-center text-xs text-muted-foreground">
-                      Nenhuma notificação
-                    </div>
-                  ) : (
-                    notificacoes.map((n) => (
-                      <button
-                        key={n.id}
+              <DropdownMenu
+                open={notifOpen}
+                onOpenChange={(o) => {
+                  setNotifOpen(o);
+                  if (o) void loadNotificacoes();
+                }}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative"
+                    aria-label="Notificações"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] bg-primary">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 p-0">
+                  <div className="flex items-center justify-between px-3 py-2 border-b">
+                    <DropdownMenuLabel className="p-0">
+                      Notificações
+                    </DropdownMenuLabel>
+                    {unreadCount > 0 && (
+                      <Button
                         type="button"
-                        className={cn(
-                          "w-full text-left px-3 py-2.5 border-b last:border-0 hover:bg-accent/60 transition-colors",
-                          !n.lida && "bg-primary/5",
-                        )}
-                        onClick={() => void handleOpenNotif(n)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => void handleMarkAllRead()}
                       >
-                        <div className="text-xs font-medium leading-snug">
-                          {n.titulo}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                          {n.corpo}
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                        Marcar todas
+                      </Button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificacoes.length === 0 ? (
+                      <div className="px-3 py-8 text-center text-xs text-muted-foreground">
+                        Nenhuma notificação
+                      </div>
+                    ) : (
+                      notificacoes.map((n) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          className={cn(
+                            "w-full text-left px-3 py-2.5 border-b last:border-0 hover:bg-accent/60 transition-colors",
+                            !n.lida && "bg-primary/5",
+                          )}
+                          onClick={() => void handleOpenNotif(n)}
+                        >
+                          <div className="text-xs font-medium leading-snug">
+                            {n.titulo}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                            {n.corpo}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

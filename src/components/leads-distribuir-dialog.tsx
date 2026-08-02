@@ -234,7 +234,8 @@ export function LeadsDistribuirDialog({
                 </p>
                 {resumo.corretores.length === 0 ? (
                   <p className="text-sm text-amber-600 dark:text-amber-400">
-                    Cadastre corretores ativos em Usuários para poder distribuir.
+                    Cadastre corretores ativos em Usuários para poder
+                    distribuir.
                   </p>
                 ) : null}
                 <div className="space-y-1.5">

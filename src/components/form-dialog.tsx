@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -41,8 +45,12 @@ export function FormDialogShell({
               {icon}
             </div>
             <div className="space-y-1 pr-6 min-w-0">
-              <DialogTitle className="text-base sm:text-lg tracking-tight">{title}</DialogTitle>
-              {description ? <DialogDescription>{description}</DialogDescription> : null}
+              <DialogTitle className="text-base sm:text-lg tracking-tight">
+                {title}
+              </DialogTitle>
+              {description ? (
+                <DialogDescription>{description}</DialogDescription>
+              ) : null}
             </div>
           </div>
         </DialogHeader>
@@ -72,7 +80,12 @@ export function FormSection({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border bg-card p-4 space-y-4 shadow-sm", className)}>
+    <section
+      className={cn(
+        "rounded-xl border bg-card p-4 space-y-4 shadow-sm",
+        className,
+      )}
+    >
       <div className="flex items-center gap-2 text-sm font-medium">
         {icon}
         {title}
@@ -82,7 +95,13 @@ export function FormSection({
   );
 }
 
-export function FormDialogBody({ children, className }: { children: ReactNode; className?: string }) {
+export function FormDialogBody({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
@@ -105,7 +124,12 @@ export function FormDialogActions({
   className?: string;
 }) {
   return (
-    <DialogFooter className={cn("px-4 sm:px-6 py-3 sm:py-4 border-t bg-muted/30 sm:justify-between gap-3 shrink-0", className)}>
+    <DialogFooter
+      className={cn(
+        "px-4 sm:px-6 py-3 sm:py-4 border-t bg-muted/30 sm:justify-between gap-3 shrink-0",
+        className,
+      )}
+    >
       {hint ? (
         <p className="text-xs text-muted-foreground hidden sm:block">{hint}</p>
       ) : (

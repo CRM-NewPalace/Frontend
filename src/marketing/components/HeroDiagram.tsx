@@ -1,26 +1,26 @@
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from "framer-motion";
 
-const CENTER = 250
-const MODULE_RADIUS = 172
-const HUB_RADIUS = 62
-const INNER_RING = 108
-const OUTER_RING = 142
+const CENTER = 250;
+const MODULE_RADIUS = 172;
+const HUB_RADIUS = 62;
+const INNER_RING = 108;
+const OUTER_RING = 142;
 
 const MODULES = [
-  { label: 'CRM', angle: 0, hasLine: false },
-  { label: 'Financeiro', angle: 60, hasLine: true },
-  { label: 'Imóveis', angle: 120, hasLine: true },
-  { label: 'Contatos', angle: 180, hasLine: false },
-  { label: 'Vendas', angle: 240, hasLine: true },
-  { label: 'Automação', angle: 300, hasLine: true },
-] as const
+  { label: "CRM", angle: 0, hasLine: false },
+  { label: "Financeiro", angle: 60, hasLine: true },
+  { label: "Imóveis", angle: 120, hasLine: true },
+  { label: "Contatos", angle: 180, hasLine: false },
+  { label: "Vendas", angle: 240, hasLine: true },
+  { label: "Automação", angle: 300, hasLine: true },
+] as const;
 
 function polarToCartesian(angle: number, radius: number) {
-  const rad = (angle * Math.PI) / 180
+  const rad = (angle * Math.PI) / 180;
   return {
     x: CENTER + radius * Math.sin(rad),
     y: CENTER - radius * Math.cos(rad),
-  }
+  };
 }
 
 function ConnectionLine({
@@ -28,13 +28,13 @@ function ConnectionLine({
   index,
   reducedMotion,
 }: {
-  angle: number
-  index: number
-  reducedMotion: boolean
+  angle: number;
+  index: number;
+  reducedMotion: boolean;
 }) {
-  const inner = polarToCartesian(angle, HUB_RADIUS + 6)
-  const outer = polarToCartesian(angle, MODULE_RADIUS - 34)
-  const lineDelay = 0.4 + index * 0.15
+  const inner = polarToCartesian(angle, HUB_RADIUS + 6);
+  const outer = polarToCartesian(angle, MODULE_RADIUS - 34);
+  const lineDelay = 0.4 + index * 0.15;
 
   return (
     <g>
@@ -50,7 +50,11 @@ function ConnectionLine({
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.55 }}
         transition={{
-          pathLength: { duration: reducedMotion ? 0 : 1.1, delay: lineDelay, ease: 'easeOut' },
+          pathLength: {
+            duration: reducedMotion ? 0 : 1.1,
+            delay: lineDelay,
+            ease: "easeOut",
+          },
           opacity: { duration: 0.3, delay: lineDelay },
         }}
       />
@@ -72,7 +76,7 @@ function ConnectionLine({
               delay: lineDelay + 1,
               repeat: Infinity,
               repeatDelay: 0.6,
-              ease: 'easeInOut',
+              ease: "easeInOut",
               times: [0, 0.45, 0.55, 1],
             }}
           />
@@ -90,17 +94,17 @@ function ConnectionLine({
               delay: lineDelay + 1 + index * 0.25,
               repeat: Infinity,
               repeatDelay: 0.6,
-              ease: 'easeInOut',
+              ease: "easeInOut",
             }}
           />
         </>
       )}
     </g>
-  )
+  );
 }
 
 export function HeroDiagram() {
-  const reducedMotion = useReducedMotion()
+  const reducedMotion = useReducedMotion();
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-md lg:max-w-xl">
@@ -112,7 +116,13 @@ export function HeroDiagram() {
             <stop offset="100%" stopColor="#dceef6" />
           </radialGradient>
           <filter id="hub-shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="6" floodColor="#079ed4" floodOpacity="0.12" />
+            <feDropShadow
+              dx="0"
+              dy="2"
+              stdDeviation="6"
+              floodColor="#079ed4"
+              floodOpacity="0.12"
+            />
           </filter>
         </defs>
 
@@ -120,7 +130,7 @@ export function HeroDiagram() {
         <g transform={`translate(${CENTER} ${CENTER})`}>
           <motion.g
             animate={reducedMotion ? undefined : { rotate: 360 }}
-            transition={{ duration: 50, repeat: Infinity, ease: 'linear' }}
+            transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
           >
             <circle
               cx={0}
@@ -135,7 +145,7 @@ export function HeroDiagram() {
 
           <motion.g
             animate={reducedMotion ? undefined : { rotate: -360 }}
-            transition={{ duration: 65, repeat: Infinity, ease: 'linear' }}
+            transition={{ duration: 65, repeat: Infinity, ease: "linear" }}
           >
             <circle
               cx={0}
@@ -148,8 +158,18 @@ export function HeroDiagram() {
               opacity={0.45}
             />
             <circle cx={0} cy={-OUTER_RING} r={4} fill="#079ed4" />
-            <circle cx={-OUTER_RING * 0.866} cy={OUTER_RING * 0.5} r={3} fill="#053647" />
-            <circle cx={OUTER_RING * 0.866} cy={OUTER_RING * 0.5} r={3.5} fill="#94a3b8" />
+            <circle
+              cx={-OUTER_RING * 0.866}
+              cy={OUTER_RING * 0.5}
+              r={3}
+              fill="#053647"
+            />
+            <circle
+              cx={OUTER_RING * 0.866}
+              cy={OUTER_RING * 0.5}
+              r={3.5}
+              fill="#94a3b8"
+            />
           </motion.g>
         </g>
 
@@ -177,7 +197,7 @@ export function HeroDiagram() {
               ? undefined
               : { scale: [1, 1.03, 1], opacity: [0.95, 1, 0.95] }
           }
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           style={{ transformOrigin: `${CENTER}px ${CENTER}px` }}
         />
 
@@ -189,8 +209,12 @@ export function HeroDiagram() {
           stroke="#079ed4"
           strokeWidth={1}
           opacity={0.15}
-          animate={reducedMotion ? undefined : { scale: [1, 1.08, 1], opacity: [0.1, 0.25, 0.1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          animate={
+            reducedMotion
+              ? undefined
+              : { scale: [1, 1.08, 1], opacity: [0.1, 0.25, 0.1] }
+          }
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           style={{ transformOrigin: `${CENTER}px ${CENTER}px` }}
         />
       </svg>
@@ -203,7 +227,9 @@ export function HeroDiagram() {
         transition={{ duration: 0.6, delay: 0.2 }}
       >
         <div className="flex flex-col items-center leading-none">
-          <span className="text-sm font-semibold text-brand-dark sm:text-base">Zone</span>
+          <span className="text-sm font-semibold text-brand-dark sm:text-base">
+            Zone
+          </span>
           <span className="-mt-0.5 text-xs font-semibold text-brand-accent sm:text-sm">
             Connection
           </span>
@@ -212,7 +238,7 @@ export function HeroDiagram() {
 
       {/* Módulos */}
       {MODULES.map(({ label, angle }, index) => {
-        const { x, y } = polarToCartesian(angle, MODULE_RADIUS)
+        const { x, y } = polarToCartesian(angle, MODULE_RADIUS);
 
         return (
           <motion.div
@@ -232,20 +258,26 @@ export function HeroDiagram() {
               animate={
                 reducedMotion
                   ? undefined
-                  : { boxShadow: ['0 1px 3px rgb(0 0 0 / 0.06)', '0 4px 12px rgb(7 158 212 / 0.12)', '0 1px 3px rgb(0 0 0 / 0.06)'] }
+                  : {
+                      boxShadow: [
+                        "0 1px 3px rgb(0 0 0 / 0.06)",
+                        "0 4px 12px rgb(7 158 212 / 0.12)",
+                        "0 1px 3px rgb(0 0 0 / 0.06)",
+                      ],
+                    }
               }
               transition={{
                 duration: 3,
                 repeat: Infinity,
                 delay: index * 0.4,
-                ease: 'easeInOut',
+                ease: "easeInOut",
               }}
             >
               {label}
             </motion.span>
           </motion.div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

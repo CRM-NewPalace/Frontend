@@ -1,6 +1,7 @@
 import { apiFetch, sessionCache, storeCsrfToken } from "@/lib/api";
 
-export type Role = "super_admin" | "admin" | "gerente" | "corretor" | "analista";
+export type Role =
+  "super_admin" | "admin" | "gerente" | "corretor" | "analista";
 export type UserStatus = "ativo" | "inativo";
 
 export type TenantBranding = {

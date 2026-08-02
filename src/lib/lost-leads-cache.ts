@@ -1,8 +1,4 @@
-import {
-  fetchLostLeads,
-  mapApiLead,
-  type ApiLead,
-} from "@/lib/leads-api";
+import { fetchLostLeads, mapApiLead, type ApiLead } from "@/lib/leads-api";
 import type { Lead } from "@/lib/crm-types";
 
 export type LostLead = Lead & {

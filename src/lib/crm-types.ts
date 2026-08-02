@@ -8,10 +8,7 @@ export type StageId = string;
 export type ContatoTipo = "lead" | "cliente";
 
 export type AnaliseStatus =
-  | "pendente"
-  | "em_analise"
-  | "aprovado"
-  | "reprovado";
+  "pendente" | "em_analise" | "aprovado" | "reprovado";
 
 export interface Lead {
   id: string;
@@ -72,4 +69,3 @@ export function prioridadeBadgeClass(prioridade: Lead["prioridade"]): string {
       return "border-transparent bg-secondary text-secondary-foreground";
   }
 }
-

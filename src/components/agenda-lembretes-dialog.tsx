@@ -9,7 +9,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { AgendaProximo, AgendaUrgencia } from "@/lib/agenda-api";
-import { Briefcase, CalendarClock, MapPin, Network, User, Users } from "lucide-react";
+import {
+  Briefcase,
+  CalendarClock,
+  MapPin,
+  Network,
+  User,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NIVEL_LABEL: Record<AgendaProximo["nivel"], string> = {
@@ -158,8 +165,7 @@ export function AgendaLembretesDialog({
                       <span>Corretor: {p.corretorNome}</span>
                     </p>
                   ) : null}
-                  {p.gerenteNome &&
-                  !p.publicoLabel?.startsWith("Gerente:") ? (
+                  {p.gerenteNome && !p.publicoLabel?.startsWith("Gerente:") ? (
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Users className="w-3 h-3 shrink-0" />
                       <span>Gerente: {p.gerenteNome}</span>
@@ -190,7 +196,10 @@ export function AgendaLembretesDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Entendi
           </Button>
-          <Button variant={informativo ? "secondary" : "default"} onClick={onGoAgenda}>
+          <Button
+            variant={informativo ? "secondary" : "default"}
+            onClick={onGoAgenda}
+          >
             Ver Agenda
           </Button>
         </DialogFooter>

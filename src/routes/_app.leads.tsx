@@ -7,23 +7,68 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Plus, Search, Filter, Download, MoreHorizontal, Phone, MessageSquare, Mail,
-  UserPlus, MapPin, Wallet, Sparkles, Eye, Pencil, Trash2, X, Upload, FileSpreadsheet,
-  FileText, Loader2, Share2,
+  Plus,
+  Search,
+  Filter,
+  Download,
+  MoreHorizontal,
+  Phone,
+  MessageSquare,
+  Mail,
+  UserPlus,
+  MapPin,
+  Wallet,
+  Sparkles,
+  Eye,
+  Pencil,
+  Trash2,
+  X,
+  Upload,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Share2,
 } from "lucide-react";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
@@ -50,7 +95,11 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
+  DetailField,
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 
@@ -91,7 +140,9 @@ const emptyForm = (corretorDefault: string, origemDefault = ""): FormState => ({
 type FormMode = "create" | "edit";
 
 function leadToForm(lead: Lead): FormState {
-  const temp = (["Quente", "Morno", "Frio"] as const).find((t) => lead.tags.includes(t)) ?? "Morno";
+  const temp =
+    (["Quente", "Morno", "Frio"] as const).find((t) => lead.tags.includes(t)) ??
+    "Morno";
   return {
     nome: lead.nome,
     telefone: formatPhone(lead.telefone),
@@ -111,8 +162,7 @@ function LeadsPage() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
-  const canDistribuir =
-    user?.role === "admin" || user?.role === "gerente";
+  const canDistribuir = user?.role === "admin" || user?.role === "gerente";
 
   const {
     leads: allLeads,
@@ -124,7 +174,12 @@ function LeadsPage() {
     assignees,
     refresh,
   } = useLeads();
-  const { funnelStages, origens: origemOptions, motivos: motivoOptions, colorByLabel } = useCatalog();
+  const {
+    funnelStages,
+    origens: origemOptions,
+    motivos: motivoOptions,
+    colorByLabel,
+  } = useCatalog();
   // Backend atribui a etapa inicial (Novo lead) quando stage é omitido.
   const defaultStageName =
     funnelStages.find((s) => s.id === "novo")?.name ??
@@ -140,16 +195,15 @@ function LeadsPage() {
   const [importFileName, setImportFileName] = useState("");
   const [distribuirOpen, setDistribuirOpen] = useState(false);
 
-  const leads = useMemo(
-    () => {
-      const scoped =
-        isCorretor && user
-          ? allLeads.filter((l) => l.corretor === user.name || l.corretorId === user.id)
-          : allLeads;
-      return scoped.filter((l) => l.tipo === "lead");
-    },
-    [allLeads, isCorretor, user],
-  );
+  const leads = useMemo(() => {
+    const scoped =
+      isCorretor && user
+        ? allLeads.filter(
+            (l) => l.corretor === user.name || l.corretorId === user.id,
+          )
+        : allLeads;
+    return scoped.filter((l) => l.tipo === "lead");
+  }, [allLeads, isCorretor, user]);
 
   /** Corretores ativos (perfil corretor) para atribuição/filtro. */
   const corretorAssignees = useMemo(
@@ -167,7 +221,10 @@ function LeadsPage() {
   );
 
   /** Opções do filtro (por id UUID — o que a API espera). */
-  const corretorFilterOptions = useMemo(() => corretorAssignees, [corretorAssignees]);
+  const corretorFilterOptions = useMemo(
+    () => corretorAssignees,
+    [corretorAssignees],
+  );
 
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
@@ -221,7 +278,9 @@ function LeadsPage() {
     origemFilter !== "all";
 
   const extraFiltersActive =
-    prioridadeFilter !== "all" || interesseFilter !== "all" || origemFilter !== "all";
+    prioridadeFilter !== "all" ||
+    interesseFilter !== "all" ||
+    origemFilter !== "all";
 
   // Filtra no cliente sobre a lista já carregada no store — evita round-trip
   // ao Postgres remoto a cada mudança de filtro.
@@ -244,11 +303,17 @@ function LeadsPage() {
     return leads.filter((l) => {
       if (q) {
         const hay = `${l.nome} ${l.email} ${l.telefone}`.toLowerCase();
-        const phoneOk = qDigits.length >= 3 && phoneDigits(l.telefone).includes(qDigits);
+        const phoneOk =
+          qDigits.length >= 3 && phoneDigits(l.telefone).includes(qDigits);
         if (!hay.includes(q) && !phoneOk) return false;
       }
       if (stageFilter !== "all" && l.stage !== stageFilter) return false;
-      if (!isCorretor && corretorFilter !== "all" && l.corretorId !== corretorFilter) return false;
+      if (
+        !isCorretor &&
+        corretorFilter !== "all" &&
+        l.corretorId !== corretorFilter
+      )
+        return false;
       if (!isCorretor && equipeFilter === "none") {
         if (l.equipeId) return false;
         if (l.corretorId && anyEquipeMembroIds?.has(l.corretorId)) return false;
@@ -258,8 +323,10 @@ function LeadsPage() {
           Boolean(l.corretorId) && Boolean(equipeMembros?.has(l.corretorId!));
         if (!inPool && !inMembros) return false;
       }
-      if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter) return false;
-      if (interesseFilter !== "all" && l.interesse !== interesseFilter) return false;
+      if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter)
+        return false;
+      if (interesseFilter !== "all" && l.interesse !== interesseFilter)
+        return false;
       if (origemFilter !== "all" && l.origem !== origemFilter) return false;
       return true;
     });
@@ -343,9 +410,13 @@ function LeadsPage() {
     const rendaDigits = String(form.renda).replace(/\D/g, "");
     const rendaNum = rendaDigits ? Number(rendaDigits) : null;
     const corretorNome = isCorretor ? defaultCorretor : form.corretor;
-    const otherTags = formMode === "edit" && editingId
-      ? (leads.find((l) => l.id === editingId)?.tags.filter((t) => !["Quente", "Morno", "Frio"].includes(t)) ?? [])
-      : [];
+    const otherTags =
+      formMode === "edit" && editingId
+        ? (leads
+            .find((l) => l.id === editingId)
+            ?.tags.filter((t) => !["Quente", "Morno", "Frio"].includes(t)) ??
+          [])
+        : [];
     const tags = [form.temperatura, ...otherTags];
     const corretorId = isCorretor ? undefined : resolveCorretorId(corretorNome);
 
@@ -386,7 +457,9 @@ function LeadsPage() {
         ...(corretorId ? { corretorId } : {}),
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível salvar o lead.");
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível salvar o lead.",
+      );
     }
   }
 
@@ -413,7 +486,9 @@ function LeadsPage() {
       toast.success(`Lead ${nome} movido para Leads Perdidos.`);
       await markLeadLost(id, motivo);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível excluir o lead.");
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível excluir o lead.",
+      );
     }
   }
 
@@ -432,9 +507,7 @@ function LeadsPage() {
       setImportOpen(true);
     } catch (err) {
       toast.error(
-        err instanceof Error
-          ? err.message
-          : "Não foi possível ler o arquivo.",
+        err instanceof Error ? err.message : "Não foi possível ler o arquivo.",
       );
     } finally {
       setImportParsing(false);
@@ -497,10 +570,10 @@ function LeadsPage() {
           loading
             ? "Carregando leads..."
             : filteredLeads.length === leads.length && !filtersActive
-            ? isCorretor
-              ? `${leads.length} leads atribuídos a você`
-              : `${leads.length} leads de toda a equipe no funil`
-            : `${filteredLeads.length} de ${leads.length} leads`
+              ? isCorretor
+                ? `${leads.length} leads atribuídos a você`
+                : `${leads.length} leads de toda a equipe no funil`
+              : `${filteredLeads.length} de ${leads.length} leads`
         }
         actions={
           <>
@@ -578,7 +651,8 @@ function LeadsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             <Button size="sm" onClick={openCreate}>
-              <Plus className="w-4 h-4 mr-1" />Novo lead
+              <Plus className="w-4 h-4 mr-1" />
+              Novo lead
             </Button>
           </>
         }
@@ -587,7 +661,13 @@ function LeadsPage() {
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
-        icon={formMode === "edit" ? <Pencil className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+        icon={
+          formMode === "edit" ? (
+            <Pencil className="w-5 h-5" />
+          ) : (
+            <UserPlus className="w-5 h-5" />
+          )
+        }
         title={formMode === "edit" ? "Editar lead" : "Novo lead"}
         description={
           formMode === "edit"
@@ -597,210 +677,316 @@ function LeadsPage() {
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
-              <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
+            <FormSection
+              icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
+              title="Contato"
+            >
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="lead-nome"
+                  className="text-xs text-muted-foreground"
+                >
+                  Nome completo
+                </Label>
+                <Input
+                  id="lead-nome"
+                  value={form.nome}
+                  onChange={(e) => setField("nome", e.target.value)}
+                  placeholder="Ex.: João Pereira"
+                  className="h-10 bg-background"
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="lead-nome" className="text-xs text-muted-foreground">Nome completo</Label>
+                  <Label
+                    htmlFor="lead-telefone"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Telefone
+                  </Label>
                   <Input
-                    id="lead-nome"
-                    value={form.nome}
-                    onChange={(e) => setField("nome", e.target.value)}
-                    placeholder="Ex.: João Pereira"
+                    id="lead-telefone"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    value={form.telefone}
+                    onChange={(e) =>
+                      setField("telefone", formatPhone(e.target.value))
+                    }
+                    placeholder={PHONE_PLACEHOLDER}
                     className="h-10 bg-background"
-                    autoFocus
+                    maxLength={15}
                     required
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lead-telefone" className="text-xs text-muted-foreground">Telefone</Label>
-                    <Input
-                      id="lead-telefone"
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      value={form.telefone}
-                      onChange={(e) => setField("telefone", formatPhone(e.target.value))}
-                      placeholder={PHONE_PLACEHOLDER}
-                      className="h-10 bg-background"
-                      maxLength={15}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lead-email" className="text-xs text-muted-foreground">E-mail</Label>
-                    <Input
-                      id="lead-email"
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => setField("email", e.target.value)}
-                      placeholder="email@exemplo.com"
-                      className="h-10 bg-background"
-                      required
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="lead-email"
+                    className="text-xs text-muted-foreground"
+                  >
+                    E-mail
+                  </Label>
+                  <Input
+                    id="lead-email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setField("email", e.target.value)}
+                    placeholder="email@exemplo.com"
+                    className="h-10 bg-background"
+                    required
+                  />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Origem
+                  </Label>
+                  <Select
+                    value={form.origem || undefined}
+                    onValueChange={(v) => setField("origem", v)}
+                  >
+                    <SelectTrigger className="h-10 bg-background">
+                      <SelectValue placeholder="Selecione a origem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {origemOptions.length === 0 ? (
+                        <SelectItem value="__empty" disabled>
+                          Nenhuma origem cadastrada
+                        </SelectItem>
+                      ) : (
+                        origemOptions.map((o) => (
+                          <SelectItem key={o} value={o}>
+                            {o}
+                          </SelectItem>
+                        ))
+                      )}
+                      {formMode === "edit" &&
+                        form.origem &&
+                        !origemOptions.includes(form.origem) && (
+                          <SelectItem value={form.origem}>
+                            {form.origem}
+                          </SelectItem>
+                        )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {!isCorretor ? (
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Origem</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Corretor
+                    </Label>
                     <Select
-                      value={form.origem || undefined}
-                      onValueChange={(v) => setField("origem", v)}
+                      value={form.corretor}
+                      onValueChange={(v) => setField("corretor", v)}
                     >
                       <SelectTrigger className="h-10 bg-background">
-                        <SelectValue placeholder="Selecione a origem" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {origemOptions.length === 0 ? (
-                          <SelectItem value="__empty" disabled>
-                            Nenhuma origem cadastrada
+                        {corretorSelectOptions.map((nome) => (
+                          <SelectItem key={nome} value={nome}>
+                            {nome}
                           </SelectItem>
-                        ) : (
-                          origemOptions.map((o) => (
-                            <SelectItem key={o} value={o}>{o}</SelectItem>
-                          ))
-                        )}
-                        {formMode === "edit" &&
-                          form.origem &&
-                          !origemOptions.includes(form.origem) && (
-                            <SelectItem value={form.origem}>{form.origem}</SelectItem>
+                        ))}
+                        {form.corretor &&
+                          !corretorSelectOptions.includes(form.corretor) && (
+                            <SelectItem value={form.corretor}>
+                              {form.corretor}
+                            </SelectItem>
                           )}
                       </SelectContent>
                     </Select>
                   </div>
-                  {!isCorretor ? (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Corretor</Label>
-                      <Select value={form.corretor} onValueChange={(v) => setField("corretor", v)}>
-                        <SelectTrigger className="h-10 bg-background"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {corretorSelectOptions.map((nome) => (
-                            <SelectItem key={nome} value={nome}>{nome}</SelectItem>
-                          ))}
-                          {form.corretor && !corretorSelectOptions.includes(form.corretor) && (
-                            <SelectItem value={form.corretor}>{form.corretor}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Responsável
+                    </Label>
+                    <div className="h-10 px-3 rounded-md border bg-muted/40 text-sm flex items-center text-muted-foreground">
+                      {defaultCorretor}
                     </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Responsável</Label>
-                      <div className="h-10 px-3 rounded-md border bg-muted/40 text-sm flex items-center text-muted-foreground">
-                        {defaultCorretor}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </FormSection>
+                  </div>
+                )}
+              </div>
+            </FormSection>
 
-              <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse e renda">
+            <FormSection
+              icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
+              title="Interesse e renda"
+            >
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="lead-renda"
+                  className="text-xs text-muted-foreground"
+                >
+                  Renda mensal <span className="font-normal">(opcional)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                    R$
+                  </span>
+                  <Input
+                    id="lead-renda"
+                    inputMode="numeric"
+                    value={form.renda}
+                    onChange={(e) =>
+                      setField("renda", e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="Ex.: 8500"
+                    className="h-10 bg-background pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Prioridade
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      value: "Alta" as const,
+                      active:
+                        "border-destructive/40 bg-destructive/10 text-destructive",
+                    },
+                    {
+                      value: "Média" as const,
+                      active:
+                        "border-warning/50 bg-warning/15 text-warning-foreground",
+                    },
+                    {
+                      value: "Baixa" as const,
+                      active:
+                        "border-primary/30 bg-secondary text-secondary-foreground",
+                    },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setField("prioridade", opt.value)}
+                      className={cn(
+                        "h-10 rounded-lg border text-sm font-medium transition-colors",
+                        form.prioridade === opt.value
+                          ? opt.active
+                          : "bg-background text-muted-foreground hover:bg-accent",
+                      )}
+                    >
+                      {opt.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Temperatura
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      value: "Quente" as const,
+                      active:
+                        "border-destructive/40 bg-destructive/10 text-destructive",
+                    },
+                    {
+                      value: "Morno" as const,
+                      active:
+                        "border-warning/50 bg-warning/15 text-warning-foreground",
+                    },
+                    {
+                      value: "Frio" as const,
+                      active: "border-info/40 bg-info/10 text-info",
+                    },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setField("temperatura", opt.value)}
+                      className={cn(
+                        "h-10 rounded-lg border text-sm font-medium transition-colors",
+                        form.temperatura === opt.value
+                          ? opt.active
+                          : "bg-background text-muted-foreground hover:bg-accent",
+                      )}
+                    >
+                      {opt.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection
+              icon={<MapPin className="w-3.5 h-3.5 text-primary" />}
+              title="Localização"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="lead-renda" className="text-xs text-muted-foreground">
-                    Renda mensal <span className="font-normal">(opcional)</span>
+                  <Label
+                    htmlFor="lead-cidade"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Cidade
                   </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">R$</span>
-                    <Input
-                      id="lead-renda"
-                      inputMode="numeric"
-                      value={form.renda}
-                      onChange={(e) => setField("renda", e.target.value.replace(/\D/g, ""))}
-                      placeholder="Ex.: 8500"
-                      className="h-10 bg-background pl-9"
-                    />
-                  </div>
+                  <Input
+                    id="lead-cidade"
+                    value={form.cidade}
+                    onChange={(e) => setField("cidade", e.target.value)}
+                    placeholder="Ex.: Recife"
+                    className="h-10 bg-background"
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Prioridade</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { value: "Alta" as const, active: "border-destructive/40 bg-destructive/10 text-destructive" },
-                      { value: "Média" as const, active: "border-warning/50 bg-warning/15 text-warning-foreground" },
-                      { value: "Baixa" as const, active: "border-primary/30 bg-secondary text-secondary-foreground" },
-                    ]).map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setField("prioridade", opt.value)}
-                        className={cn(
-                          "h-10 rounded-lg border text-sm font-medium transition-colors",
-                          form.prioridade === opt.value
-                            ? opt.active
-                            : "bg-background text-muted-foreground hover:bg-accent",
-                        )}
-                      >
-                        {opt.value}
-                      </button>
-                    ))}
-                  </div>
+                  <Label
+                    htmlFor="lead-bairro"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Bairro
+                  </Label>
+                  <Input
+                    id="lead-bairro"
+                    value={form.bairro}
+                    onChange={(e) => setField("bairro", e.target.value)}
+                    placeholder="Ex.: Boa Viagem"
+                    className="h-10 bg-background"
+                  />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Temperatura</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { value: "Quente" as const, active: "border-destructive/40 bg-destructive/10 text-destructive" },
-                      { value: "Morno" as const, active: "border-warning/50 bg-warning/15 text-warning-foreground" },
-                      { value: "Frio" as const, active: "border-info/40 bg-info/10 text-info" },
-                    ]).map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setField("temperatura", opt.value)}
-                        className={cn(
-                          "h-10 rounded-lg border text-sm font-medium transition-colors",
-                          form.temperatura === opt.value
-                            ? opt.active
-                            : "bg-background text-muted-foreground hover:bg-accent",
-                        )}
-                      >
-                        {opt.value}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </FormSection>
-
-              <FormSection icon={<MapPin className="w-3.5 h-3.5 text-primary" />} title="Localização">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lead-cidade" className="text-xs text-muted-foreground">Cidade</Label>
-                    <Input
-                      id="lead-cidade"
-                      value={form.cidade}
-                      onChange={(e) => setField("cidade", e.target.value)}
-                      placeholder="Ex.: Recife"
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lead-bairro" className="text-xs text-muted-foreground">Bairro</Label>
-                    <Input
-                      id="lead-bairro"
-                      value={form.bairro}
-                      onChange={(e) => setField("bairro", e.target.value)}
-                      placeholder="Ex.: Boa Viagem"
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                </div>
-              </FormSection>
+              </div>
+            </FormSection>
           </FormDialogBody>
 
           <FormDialogActions
             hint={
-              formMode === "edit"
-                ? "As alterações são salvas no banco."
-                : <>O lead entra na etapa <span className="font-medium text-foreground">{defaultStageName}</span>.</>
+              formMode === "edit" ? (
+                "As alterações são salvas no banco."
+              ) : (
+                <>
+                  O lead entra na etapa{" "}
+                  <span className="font-medium text-foreground">
+                    {defaultStageName}
+                  </span>
+                  .
+                </>
+              )
             }
           >
-            <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 sm:flex-none"
+              onClick={() => setOpen(false)}
+            >
               Cancelar
             </Button>
             <Button type="submit" className="flex-1 sm:flex-none">
               {formMode === "edit" ? (
                 "Salvar alterações"
               ) : (
-                <><Plus className="w-4 h-4" />Salvar lead</>
+                <>
+                  <Plus className="w-4 h-4" />
+                  Salvar lead
+                </>
               )}
             </Button>
           </FormDialogActions>
@@ -822,28 +1008,43 @@ function LeadsPage() {
         {detailLead && (
           <>
             <FormDialogBody>
-              <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
+              <FormSection
+                icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
+                title="Contato"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Telefone" value={detailLead.telefone} />
                   <DetailField label="E-mail" value={detailLead.email} />
                   <DetailField label="Origem" value={detailLead.origem} />
-                  {!isCorretor && <DetailField label="Corretor" value={detailLead.corretor} />}
                   {!isCorretor && (
-                    <DetailField label="Equipe" value={equipeLabel(detailLead)} />
+                    <DetailField label="Corretor" value={detailLead.corretor} />
+                  )}
+                  {!isCorretor && (
+                    <DetailField
+                      label="Equipe"
+                      value={equipeLabel(detailLead)}
+                    />
                   )}
                 </div>
               </FormSection>
-              <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse e renda">
+              <FormSection
+                icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
+                title="Interesse e renda"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Interesse" value={detailLead.interesse} />
                   <DetailField
                     label="Renda mensal"
-                    value={detailLead.renda != null ? brl(detailLead.renda) : "—"}
+                    value={
+                      detailLead.renda != null ? brl(detailLead.renda) : "—"
+                    }
                   />
                   <DetailField
                     label="Prioridade"
                     value={
-                      <Badge className={prioridadeBadgeClass(detailLead.prioridade)}>
+                      <Badge
+                        className={prioridadeBadgeClass(detailLead.prioridade)}
+                      >
                         {detailLead.prioridade}
                       </Badge>
                     }
@@ -853,14 +1054,22 @@ function LeadsPage() {
                       <div className="text-xs text-muted-foreground">Tags</div>
                       <div className="flex flex-wrap gap-1.5">
                         {detailLead.tags.map((t) => (
-                          <Badge key={t} className={`text-[10px] ${colorByLabel("tag", t)}`}>{t}</Badge>
+                          <Badge
+                            key={t}
+                            className={`text-[10px] ${colorByLabel("tag", t)}`}
+                          >
+                            {t}
+                          </Badge>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
               </FormSection>
-              <FormSection icon={<MapPin className="w-3.5 h-3.5 text-primary" />} title="Localização">
+              <FormSection
+                icon={<MapPin className="w-3.5 h-3.5 text-primary" />}
+                title="Localização"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Cidade" value={detailLead.cidade} />
                   <DetailField label="Bairro" value={detailLead.bairro} />
@@ -868,7 +1077,11 @@ function LeadsPage() {
               </FormSection>
             </FormDialogBody>
             <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
-              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setDetailLead(null)}>
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none"
+                onClick={() => setDetailLead(null)}
+              >
                 Fechar
               </Button>
               <Button
@@ -898,7 +1111,9 @@ function LeadsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Por que está excluindo este lead?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Por que está excluindo este lead?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteLead
                 ? `${deleteLead.nome} sairá da sua lista e do funil, e irá para Leads Perdidos (visível só para o administrador).`
@@ -909,12 +1124,18 @@ function LeadsPage() {
             {motivoOptions.length > 0 ? (
               <>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Motivo</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Motivo
+                  </Label>
                   <Select value={deleteMotivo} onValueChange={setDeleteMotivo}>
-                    <SelectTrigger className="h-10"><SelectValue placeholder="Selecione o motivo" /></SelectTrigger>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Selecione o motivo" />
+                    </SelectTrigger>
                     <SelectContent>
                       {motivoOptions.map((m) => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
                       ))}
                       <SelectItem value="__outro__">Outro…</SelectItem>
                     </SelectContent>
@@ -922,7 +1143,12 @@ function LeadsPage() {
                 </div>
                 {deleteMotivo === "__outro__" && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="motivo-outro" className="text-xs text-muted-foreground">Descreva o motivo</Label>
+                    <Label
+                      htmlFor="motivo-outro"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Descreva o motivo
+                    </Label>
                     <Input
                       id="motivo-outro"
                       value={deleteMotivoOutro}
@@ -935,7 +1161,12 @@ function LeadsPage() {
               </>
             ) : (
               <div className="space-y-1.5">
-                <Label htmlFor="motivo-livre" className="text-xs text-muted-foreground">Motivo</Label>
+                <Label
+                  htmlFor="motivo-livre"
+                  className="text-xs text-muted-foreground"
+                >
+                  Motivo
+                </Label>
                 <Input
                   id="motivo-livre"
                   value={deleteMotivo}
@@ -976,15 +1207,23 @@ function LeadsPage() {
             />
           </div>
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Etapa" /></SelectTrigger>
+            <SelectTrigger className="w-44 h-9">
+              <SelectValue placeholder="Etapa" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas etapas</SelectItem>
-              {funnelStages.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              {funnelStages.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           {!isCorretor && (
             <Select value={equipeFilter} onValueChange={setEquipeFilter}>
-              <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Equipe" /></SelectTrigger>
+              <SelectTrigger className="w-44 h-9">
+                <SelectValue placeholder="Equipe" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas equipes</SelectItem>
                 <SelectItem value="none">Sem equipe</SelectItem>
@@ -999,11 +1238,15 @@ function LeadsPage() {
           )}
           {!isCorretor && (
             <Select value={corretorFilter} onValueChange={setCorretorFilter}>
-              <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Corretor" /></SelectTrigger>
+              <SelectTrigger className="w-44 h-9">
+                <SelectValue placeholder="Corretor" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos corretores</SelectItem>
                 {corretorFilterOptions.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1018,12 +1261,22 @@ function LeadsPage() {
             <Filter className="w-4 h-4 mr-1" />
             Mais filtros
             {extraFiltersActive && (
-              <Badge className="ml-1 h-5 px-1.5 text-[10px]" variant="secondary">
-                {[prioridadeFilter, interesseFilter, origemFilter].filter((v) => v !== "all").length}
+              <Badge
+                className="ml-1 h-5 px-1.5 text-[10px]"
+                variant="secondary"
+              >
+                {
+                  [prioridadeFilter, interesseFilter, origemFilter].filter(
+                    (v) => v !== "all",
+                  ).length
+                }
               </Badge>
             )}
           </Button>
-          {(search || stageFilter !== "all" || corretorFilter !== "all" || extraFiltersActive) && (
+          {(search ||
+            stageFilter !== "all" ||
+            corretorFilter !== "all" ||
+            extraFiltersActive) && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="w-4 h-4 mr-1" />
               Limpar
@@ -1032,9 +1285,16 @@ function LeadsPage() {
           {showExtraFilters && (
             <div className="flex flex-wrap gap-2 w-full pt-2 border-t border-border/60 mt-1">
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Prioridade</Label>
-                <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
-                  <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+                <Label className="text-[11px] text-muted-foreground">
+                  Prioridade
+                </Label>
+                <Select
+                  value={prioridadeFilter}
+                  onValueChange={setPrioridadeFilter}
+                >
+                  <SelectTrigger className="h-9 w-40">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
                     <SelectItem value="Alta">Alta</SelectItem>
@@ -1044,9 +1304,16 @@ function LeadsPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Interesse</Label>
-                <Select value={interesseFilter} onValueChange={setInteresseFilter}>
-                  <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+                <Label className="text-[11px] text-muted-foreground">
+                  Interesse
+                </Label>
+                <Select
+                  value={interesseFilter}
+                  onValueChange={setInteresseFilter}
+                >
+                  <SelectTrigger className="h-9 w-40">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="Comprar">Comprar</SelectItem>
@@ -1054,12 +1321,20 @@ function LeadsPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Origem</Label>
+                <Label className="text-[11px] text-muted-foreground">
+                  Origem
+                </Label>
                 <Select value={origemFilter} onValueChange={setOrigemFilter}>
-                  <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 w-44">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
-                    {origemOptions.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    {origemOptions.map((o) => (
+                      <SelectItem key={o} value={o}>
+                        {o}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1087,105 +1362,149 @@ function LeadsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={isCorretor ? 8 : 10} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={isCorretor ? 8 : 10}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
                   Carregando leads...
                 </TableCell>
               </TableRow>
             ) : filteredLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isCorretor ? 8 : 10} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={isCorretor ? 8 : 10}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
                   Nenhum lead encontrado com esses filtros.
                 </TableCell>
               </TableRow>
             ) : (
               filteredLeads.map((l) => {
-              const stage = funnelStages.find((s) => s.id === l.stage)
-                ?? { id: l.stage, name: l.stage, color: "bg-slate-200 text-slate-700" };
-              return (
-                <TableRow key={l.id} className="hover:bg-muted/40">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {l.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="text-sm font-medium">{l.nome}</div>
-                        <div className="text-xs text-muted-foreground">{l.telefone}</div>
+                const stage = funnelStages.find((s) => s.id === l.stage) ?? {
+                  id: l.stage,
+                  name: l.stage,
+                  color: "bg-slate-200 text-slate-700",
+                };
+                return (
+                  <TableRow key={l.id} className="hover:bg-muted/40">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                            {l.nome
+                              .split(" ")
+                              .map((n) => n[0])
+                              .slice(0, 2)
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="text-sm font-medium">{l.nome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {l.telefone}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">{l.origem}</TableCell>
-                  <TableCell><Badge variant="outline">{l.interesse}</Badge></TableCell>
-                  <TableCell><Badge className={stage.color}>{stage.name}</Badge></TableCell>
-                  {!isCorretor && (
-                    <TableCell className="text-sm">{equipeLabel(l)}</TableCell>
-                  )}
-                  {!isCorretor && <TableCell className="text-sm">{l.corretor}</TableCell>}
-                  <TableCell className="text-sm font-medium">
-                    {l.renda != null ? brl(l.renda) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={prioridadeBadgeClass(l.prioridade)}>{l.prioridade}</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{l.updatedAt}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        title="WhatsApp"
-                        onClick={() => toast.message(`WhatsApp — ${l.nome}`, { description: l.telefone })}
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        title="Ligar"
-                        onClick={() => toast.message(`Ligar — ${l.nome}`, { description: l.telefone })}
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        title="E-mail"
-                        onClick={() => toast.message(`E-mail — ${l.nome}`, { description: l.email })}
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Mais opções">
-                            <MoreHorizontal className="w-3.5 h-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => setDetailLead(l)}>
-                            <Eye className="w-4 h-4 mr-2" /> Ver detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEdit(l)}>
-                            <Pencil className="w-4 h-4 mr-2" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteLead(l)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })
+                    </TableCell>
+                    <TableCell className="text-sm">{l.origem}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{l.interesse}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={stage.color}>{stage.name}</Badge>
+                    </TableCell>
+                    {!isCorretor && (
+                      <TableCell className="text-sm">
+                        {equipeLabel(l)}
+                      </TableCell>
+                    )}
+                    {!isCorretor && (
+                      <TableCell className="text-sm">{l.corretor}</TableCell>
+                    )}
+                    <TableCell className="text-sm font-medium">
+                      {l.renda != null ? brl(l.renda) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={prioridadeBadgeClass(l.prioridade)}>
+                        {l.prioridade}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {l.updatedAt}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="WhatsApp"
+                          onClick={() =>
+                            toast.message(`WhatsApp — ${l.nome}`, {
+                              description: l.telefone,
+                            })
+                          }
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Ligar"
+                          onClick={() =>
+                            toast.message(`Ligar — ${l.nome}`, {
+                              description: l.telefone,
+                            })
+                          }
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="E-mail"
+                          onClick={() =>
+                            toast.message(`E-mail — ${l.nome}`, {
+                              description: l.email,
+                            })
+                          }
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Mais opções"
+                            >
+                              <MoreHorizontal className="w-3.5 h-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => setDetailLead(l)}>
+                              <Eye className="w-4 h-4 mr-2" /> Ver detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(l)}>
+                              <Pencil className="w-4 h-4 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteLead(l)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -1281,9 +1600,7 @@ function LeadsPage() {
           <DialogHeader>
             <DialogTitle>Confirmar importação</DialogTitle>
             <DialogDescription>
-              {importFileName
-                ? `Arquivo: ${importFileName}. `
-                : ""}
+              {importFileName ? `Arquivo: ${importFileName}. ` : ""}
               Formato: Data Captura, Nome do Cliente, Telefone (com DDD) e
               Origem. Hora, e-mail, imóvel e mensagem são ignorados.
             </DialogDescription>

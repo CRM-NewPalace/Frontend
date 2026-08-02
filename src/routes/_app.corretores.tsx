@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import {
-  EvolucaoBadge,
-  FinanceKpiCard,
-} from "@/components/finance-kpi-card";
+import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -152,12 +149,12 @@ function Page() {
 
           <p className="mt-3 text-xs text-muted-foreground">
             {data.totais.corretores} corretor
-            {data.totais.corretores === 1 ? "" : "es"} ·{" "}
-            {data.totais.gerentes} gerente
-            {data.totais.gerentes === 1 ? "" : "s"} ·{" "}
-            {data.totais.visitas} visita
-            {data.totais.visitas === 1 ? "" : "s"} ·{" "}
-            {data.totais.perdidos} perdido
+            {data.totais.corretores === 1 ? "" : "es"} · {data.totais.gerentes}{" "}
+            gerente
+            {data.totais.gerentes === 1 ? "" : "s"} · {data.totais.visitas}{" "}
+            visita
+            {data.totais.visitas === 1 ? "" : "s"} · {data.totais.perdidos}{" "}
+            perdido
             {data.totais.perdidos === 1 ? "" : "s"} no mês
           </p>
 

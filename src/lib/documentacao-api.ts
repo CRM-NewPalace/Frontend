@@ -2,16 +2,9 @@ import { apiFetch } from "@/lib/api";
 import type { ContatoTipo, StageId } from "@/lib/crm-types";
 
 export type DocumentacaoFonte =
-  | "indicacao"
-  | "lead_proprio"
-  | "lista"
-  | "campanha"
-  | "outro";
+  "indicacao" | "lead_proprio" | "lista" | "campanha" | "outro";
 
-export type DocumentacaoStatus1 =
-  | "aprovado"
-  | "analise"
-  | "aprovado_restricao";
+export type DocumentacaoStatus1 = "aprovado" | "analise" | "aprovado_restricao";
 
 export type DocumentacaoStatus2 = "vendido" | "bacen" | "andamento";
 
@@ -95,9 +88,7 @@ export async function fetchDocumentacoes(
   const qs = new URLSearchParams();
   if (corretorId) qs.set("corretorId", corretorId);
   const query = qs.toString();
-  return apiFetch<Documentacao[]>(
-    `/documentacao${query ? `?${query}` : ""}`,
-  );
+  return apiFetch<Documentacao[]>(`/documentacao${query ? `?${query}` : ""}`);
 }
 
 export async function createDocumentacao(

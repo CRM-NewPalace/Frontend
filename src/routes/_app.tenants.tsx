@@ -390,9 +390,7 @@ function TenantsPage() {
       await loadItems();
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Falha ao remover o tenant.",
+        err instanceof ApiError ? err.message : "Falha ao remover o tenant.",
       );
     } finally {
       setDeletingTenant(false);
@@ -570,7 +568,9 @@ function TenantsPage() {
                     <TableCell>
                       {item.admin ? (
                         <div className="min-w-0">
-                          <div className="truncate text-sm">{item.admin.name}</div>
+                          <div className="truncate text-sm">
+                            {item.admin.name}
+                          </div>
                           <code className="text-xs text-muted-foreground break-all">
                             {item.admin.email}
                           </code>
@@ -643,7 +643,9 @@ function TenantsPage() {
             ? "Cadastre a imobiliária, defina a logo e os módulos. O admin é gerado automaticamente."
             : "Atualize dados, logo e módulos do tenant."
         }
-        className={formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined}
+        className={
+          formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined
+        }
       >
         <form
           onSubmit={(e) => void handleSubmit(e)}
@@ -752,7 +754,9 @@ function TenantsPage() {
                       </div>
                       <p className="text-xs text-muted-foreground pt-1">
                         Slug no login (opcional):{" "}
-                        <code className="rounded bg-muted px-1">{form.slug}</code>
+                        <code className="rounded bg-muted px-1">
+                          {form.slug}
+                        </code>
                       </p>
                     </div>
                     <Button
@@ -1140,9 +1144,7 @@ function TenantsPage() {
                             Instância {connection.instanceId}
                           </span>
                           <Badge
-                            variant={
-                              connection.ativo ? "default" : "secondary"
-                            }
+                            variant={connection.ativo ? "default" : "secondary"}
                           >
                             {connection.ativo ? "Ativa" : "Inativa"}
                           </Badge>
@@ -1174,7 +1176,11 @@ function TenantsPage() {
           )}
         </FormDialogBody>
         <FormDialogActions>
-          <Button type="button" variant="outline" onClick={() => setDetailOpen(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDetailOpen(false)}
+          >
             Fechar
           </Button>
         </FormDialogActions>
@@ -1271,7 +1277,9 @@ function TenantsPage() {
 
       <AlertDialog
         open={Boolean(deleteTenantTarget)}
-        onOpenChange={(open) => !open && !deletingTenant && setDeleteTenantTarget(null)}
+        onOpenChange={(open) =>
+          !open && !deletingTenant && setDeleteTenantTarget(null)
+        }
       >
         <AlertDialogContent>
           <AlertDialogHeader>

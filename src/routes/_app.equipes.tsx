@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  useCallback, useEffect, useMemo, useRef, useState, type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
 } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -9,16 +14,29 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
@@ -35,8 +53,20 @@ import {
 } from "@/lib/equipes-api";
 import { resetUserPassword } from "@/lib/users-api";
 import {
-  Network, Plus, Loader2, Pencil, Trash2, Users, UserCog,
-  ChevronLeft, ChevronRight, Crown, KeyRound, Copy, Check, Shield,
+  Network,
+  Plus,
+  Loader2,
+  Pencil,
+  Trash2,
+  Users,
+  UserCog,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  KeyRound,
+  Copy,
+  Check,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -111,7 +141,9 @@ function MemberCard({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 {accent && <Crown className="w-3 h-3 text-primary shrink-0" />}
-                <div className="text-sm font-medium truncate">{member.name}</div>
+                <div className="text-sm font-medium truncate">
+                  {member.name}
+                </div>
               </div>
               <div className="text-[11px] text-muted-foreground truncate mt-0.5">
                 {member.email}
@@ -170,7 +202,9 @@ function EquipesPage() {
     email: string;
     password: string;
   } | null>(null);
-  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(null);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(
+    null,
+  );
 
   const [gerentes, setGerentes] = useState<EquipeOptionUser[]>([]);
   const [corretores, setCorretores] = useState<EquipeOptionUser[]>([]);
@@ -225,7 +259,10 @@ function EquipesPage() {
   }, [items.length, updateScrollButtons]);
 
   function scrollBoard(dir: -1 | 1) {
-    boardRef.current?.scrollBy({ left: dir * COLUMN_STEP_PX, behavior: "smooth" });
+    boardRef.current?.scrollBy({
+      left: dir * COLUMN_STEP_PX,
+      behavior: "smooth",
+    });
   }
 
   async function loadOptions(equipeId?: string) {
@@ -441,7 +478,9 @@ function EquipesPage() {
             <Network className="w-5 h-5 text-muted-foreground" />
           </div>
           <p className="text-sm font-medium">
-            {canManage ? "Nenhuma equipe cadastrada" : "Você ainda não lidera uma equipe"}
+            {canManage
+              ? "Nenhuma equipe cadastrada"
+              : "Você ainda não lidera uma equipe"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             {canManage
@@ -513,11 +552,7 @@ function EquipesPage() {
               </div>
 
               <div className="space-y-2 flex-1">
-                <MemberCard
-                  member={eq.gerente}
-                  roleLabel="Gerente"
-                  accent
-                />
+                <MemberCard member={eq.gerente} roleLabel="Gerente" accent />
 
                 {eq.membros.length === 0 ? (
                   <div className="rounded-lg border border-dashed bg-background/50 px-3 py-6 text-center text-xs text-muted-foreground">
@@ -554,14 +589,19 @@ function EquipesPage() {
             description="Defina o gerente responsável e os corretores da equipe."
             className="max-w-xl"
           >
-            <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col flex-1 min-h-0">
+            <form
+              onSubmit={(e) => void handleSubmit(e)}
+              className="flex flex-col flex-1 min-h-0"
+            >
               <FormDialogBody>
                 <FormSection
                   icon={<UserCog className="w-3.5 h-3.5 text-primary" />}
                   title="Identificação"
                 >
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Nome da equipe</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Nome da equipe
+                    </Label>
                     <Input
                       value={form.name}
                       onChange={(e) =>
@@ -572,7 +612,9 @@ function EquipesPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Gerente</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Gerente
+                    </Label>
                     <Select
                       value={form.gerenteId || "__none__"}
                       onValueChange={(v) =>
@@ -599,12 +641,15 @@ function EquipesPage() {
                     </Select>
                     {!optionsLoading && gerenteOptions.length === 0 && (
                       <p className="text-xs text-muted-foreground">
-                        Nenhum gerente disponível. Cadastre um usuário com perfil gerente.
+                        Nenhum gerente disponível. Cadastre um usuário com
+                        perfil gerente.
                       </p>
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Status
+                    </Label>
                     <Select
                       value={form.status}
                       onValueChange={(v) =>
@@ -636,8 +681,8 @@ function EquipesPage() {
                     </div>
                   ) : corretores.length === 0 ? (
                     <p className="text-xs text-muted-foreground py-2">
-                      Nenhum corretor disponível. Cadastre corretores em Usuários ou
-                      liberte-os de outras equipes.
+                      Nenhum corretor disponível. Cadastre corretores em
+                      Usuários ou liberte-os de outras equipes.
                     </p>
                   ) : (
                     <div className="space-y-2 max-h-56 overflow-y-auto rounded-lg border p-3">
@@ -671,7 +716,11 @@ function EquipesPage() {
               </FormDialogBody>
 
               <FormDialogActions>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={saving || optionsLoading}>
@@ -682,13 +731,16 @@ function EquipesPage() {
             </form>
           </FormDialogShell>
 
-          <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
+          <AlertDialog
+            open={Boolean(deleteId)}
+            onOpenChange={(o) => !o && setDeleteId(null)}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir equipe?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Os corretores ficarão sem equipe. O gerente poderá ser vinculado a
-                  outra equipe depois.
+                  Os corretores ficarão sem equipe. O gerente poderá ser
+                  vinculado a outra equipe depois.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -722,15 +774,21 @@ function EquipesPage() {
               >
                 <div className="space-y-3">
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                    <div className="text-[11px] text-muted-foreground">E-mail</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      E-mail
+                    </div>
                     <div className="flex items-center justify-between gap-2">
-                      <code className="text-sm break-all">{credentials.email}</code>
+                      <code className="text-sm break-all">
+                        {credentials.email}
+                      </code>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="shrink-0"
-                        onClick={() => void copyText(credentials.email, "email")}
+                        onClick={() =>
+                          void copyText(credentials.email, "email")
+                        }
                       >
                         {copiedField === "email" ? (
                           <Check className="w-3.5 h-3.5 mr-1" />
@@ -754,7 +812,9 @@ function EquipesPage() {
                         variant="outline"
                         size="sm"
                         className="shrink-0"
-                        onClick={() => void copyText(credentials.password, "password")}
+                        onClick={() =>
+                          void copyText(credentials.password, "password")
+                        }
                       >
                         {copiedField === "password" ? (
                           <Check className="w-3.5 h-3.5 mr-1" />

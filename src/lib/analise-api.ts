@@ -2,10 +2,7 @@ import { apiFetch } from "@/lib/api";
 import type { ContatoTipo, Lead, StageId } from "@/lib/crm-types";
 
 export type AnaliseStatus =
-  | "pendente"
-  | "em_analise"
-  | "aprovado"
-  | "reprovado";
+  "pendente" | "em_analise" | "aprovado" | "reprovado";
 
 export interface Analise {
   id: string;

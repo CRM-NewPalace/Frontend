@@ -4,13 +4,7 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type FinanceKpiTone =
-  | "teal"
-  | "emerald"
-  | "orange"
-  | "red"
-  | "blue"
-  | "violet"
-  | "rose";
+  "teal" | "emerald" | "orange" | "red" | "blue" | "violet" | "rose";
 
 const TONE: Record<FinanceKpiTone, { bar: string; icon: string }> = {
   teal: { bar: "bg-teal-600", icon: "bg-teal-600" },
@@ -52,9 +46,7 @@ export function EvolucaoBadge({
   const bad = invert ? up : down;
   const Icon = up || value === 0 ? TrendingUp : TrendingDown;
   const prevLabel =
-    previous != null
-      ? ` · ant. ${previous.toLocaleString("pt-BR")}`
-      : "";
+    previous != null ? ` · ant. ${previous.toLocaleString("pt-BR")}` : "";
   return (
     <span
       className={cn(
@@ -69,7 +61,8 @@ export function EvolucaoBadge({
       <Icon className="h-3 w-3" />
       <span>
         vs mês ant. {value > 0 ? "+" : ""}
-        {value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%{prevLabel}
+        {value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+        {prevLabel}
       </span>
     </span>
   );

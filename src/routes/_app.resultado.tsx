@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  useCallback, useEffect, useMemo, useRef, useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +7,17 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
 } from "@/components/form-dialog";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
 import { ApiError } from "@/lib/api";
@@ -26,8 +31,16 @@ import {
 } from "@/lib/analise-api";
 import { getSession } from "@/lib/auth";
 import {
-  SearchCheck, Loader2, ChevronLeft, ChevronRight, Users, User,
-  Wallet, FileText, MapPin, MessageCircle,
+  SearchCheck,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  User,
+  Wallet,
+  FileText,
+  MapPin,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,19 +61,16 @@ const STATUS_LABEL: Record<AnaliseStatus, string> = {
 };
 
 function statusBadgeClass(status: AnaliseStatus) {
-  if (status === "aprovado") return "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
-  if (status === "reprovado") return "bg-destructive/15 text-destructive border-destructive/30";
-  if (status === "em_analise") return "bg-sky-500/15 text-sky-700 border-sky-500/30";
+  if (status === "aprovado")
+    return "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
+  if (status === "reprovado")
+    return "bg-destructive/15 text-destructive border-destructive/30";
+  if (status === "em_analise")
+    return "bg-sky-500/15 text-sky-700 border-sky-500/30";
   return "bg-amber-500/15 text-amber-800 border-amber-500/30";
 }
 
-function AnaliseCard({
-  item,
-  onOpen,
-}: {
-  item: Analise;
-  onOpen: () => void;
-}) {
+function AnaliseCard({ item, onOpen }: { item: Analise; onOpen: () => void }) {
   return (
     <Card
       className="p-3 shadow-sm cursor-pointer hover:border-primary/40 transition-colors"
@@ -77,13 +87,19 @@ function AnaliseCard({
         </div>
         <Badge
           variant="outline"
-          className={cn("text-[10px] shrink-0 capitalize", statusBadgeClass(item.status))}
+          className={cn(
+            "text-[10px] shrink-0 capitalize",
+            statusBadgeClass(item.status),
+          )}
         >
           {STATUS_LABEL[item.status]}
         </Badge>
       </div>
       <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-        <Badge variant="outline" className={cn("text-[10px]", prioridadeBadgeClass(item.prioridade))}>
+        <Badge
+          variant="outline"
+          className={cn("text-[10px]", prioridadeBadgeClass(item.prioridade))}
+        >
           {item.prioridade}
         </Badge>
         <Badge variant="secondary" className="text-[10px] capitalize">
@@ -192,7 +208,10 @@ function AnalisePage() {
   }, [columns.length, updateScrollButtons]);
 
   function scrollBoard(dir: -1 | 1) {
-    boardRef.current?.scrollBy({ left: dir * COLUMN_STEP_PX, behavior: "smooth" });
+    boardRef.current?.scrollBy({
+      left: dir * COLUMN_STEP_PX,
+      behavior: "smooth",
+    });
   }
 
   function openDetail(item: Analise) {
@@ -236,10 +255,7 @@ function AnalisePage() {
     }
   }
 
-  function openWhatsApp(
-    item: Analise,
-    opts?: { silentIfMissing?: boolean },
-  ) {
+  function openWhatsApp(item: Analise, opts?: { silentIfMissing?: boolean }) {
     const raw = item.lead.corretor?.whatsapp;
     if (!raw) {
       if (!opts?.silentIfMissing) {
@@ -264,7 +280,11 @@ function AnalisePage() {
     const text = encodeURIComponent(
       `*Resultado da análise*\nCliente: ${item.nome}\nStatus: ${statusLabel}${parecer}`,
     );
-    window.open(`https://wa.me/${e164}?text=${text}`, "_blank", "noopener,noreferrer");
+    window.open(
+      `https://wa.me/${e164}?text=${text}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   }
 
   const busy = loading || leadsLoading;
@@ -335,7 +355,9 @@ function AnalisePage() {
                 <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-semibold truncate">{col.name}</span>
+                    <span className="text-sm font-semibold truncate">
+                      {col.name}
+                    </span>
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {col.items.length} processo
@@ -445,7 +467,9 @@ function AnalisePage() {
                 title="Parecer"
               >
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Status
+                  </Label>
                   <Select
                     value={statusDraft}
                     onValueChange={(v) => setStatusDraft(v as AnaliseStatus)}
@@ -462,7 +486,9 @@ function AnalisePage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Parecer</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Parecer
+                  </Label>
                   <Textarea
                     value={parecerDraft}
                     onChange={(e) => setParecerDraft(e.target.value)}
@@ -473,7 +499,11 @@ function AnalisePage() {
               </FormSection>
             </FormDialogBody>
             <FormDialogActions>
-              <Button type="button" variant="outline" onClick={() => setDetail(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDetail(null)}
+              >
                 Fechar
               </Button>
               {detail.status === "pendente" && (

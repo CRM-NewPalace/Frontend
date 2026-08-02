@@ -1,4 +1,4 @@
-import type { IconType } from 'react-icons'
+import type { IconType } from "react-icons";
 import {
   HiArrowRight,
   HiBuildingOffice2,
@@ -8,29 +8,29 @@ import {
   HiTableCells,
   HiUserGroup,
   HiWallet,
-} from 'react-icons/hi2'
+} from "react-icons/hi2";
 
 const scatteredTools: { label: string; icon: IconType }[] = [
-  { label: 'CRM', icon: HiUserGroup },
-  { label: 'Financeiro', icon: HiWallet },
-  { label: 'WhatsApp', icon: HiChatBubbleLeftRight },
-  { label: 'Planilhas', icon: HiTableCells },
-  { label: 'Gestão de imóveis', icon: HiBuildingOffice2 },
-  { label: 'Documentos', icon: HiDocumentText },
-  { label: 'Leads', icon: HiCursorArrowRays },
-]
+  { label: "CRM", icon: HiUserGroup },
+  { label: "Financeiro", icon: HiWallet },
+  { label: "WhatsApp", icon: HiChatBubbleLeftRight },
+  { label: "Planilhas", icon: HiTableCells },
+  { label: "Gestão de imóveis", icon: HiBuildingOffice2 },
+  { label: "Documentos", icon: HiDocumentText },
+  { label: "Leads", icon: HiCursorArrowRays },
+];
 
 const problemPoints = [
-  'Retrabalho diário da equipe',
-  'Informações perdidas entre setores',
-  'Decisões sem dados confiáveis',
-]
+  "Retrabalho diário da equipe",
+  "Informações perdidas entre setores",
+  "Decisões sem dados confiáveis",
+];
 
 const solutionPoints = [
-  'Operação centralizada',
-  'Equipe integrada',
-  'Decisão baseada em dados',
-]
+  "Operação centralizada",
+  "Equipe integrada",
+  "Decisão baseada em dados",
+];
 
 function ToolTag({ label, icon: Icon }: { label: string; icon: IconType }) {
   return (
@@ -38,26 +38,31 @@ function ToolTag({ label, icon: Icon }: { label: string; icon: IconType }) {
       <Icon className="h-4 w-4 shrink-0 text-text-muted" />
       {label}
     </span>
-  )
+  );
 }
 
 function BulletList({
   items,
   dotClassName,
 }: {
-  items: string[]
-  dotClassName: string
+  items: string[];
+  dotClassName: string;
 }) {
   return (
     <ul className="flex flex-col gap-2.5">
       {items.map((item) => (
-        <li key={item} className="flex items-start gap-2.5 text-sm text-text-muted sm:text-base">
-          <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${dotClassName}`} />
+        <li
+          key={item}
+          className="flex items-start gap-2.5 text-sm text-text-muted sm:text-base"
+        >
+          <span
+            className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${dotClassName}`}
+          />
           {item}
         </li>
       ))}
     </ul>
-  )
+  );
 }
 
 export function ProblemSection() {
@@ -116,14 +121,17 @@ export function ProblemSection() {
                 Com Zone Connection - Uma única plataforma
               </h3>
               <p className="text-sm leading-relaxed text-text-muted sm:text-base">
-                Todos os setores conectados no mesmo fluxo de dados, com histórico
-                completo e automações que trabalham por você.
+                Todos os setores conectados no mesmo fluxo de dados, com
+                histórico completo e automações que trabalham por você.
               </p>
-              <BulletList items={solutionPoints} dotClassName="bg-brand-accent" />
+              <BulletList
+                items={solutionPoints}
+                dotClassName="bg-brand-accent"
+              />
             </div>
           </div>
         </div>
       </div>
     </section>
-  )
+  );
 }

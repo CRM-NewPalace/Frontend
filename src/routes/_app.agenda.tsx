@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -387,13 +393,14 @@ function AgendaPage() {
     setFormMode("edit");
     setEditingId(item.id);
     setForm({
-      leadId: item.lead?.tipo === "lead" ? item.leadId ?? "" : "",
-      clienteId: item.lead?.tipo === "cliente" ? item.leadId ?? "" : "",
+      leadId: item.lead?.tipo === "lead" ? (item.leadId ?? "") : "",
+      clienteId: item.lead?.tipo === "cliente" ? (item.leadId ?? "") : "",
       titulo: item.titulo,
       tipo: item.tipo,
       escopo: item.escopo,
       status: item.status,
-      alvoTipo: item.alvoTipo && item.alvoTipo !== "nenhum" ? item.alvoTipo : "todos",
+      alvoTipo:
+        item.alvoTipo && item.alvoTipo !== "nenhum" ? item.alvoTipo : "todos",
       alvoEquipeId: item.alvoEquipeId ?? "",
       alvoGerenteId: item.alvoGerenteId ?? "",
       date: toDateInput(start),
@@ -407,9 +414,7 @@ function AgendaPage() {
 
   function validateForm(): CreateAgendamentoInput | null {
     const isAdminEvent = user?.role === "admin";
-    const leadId = isAdminEvent
-      ? null
-      : form.leadId || form.clienteId || null;
+    const leadId = isAdminEvent ? null : form.leadId || form.clienteId || null;
 
     if (!isAdminEvent && form.escopo === "com_gerente" && !leadId) {
       toast.error(
@@ -520,9 +525,7 @@ function AgendaPage() {
       await loadItems();
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível aprovar.",
+        err instanceof ApiError ? err.message : "Não foi possível aprovar.",
       );
     } finally {
       setActingId(null);
@@ -538,9 +541,7 @@ function AgendaPage() {
       await loadItems();
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível recusar.",
+        err instanceof ApiError ? err.message : "Não foi possível recusar.",
       );
     } finally {
       setActingId(null);
@@ -700,9 +701,7 @@ function AgendaPage() {
         <div className="rounded-xl border bg-card overflow-hidden">
           <div className="border-b px-4 py-3 bg-muted/20">
             <h3 className="text-sm font-semibold">
-              {isGerente
-                ? "Aguardando sua aprovação"
-                : "Aguardando o gerente"}
+              {isGerente ? "Aguardando sua aprovação" : "Aguardando o gerente"}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               {isGerente
@@ -939,7 +938,9 @@ function AgendaPage() {
                   ) : null}
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Tipo</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      Tipo
+                    </Label>
                     <Select value={filterTipo} onValueChange={setFilterTipo}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Tipo" />
@@ -983,9 +984,7 @@ function AgendaPage() {
 
           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
             <span className="font-medium text-foreground/80">Cores:</span>
-            {(
-              ["admin", "gerente", "corretor"] as const
-            ).map((origem) => (
+            {(["admin", "gerente", "corretor"] as const).map((origem) => (
               <span key={origem} className="inline-flex items-center gap-1.5">
                 <span
                   className={cn(
@@ -1129,10 +1128,7 @@ function AgendaPage() {
                       <Select
                         value={form.alvoEquipeId || "__none__"}
                         onValueChange={(v) =>
-                          setField(
-                            "alvoEquipeId",
-                            v === "__none__" ? "" : v,
-                          )
+                          setField("alvoEquipeId", v === "__none__" ? "" : v)
                         }
                       >
                         <SelectTrigger>
@@ -1156,10 +1152,7 @@ function AgendaPage() {
                       <Select
                         value={form.alvoGerenteId || "__none__"}
                         onValueChange={(v) =>
-                          setField(
-                            "alvoGerenteId",
-                            v === "__none__" ? "" : v,
-                          )
+                          setField("alvoGerenteId", v === "__none__" ? "" : v)
                         }
                       >
                         <SelectTrigger>
@@ -1251,7 +1244,9 @@ function AgendaPage() {
                 />
               </div>
 
-              <div className={cn("grid gap-4", isAdmin ? "" : "sm:grid-cols-2")}>
+              <div
+                className={cn("grid gap-4", isAdmin ? "" : "sm:grid-cols-2")}
+              >
                 <div className="space-y-2">
                   <Label>Tipo</Label>
                   <Select

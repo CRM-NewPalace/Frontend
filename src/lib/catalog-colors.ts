@@ -24,11 +24,14 @@ export const CATALOG_COLORS = [
 
 export type CatalogColor = (typeof CATALOG_COLORS)[number];
 
-export const DEFAULT_CATALOG_COLOR: CatalogColor = "bg-slate-200 text-slate-700";
+export const DEFAULT_CATALOG_COLOR: CatalogColor =
+  "bg-slate-200 text-slate-700";
 
 /** Extrai a classe de fundo para o swatch (ex.: bg-blue-100). */
 export function catalogColorSwatch(color: string | null | undefined): string {
-  const bg = (color ?? DEFAULT_CATALOG_COLOR).split(/\s+/).find((c) => c.startsWith("bg-"));
+  const bg = (color ?? DEFAULT_CATALOG_COLOR)
+    .split(/\s+/)
+    .find((c) => c.startsWith("bg-"));
   return bg ?? "bg-slate-200";
 }
 

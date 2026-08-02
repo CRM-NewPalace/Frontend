@@ -1,19 +1,19 @@
-import { HiCpuChip } from 'react-icons/hi2'
+import { HiCpuChip } from "react-icons/hi2";
 
 const MESSAGES = [
   {
-    side: 'left' as const,
-    text: 'Oi! Vi um apartamento no site, ainda está disponível?',
+    side: "left" as const,
+    text: "Oi! Vi um apartamento no site, ainda está disponível?",
   },
   {
-    side: 'right' as const,
-    text: 'Está sim! Você procura na mesma região? Posso te mostrar opções de 2 e 3 quartos.',
+    side: "right" as const,
+    text: "Está sim! Você procura na mesma região? Posso te mostrar opções de 2 e 3 quartos.",
   },
   {
-    side: 'left' as const,
-    text: 'Perfeito, 3 quartos até R$ 650 mil.',
+    side: "left" as const,
+    text: "Perfeito, 3 quartos até R$ 650 mil.",
   },
-]
+];
 
 function ChatMockup() {
   return (
@@ -36,13 +36,13 @@ function ChatMockup() {
         {MESSAGES.map((message) => (
           <div
             key={message.text}
-            className={`flex ${message.side === 'right' ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${message.side === "right" ? "justify-end" : "justify-start"}`}
           >
             <p
               className={
-                message.side === 'right'
-                  ? 'max-w-[85%] rounded-2xl rounded-br-sm bg-brand-dark px-4 py-2.5 text-sm leading-relaxed text-white'
-                  : 'max-w-[85%] rounded-2xl rounded-bl-sm bg-brand-accent/10 px-4 py-2.5 text-sm leading-relaxed text-text-muted'
+                message.side === "right"
+                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-brand-dark px-4 py-2.5 text-sm leading-relaxed text-white"
+                  : "max-w-[85%] rounded-2xl rounded-bl-sm bg-brand-accent/10 px-4 py-2.5 text-sm leading-relaxed text-text-muted"
               }
             >
               {message.text}
@@ -58,7 +58,7 @@ function ChatMockup() {
         </span>
       </div>
     </div>
-  )
+  );
 }
 
 export function WhatsAppAiSection() {
@@ -74,9 +74,9 @@ export function WhatsAppAiSection() {
             Cada conversa vira uma oportunidade de negócio.
           </h2>
           <p className="text-base leading-relaxed text-text-muted sm:text-lg">
-            Nossa inteligência artificial conversa com o cliente, entende o que ele
-            procura, captura os dados e entrega tudo pronto dentro do sistema — sem
-            intervenção manual.
+            Nossa inteligência artificial conversa com o cliente, entende o que
+            ele procura, captura os dados e entrega tudo pronto dentro do
+            sistema — sem intervenção manual.
           </p>
         </div>
 
@@ -86,5 +86,5 @@ export function WhatsAppAiSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

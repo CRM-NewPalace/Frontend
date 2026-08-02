@@ -184,7 +184,9 @@ export async function fetchSolicitacoesAgenda(): Promise<Agendamento[]> {
   return apiFetch<Agendamento[]>("/agenda/solicitacoes");
 }
 
-export async function fetchSolicitacoesAgendaCount(): Promise<{ count: number }> {
+export async function fetchSolicitacoesAgendaCount(): Promise<{
+  count: number;
+}> {
   return apiFetch<{ count: number }>("/agenda/solicitacoes/count");
 }
 

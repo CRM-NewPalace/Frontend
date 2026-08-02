@@ -33,9 +33,7 @@ export type TenantModuleDef = {
 };
 
 export type TenantModuleGroupId =
-  | "operacional"
-  | "administrativo"
-  | "financeiro";
+  "operacional" | "administrativo" | "financeiro";
 
 export type TenantModuleGroup = {
   id: TenantModuleGroupId;

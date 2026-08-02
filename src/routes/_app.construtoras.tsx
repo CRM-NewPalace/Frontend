@@ -7,14 +7,28 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
@@ -32,7 +46,15 @@ import {
   type Construtora,
 } from "@/lib/construtoras-api";
 import {
-  Building, Plus, Loader2, Pencil, Trash2, Eye, Phone, MapPin, User,
+  Building,
+  Plus,
+  Loader2,
+  Pencil,
+  Trash2,
+  Eye,
+  Phone,
+  MapPin,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -70,13 +92,17 @@ function ConstrutorasPage() {
   const [items, setItems] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
+    "create",
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
-  const [selectedEmpreendimentos, setSelectedEmpreendimentos] = useState<string[]>([]);
+  const [selectedEmpreendimentos, setSelectedEmpreendimentos] = useState<
+    string[]
+  >([]);
   const [loadingEmpreendimentos, setLoadingEmpreendimentos] = useState(false);
 
   const loadItems = useCallback(async () => {
@@ -129,7 +155,9 @@ function ConstrutorasPage() {
         setEmpreendimentos(result);
         setSelectedEmpreendimentos(
           result
-            .filter((empreendimento) => empreendimento.construtoraId === item.id)
+            .filter(
+              (empreendimento) => empreendimento.construtoraId === item.id,
+            )
             .map((empreendimento) => empreendimento.id),
         );
       })
@@ -504,7 +532,11 @@ function ConstrutorasPage() {
             )}
           </FormDialogBody>
           <FormDialogActions>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               {readOnly ? "Fechar" : "Cancelar"}
             </Button>
             {!readOnly && (

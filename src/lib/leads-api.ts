@@ -1,5 +1,10 @@
 import { apiFetch } from "@/lib/api";
-import type { AnaliseStatus, ContatoTipo, Lead, StageId } from "@/lib/crm-types";
+import type {
+  AnaliseStatus,
+  ContatoTipo,
+  Lead,
+  StageId,
+} from "@/lib/crm-types";
 
 /** Shape retornado pelo backend (Prisma select). */
 export interface ApiLead {
@@ -186,8 +191,7 @@ export type DistribuirResumoCorretores = {
 };
 
 export type DistribuirResumo =
-  | DistribuirResumoEquipes
-  | DistribuirResumoCorretores;
+  DistribuirResumoEquipes | DistribuirResumoCorretores;
 
 export async function fetchDistribuirResumo(): Promise<DistribuirResumo> {
   return apiFetch<DistribuirResumo>("/leads/distribuir/resumo");
@@ -206,9 +210,7 @@ export async function distribuirLeadsEquipes(
   });
 }
 
-export async function distribuirLeadsCorretores(
-  porCorretor: number,
-): Promise<{
+export async function distribuirLeadsCorretores(porCorretor: number): Promise<{
   ok: boolean;
   total: number;
   porCorretor: number;
@@ -248,7 +250,10 @@ export async function updateLeadStageApi(
   });
 }
 
-export async function markLeadLostApi(id: string, motivo: string): Promise<ApiLead> {
+export async function markLeadLostApi(
+  id: string,
+  motivo: string,
+): Promise<ApiLead> {
   return apiFetch<ApiLead>(`/leads/${id}/perder`, {
     method: "POST",
     body: { motivo },

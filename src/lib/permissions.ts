@@ -65,13 +65,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/documentacao",
     "/perfil",
   ],
-  analista: [
-    "/funil",
-    "/resultado",
-    "/documentacao",
-    "/imoveis",
-    "/perfil",
-  ],
+  analista: ["/funil", "/resultado", "/documentacao", "/imoveis", "/perfil"],
 };
 
 export function getAllowedRoutes(role: Role): readonly string[] {

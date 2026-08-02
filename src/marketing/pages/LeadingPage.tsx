@@ -10,17 +10,17 @@ import {
   CtaSection,
   MarketingFooter,
   ScrollReveal,
-} from '@/marketing/components'
+} from "@/marketing/components";
 
 const SECTIONS = [
-  { id: 'problem', Component: ProblemSection },
-  { id: 'solution', Component: SolutionSection },
-  { id: 'modules', Component: ModulesSection },
-  { id: 'whatsapp-ai', Component: WhatsAppAiSection },
-  { id: 'benefits', Component: BenefitsSection },
-  { id: 'plans', Component: PlansSection },
-  { id: 'cta', Component: CtaSection },
-] as const
+  { id: "problem", Component: ProblemSection },
+  { id: "solution", Component: SolutionSection },
+  { id: "modules", Component: ModulesSection },
+  { id: "whatsapp-ai", Component: WhatsAppAiSection },
+  { id: "benefits", Component: BenefitsSection },
+  { id: "plans", Component: PlansSection },
+  { id: "cta", Component: CtaSection },
+] as const;
 
 export default function LeadingPage() {
   return (
@@ -36,5 +36,5 @@ export default function LeadingPage() {
 
       <MarketingFooter />
     </div>
-  )
+  );
 }

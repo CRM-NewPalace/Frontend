@@ -2,17 +2,34 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  FormDialogActions, FormDialogBody, FormDialogShell, FormSection, DetailField,
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
+  DetailField,
 } from "@/components/form-dialog";
 import { Search, Eye, Trash2, UserX, Sparkles, Wallet } from "lucide-react";
 import { ApiError } from "@/lib/api";
@@ -33,7 +50,13 @@ export const Route = createFileRoute("/_app/leads-perdidos")({
 });
 
 function initials(nome: string) {
-  return nome.split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  return nome
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 function LeadsPerdidos() {
@@ -100,7 +123,9 @@ function LeadsPerdidos() {
     } catch (err) {
       // Rollback
       setLeads((prev) => [target, ...prev.filter((l) => l.id !== target.id)]);
-      toast.error(err instanceof ApiError ? err.message : "Não foi possível excluir.");
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível excluir.",
+      );
       void refresh({ silent: true });
     }
   }
@@ -147,13 +172,19 @@ function LeadsPerdidos() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
                   Nenhum lead perdido.
                 </TableCell>
               </TableRow>
@@ -169,19 +200,32 @@ function LeadsPerdidos() {
                       </Avatar>
                       <div>
                         <div className="text-sm font-medium">{l.nome}</div>
-                        <div className="text-xs text-muted-foreground">{l.telefone}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {l.telefone}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm max-w-[220px] truncate" title={l.motivoPerda}>
+                  <TableCell
+                    className="text-sm max-w-[220px] truncate"
+                    title={l.motivoPerda}
+                  >
                     {l.motivoPerda}
                   </TableCell>
                   <TableCell className="text-sm">{l.corretor}</TableCell>
                   <TableCell className="text-sm">{l.perdidoPor}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{l.perdidoAt}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {l.perdidoAt}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Detalhes" onClick={() => setDetail(l)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Detalhes"
+                        onClick={() => setDetail(l)}
+                      >
                         <Eye className="w-4 h-4" />
                       </Button>
                       <Button
@@ -212,7 +256,10 @@ function LeadsPerdidos() {
         {detail && (
           <>
             <FormDialogBody>
-              <FormSection icon={<Sparkles className="w-3.5 h-3.5 text-primary" />} title="Contato">
+              <FormSection
+                icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
+                title="Contato"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Telefone" value={detail.telefone} />
                   <DetailField label="E-mail" value={detail.email} />
@@ -220,7 +267,10 @@ function LeadsPerdidos() {
                   <DetailField label="Corretor" value={detail.corretor} />
                 </div>
               </FormSection>
-              <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse">
+              <FormSection
+                icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
+                title="Interesse"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Interesse" value={detail.interesse} />
                   <DetailField
@@ -229,11 +279,20 @@ function LeadsPerdidos() {
                   />
                   <DetailField
                     label="Prioridade"
-                    value={<Badge className={prioridadeBadgeClass(detail.prioridade)}>{detail.prioridade}</Badge>}
+                    value={
+                      <Badge
+                        className={prioridadeBadgeClass(detail.prioridade)}
+                      >
+                        {detail.prioridade}
+                      </Badge>
+                    }
                   />
                   <DetailField
                     label="Última etapa"
-                    value={funnelStages.find((s) => s.id === detail.stage)?.name ?? detail.stage}
+                    value={
+                      funnelStages.find((s) => s.id === detail.stage)?.name ??
+                      detail.stage
+                    }
                   />
                   <DetailField label="Excluído em" value={detail.perdidoAt} />
                   <DetailField label="Excluído por" value={detail.perdidoPor} />
@@ -241,16 +300,30 @@ function LeadsPerdidos() {
               </FormSection>
             </FormDialogBody>
             <FormDialogActions>
-              <Button type="button" variant="outline" onClick={() => setDetail(null)}>Fechar</Button>
-              <Button type="button" variant="destructive" onClick={() => setPurgeTarget(detail)}>
-                <Trash2 className="w-4 h-4 mr-1" />Excluir definitivamente
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDetail(null)}
+              >
+                Fechar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setPurgeTarget(detail)}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Excluir definitivamente
               </Button>
             </FormDialogActions>
           </>
         )}
       </FormDialogShell>
 
-      <AlertDialog open={!!purgeTarget} onOpenChange={(o) => !o && setPurgeTarget(null)}>
+      <AlertDialog
+        open={!!purgeTarget}
+        onOpenChange={(o) => !o && setPurgeTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir definitivamente?</AlertDialogTitle>

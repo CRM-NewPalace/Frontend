@@ -13,7 +13,9 @@
  */
 
 function resolveApiUrl(): string {
-  const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  const configured = (
+    import.meta.env.VITE_API_URL as string | undefined
+  )?.trim();
   if (!configured || configured === "/api") return "/api";
 
   // Absolute URL só é segura em SSR/server; no browser força same-origin.
@@ -209,10 +211,7 @@ export async function apiFetch<T>(
     // Sessão morta (cookie ausente/expirado): limpa cache e manda pro login.
     if (response.status === 401 && !skipAuth) {
       sessionCache.clear();
-      if (
-        isBrowser() &&
-        !window.location.pathname.startsWith("/login")
-      ) {
+      if (isBrowser() && !window.location.pathname.startsWith("/login")) {
         window.location.assign("/login");
       }
     }

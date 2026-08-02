@@ -1,6 +1,6 @@
-import { Link } from '@tanstack/react-router'
-import { HeroDiagram } from './HeroDiagram'
-import { getWhatsAppUrl } from '@/lib/env'
+import { Link } from "@tanstack/react-router";
+import { HeroDiagram } from "./HeroDiagram";
+import { getWhatsAppUrl } from "@/lib/env";
 
 export function HeroSection() {
   return (
@@ -17,7 +17,7 @@ export function HeroSection() {
 
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-semibold leading-tight text-brand-dark sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]">
-              Toda a gestão da sua imobiliária em {' '}
+              Toda a gestão da sua imobiliária em{" "}
               <span className="text-gradient-brand">um único lugar.</span>
             </h1>
 
@@ -53,5 +53,5 @@ export function HeroSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

@@ -66,8 +66,7 @@ function buildDaySlots(day: Date, items: Agendamento[]): Slot[] {
   const dayItems = items
     .filter((item) => sameDay(new Date(item.startsAt), day))
     .sort(
-      (a, b) =>
-        new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );
 
   const used = new Set<string>();
@@ -184,7 +183,9 @@ export function AgendaDayTable({
                 <TableHead>Compromisso</TableHead>
                 <TableHead className="hidden md:table-cell">Contato</TableHead>
                 {showCorretor ? (
-                  <TableHead className="hidden lg:table-cell">Corretor</TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    Corretor
+                  </TableHead>
                 ) : null}
                 <TableHead className="hidden sm:table-cell w-[120px]">
                   Status
@@ -199,10 +200,7 @@ export function AgendaDayTable({
                   return (
                     <TableRow
                       key={`empty-${slot.hour}`}
-                      className={cn(
-                        "group",
-                        isNow && "bg-primary/[0.04]",
-                      )}
+                      className={cn("group", isNow && "bg-primary/[0.04]")}
                     >
                       <TableCell className="align-middle">
                         <div
@@ -253,8 +251,7 @@ export function AgendaDayTable({
                           ? "Equipe"
                           : null;
                 const isNow =
-                  isToday &&
-                  new Date(item.startsAt).getHours() === currentHour;
+                  isToday && new Date(item.startsAt).getHours() === currentHour;
 
                 return (
                   <TableRow

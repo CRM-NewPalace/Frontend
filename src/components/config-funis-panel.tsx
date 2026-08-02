@@ -159,7 +159,10 @@ export function ConfigFunisPanel() {
       const next = [...without, updated].map((f) =>
         updated.ativo && f.id !== updated.id ? { ...f, ativo: false } : f,
       );
-      return next.sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.name.localeCompare(b.name));
+      return next.sort(
+        (a, b) =>
+          Number(b.ativo) - Number(a.ativo) || a.name.localeCompare(b.name),
+      );
     });
     setSelectedId(updated.id);
     await refreshCatalog();
@@ -317,7 +320,9 @@ export function ConfigFunisPanel() {
       toast.success("Etapas padrão instaladas neste funil.");
       await afterMutation(updated);
     } catch (err) {
-      toast.error(errorMessage(err, "Não foi possível instalar as etapas padrão."));
+      toast.error(
+        errorMessage(err, "Não foi possível instalar as etapas padrão."),
+      );
     } finally {
       setSaving(false);
     }
@@ -331,7 +336,8 @@ export function ConfigFunisPanel() {
             <div>
               <CardTitle className="text-base">Funis</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                Passe o cursor para ver as etapas. Ative o funil em uso no kanban.
+                Passe o cursor para ver as etapas. Ative o funil em uso no
+                kanban.
               </p>
             </div>
             <Button size="sm" onClick={() => setCreateOpen(true)}>
@@ -347,7 +353,9 @@ export function ConfigFunisPanel() {
               </div>
             )}
             {!loading && funis.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhum funil cadastrado.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhum funil cadastrado.
+              </p>
             )}
             {funis.map((f) => {
               const etapasAtivas = f.etapas.filter((e) => e.active);
@@ -385,12 +393,17 @@ export function ConfigFunisPanel() {
                     <p className="font-medium mb-1.5">{f.name}</p>
                     <div className="flex flex-wrap gap-1">
                       {etapasAtivas.length === 0 ? (
-                        <span className="text-muted-foreground">Sem etapas</span>
+                        <span className="text-muted-foreground">
+                          Sem etapas
+                        </span>
                       ) : (
                         etapasAtivas.map((e) => (
                           <Badge
                             key={e.id}
-                            className={cn("text-[10px]", e.color || DEFAULT_CATALOG_COLOR)}
+                            className={cn(
+                              "text-[10px]",
+                              e.color || DEFAULT_CATALOG_COLOR,
+                            )}
                           >
                             {e.label}
                           </Badge>
@@ -471,11 +484,14 @@ export function ConfigFunisPanel() {
           </CardHeader>
           <CardContent className="space-y-2">
             {!selected && !loading && (
-              <p className="text-sm text-muted-foreground">Selecione um funil à esquerda.</p>
+              <p className="text-sm text-muted-foreground">
+                Selecione um funil à esquerda.
+              </p>
             )}
             {selected && activeEtapas.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Nenhuma etapa ativa. Adicione etapas ou use &quot;Etapas padrão&quot;.
+                Nenhuma etapa ativa. Adicione etapas ou use &quot;Etapas
+                padrão&quot;.
               </p>
             )}
             {activeEtapas.map((s) => {
@@ -485,13 +501,17 @@ export function ConfigFunisPanel() {
                   key={s.id}
                   className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/40"
                 >
-                  <Badge className={s.color || DEFAULT_CATALOG_COLOR}>{s.label}</Badge>
+                  <Badge className={s.color || DEFAULT_CATALOG_COLOR}>
+                    {s.label}
+                  </Badge>
                   {isInitial && (
                     <Badge variant="secondary" className="text-[10px]">
                       Inicial
                     </Badge>
                   )}
-                  <span className="text-xs text-muted-foreground ml-auto">{s.slug}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {s.slug}
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -571,7 +591,11 @@ export function ConfigFunisPanel() {
               </label>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateOpen(false)}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving}>
@@ -597,7 +621,11 @@ export function ConfigFunisPanel() {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setRenameOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRenameOpen(false)}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving}>
@@ -612,7 +640,9 @@ export function ConfigFunisPanel() {
         <DialogContent>
           <form onSubmit={(e) => void handleSaveEtapa(e)}>
             <DialogHeader>
-              <DialogTitle>{etapaEdit ? "Editar etapa" : "Nova etapa"}</DialogTitle>
+              <DialogTitle>
+                {etapaEdit ? "Editar etapa" : "Nova etapa"}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-1.5">
@@ -630,7 +660,11 @@ export function ConfigFunisPanel() {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEtapaOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEtapaOpen(false)}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving}>

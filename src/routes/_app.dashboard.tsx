@@ -1,10 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import {
-  EvolucaoBadge,
-  FinanceKpiCard,
-} from "@/components/finance-kpi-card";
+import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -271,7 +268,10 @@ function DashboardAdminView() {
                 <XAxis
                   type="number"
                   allowDecimals={false}
-                  domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1)]}
+                  domain={[
+                    0,
+                    (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1),
+                  ]}
                 />
                 <YAxis
                   dataKey="etapa"
@@ -321,8 +321,8 @@ function DashboardAdminView() {
                 {summary.conversao.vendas.valor} venda
                 {summary.conversao.vendas.valor === 1 ? "" : "s"} de{" "}
                 {summary.conversao.entradas.valor} lead
-                {summary.conversao.entradas.valor === 1 ? "" : "s"} que
-                entraram no mês calendário
+                {summary.conversao.entradas.valor === 1 ? "" : "s"} que entraram
+                no mês calendário
               </p>
               {summary.entradas.semana > summary.entradas.mes.valor ? (
                 <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
@@ -377,7 +377,9 @@ function DashboardAdminView() {
       <section className="mt-5 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Leads perdidos — motivos</CardTitle>
+            <CardTitle className="text-base">
+              Leads perdidos — motivos
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {summary.perdidos.motivos.length === 0 ? (
@@ -391,7 +393,9 @@ function DashboardAdminView() {
                   className="flex items-center justify-between rounded-lg border px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{m.motivo}</div>
+                    <div className="truncate text-sm font-medium">
+                      {m.motivo}
+                    </div>
                     <EvolucaoBadge value={m.evolucaoPct} invert />
                   </div>
                   <span className="font-semibold tabular-nums">{m.valor}</span>
@@ -465,7 +469,13 @@ function DashboardAdminView() {
                 ))}
               </div>
             )}
-            <Button asChild type="button" variant="outline" size="sm" className="mt-3">
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+            >
               <Link to="/agenda">Abrir agenda</Link>
             </Button>
           </CardContent>
@@ -491,7 +501,9 @@ function DashboardAdminView() {
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="pb-2 pr-2 font-medium">Corretor</th>
                     <th className="pb-2 pr-2 font-medium text-right">Leads</th>
-                    <th className="pb-2 pr-2 font-medium text-right">Visitas</th>
+                    <th className="pb-2 pr-2 font-medium text-right">
+                      Visitas
+                    </th>
                     <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
                     <th className="pb-2 font-medium text-right">VGV</th>
                   </tr>
@@ -718,7 +730,10 @@ function DashboardCorretorView() {
   if (loading) {
     return (
       <div>
-        <PageHeader title="Dashboard" description="Visão geral da sua operação." />
+        <PageHeader
+          title="Dashboard"
+          description="Visão geral da sua operação."
+        />
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           Carregando indicadores…
@@ -730,7 +745,10 @@ function DashboardCorretorView() {
   if (!summary) {
     return (
       <div>
-        <PageHeader title="Dashboard" description="Visão geral da sua operação." />
+        <PageHeader
+          title="Dashboard"
+          description="Visão geral da sua operação."
+        />
         <SemConexao
           title="Indicadores indisponíveis"
           description="Não foi possível carregar os dados do dashboard."
@@ -806,7 +824,10 @@ function DashboardCorretorView() {
                 <XAxis
                   type="number"
                   allowDecimals={false}
-                  domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1)]}
+                  domain={[
+                    0,
+                    (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1),
+                  ]}
                 />
                 <YAxis
                   dataKey="etapa"
@@ -838,7 +859,9 @@ function DashboardCorretorView() {
                 key={item.label}
                 className="flex items-center justify-between rounded-lg border px-3 py-2"
               >
-                <span className="text-sm text-muted-foreground">{item.label}</span>
+                <span className="text-sm text-muted-foreground">
+                  {item.label}
+                </span>
                 <span className="font-semibold tabular-nums">{item.total}</span>
               </div>
             ))}
@@ -884,7 +907,9 @@ function DashboardCorretorView() {
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-base">Minha agenda de hoje</CardTitle>
+                <CardTitle className="text-base">
+                  Minha agenda de hoje
+                </CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {summary.agenda.totalHoje} compromisso
                   {summary.agenda.totalHoje === 1 ? "" : "s"} marcado
@@ -970,7 +995,13 @@ function AgendaCategoria({
             ))}
           </div>
           {items.length > 7 && (
-            <Button asChild type="button" variant="outline" size="sm" className="mt-3">
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+            >
               <Link to="/agenda">Exibir mais</Link>
             </Button>
           )}
