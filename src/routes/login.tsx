@@ -14,11 +14,16 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signIn } from "@/lib/auth";
+import { allowMarketingHome, clearMarketingHome } from "@/lib/marketing-nav";
 import { defaultRouteForRole } from "@/lib/permissions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({
+  ssr: false,
+  beforeLoad: () => {
+    clearMarketingHome();
+  },
   // SSR ativo: evita mismatch Suspense (servidor) vs página (cliente) no React 19.
   head: () => ({
     meta: [
@@ -235,6 +240,7 @@ function LoginPage() {
           <div className="animate-[login-fade_0.5s_ease-out]">
             <Link
               to="/"
+              onClick={allowMarketingHome}
               className="inline-flex items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -295,7 +301,12 @@ function LoginPage() {
 
       <main className="flex min-h-screen flex-1 items-center justify-center bg-[#f8fafc] px-6 py-8 sm:px-10 lg:min-h-0 lg:py-16">
         <div className="flex w-full max-w-md flex-col items-center gap-5 lg:gap-0 animate-[login-fade_0.55s_ease-out_0.15s_both]">
-          <Link to="/" aria-label="Voltar ao site" className="lg:hidden">
+          <Link
+            to="/"
+            onClick={allowMarketingHome}
+            aria-label="Voltar ao site"
+            className="lg:hidden"
+          >
             <LoginBrandLogo size="md" />
           </Link>
 
