@@ -28,10 +28,13 @@ function money(n: number) {
 
 export function EvolucaoBadge({
   value,
+  previous,
   className,
   invert = false,
 }: {
   value: number | null | undefined;
+  /** Valor absoluto do mês anterior (para contexto). */
+  previous?: number;
   className?: string;
   /** Se true, alta é ruim (ex.: leads perdidos). */
   invert?: boolean;
@@ -48,6 +51,10 @@ export function EvolucaoBadge({
   const good = invert ? down : up;
   const bad = invert ? up : down;
   const Icon = up || value === 0 ? TrendingUp : TrendingDown;
+  const prevLabel =
+    previous != null
+      ? ` · ant. ${previous.toLocaleString("pt-BR")}`
+      : "";
   return (
     <span
       className={cn(
@@ -57,10 +64,13 @@ export function EvolucaoBadge({
         value === 0 && "text-muted-foreground",
         className,
       )}
+      title="Variação em relação ao mês calendário anterior (não é perda dos leads atuais)"
     >
       <Icon className="h-3 w-3" />
-      {value > 0 ? "+" : ""}
-      {value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+      <span>
+        vs mês ant. {value > 0 ? "+" : ""}
+        {value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%{prevLabel}
+      </span>
     </span>
   );
 }
@@ -74,6 +84,7 @@ export function FinanceKpiCard({
   className,
   format = "money",
   evolucaoPct,
+  valorMesAnterior,
   invertEvolucao = false,
   suffix,
 }: {
@@ -85,6 +96,7 @@ export function FinanceKpiCard({
   className?: string;
   format?: "money" | "number" | "percent";
   evolucaoPct?: number | null;
+  valorMesAnterior?: number;
   invertEvolucao?: boolean;
   suffix?: string;
 }) {
@@ -144,6 +156,7 @@ export function FinanceKpiCard({
           {evolucaoPct !== undefined ? (
             <EvolucaoBadge
               value={evolucaoPct}
+              previous={valorMesAnterior}
               invert={invertEvolucao}
               className="mt-1"
             />

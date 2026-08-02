@@ -182,6 +182,7 @@ function DashboardAdminView() {
           label="Novos leads (mês)"
           value={summary.entradas.mes.valor}
           evolucaoPct={summary.entradas.mes.evolucaoPct}
+          valorMesAnterior={summary.entradas.mes.valorMesAnterior}
           icon={TrendingUp}
           tone="teal"
           format="number"
@@ -206,6 +207,7 @@ function DashboardAdminView() {
           label="VGV vendido (mês)"
           value={summary.conversao.vgv.valor}
           evolucaoPct={summary.conversao.vgv.evolucaoPct}
+          valorMesAnterior={summary.conversao.vgv.valorMesAnterior}
           icon={Wallet}
           tone="emerald"
         />
@@ -232,6 +234,7 @@ function DashboardAdminView() {
           label="Perdidos no mês"
           value={summary.perdidos.mes.valor}
           evolucaoPct={summary.perdidos.mes.evolucaoPct}
+          valorMesAnterior={summary.perdidos.mes.valorMesAnterior}
           invertEvolucao
           icon={UserX}
           tone="red"
@@ -242,6 +245,7 @@ function DashboardAdminView() {
           label="Conversão (entrada → venda)"
           value={summary.conversao.taxa.valor}
           evolucaoPct={summary.conversao.taxa.evolucaoPct}
+          valorMesAnterior={summary.conversao.taxa.valorMesAnterior}
           icon={Goal}
           tone="teal"
           format="percent"
@@ -297,6 +301,7 @@ function DashboardAdminView() {
               </div>
               <EvolucaoBadge
                 value={summary.conversao.taxa.evolucaoPct}
+                previous={summary.conversao.taxa.valorMesAnterior}
                 className="mt-2 justify-center"
               />
               <p className="mt-2 text-xs text-muted-foreground">
@@ -304,15 +309,24 @@ function DashboardAdminView() {
                 {summary.conversao.vendas.valor === 1 ? "" : "s"} de{" "}
                 {summary.conversao.entradas.valor} lead
                 {summary.conversao.entradas.valor === 1 ? "" : "s"} que
-                entraram no mês
+                entraram no mês calendário
               </p>
+              {summary.entradas.semana > summary.entradas.mes.valor ? (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  Nesta semana há {summary.entradas.semana} novos — parte pode
+                  ser de dias do mês passado (a semana começa na segunda).
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                 <div>
                   <div className="text-sm font-medium">Leads que entraram</div>
-                  <EvolucaoBadge value={summary.conversao.entradas.evolucaoPct} />
+                  <EvolucaoBadge
+                    value={summary.conversao.entradas.evolucaoPct}
+                    previous={summary.conversao.entradas.valorMesAnterior}
+                  />
                 </div>
                 <span className="font-semibold tabular-nums">
                   {summary.conversao.entradas.valor}
@@ -321,7 +335,10 @@ function DashboardAdminView() {
               <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                 <div>
                   <div className="text-sm font-medium">Viraram venda</div>
-                  <EvolucaoBadge value={summary.conversao.vendas.evolucaoPct} />
+                  <EvolucaoBadge
+                    value={summary.conversao.vendas.evolucaoPct}
+                    previous={summary.conversao.vendas.valorMesAnterior}
+                  />
                 </div>
                 <span className="font-semibold tabular-nums">
                   {summary.conversao.vendas.valor}
@@ -330,7 +347,10 @@ function DashboardAdminView() {
               <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                 <div>
                   <div className="text-sm font-medium">VGV do mês</div>
-                  <EvolucaoBadge value={summary.conversao.vgv.evolucaoPct} />
+                  <EvolucaoBadge
+                    value={summary.conversao.vgv.evolucaoPct}
+                    previous={summary.conversao.vgv.valorMesAnterior}
+                  />
                 </div>
                 <span className="font-semibold tabular-nums text-sm">
                   {money(summary.conversao.vgv.valor)}
