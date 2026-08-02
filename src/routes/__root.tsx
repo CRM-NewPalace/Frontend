@@ -19,7 +19,9 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Página não encontrada</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">
+          Página não encontrada
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           A página que você procura não existe ou foi movida.
         </p>
@@ -74,89 +76,104 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => {
-    const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
-    let apiOrigin = "";
-    try {
-      if (apiUrl && /^https?:\/\//i.test(apiUrl)) {
-        apiOrigin = new URL(apiUrl).origin;
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
+  {
+    head: () => {
+      const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+      let apiOrigin = "";
+      try {
+        if (apiUrl && /^https?:\/\//i.test(apiUrl)) {
+          apiOrigin = new URL(apiUrl).origin;
+        }
+      } catch {
+        // ignore invalid VITE_API_URL
       }
-    } catch {
-      // ignore invalid VITE_API_URL
-    }
 
-    const connectSrc = [
-      "'self'",
-      "http://127.0.0.1:3333",
-      "http://localhost:3333",
-      "https://backend-wbxw.onrender.com",
-      ...(apiOrigin ? [apiOrigin] : []),
-      "ws://localhost:8080",
-      "ws://127.0.0.1:8080",
-      "wss:",
-    ].join(" ");
+      const connectSrc = [
+        "'self'",
+        "http://127.0.0.1:3333",
+        "http://localhost:3333",
+        "https://backend-wbxw.onrender.com",
+        ...(apiOrigin ? [apiOrigin] : []),
+        "ws://localhost:8080",
+        "ws://127.0.0.1:8080",
+        "wss:",
+      ].join(" ");
 
-    return {
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Blinker:wght@300;400;600;700;800&display=swap",
-      },
-      { rel: "icon", href: "/favicon.ico?v=10", sizes: "any" },
-      { rel: "icon", href: "/favicon-32.png?v=10", type: "image/png", sizes: "32x32" },
-      { rel: "apple-touch-icon", href: "/favicon-48.png?v=10", sizes: "48x48" },
-    ],
-    // CSP do frontend: bloqueia scripts/iframes de terceiros (mitigação XSS).
-    // 'unsafe-inline' no script-src só cobre o bootstrap de tema acima — sem eval.
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Zone Connection — Gestão Imobiliária" },
-      {
-        name: "description",
-        content:
-          "Zone Connection: CRM, financeiro, imóveis e atendimento em uma só plataforma para imobiliárias.",
-      },
-      { name: "author", content: "Zone Connection" },
-      { property: "og:title", content: "Zone Connection — Gestão Imobiliária" },
-      {
-        property: "og:description",
-        content:
-          "Tudo em uma só conexão para a gestão da sua imobiliária.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      {
-        // frame-ancestors NÃO funciona em <meta> — só em header HTTP (ver server.ts).
-        httpEquiv: "Content-Security-Policy",
-        content: [
-          "default-src 'self'",
-          "base-uri 'self'",
-          "object-src 'none'",
-          "form-action 'self'",
-          "img-src 'self' data: blob: https:",
-          "font-src 'self' https://fonts.gstatic.com data:",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "script-src 'self' 'unsafe-inline'",
-          `connect-src ${connectSrc}`,
-        ].join("; "),
-      },
-    ],
-  };
+      return {
+        links: [
+          { rel: "stylesheet", href: appCss },
+          { rel: "preconnect", href: "https://fonts.googleapis.com" },
+          {
+            rel: "preconnect",
+            href: "https://fonts.gstatic.com",
+            crossOrigin: "anonymous",
+          },
+          {
+            rel: "stylesheet",
+            href: "https://fonts.googleapis.com/css2?family=Blinker:wght@300;400;600;700;800&display=swap",
+          },
+          {
+            rel: "icon",
+            href: "/favicon-96x96.png?v=11",
+            type: "image/png",
+            sizes: "96x96",
+          },
+          { rel: "icon", href: "/favicon.svg?v=11", type: "image/svg+xml" },
+          { rel: "icon", href: "/favicon.ico?v=11", sizes: "any" },
+          {
+            rel: "apple-touch-icon",
+            href: "/apple-touch-icon.png?v=11",
+            sizes: "180x180",
+          },
+          { rel: "manifest", href: "/site.webmanifest" },
+        ],
+        // CSP do frontend: bloqueia scripts/iframes de terceiros (mitigação XSS).
+        // 'unsafe-inline' no script-src só cobre o bootstrap de tema acima — sem eval.
+        meta: [
+          { charSet: "utf-8" },
+          { name: "viewport", content: "width=device-width, initial-scale=1" },
+          { title: "Zone Connection — Gestão Imobiliária" },
+          {
+            name: "description",
+            content:
+              "Zone Connection: CRM, financeiro, imóveis e atendimento em uma só plataforma para imobiliárias.",
+          },
+          { name: "author", content: "Zone Connection" },
+          {
+            property: "og:title",
+            content: "Zone Connection — Gestão Imobiliária",
+          },
+          {
+            property: "og:description",
+            content: "Tudo em uma só conexão para a gestão da sua imobiliária.",
+          },
+          { property: "og:type", content: "website" },
+          { name: "twitter:card", content: "summary_large_image" },
+          {
+            // frame-ancestors NÃO funciona em <meta> — só em header HTTP (ver server.ts).
+            httpEquiv: "Content-Security-Policy",
+            content: [
+              "default-src 'self'",
+              "base-uri 'self'",
+              "object-src 'none'",
+              "form-action 'self'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "script-src 'self' 'unsafe-inline'",
+              `connect-src ${connectSrc}`,
+            ].join("; "),
+          },
+        ],
+      };
+    },
+    shellComponent: RootShell,
+    component: RootComponent,
+    notFoundComponent: NotFoundComponent,
+    errorComponent: ErrorComponent,
   },
-  shellComponent: RootShell,
-  component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
-});
+);
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
@@ -165,8 +182,14 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <link rel="icon" href="/favicon.ico?v=10" sizes="any" />
-        <link rel="icon" type="image/png" href="/favicon-32.png?v=10" sizes="32x32" />
+        <link
+          rel="icon"
+          type="image/png"
+          href="/favicon-96x96.png?v=11"
+          sizes="96x96"
+        />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=11" />
+        <link rel="icon" href="/favicon.ico?v=11" sizes="any" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var m=localStorage.getItem("crm_theme_zone_light_v1");if(!m){localStorage.setItem("crm_theme_zone_light_v1","1");localStorage.setItem("crm_theme","light")}var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light"}}catch(e){}})();`,

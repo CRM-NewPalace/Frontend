@@ -1,4 +1,4 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "../src";
 @import "tw-animate-css";
 
@@ -34,6 +34,11 @@
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --color-brand-accent: var(--brand-accent);
+  --color-brand-dark: #053647;
+  --color-surface-muted: #f8fafc;
+  --color-text-muted: #64748b;
+  --background-image-brand-text: linear-gradient(to right, #079ed4, #053647);
+  --background-image-brand-cta: linear-gradient(to right, #053647, #079ed4);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -221,4 +226,16 @@ html.tenant-density-compact .space-y-6 {
   background-image: none !important;
   transition: background-color 99999s ease-in-out 0s;
   filter: none !important;
+}
+
+@layer utilities {
+  .text-gradient-brand {
+    background-image: var(--background-image-brand-text);
+    background-clip: text;
+    color: transparent;
+  }
+
+  .bg-brand-cta {
+    background-image: var(--background-image-brand-cta);
+  }
 }

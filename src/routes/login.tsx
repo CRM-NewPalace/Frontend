@@ -1,17 +1,17 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   Eye,
   EyeOff,
   Loader2,
-  ArrowRight,
+  ArrowLeft,
   Building2,
-  Kanban,
+  BarChart3,
   Users,
+  Mail,
+  Lock,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signIn } from "@/lib/auth";
 import { defaultRouteForRole } from "@/lib/permissions";
@@ -63,13 +63,145 @@ const DEMO = [
   },
 ] as const;
 
+const FEATURE_PILLS = [
+  { label: "CRM integrado", icon: Users },
+  { label: "Funil comercial", icon: BarChart3 },
+  { label: "Gestão de imóveis", icon: Building2 },
+] as const;
+
+function ConcentricRings() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-[70%] top-[40%] h-44 w-44 -translate-x-1/2 -translate-y-1/2 sm:h-52 sm:w-52"
+    >
+      <div className="absolute inset-0 rounded-full border border-brand-accent/15" />
+      <div className="absolute inset-7 rounded-full border border-brand-accent/30 sm:inset-8 animate-[login-ring-pulse_3.5s_ease-in-out_infinite]" />
+    </div>
+  );
+}
+
+function LoginBrandLogo({
+  size = "md",
+  tone = "default",
+}: {
+  size?: "md" | "lg";
+  tone?: "default" | "light";
+}) {
+  const isLarge = size === "lg";
+  return (
+    <div
+      className="inline-flex items-center gap-4"
+      aria-label="Zone Connection"
+    >
+      <img
+        src="/LozoZone.png"
+        alt=""
+        className={cn(
+          "shrink-0 object-contain",
+          isLarge ? "h-14 w-14" : "h-10 w-10",
+        )}
+        aria-hidden
+      />
+      <div className="flex flex-col">
+        <span
+          className={cn(
+            "font-semibold leading-none",
+            tone === "light" ? "text-white" : "text-[#053647]",
+            isLarge ? "text-3xl" : "text-xl",
+          )}
+        >
+          Zone
+        </span>
+        <span
+          className={cn(
+            "font-semibold text-brand-accent leading-none",
+            isLarge ? "text-2xl -mt-1.5" : "text-lg -mt-1",
+          )}
+        >
+          Connection
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function LoginAuthField({
+  id,
+  label,
+  labelExtra,
+  type = "text",
+  value,
+  onChange,
+  icon: Icon,
+  placeholder,
+  required,
+}: {
+  id: string;
+  label: string;
+  labelExtra?: ReactNode;
+  type?: "text" | "email" | "password";
+  value: string;
+  onChange: (value: string) => void;
+  icon: typeof Mail;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={id} className="text-sm font-medium text-[#053647]">
+          {label}
+        </label>
+        {labelExtra}
+      </div>
+      <div className="relative">
+        <Icon
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748b]"
+          aria-hidden
+        />
+        <input
+          id={id}
+          type={isPassword && showPassword ? "text" : type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          autoComplete={isPassword ? "current-password" : "email"}
+          className={cn(
+            "h-11 w-full rounded-xl border border-border bg-white pl-10 text-sm text-[#053647] outline-none transition-colors",
+            isPassword ? "pr-10" : "pr-3",
+            "placeholder:text-[#64748b]/70 focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20",
+          )}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[#64748b] transition-colors hover:text-[#053647]"
+            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" aria-hidden />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden />
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState(
     SHOW_DEMO_ACCOUNTS ? "admin@imob.com" : "",
   );
   const [password, setPassword] = useState(SHOW_DEMO_ACCOUNTS ? "admin" : "");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
@@ -89,243 +221,223 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-[#f8fafc]">
-      {/* Painel navy Zone Connection */}
-      <aside className="hidden lg:flex relative flex-col justify-between overflow-hidden text-white p-10 xl:p-14 bg-[linear-gradient(155deg,#032734_0%,#053647_45%,#0a5a75_100%)]">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -left-16 w-[28rem] h-[28rem] rounded-full bg-[#079ED4]/25 blur-3xl animate-[login-float_8s_ease-in-out_infinite]" />
-          <div className="absolute bottom-10 -right-20 w-[22rem] h-[22rem] rounded-full bg-black/30 blur-3xl animate-[login-float_10s_ease-in-out_infinite_reverse]" />
-          <div
-            className="absolute inset-0 opacity-[0.14]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at center, transparent 0%, transparent 35%, rgba(7,158,212,0.35) 36%, transparent 37%), radial-gradient(circle at center, transparent 0%, transparent 55%, rgba(7,158,212,0.2) 56%, transparent 57%)",
-              backgroundPosition: "70% 45%, 70% 45%",
-              backgroundSize: "420px 420px, 560px 560px",
-              backgroundRepeat: "no-repeat",
-            }}
-          />
-        </div>
+    <div className="flex min-h-screen flex-col lg:flex-row bg-[#f8fafc]">
+      <aside
+        className="relative hidden overflow-hidden px-6 py-8 text-white sm:px-10 lg:flex lg:w-[45%] lg:flex-col lg:px-12 lg:py-10 xl:w-[42%] animate-[login-slide-in_0.6s_ease-out]"
+        style={{
+          background:
+            "radial-gradient(circle at 28% 38%, #0b7088 0%, #053647 48%, #021923 100%)",
+        }}
+      >
+        <ConcentricRings />
 
-        <div className="relative z-10 animate-[login-fade_0.7s_ease-out]">
-          <img
-            src="/brand/zone-connection-logo.png"
-            alt="Zone Connection"
-            className="h-24 w-auto max-w-[320px] rounded-none object-contain"
-          />
-          <p className="mt-4 text-base font-semibold tracking-tight">
-            Zone{" "}
-            <span className="text-[#079ED4]">Connection</span>
-          </p>
-        </div>
-
-        <div className="relative z-10 max-w-lg space-y-8 animate-[login-fade_0.9s_ease-out]">
-          <div className="space-y-4">
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#079ED4]">
-              <span className="size-1.5 rounded-full bg-[#079ED4]" />
-              Zone Connection · Imobiliárias
-            </p>
-            <h1 className="text-4xl xl:text-5xl font-semibold leading-[1.12] tracking-tight">
-              Toda a gestão da sua imobiliária em{" "}
-              <span className="text-[#079ED4]">um único lugar.</span>
-            </h1>
-            <p className="text-base text-white/80 leading-relaxed max-w-md">
-              CRM, financeiro, imóveis, atendimento e funil comercial conectados
-              — sem retrabalho, sem informação perdida.
-            </p>
+        <div className="relative z-10 mx-auto flex min-h-full w-full flex-col">
+          <div className="animate-[login-fade_0.5s_ease-out]">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao site
+            </Link>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {[
-              { icon: Users, label: "CRM integrado" },
-              { icon: Kanban, label: "Funil comercial" },
-              { icon: Building2, label: "Gestão de imóveis" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-3.5 py-2 text-sm text-white/95 ring-1 ring-white/15"
-              >
-                <item.icon className="w-3.5 h-3.5 opacity-90" />
-                {item.label}
+          <div className="mt-8 animate-[login-fade_0.5s_ease-out_0.08s_both] lg:mt-10">
+            <LoginBrandLogo size="lg" tone="light" />
+          </div>
+
+          <div className="mt-10 flex flex-1 flex-col justify-center gap-8 lg:mt-12">
+            <div className="flex max-w-lg flex-col gap-5 animate-[login-fade_0.5s_ease-out_0.15s_both]">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
+                <span
+                  className="h-1.5 w-1.5 rounded-full bg-brand-accent"
+                  aria-hidden
+                />
+                Zone Connection · Imobiliárias
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="relative z-10 flex items-end justify-between gap-4 animate-[login-fade_1.1s_ease-out]">
-          <p className="text-xs text-white/55">© 2026 Zone Connection</p>
-          <div className="hidden xl:flex items-center gap-2 text-xs text-white/70">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#079ED4] animate-pulse" />
-            Tudo em uma só conexão
+              <h1 className="text-3xl font-semibold leading-tight sm:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
+                Toda a gestão da sua imobiliária em{" "}
+                <span className="text-brand-accent">um único lugar.</span>
+              </h1>
+
+              <p className="max-w-md text-base leading-relaxed text-white/75 sm:text-lg">
+                CRM, financeiro, imóveis, atendimento e funil comercial
+                conectados — sem retrabalho, sem informação perdida.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2.5 animate-[login-fade_0.5s_ease-out_0.28s_both]">
+              {FEATURE_PILLS.map(({ label, icon: Icon }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-2 text-sm text-white/90 backdrop-blur-sm"
+                >
+                  <Icon className="h-4 w-4 text-brand-accent" aria-hidden />
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
+
+          <footer className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between lg:mt-12 animate-[login-fade_0.5s_ease-out_0.4s_both]">
+            <span>© 2026 Zone Connection</span>
+            <span className="inline-flex items-center gap-2 text-white/70">
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-brand-accent"
+                aria-hidden
+              />
+              Tudo em uma só conexão
+            </span>
+          </footer>
         </div>
       </aside>
 
-      <main className="relative flex items-center justify-center p-6 sm:p-10 xl:p-16 bg-[#f8fafc] text-[#053647]">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-50"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(5,54,71,0.06) 1px, transparent 0)",
-            backgroundSize: "22px 22px",
-          }}
-        />
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-[#f8fafc] px-6 py-8 sm:px-10 lg:min-h-0 lg:py-16">
+        <div className="flex w-full max-w-md flex-col items-center gap-5 lg:gap-0 animate-[login-fade_0.55s_ease-out_0.15s_both]">
+          <Link to="/" aria-label="Voltar ao site" className="lg:hidden">
+            <LoginBrandLogo size="md" />
+          </Link>
 
-        <form
-          onSubmit={onSubmit}
-          className="relative w-full max-w-[400px] space-y-8 animate-[login-fade_0.6s_ease-out]"
-        >
-          <div className="lg:hidden flex flex-col items-center text-center gap-3">
-            <img
-              src="/brand/zone-connection-logo.png"
-              alt="Zone Connection"
-              className="h-24 w-auto max-w-[280px] rounded-none object-contain"
-            />
-            <div>
-              <div className="text-xl font-semibold text-[#053647] leading-tight">
-                Zone{" "}
-                <span className="text-[#079ED4]">Connection</span>
-              </div>
-              <div className="text-xs text-[#64748b] mt-0.5">
-                Plataforma imobiliária
-              </div>
+          <div className="w-full rounded-3xl border border-border bg-white p-6 shadow-sm sm:p-8">
+            <div className="mb-6 space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-widest text-brand-accent">
+                Acesso
+              </span>
+              <h2 className="text-2xl font-semibold text-[#053647] sm:text-3xl">
+                Entrar na plataforma
+              </h2>
+              <p className="text-sm leading-relaxed text-[#64748b] sm:text-base">
+                Use suas credenciais para continuar na Zone Connection.
+              </p>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-[#053647]">
-              Bem-vindo de volta
-            </h2>
-            <p className="text-sm text-[#64748b] leading-relaxed">
-              Entre com seu acesso para abrir o painel da imobiliária.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#053647]/80">
-                Email
-              </Label>
-              <Input
+            <form onSubmit={onSubmit} className="space-y-5">
+              <LoginAuthField
                 id="email"
+                label="E-mail"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="login-field h-11 rounded-full shadow-sm focus-visible:ring-brand-accent/40"
+                onChange={setEmail}
+                icon={Mail}
+                placeholder="seu@email.com"
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-[#053647]/80">
-                  Senha
-                </Label>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-[#079ED4] hover:underline"
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="login-field h-11 pr-11 rounded-full shadow-sm focus-visible:ring-brand-accent/40"
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0.5 top-0.5 h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-0.5">
-              <Checkbox id="remember" defaultChecked />
-              <Label
-                htmlFor="remember"
-                className="text-sm font-normal cursor-pointer text-[#64748b]"
-              >
-                Lembrar acesso neste dispositivo
-              </Label>
-            </div>
-          </div>
 
-          <Button
-            type="submit"
-            className="w-full h-11 text-sm bg-[#053647] text-white hover:bg-[#053647]/90 shadow-md shadow-[#053647]/20"
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <ArrowRight className="w-4 h-4 mr-2" />
-            )}
-            Entrar no painel
-          </Button>
-
-          {SHOW_DEMO_ACCOUNTS && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
-                <div className="h-px flex-1 bg-border" />
-                Contas demo
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <div className="grid gap-2">
-                {DEMO.map((d) => (
+              <LoginAuthField
+                id="password"
+                label="Senha"
+                type="password"
+                value={password}
+                onChange={setPassword}
+                icon={Lock}
+                placeholder="••••••••"
+                required
+                labelExtra={
                   <button
-                    key={d.email}
                     type="button"
-                    onClick={() => {
-                      setEmail(d.email);
-                      setPassword(d.password);
-                    }}
-                    className={cn(
-                      "group w-full rounded-2xl border bg-card px-3.5 py-3 text-left transition-all",
-                      "hover:border-brand-accent/40 hover:bg-accent hover:shadow-sm",
-                      email === d.email &&
-                        "border-brand-accent/50 bg-accent ring-1 ring-brand-accent/20",
-                    )}
+                    className="text-xs font-medium text-brand-accent transition-colors hover:text-[#053647]"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {d.role}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground group-hover:text-brand-accent transition-colors">
-                        usar →
-                      </span>
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      {d.hint} · {d.email}
-                    </div>
+                    Esqueci minha senha
                   </button>
-                ))}
+                }
+              />
+
+              <div className="flex items-center gap-2">
+                <Checkbox id="remember" defaultChecked />
+                <Label
+                  htmlFor="remember"
+                  className="text-sm font-normal cursor-pointer text-[#64748b]"
+                >
+                  Lembrar acesso neste dispositivo
+                </Label>
               </div>
-            </div>
-          )}
-        </form>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={cn(
+                  "w-full cursor-pointer rounded-full bg-[#053647] px-4 py-3 text-sm font-semibold text-white transition-all",
+                  "hover:bg-[#053647]/90 hover:-translate-y-0.5 hover:shadow-md",
+                  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none",
+                )}
+              >
+                {loading ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Entrando...
+                  </span>
+                ) : (
+                  "Entrar"
+                )}
+              </button>
+
+              {SHOW_DEMO_ACCOUNTS && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-[#64748b]">
+                    <div className="h-px flex-1 bg-border" />
+                    Contas demo
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="grid gap-2">
+                    {DEMO.map((d) => (
+                      <button
+                        key={d.email}
+                        type="button"
+                        onClick={() => {
+                          setEmail(d.email);
+                          setPassword(d.password);
+                        }}
+                        className={cn(
+                          "group w-full rounded-2xl border bg-[#f8fafc] px-3.5 py-3 text-left transition-all",
+                          "hover:border-brand-accent/40 hover:bg-accent hover:shadow-sm",
+                          email === d.email &&
+                            "border-brand-accent/50 bg-accent ring-1 ring-brand-accent/20",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-[#053647]">
+                            {d.role}
+                          </span>
+                          <span className="text-[11px] text-[#64748b] group-hover:text-brand-accent transition-colors">
+                            usar →
+                          </span>
+                        </div>
+                        <div className="mt-0.5 text-xs text-[#64748b]">
+                          {d.hint} · {d.email}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </form>
+
+            <p className="mt-6 text-center text-sm text-[#64748b]">
+              Ainda não tem conta?{" "}
+              <a
+                href="#contato"
+                className="font-medium text-brand-accent transition-colors hover:text-[#053647]"
+              >
+                Fale conosco
+              </a>
+            </p>
+          </div>
+        </div>
       </main>
 
       <style>{`
         @keyframes login-fade {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes login-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-18px); }
+        @keyframes login-slide-in {
+          from { opacity: 0; transform: translateX(-24px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes login-ring-pulse {
+          0%, 100% { transform: scale(1); opacity: 0.35; }
+          50% { transform: scale(2); opacity: 0.65; }
         }
       `}</style>
     </div>
