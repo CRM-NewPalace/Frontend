@@ -28,7 +28,6 @@ import { Route as AppLeadsPerdidosRouteImport } from './routes/_app.leads-perdid
 import { Route as AppMetasRouteImport } from './routes/_app.metas'
 import { Route as AppPerfilRouteImport } from './routes/_app.perfil'
 import { Route as AppPropostasRouteImport } from './routes/_app.propostas'
-import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
 import { Route as AppResultadoRouteImport } from './routes/_app.resultado'
 import { Route as AppTaxaConversaoRouteImport } from './routes/_app.taxa-conversao'
 import { Route as AppTenantsRouteImport } from './routes/_app.tenants'
@@ -138,11 +137,6 @@ const AppPropostasRoute = AppPropostasRouteImport.update({
   path: '/propostas',
   getParentRoute: () => AppRoute,
 } as any)
-const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppResultadoRoute = AppResultadoRouteImport.update({
   id: '/resultado',
   path: '/resultado',
@@ -239,7 +233,6 @@ export interface FileRoutesByFullPath {
   '/metas': typeof AppMetasRoute
   '/perfil': typeof AppPerfilRoute
   '/propostas': typeof AppPropostasRoute
-  '/relatorios': typeof AppRelatoriosRoute
   '/resultado': typeof AppResultadoRoute
   '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/tenants': typeof AppTenantsRoute
@@ -274,7 +267,6 @@ export interface FileRoutesByTo {
   '/metas': typeof AppMetasRoute
   '/perfil': typeof AppPerfilRoute
   '/propostas': typeof AppPropostasRoute
-  '/relatorios': typeof AppRelatoriosRoute
   '/resultado': typeof AppResultadoRoute
   '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/tenants': typeof AppTenantsRoute
@@ -311,7 +303,6 @@ export interface FileRoutesById {
   '/_app/metas': typeof AppMetasRoute
   '/_app/perfil': typeof AppPerfilRoute
   '/_app/propostas': typeof AppPropostasRoute
-  '/_app/relatorios': typeof AppRelatoriosRoute
   '/_app/resultado': typeof AppResultadoRoute
   '/_app/taxa-conversao': typeof AppTaxaConversaoRoute
   '/_app/tenants': typeof AppTenantsRoute
@@ -348,7 +339,6 @@ export interface FileRouteTypes {
     | '/metas'
     | '/perfil'
     | '/propostas'
-    | '/relatorios'
     | '/resultado'
     | '/taxa-conversao'
     | '/tenants'
@@ -383,7 +373,6 @@ export interface FileRouteTypes {
     | '/metas'
     | '/perfil'
     | '/propostas'
-    | '/relatorios'
     | '/resultado'
     | '/taxa-conversao'
     | '/tenants'
@@ -419,7 +408,6 @@ export interface FileRouteTypes {
     | '/_app/metas'
     | '/_app/perfil'
     | '/_app/propostas'
-    | '/_app/relatorios'
     | '/_app/resultado'
     | '/_app/taxa-conversao'
     | '/_app/tenants'
@@ -577,13 +565,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPropostasRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/relatorios': {
-      id: '/_app/relatorios'
-      path: '/relatorios'
-      fullPath: '/relatorios'
-      preLoaderRoute: typeof AppRelatoriosRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/resultado': {
       id: '/_app/resultado'
       path: '/resultado'
@@ -731,7 +712,6 @@ interface AppRouteChildren {
   AppMetasRoute: typeof AppMetasRoute
   AppPerfilRoute: typeof AppPerfilRoute
   AppPropostasRoute: typeof AppPropostasRoute
-  AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppResultadoRoute: typeof AppResultadoRoute
   AppTaxaConversaoRoute: typeof AppTaxaConversaoRoute
   AppTenantsRoute: typeof AppTenantsRoute
@@ -756,7 +736,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppMetasRoute: AppMetasRoute,
   AppPerfilRoute: AppPerfilRoute,
   AppPropostasRoute: AppPropostasRoute,
-  AppRelatoriosRoute: AppRelatoriosRoute,
   AppResultadoRoute: AppResultadoRoute,
   AppTaxaConversaoRoute: AppTaxaConversaoRoute,
   AppTenantsRoute: AppTenantsRoute,
