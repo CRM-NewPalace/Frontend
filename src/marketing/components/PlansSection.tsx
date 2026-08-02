@@ -1,4 +1,5 @@
 import { HiCheck, HiStar, HiUsers } from "react-icons/hi2";
+import { getWhatsAppUrl } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 interface ContractTerm {
@@ -367,7 +368,11 @@ function PlanCard({ plan }: { plan: Plan }) {
         </div>
 
         <a
-          href="#contato"
+          href={getWhatsAppUrl(
+            `Olá! Tenho interesse no plano ${plan.name} da Zone Connection.`,
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
           className={cn(
             "mt-4 block w-full rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-all duration-200",
             plan.featured
