@@ -21,6 +21,7 @@ import {
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import {
+  createConstrutora,
   fetchConstrutoras,
   type Construtora,
 } from "@/lib/construtoras-api";
@@ -52,6 +53,8 @@ function ImoveisPage() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickNome, setQuickNome] = useState("");
   const [quickConstrutoraId, setQuickConstrutoraId] = useState("");
+  const [quickNovaConstrutora, setQuickNovaConstrutora] = useState(false);
+  const [quickConstrutoraNome, setQuickConstrutoraNome] = useState("");
   const [quickCidade, setQuickCidade] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
 
@@ -100,6 +103,8 @@ function ImoveisPage() {
   async function openQuickCreate() {
     setQuickNome("");
     setQuickConstrutoraId("");
+    setQuickNovaConstrutora(false);
+    setQuickConstrutoraNome("");
     setQuickCidade("");
     setQuickOpen(true);
     try {
@@ -118,26 +123,49 @@ function ImoveisPage() {
       toast.error("Informe o nome do empreendimento.");
       return;
     }
-    if (!quickConstrutoraId) {
-      toast.error("Selecione a construtora.");
+
+    let construtoraId = quickConstrutoraId;
+    if (quickNovaConstrutora) {
+      if (quickConstrutoraNome.trim().length < 2) {
+        toast.error("Informe o nome da nova construtora.");
+        return;
+      }
+    } else if (!construtoraId) {
+      toast.error("Selecione a construtora ou crie uma nova.");
       return;
     }
 
     setQuickSaving(true);
     try {
+      if (quickNovaConstrutora) {
+        const criada = await createConstrutora({
+          nome: quickConstrutoraNome.trim(),
+        });
+        construtoraId = criada.id;
+        setConstrutoras((prev) =>
+          [...prev, criada].sort((a, b) =>
+            a.nome.localeCompare(b.nome, "pt-BR"),
+          ),
+        );
+      }
+
       await createEmpreendimento({
         nome: quickNome.trim(),
-        construtoraId: quickConstrutoraId,
+        construtoraId,
         cidade: quickCidade.trim() || undefined,
       });
       setQuickOpen(false);
       await loadItems();
-      toast.success("Empreendimento cadastrado.");
+      toast.success(
+        quickNovaConstrutora
+          ? "Construtora e empreendimento cadastrados."
+          : "Empreendimento cadastrado.",
+      );
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Não foi possível cadastrar o empreendimento.",
+          : "Não foi possível cadastrar.",
       );
     } finally {
       setQuickSaving(false);
@@ -484,16 +512,28 @@ function ImoveisPage() {
             <div className="space-y-1.5">
               <Label>Construtora *</Label>
               <Select
-                value={quickConstrutoraId || "__none__"}
-                onValueChange={(value) =>
-                  setQuickConstrutoraId(value === "__none__" ? "" : value)
+                value={
+                  quickNovaConstrutora
+                    ? "__new__"
+                    : quickConstrutoraId || "__none__"
                 }
+                onValueChange={(value) => {
+                  if (value === "__new__") {
+                    setQuickNovaConstrutora(true);
+                    setQuickConstrutoraId("");
+                    return;
+                  }
+                  setQuickNovaConstrutora(false);
+                  setQuickConstrutoraNome("");
+                  setQuickConstrutoraId(value === "__none__" ? "" : value);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Selecione</SelectItem>
+                  <SelectItem value="__new__">+ Nova construtora</SelectItem>
                   {construtoras.map((construtora) => (
                     <SelectItem key={construtora.id} value={construtora.id}>
                       {construtora.nome}
@@ -501,6 +541,17 @@ function ImoveisPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {quickNovaConstrutora ? (
+                <Input
+                  value={quickConstrutoraNome}
+                  onChange={(event) =>
+                    setQuickConstrutoraNome(event.target.value)
+                  }
+                  placeholder="Nome da construtora"
+                  className="mt-2"
+                  autoFocus
+                />
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="quick-imovel-cidade">Cidade</Label>
