@@ -188,3 +188,34 @@ html.tenant-density-compact .space-y-6 {
     transition: background-color 99999s ease-in-out 0s;
   }
 }
+
+/* Campos do login: fundo navy Zone + texto branco (inclui autofill) */
+.login-field,
+.login-field:hover,
+.login-field:focus,
+.login-field:focus-visible {
+  background-color: #053647 !important;
+  color: #ffffff !important;
+  border-color: rgba(7, 158, 212, 0.55) !important;
+  caret-color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.login-field::placeholder {
+  color: rgba(255, 255, 255, 0.55) !important;
+  opacity: 1;
+}
+
+.login-field:-webkit-autofill,
+.login-field:-webkit-autofill:hover,
+.login-field:-webkit-autofill:focus,
+.login-field:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  border-color: rgba(7, 158, 212, 0.55) !important;
+  box-shadow: 0 0 0 1000px #053647 inset !important;
+  background-color: #053647 !important;
+  background-image: none !important;
+  transition: background-color 99999s ease-in-out 0s;
+  filter: none !important;
+}

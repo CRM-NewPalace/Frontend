@@ -180,18 +180,18 @@ function LoginPage() {
           onSubmit={onSubmit}
           className="relative w-full max-w-[400px] space-y-8 animate-[login-fade_0.6s_ease-out]"
         >
-          <div className="lg:hidden flex items-center gap-3">
+          <div className="lg:hidden flex flex-col items-center text-center gap-3">
             <img
               src="/brand/zone-connection-logo.png"
               alt="Zone Connection"
-              className="h-16 w-auto max-w-[200px] rounded-none object-contain"
+              className="h-24 w-auto max-w-[280px] rounded-none object-contain"
             />
             <div>
-              <div className="text-lg font-semibold text-foreground leading-tight">
+              <div className="text-xl font-semibold text-foreground leading-tight">
                 Zone{" "}
                 <span className="text-brand-accent">Connection</span>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground mt-0.5">
                 Plataforma imobiliária
               </div>
             </div>
@@ -216,7 +216,7 @@ function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-11 rounded-full bg-card border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
+                className="login-field h-11 rounded-full shadow-sm focus-visible:ring-brand-accent/40"
                 required
               />
             </div>
@@ -232,7 +232,7 @@ function LoginPage() {
                 value={tenantSlug}
                 onChange={(e) => setTenantSlug(e.target.value.toLowerCase())}
                 placeholder="ex.: new-palace"
-                className="h-11 rounded-full bg-card border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
+                className="login-field h-11 rounded-full shadow-sm focus-visible:ring-brand-accent/40"
                 autoComplete="organization"
               />
               <p className="text-xs text-muted-foreground">
@@ -257,14 +257,14 @@ function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 pr-11 rounded-full bg-card border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
+                  className="login-field h-11 pr-11 rounded-full shadow-sm focus-visible:ring-brand-accent/40"
                   required
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-0.5 top-0.5 h-10 w-10 text-muted-foreground hover:text-foreground"
+                  className="absolute right-0.5 top-0.5 h-10 w-10 text-white/70 hover:text-white hover:bg-white/10"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
