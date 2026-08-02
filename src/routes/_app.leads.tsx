@@ -23,7 +23,7 @@ import {
 import {
   Plus, Search, Filter, Download, MoreHorizontal, Phone, MessageSquare, Mail,
   UserPlus, MapPin, Wallet, Sparkles, Eye, Pencil, Trash2, X, Upload, FileSpreadsheet,
-  FileText, Loader2,
+  FileText, Loader2, Share2,
 } from "lucide-react";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
@@ -38,6 +38,7 @@ import {
   parseLeadsFromFile,
   type ParsedImportLead,
 } from "@/lib/leads-io";
+import { LeadsDistribuirDialog } from "@/components/leads-distribuir-dialog";
 import {
   formatPhone,
   isValidPhone,
@@ -109,6 +110,8 @@ function LeadsPage() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
+  const canDistribuir =
+    user?.role === "admin" || user?.role === "gerente";
 
   const {
     leads: allLeads,
@@ -134,6 +137,7 @@ function LeadsPage() {
   const [importParsing, setImportParsing] = useState(false);
   const [importSaving, setImportSaving] = useState(false);
   const [importFileName, setImportFileName] = useState("");
+  const [distribuirOpen, setDistribuirOpen] = useState(false);
 
   const leads = useMemo(
     () => {
@@ -471,6 +475,16 @@ function LeadsPage() {
               )}
               Importar
             </Button>
+            {canDistribuir && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDistribuirOpen(true)}
+              >
+                <Share2 className="w-4 h-4 mr-1" />
+                Distribuir
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1264,6 +1278,14 @@ function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {canDistribuir && (
+        <LeadsDistribuirDialog
+          open={distribuirOpen}
+          onOpenChange={setDistribuirOpen}
+          onDone={() => void refresh()}
+        />
+      )}
     </div>
   );
 }

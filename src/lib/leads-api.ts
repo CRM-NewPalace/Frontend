@@ -161,6 +161,64 @@ export async function importLeads(
   });
 }
 
+export type DistribuirResumoEquipes = {
+  modo: "equipes";
+  disponiveis: number;
+  equipes: Array<{
+    equipeId: string;
+    nome: string;
+    gerente: string;
+    corretores: number;
+  }>;
+};
+
+export type DistribuirResumoCorretores = {
+  modo: "corretores";
+  disponiveis: number;
+  equipeId: string;
+  equipeNome: string;
+  corretores: Array<{ id: string; nome: string }>;
+};
+
+export type DistribuirResumo =
+  | DistribuirResumoEquipes
+  | DistribuirResumoCorretores;
+
+export async function fetchDistribuirResumo(): Promise<DistribuirResumo> {
+  return apiFetch<DistribuirResumo>("/leads/distribuir/resumo");
+}
+
+export async function distribuirLeadsEquipes(
+  alocacoes: Array<{ equipeId: string; quantidade: number }>,
+): Promise<{
+  ok: boolean;
+  total: number;
+  alocacoes: Array<{ equipeId: string; nome: string; quantidade: number }>;
+}> {
+  return apiFetch("/leads/distribuir/equipes", {
+    method: "POST",
+    body: { modo: "equipes", alocacoes },
+  });
+}
+
+export async function distribuirLeadsCorretores(
+  porCorretor: number,
+): Promise<{
+  ok: boolean;
+  total: number;
+  porCorretor: number;
+  distribuicao: Array<{
+    corretorId: string;
+    nome: string;
+    quantidade: number;
+  }>;
+}> {
+  return apiFetch("/leads/distribuir/corretores", {
+    method: "POST",
+    body: { modo: "corretores", porCorretor },
+  });
+}
+
 export async function updateLeadApi(
   id: string,
   input: UpdateLeadInput,
