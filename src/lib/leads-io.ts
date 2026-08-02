@@ -451,21 +451,53 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function toIoRows(leads: Lead[]) {
-  return leads.map((l) => ({
-    "Data Captura": l.updatedAt,
-    "Nome do Cliente": l.nome,
-    Telefone: l.telefone,
-    "E-mail": l.email,
-    Origem: l.origem,
-  }));
+/** Monta planilha forçando texto (evita Excel/Sheets interpretar telefone como fórmula/número). */
+function buildLeadsSheet(rows: string[][]) {
+  const aoa = [Array.from(LEAD_IO_COLUMNS), ...rows];
+  const sheet = XLSX.utils.aoa_to_sheet(aoa);
+
+  const range = XLSX.utils.decode_range(sheet["!ref"] ?? "A1");
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = sheet[addr];
+      if (!cell) continue;
+      const value = String(cell.v ?? "");
+      sheet[addr] = { t: "s", v: value };
+    }
+  }
+
+  sheet["!cols"] = LEAD_IO_COLUMNS.map((header, index) => {
+    const maxLen = Math.max(
+      header.length,
+      ...rows.map((row) => String(row[index] ?? "").length),
+      10,
+    );
+    return { wch: Math.min(maxLen + 2, 48) };
+  });
+
+  return sheet;
+}
+
+function leadsToSheetRows(leads: Lead[]): string[][] {
+  return leads.map((l) => [
+    l.updatedAt || "",
+    l.nome || "",
+    l.telefone || "",
+    l.email || "",
+    l.origem || "",
+  ]);
 }
 
 export function exportLeadsToExcel(leads: Lead[], filename = "leads.xlsx") {
-  const sheet = XLSX.utils.json_to_sheet(toIoRows(leads));
   const workbook = XLSX.utils.book_new();
+  const sheet = buildLeadsSheet(leadsToSheetRows(leads));
   XLSX.utils.book_append_sheet(workbook, sheet, "Leads");
-  const data = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  const data = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+    cellStyles: false,
+  });
   downloadBlob(
     new Blob([data], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -508,8 +540,8 @@ export function exportLeadsToPdf(
 }
 
 export function downloadImportTemplate() {
-  const sheet = XLSX.utils.aoa_to_sheet([
-    Array.from(LEAD_IO_COLUMNS),
+  const workbook = XLSX.utils.book_new();
+  const sheet = buildLeadsSheet([
     [
       "02/08/2026",
       "Maria Silva",
@@ -518,9 +550,12 @@ export function downloadImportTemplate() {
       "WhatsApp",
     ],
   ]);
-  const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "Modelo");
-  const data = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  const data = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+    cellStyles: false,
+  });
   downloadBlob(
     new Blob([data], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
