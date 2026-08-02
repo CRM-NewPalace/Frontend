@@ -165,16 +165,22 @@ function ConstrutorasPage() {
 
     const payload = {
       nome: form.nome.trim(),
-      contato: form.contato.trim() || undefined,
-      endereco: form.endereco.trim() || undefined,
-      viabilizadorNome: form.viabilizadorNome.trim() || undefined,
-      viabilizadorContato: form.viabilizadorContato.trim() || undefined,
+      contato: form.contato.trim() || null,
+      endereco: form.endereco.trim() || null,
+      viabilizadorNome: form.viabilizadorNome.trim() || null,
+      viabilizadorContato: form.viabilizadorContato.trim() || null,
     };
 
     setSaving(true);
     try {
       if (formMode === "create") {
-        await createConstrutora(payload);
+        await createConstrutora({
+          nome: payload.nome,
+          contato: payload.contato ?? undefined,
+          endereco: payload.endereco ?? undefined,
+          viabilizadorNome: payload.viabilizadorNome ?? undefined,
+          viabilizadorContato: payload.viabilizadorContato ?? undefined,
+        });
         toast.success("Construtora cadastrada.");
       } else if (editingId) {
         await updateConstrutora(editingId, payload);

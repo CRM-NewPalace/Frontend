@@ -20,7 +20,13 @@ export type CreateConstrutoraInput = {
   viabilizadorContato?: string;
 };
 
-export type UpdateConstrutoraInput = Partial<CreateConstrutoraInput>;
+export type UpdateConstrutoraInput = {
+  nome?: string;
+  contato?: string | null;
+  endereco?: string | null;
+  viabilizadorNome?: string | null;
+  viabilizadorContato?: string | null;
+};
 
 export async function fetchConstrutoras(): Promise<Construtora[]> {
   return apiFetch<Construtora[]>("/construtoras");
