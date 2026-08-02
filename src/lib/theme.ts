@@ -1,4 +1,5 @@
 const KEY = "crm_theme";
+const ZONE_LIGHT_MIGRATION = "crm_theme_zone_light_v1";
 
 export type Theme = "light" | "dark";
 
@@ -22,6 +23,13 @@ export function setTheme(theme: Theme) {
   applyTheme(theme);
 }
 
+/** Tema padrão do CRM = claro, como o site Zone Connection. */
 export function initTheme() {
+  if (typeof window === "undefined") return;
+  // Uma vez: sai do dark antigo que deixava o painel com ciano demais.
+  if (!window.localStorage.getItem(ZONE_LIGHT_MIGRATION)) {
+    window.localStorage.setItem(ZONE_LIGHT_MIGRATION, "1");
+    window.localStorage.setItem(KEY, "light");
+  }
   applyTheme(getTheme());
 }

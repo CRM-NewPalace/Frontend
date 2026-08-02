@@ -89,7 +89,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
+    <div className="min-h-screen grid lg:grid-cols-2 bg-[#f8fafc]">
       {/* Painel navy Zone Connection */}
       <aside className="hidden lg:flex relative flex-col justify-between overflow-hidden text-white p-10 xl:p-14 bg-[linear-gradient(155deg,#032734_0%,#053647_45%,#0a5a75_100%)]">
         <div className="pointer-events-none absolute inset-0">
@@ -161,7 +161,7 @@ function LoginPage() {
         </div>
       </aside>
 
-      <main className="relative flex items-center justify-center p-6 sm:p-10 xl:p-16">
+      <main className="relative flex items-center justify-center p-6 sm:p-10 xl:p-16 bg-[#f8fafc] text-[#053647]">
         <div
           className="pointer-events-none absolute inset-0 opacity-50"
           style={{
@@ -182,28 +182,28 @@ function LoginPage() {
               className="h-24 w-auto max-w-[280px] rounded-none object-contain"
             />
             <div>
-              <div className="text-xl font-semibold text-foreground leading-tight">
+              <div className="text-xl font-semibold text-[#053647] leading-tight">
                 Zone{" "}
-                <span className="text-brand-accent">Connection</span>
+                <span className="text-[#079ED4]">Connection</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
+              <div className="text-xs text-[#64748b] mt-0.5">
                 Plataforma imobiliária
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">
+            <h2 className="text-3xl font-semibold tracking-tight text-[#053647]">
               Bem-vindo de volta
             </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-[#64748b] leading-relaxed">
               Entre com seu acesso para abrir o painel da imobiliária.
             </p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground/80">
+              <Label htmlFor="email" className="text-[#053647]/80">
                 Email
               </Label>
               <Input
@@ -217,12 +217,12 @@ function LoginPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-foreground/80">
+                <Label htmlFor="password" className="text-[#053647]/80">
                   Senha
                 </Label>
                 <button
                   type="button"
-                  className="text-xs font-semibold text-brand-accent hover:underline"
+                  className="text-xs font-semibold text-[#079ED4] hover:underline"
                 >
                   Esqueci minha senha
                 </button>
@@ -256,7 +256,7 @@ function LoginPage() {
               <Checkbox id="remember" defaultChecked />
               <Label
                 htmlFor="remember"
-                className="text-sm font-normal cursor-pointer text-muted-foreground"
+                className="text-sm font-normal cursor-pointer text-[#64748b]"
               >
                 Lembrar acesso neste dispositivo
               </Label>
@@ -265,7 +265,7 @@ function LoginPage() {
 
           <Button
             type="submit"
-            className="w-full h-11 text-sm shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25 transition-shadow"
+            className="w-full h-11 text-sm bg-[#053647] text-white hover:bg-[#053647]/90 shadow-md shadow-[#053647]/20"
             disabled={loading}
           >
             {loading ? (

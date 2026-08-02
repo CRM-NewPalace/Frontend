@@ -468,10 +468,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => toggleSection(section.id)}
                 title={collapsedView ? section.label : undefined}
                 className={cn(
-                  "w-full flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors",
+                  "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                   sectionActive
-                    ? "text-sidebar-primary bg-sidebar-accent"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60",
+                    ? "text-foreground bg-sidebar-accent"
+                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-foreground",
                 )}
               >
                 <SectionIcon className="w-4 h-4 shrink-0" />
@@ -502,10 +502,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             type="button"
                             onClick={() => toggleGroup(item.id)}
                             className={cn(
-                              "w-full flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-colors",
+                              "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors",
                               groupActive
-                                ? "bg-sidebar-accent text-sidebar-primary font-semibold"
-                                : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
+                                ? "bg-sidebar-accent text-foreground font-semibold"
+                                : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
                             )}
                           >
                             <GroupIcon className="w-4 h-4 shrink-0" />
@@ -531,10 +531,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     to={child.to}
                                     onClick={onNavigate}
                                     className={cn(
-                                      "flex items-center gap-3 rounded-full px-3 py-2 text-sm transition-colors",
+                                      "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                                       active
-                                        ? "bg-sidebar-accent text-sidebar-primary font-semibold"
-                                        : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
+                                        ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-brand-accent"
+                                        : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
                                     )}
                                   >
                                     <ChildIcon className="w-4 h-4 shrink-0" />
@@ -561,10 +561,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         to={item.to}
                         onClick={onNavigate}
                         className={cn(
-                          "flex items-center gap-3 rounded-full px-3 py-2 text-sm transition-colors",
+                          "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                           active
-                            ? "bg-sidebar-accent text-sidebar-primary font-semibold"
-                            : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
+                            ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-brand-accent"
+                            : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
                         )}
                       >
                         <span className="relative shrink-0">
@@ -732,7 +732,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-card/70 backdrop-blur sticky top-0 z-30 flex justify-between items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
+        <header className="h-14 border-b bg-card/90 backdrop-blur sticky top-0 z-30 flex justify-between items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Button
               type="button"
@@ -907,11 +907,13 @@ export function PageHeader({
           <span className="size-1.5 rounded-full bg-brand-accent" />
           {brandName}
         </p>
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-primary">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
           {title}
         </h1>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            {description}
+          </p>
         )}
       </div>
       {actions && (

@@ -169,7 +169,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <link rel="icon" type="image/png" href="/favicon-32.png?v=10" sizes="32x32" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.style.colorScheme="light"}}catch(e){}})();`,
+            __html: `(function(){try{var m=localStorage.getItem("crm_theme_zone_light_v1");if(!m){localStorage.setItem("crm_theme_zone_light_v1","1");localStorage.setItem("crm_theme","light")}var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light"}}catch(e){}})();`,
           }}
         />
       </head>
