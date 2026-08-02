@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { FinanceKpiCard } from "@/components/finance-kpi-card";
+import {
+  EvolucaoBadge,
+  FinanceKpiCard,
+} from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +17,9 @@ import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { useCatalog } from "@/lib/catalog-store";
 import {
+  fetchDashboardAdmin,
   fetchDashboardCorretor,
+  type DashboardAdmin,
   type DashboardCorretor,
 } from "@/lib/dashboard-api";
 import {
@@ -26,20 +31,24 @@ import {
   YAxis,
 } from "recharts";
 import {
+  AlertTriangle,
   BriefcaseBusiness,
   CalendarCheck,
   CheckCircle2,
   ClipboardList,
   Clock3,
   FileCheck2,
+  Goal,
   Loader2,
   TrendingUp,
   UserRound,
+  UserX,
   UsersRound,
   Wallet,
 } from "lucide-react";
 import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Zone Connection" }] }),
@@ -57,28 +66,566 @@ const chartConfig = {
   total: { label: "Processos", color: "hsl(var(--primary))" },
 } satisfies ChartConfig;
 
+const META_TIPO_LABEL: Record<string, string> = {
+  vendas: "Vendas",
+  documentacoes: "Documentações",
+  vgv: "VGV",
+};
+
+function money(n: number) {
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 function Page() {
   const user = getSession();
 
-  if (user?.role !== "corretor") {
+  if (user?.role === "corretor") {
+    return <DashboardCorretorView />;
+  }
+
+  if (user?.role === "admin" || user?.role === "gerente") {
+    return <DashboardAdminView />;
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard"
+        description="Painel gerencial disponível para admin e gerente."
+      />
+      <SemConexao
+        title="Sem painel para este perfil"
+        description="O dashboard gerencial é para admin/gerente. Corretores têm o painel operacional."
+      />
+    </div>
+  );
+}
+
+function DashboardAdminView() {
+  const { funnelStages } = useCatalog();
+  const [summary, setSummary] = useState<DashboardAdmin | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setSummary(await fetchDashboardAdmin());
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar o dashboard.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const funnelData = useMemo(() => {
+    if (!summary) return [];
+    const totals = new Map(summary.funil.map((i) => [i.etapa, i.total]));
+    const fromCatalog = funnelStages.map((stage) => ({
+      etapa: stage.name,
+      total: totals.get(stage.id) ?? 0,
+    }));
+    if (fromCatalog.some((i) => i.total > 0) || funnelStages.length > 0) {
+      return fromCatalog;
+    }
+    return summary.funil.map((i) => ({ etapa: i.etapa, total: i.total }));
+  }, [summary, funnelStages]);
+
+  if (loading) {
     return (
       <div>
         <PageHeader
           title="Dashboard"
-          description="O primeiro painel está sendo desenvolvido para corretores."
+          description="Visão gerencial da imobiliária."
         />
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Carregando indicadores…
+        </div>
+      </div>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <div>
+        <PageHeader title="Dashboard" />
         <SemConexao
-          title="Dashboard em preparação"
-          description="Os indicadores gerenciais serão adicionados após a primeira versão do painel do corretor."
+          title="Indicadores indisponíveis"
+          description="Não foi possível carregar os dados do dashboard."
         />
       </div>
     );
   }
 
-  return <DashboardCorretor />;
+  const mes = new Date(summary.periodo.mesAtual.inicio).toLocaleDateString(
+    "pt-BR",
+    { month: "long", year: "numeric" },
+  );
+
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard"
+        description={`Visão gerencial · ${mes} · comparação com o mês anterior.`}
+      />
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <FinanceKpiCard
+          label="Novos leads (mês)"
+          value={summary.entradas.mes.valor}
+          evolucaoPct={summary.entradas.mes.evolucaoPct}
+          icon={TrendingUp}
+          tone="teal"
+          format="number"
+          href="/leads"
+        />
+        <FinanceKpiCard
+          label="Novos hoje"
+          value={summary.entradas.hoje}
+          icon={UsersRound}
+          tone="blue"
+          format="number"
+          href="/leads"
+        />
+        <FinanceKpiCard
+          label="Novos na semana"
+          value={summary.entradas.semana}
+          icon={ClipboardList}
+          tone="violet"
+          format="number"
+        />
+        <FinanceKpiCard
+          label="VGV vendido (mês)"
+          value={summary.conversao.vgv.valor}
+          evolucaoPct={summary.conversao.vgv.evolucaoPct}
+          icon={Wallet}
+          tone="emerald"
+        />
+      </section>
+
+      <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <FinanceKpiCard
+          label="Sem corretor"
+          value={summary.atencao.semDono}
+          icon={UserX}
+          tone="orange"
+          format="number"
+          href="/leads"
+        />
+        <FinanceKpiCard
+          label={`Parados (${summary.atencao.diasParado}d)`}
+          value={summary.atencao.parados}
+          icon={AlertTriangle}
+          tone="rose"
+          format="number"
+          href="/leads"
+        />
+        <FinanceKpiCard
+          label="Perdidos no mês"
+          value={summary.perdidos.mes.valor}
+          evolucaoPct={summary.perdidos.mes.evolucaoPct}
+          invertEvolucao
+          icon={UserX}
+          tone="red"
+          format="number"
+          href="/leads-perdidos"
+        />
+        <FinanceKpiCard
+          label="Conversão (entrada → venda)"
+          value={summary.conversao.taxa.valor}
+          evolucaoPct={summary.conversao.taxa.evolucaoPct}
+          icon={Goal}
+          tone="teal"
+          format="percent"
+        />
+      </section>
+
+      <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Funil geral</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Leads ativos da imobiliária por etapa.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-72 w-full">
+              <BarChart data={funnelData} layout="vertical" margin={{ left: 12 }}>
+                <CartesianGrid horizontal={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis
+                  dataKey="etapa"
+                  type="category"
+                  width={120}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <Bar dataKey="total" fill="var(--color-total)" radius={4}>
+                  <LabelList dataKey="total" position="right" />
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Conversão do mês</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              % dos leads que entraram e viraram venda (vs mês anterior).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-xl border bg-secondary/40 p-4 text-center">
+              <div className="text-xs font-semibold uppercase tracking-wider text-brand-accent">
+                Taxa de conversão
+              </div>
+              <div className="mt-1 text-4xl font-bold tabular-nums text-foreground">
+                {summary.conversao.taxa.valor.toLocaleString("pt-BR", {
+                  maximumFractionDigits: 1,
+                })}
+                %
+              </div>
+              <EvolucaoBadge
+                value={summary.conversao.taxa.evolucaoPct}
+                className="mt-2 justify-center"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {summary.conversao.vendas.valor} venda
+                {summary.conversao.vendas.valor === 1 ? "" : "s"} de{" "}
+                {summary.conversao.entradas.valor} lead
+                {summary.conversao.entradas.valor === 1 ? "" : "s"} que
+                entraram no mês
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                <div>
+                  <div className="text-sm font-medium">Leads que entraram</div>
+                  <EvolucaoBadge value={summary.conversao.entradas.evolucaoPct} />
+                </div>
+                <span className="font-semibold tabular-nums">
+                  {summary.conversao.entradas.valor}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                <div>
+                  <div className="text-sm font-medium">Viraram venda</div>
+                  <EvolucaoBadge value={summary.conversao.vendas.evolucaoPct} />
+                </div>
+                <span className="font-semibold tabular-nums">
+                  {summary.conversao.vendas.valor}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                <div>
+                  <div className="text-sm font-medium">VGV do mês</div>
+                  <EvolucaoBadge value={summary.conversao.vgv.evolucaoPct} />
+                </div>
+                <span className="font-semibold tabular-nums text-sm">
+                  {money(summary.conversao.vgv.valor)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-5 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Leads perdidos — motivos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {summary.perdidos.motivos.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">
+                Nenhum lead perdido neste mês.
+              </p>
+            ) : (
+              summary.perdidos.motivos.map((m) => (
+                <div
+                  key={m.motivo}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{m.motivo}</div>
+                    <EvolucaoBadge value={m.evolucaoPct} invert />
+                  </div>
+                  <span className="font-semibold tabular-nums">{m.valor}</span>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Agenda de hoje</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {summary.agenda.totalHoje} compromisso
+                  {summary.agenda.totalHoje === 1 ? "" : "s"} ·{" "}
+                  {summary.agenda.atrasados} atrasado
+                  {summary.agenda.atrasados === 1 ? "" : "s"}
+                </p>
+              </div>
+              <CalendarCheck className="h-5 w-5 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-secondary px-2.5 py-1">
+                {summary.agenda.pendentesHoje} pendente
+                {summary.agenda.pendentesHoje === 1 ? "" : "s"}
+              </span>
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+                {summary.agenda.concluidosHoje} concluído
+                {summary.agenda.concluidosHoje === 1 ? "" : "s"}
+              </span>
+              <span className="rounded-full bg-rose-500/10 px-2.5 py-1 text-rose-700 dark:text-rose-300">
+                {summary.agenda.atrasados} atrasado
+                {summary.agenda.atrasados === 1 ? "" : "s"}
+              </span>
+            </div>
+            {summary.agenda.itens.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">
+                Nenhum compromisso hoje.
+              </p>
+            ) : (
+              <div className="divide-y rounded-md border">
+                {summary.agenda.itens.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 px-3 py-2.5"
+                  >
+                    {item.status === "concluido" ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                    ) : (
+                      <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {item.titulo}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.contato ?? item.tipo}
+                      </p>
+                    </div>
+                    <time className="shrink-0 text-xs text-muted-foreground">
+                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button asChild type="button" variant="outline" size="sm" className="mt-3">
+              <Link to="/agenda">Abrir agenda</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-5 grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Ranking de corretores</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Ordenado por VGV do mês.
+            </p>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            {summary.ranking.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">
+                Nenhum corretor ativo.
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 pr-2 font-medium">Corretor</th>
+                    <th className="pb-2 pr-2 font-medium text-right">Leads</th>
+                    <th className="pb-2 pr-2 font-medium text-right">Visitas</th>
+                    <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
+                    <th className="pb-2 font-medium text-right">VGV</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.ranking.slice(0, 10).map((r) => (
+                    <tr key={r.corretorId} className="border-b last:border-0">
+                      <td className="py-2.5 pr-2">
+                        <div className="font-medium">{r.nome}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {r.equipe ?? "Sem equipe"}
+                        </div>
+                      </td>
+                      <td className="py-2.5 pr-2 text-right tabular-nums">
+                        {r.leads}
+                      </td>
+                      <td className="py-2.5 pr-2 text-right tabular-nums">
+                        {r.visitas}
+                      </td>
+                      <td className="py-2.5 pr-2 text-right">
+                        <div className="tabular-nums font-medium">
+                          {r.vendas.valor}
+                        </div>
+                        <EvolucaoBadge value={r.vendas.evolucaoPct} />
+                      </td>
+                      <td className="py-2.5 text-right">
+                        <div className="tabular-nums font-medium">
+                          {money(r.vgv.valor)}
+                        </div>
+                        <EvolucaoBadge value={r.vgv.evolucaoPct} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Carteira por equipe</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {summary.equipes.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">
+                Nenhuma equipe cadastrada.
+              </p>
+            ) : (
+              summary.equipes.map((eq) => (
+                <div
+                  key={eq.equipeId}
+                  className="rounded-lg border px-3 py-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-medium">{eq.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {eq.corretores} corretor
+                        {eq.corretores === 1 ? "" : "es"}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm">
+                      <div className="font-semibold tabular-nums">
+                        {eq.total}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {eq.leads} leads · {eq.clientes} clientes
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-5">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Metas vs realizado</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Metas mensais ativas · imobiliária, equipes e corretores.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-xl border bg-secondary/40 p-4">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="font-semibold">Imobiliária</div>
+                <div className="text-sm tabular-nums">
+                  {summary.metas.imobiliaria.atual.toLocaleString("pt-BR")} /{" "}
+                  {summary.metas.imobiliaria.meta.toLocaleString("pt-BR")} (
+                  {summary.metas.imobiliaria.percentual}%)
+                </div>
+              </div>
+              <Progress value={summary.metas.imobiliaria.percentual} />
+            </div>
+
+            {summary.metas.equipes.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Por equipe</h3>
+                {summary.metas.equipes.map((eq) => (
+                  <div key={eq.equipeId}>
+                    <div className="mb-1 flex justify-between text-sm">
+                      <span>{eq.nome}</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {eq.percentual}%
+                      </span>
+                    </div>
+                    <Progress value={eq.percentual} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {summary.metas.corretores.length > 0 ? (
+              <div className="overflow-x-auto">
+                <h3 className="text-sm font-semibold mb-2">Por corretor</h3>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 font-medium">Corretor</th>
+                      <th className="pb-2 font-medium">Tipo</th>
+                      <th className="pb-2 font-medium text-right">Progresso</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.metas.corretores.map((m) => (
+                      <tr key={m.id} className="border-b last:border-0">
+                        <td className="py-2">
+                          <div className="font-medium">{m.corretorNome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {m.equipeNome ?? "Sem equipe"}
+                          </div>
+                        </td>
+                        <td className="py-2">
+                          {META_TIPO_LABEL[m.tipo] ?? m.tipo}
+                        </td>
+                        <td className="py-2 text-right">
+                          <div className="tabular-nums font-medium">
+                            {m.tipo === "vgv"
+                              ? `${money(m.atual)} / ${money(m.valor)}`
+                              : `${m.atual} / ${m.valor}`}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {m.percentual}%
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma meta mensal ativa. Cadastre em Metas.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
 }
 
-function DashboardCorretor() {
+function DashboardCorretorView() {
   const { funnelStages } = useCatalog();
   const [summary, setSummary] = useState<DashboardCorretor | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,16 +708,16 @@ function DashboardCorretor() {
 
   const emAnalise =
     summary.funil.find((item) => item.etapa === "em-analise")?.total ?? 0;
-  const mes = new Date(summary.periodo.inicio).toLocaleDateString("pt-BR", {
-    month: "long",
-    year: "numeric",
-  });
+  const mesLabel = new Date(summary.periodo.inicio).toLocaleDateString(
+    "pt-BR",
+    { month: "long", year: "numeric" },
+  );
 
   return (
     <div>
       <PageHeader
         title="Dashboard"
-        description={`Visão da sua carteira em ${mes}.`}
+        description={`Visão da sua carteira em ${mesLabel}.`}
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
