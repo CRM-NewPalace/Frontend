@@ -116,7 +116,7 @@ function LoginPage() {
           <img
             src="/brand/zone-connection-logo.png"
             alt="Zone Connection"
-            className="h-24 w-auto max-w-[320px] rounded-none object-contain brightness-0 invert"
+            className="h-24 w-auto max-w-[320px] rounded-none object-contain"
           />
           <p className="mt-4 text-base font-semibold tracking-tight">
             Zone{" "}
