@@ -1,4 +1,5 @@
 import type { AuthUser, Role } from "@/lib/auth";
+import { ROUTE_MODULE_KEY } from "@/lib/tenant-modules";
 
 /**
  * Rotas por perfil:
@@ -71,16 +72,6 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/imoveis",
     "/perfil",
   ],
-};
-
-/** Mapeia rota → chave de módulo no Tenant.modules (false = oculto). */
-const ROUTE_MODULE_KEY: Record<string, string> = {
-  "/metas": "metas",
-  "/propostas": "propostas",
-  "/financeiro": "financeiro",
-  "/relatorios": "relatorios",
-  "/taxa-conversao": "taxaConversao",
-  "/corretores": "corretores",
 };
 
 export function getAllowedRoutes(role: Role): readonly string[] {

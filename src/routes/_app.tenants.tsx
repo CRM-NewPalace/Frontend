@@ -61,6 +61,14 @@ import {
   type TenantOzapConnection,
 } from "@/lib/tenants-api";
 import {
+  adminGroupEnabled,
+  defaultModulesRecord,
+  modulesFromTenantJson,
+  setAdminGroupEnabled,
+  TENANT_MODULE_GROUPS,
+  type TenantModuleKey,
+} from "@/lib/tenant-modules";
+import {
   Building2,
   Check,
   Copy,
@@ -87,12 +95,7 @@ type TenantForm = {
   slug: string;
   status: UserStatus;
   logoUrl: string;
-  moduleMetas: boolean;
-  moduleFinanceiro: boolean;
-  modulePropostas: boolean;
-  moduleRelatorios: boolean;
-  moduleTaxaConversao: boolean;
-  moduleCorretores: boolean;
+  modules: Record<TenantModuleKey, boolean>;
 };
 
 const emptyTenantForm = (): TenantForm => ({
@@ -100,12 +103,7 @@ const emptyTenantForm = (): TenantForm => ({
   slug: "",
   status: "ativo",
   logoUrl: "",
-  moduleMetas: true,
-  moduleFinanceiro: true,
-  modulePropostas: true,
-  moduleRelatorios: true,
-  moduleTaxaConversao: true,
-  moduleCorretores: true,
+  modules: defaultModulesRecord(true),
 });
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -196,18 +194,12 @@ function TenantsPage() {
     setFormMode("edit");
     setEditingId(item.id);
     setEditingAdmin(item.admin);
-    const modules = item.modules ?? {};
     setForm({
       name: item.name,
       slug: item.slug,
       status: item.status,
       logoUrl: item.logoUrl ?? "",
-      moduleMetas: modules.metas !== false,
-      moduleFinanceiro: modules.financeiro !== false,
-      modulePropostas: modules.propostas !== false,
-      moduleRelatorios: modules.relatorios !== false,
-      moduleTaxaConversao: modules.taxaConversao !== false,
-      moduleCorretores: modules.corretores !== false,
+      modules: modulesFromTenantJson(item.modules),
     });
     setSlugTouched(true);
     setFormOpen(true);
@@ -298,14 +290,7 @@ function TenantsPage() {
       return;
     }
 
-    const modules = {
-      metas: form.moduleMetas,
-      financeiro: form.moduleFinanceiro,
-      propostas: form.modulePropostas,
-      relatorios: form.moduleRelatorios,
-      taxaConversao: form.moduleTaxaConversao,
-      corretores: form.moduleCorretores,
-    };
+    const modules = { ...form.modules };
 
     if (formMode === "create") {
       setSaving(true);
@@ -877,34 +862,86 @@ function TenantsPage() {
                 Marque os módulos ativos para este tenant. Desmarcados ficam
                 ocultos no menu.
               </p>
-              <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                {(
-                  [
-                    ["moduleMetas", "Metas"],
-                    ["moduleFinanceiro", "Financeiro"],
-                    ["modulePropostas", "Propostas"],
-                    ["moduleRelatorios", "Relatórios"],
-                    ["moduleTaxaConversao", "Taxa de conversão"],
-                    ["moduleCorretores", "Corretores"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-2 rounded-md border px-3 py-2"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form[key]}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          [key]: e.target.checked,
-                        }))
-                      }
-                    />
-                    {label}
-                  </label>
-                ))}
+              <div className="space-y-4">
+                {TENANT_MODULE_GROUPS.map((group) => {
+                  const adminOn =
+                    group.id === "administrativo" &&
+                    adminGroupEnabled(form.modules);
+                  return (
+                    <div
+                      key={group.id}
+                      className="rounded-lg border bg-muted/20 p-3 space-y-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold">{group.label}</p>
+                        {group.id === "administrativo" ? (
+                          <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                            <span className="text-muted-foreground">
+                              {adminOn ? "Ativo" : "Desativado"}
+                            </span>
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={adminOn}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  modules: setAdminGroupEnabled(
+                                    prev.modules,
+                                    e.target.checked,
+                                  ),
+                                }))
+                              }
+                            />
+                            <span className="font-medium">
+                              Todo o administrativo
+                            </span>
+                          </label>
+                        ) : null}
+                      </div>
+                      {group.id === "administrativo" && !adminOn ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          Desativar o administrativo oculta todos os módulos
+                          desta seção, exceto Usuários (criar usuário).
+                        </p>
+                      ) : null}
+                      <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                        {group.modules.map((mod) => {
+                          const lockedOff =
+                            group.id === "administrativo" &&
+                            !adminOn &&
+                            !mod.keepOnAdminBulkOff;
+                          return (
+                            <label
+                              key={mod.key}
+                              className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
+                                lockedOff
+                                  ? "opacity-60 bg-muted/40"
+                                  : "bg-background"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={form.modules[mod.key] !== false}
+                                disabled={lockedOff}
+                                onChange={(e) =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    modules: {
+                                      ...prev.modules,
+                                      [mod.key]: e.target.checked,
+                                    },
+                                  }))
+                                }
+                              />
+                              <span>{mod.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </FormSection>
           </FormDialogBody>
