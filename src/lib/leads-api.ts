@@ -18,6 +18,8 @@ export interface ApiLead {
   tags: string[];
   corretorId: string | null;
   corretor: { id: string; name: string } | null;
+  equipeId?: string | null;
+  equipe?: { id: string; name: string } | null;
   construtoraId?: string | null;
   construtora?: { id: string; nome: string } | null;
   empreendimentoId?: string | null;
@@ -81,6 +83,8 @@ export function mapApiLead(api: ApiLead): Lead {
     bairro: api.bairro,
     corretor: api.corretor?.name ?? "—",
     corretorId: api.corretorId,
+    equipeId: api.equipeId ?? null,
+    equipe: api.equipe?.name ?? null,
     construtoraId: api.construtoraId ?? null,
     construtora: api.construtora ?? null,
     empreendimentoId: api.empreendimentoId ?? null,

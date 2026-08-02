@@ -18,6 +18,10 @@ export type Equipe = {
   updatedAt: string;
   gerente: EquipeMember;
   membros: EquipeMember[];
+  /** Leads da equipe (pool + atribuídos aos corretores). */
+  leadsCount?: number;
+  /** Leads no pool aguardando distribuição aos corretores. */
+  leadsPool?: number;
 };
 
 export type EquipeOptionUser = {

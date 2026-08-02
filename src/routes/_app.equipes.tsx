@@ -472,10 +472,20 @@ function EquipesPage() {
                       {eq.status}
                     </Badge>
                   </div>
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
                     <Users className="w-3 h-3" />
                     {eq.membros.length} corretor
                     {eq.membros.length === 1 ? "" : "es"}
+                    <span className="text-muted-foreground/50">·</span>
+                    <span className="tabular-nums">
+                      {eq.leadsCount ?? 0} lead
+                      {(eq.leadsCount ?? 0) === 1 ? "" : "s"}
+                    </span>
+                    {(eq.leadsPool ?? 0) > 0 && (
+                      <span className="text-amber-600 dark:text-amber-400">
+                        ({eq.leadsPool} no pool)
+                      </span>
+                    )}
                   </div>
                 </div>
                 {canManage && (

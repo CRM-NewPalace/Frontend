@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { useCatalog, INITIAL_STAGE_SLUG } from "@/lib/catalog-store";
+import { useCatalog } from "@/lib/catalog-store";
 import type { CatalogItem, CatalogType } from "@/lib/catalog-api";
 import {
   CATALOG_COLORS,
@@ -21,9 +21,10 @@ import {
   nextCatalogColor,
 } from "@/lib/catalog-colors";
 import { ApiError } from "@/lib/api";
-import { Plus, GripVertical, Pencil, Trash2, Zap, ListRestart } from "lucide-react";
+import { Plus, Pencil, Trash2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ConfigFunisPanel } from "@/components/config-funis-panel";
 
 export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Zone Connection" }] }),
@@ -98,11 +99,9 @@ function Config() {
     catalog,
     loading,
     error,
-    funnelStages,
     addItem,
     updateItem,
     removeItem,
-    installDefaultFunnel,
   } = useCatalog();
 
   const [modelos, setModelos] = useState<Modelo[]>([
@@ -117,9 +116,6 @@ function Config() {
     { id: "a2", nome: "WhatsApp na mudança de etapa", descricao: "Envia template ao mover lead no funil.", ativa: false },
   ]);
 
-  const [stageOpen, setStageOpen] = useState(false);
-  const [stageName, setStageName] = useState("");
-  const [stageColor, setStageColor] = useState<string>(DEFAULT_CATALOG_COLOR);
   const [saving, setSaving] = useState(false);
 
   const [listOpen, setListOpen] = useState(false);
@@ -141,12 +137,6 @@ function Config() {
   const [autoNome, setAutoNome] = useState("");
   const [autoDesc, setAutoDesc] = useState("");
 
-  function openAddStage() {
-    setStageName("");
-    setStageColor(nextCatalogColor(funnelStages.length));
-    setStageOpen(true);
-  }
-
   function openAddList(kind: ListKind) {
     const count =
       kind === "origens"
@@ -165,42 +155,6 @@ function Config() {
     setEditLabel(item.label);
     setEditColor(item.color ?? DEFAULT_CATALOG_COLOR);
     setEditOpen(true);
-  }
-
-  async function handleInstallDefaults() {
-    setSaving(true);
-    try {
-      await installDefaultFunnel();
-      toast.success("Etapas padrão do funil instaladas no banco.");
-    } catch (err) {
-      toast.error(errorMessage(err, "Não foi possível instalar as etapas padrão."));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleAddStage(e: React.FormEvent) {
-    e.preventDefault();
-    const name = stageName.trim();
-    if (!name) {
-      toast.error("Informe o nome da etapa.");
-      return;
-    }
-    setSaving(true);
-    try {
-      await addItem({
-        type: "funil_etapa",
-        label: name,
-        color: stageColor,
-      });
-      setStageOpen(false);
-      setStageName("");
-      toast.success(`Etapa "${name}" adicionada.`);
-    } catch (err) {
-      toast.error(errorMessage(err, "Não foi possível adicionar a etapa."));
-    } finally {
-      setSaving(false);
-    }
   }
 
   async function handleAddListItem(e: React.FormEvent) {
@@ -346,64 +300,7 @@ function Config() {
         </TabsList>
 
         <TabsContent value="funil">
-          <Card>
-            <CardHeader className="flex-row justify-between items-center gap-2 flex-wrap">
-              <div>
-                <CardTitle className="text-base">Etapas do funil</CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Persistidas no banco. Novos leads entram em &quot;Novo lead&quot;.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={saving}
-                  onClick={() => void handleInstallDefaults()}
-                >
-                  <ListRestart className="w-4 h-4 mr-1" />
-                  Etapas padrão
-                </Button>
-                <Button size="sm" onClick={openAddStage}>
-                  <Plus className="w-4 h-4 mr-1" />Nova etapa
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
-              {!loading && catalog.funil_etapa.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma etapa cadastrada. Use &quot;Etapas padrão&quot; ou crie a sua.
-                </p>
-              )}
-              {catalog.funil_etapa.map((s) => {
-                const isInitial = s.slug === INITIAL_STAGE_SLUG;
-                return (
-                  <div key={s.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/40">
-                    <GripVertical className="w-4 h-4 text-muted-foreground" />
-                    <Badge className={s.color ?? DEFAULT_CATALOG_COLOR}>{s.label}</Badge>
-                    {isInitial && (
-                      <Badge variant="secondary" className="text-[10px]">Inicial</Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground ml-auto">{s.slug}</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditItem(s)}>
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      disabled={isInitial}
-                      title={isInitial ? "Etapa inicial não pode ser removida" : "Desativar"}
-                      onClick={() => handleRemoveItem(s)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+          <ConfigFunisPanel />
         </TabsContent>
 
         {(Object.keys(LIST_META) as ListKind[]).map((kind) => (
@@ -506,36 +403,6 @@ function Config() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Dialog open={stageOpen} onOpenChange={setStageOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nova etapa</DialogTitle>
-            <DialogDescription>Adicione uma etapa ao funil de vendas.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleAddStage} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="stage-name">Nome da etapa</Label>
-              <Input
-                id="stage-name"
-                value={stageName}
-                onChange={(e) => setStageName(e.target.value)}
-                placeholder="Ex.: Análise de crédito"
-                autoFocus
-              />
-            </div>
-            <ColorSwatchPicker
-              value={stageColor}
-              onChange={setStageColor}
-              previewLabel={stageName || "Prévia"}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setStageOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={saving}><Plus className="w-4 h-4" />Adicionar</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={listOpen} onOpenChange={setListOpen}>
         <DialogContent className="sm:max-w-md">

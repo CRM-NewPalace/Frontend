@@ -262,9 +262,17 @@ function DashboardAdminView() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-72 w-full">
-              <BarChart data={funnelData} layout="vertical" margin={{ left: 12 }}>
+              <BarChart
+                data={funnelData}
+                layout="vertical"
+                margin={{ left: 12, right: 48 }}
+              >
                 <CartesianGrid horizontal={false} />
-                <XAxis type="number" allowDecimals={false} />
+                <XAxis
+                  type="number"
+                  allowDecimals={false}
+                  domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1)]}
+                />
                 <YAxis
                   dataKey="etapa"
                   type="category"
@@ -274,7 +282,12 @@ function DashboardAdminView() {
                 />
                 <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                 <Bar dataKey="total" fill="var(--color-total)" radius={4}>
-                  <LabelList dataKey="total" position="right" />
+                  <LabelList
+                    dataKey="total"
+                    position="right"
+                    className="fill-foreground"
+                    offset={8}
+                  />
                 </Bar>
               </BarChart>
             </ChartContainer>
@@ -784,9 +797,17 @@ function DashboardCorretorView() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-72 w-full">
-              <BarChart data={funnelData} layout="vertical" margin={{ left: 12 }}>
+              <BarChart
+                data={funnelData}
+                layout="vertical"
+                margin={{ left: 12, right: 48 }}
+              >
                 <CartesianGrid horizontal={false} />
-                <XAxis type="number" allowDecimals={false} />
+                <XAxis
+                  type="number"
+                  allowDecimals={false}
+                  domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1)]}
+                />
                 <YAxis
                   dataKey="etapa"
                   type="category"
@@ -796,7 +817,12 @@ function DashboardCorretorView() {
                 />
                 <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                 <Bar dataKey="total" fill="var(--color-total)" radius={4}>
-                  <LabelList dataKey="total" position="right" />
+                  <LabelList
+                    dataKey="total"
+                    position="right"
+                    className="fill-foreground"
+                    offset={8}
+                  />
                 </Bar>
               </BarChart>
             </ChartContainer>

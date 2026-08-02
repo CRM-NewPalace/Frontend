@@ -31,6 +31,7 @@ import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { importLeads } from "@/lib/leads-api";
+import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
   downloadImportTemplate,
   exportLeadsToExcel,
@@ -182,10 +183,28 @@ function LeadsPage() {
   const [stageFilter, setStageFilter] = useState<string>("all");
   /** UUID do corretor ou "all". */
   const [corretorFilter, setCorretorFilter] = useState<string>("all");
+  /** UUID da equipe ou "all". */
+  const [equipeFilter, setEquipeFilter] = useState<string>("all");
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [prioridadeFilter, setPrioridadeFilter] = useState<string>("all");
   const [interesseFilter, setInteresseFilter] = useState<string>("all");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
   const [showExtraFilters, setShowExtraFilters] = useState(false);
+
+  useEffect(() => {
+    if (isCorretor) return;
+    let cancelled = false;
+    void fetchEquipes()
+      .then((list) => {
+        if (!cancelled) setEquipes(list);
+      })
+      .catch(() => {
+        if (!cancelled) setEquipes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isCorretor]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -196,6 +215,7 @@ function LeadsPage() {
     debouncedSearch !== "" ||
     stageFilter !== "all" ||
     corretorFilter !== "all" ||
+    equipeFilter !== "all" ||
     prioridadeFilter !== "all" ||
     interesseFilter !== "all" ||
     origemFilter !== "all";
@@ -209,6 +229,18 @@ function LeadsPage() {
     if (!filtersActive) return leads;
     const q = debouncedSearch.toLowerCase();
     const qDigits = phoneDigits(debouncedSearch);
+    const equipeMembros =
+      equipeFilter === "all" || equipeFilter === "none"
+        ? null
+        : new Set(
+            equipes
+              .find((e) => e.id === equipeFilter)
+              ?.membros.map((m) => m.id) ?? [],
+          );
+    const anyEquipeMembroIds =
+      equipeFilter === "none"
+        ? new Set(equipes.flatMap((e) => e.membros.map((m) => m.id)))
+        : null;
     return leads.filter((l) => {
       if (q) {
         const hay = `${l.nome} ${l.email} ${l.telefone}`.toLowerCase();
@@ -217,6 +249,15 @@ function LeadsPage() {
       }
       if (stageFilter !== "all" && l.stage !== stageFilter) return false;
       if (!isCorretor && corretorFilter !== "all" && l.corretorId !== corretorFilter) return false;
+      if (!isCorretor && equipeFilter === "none") {
+        if (l.equipeId) return false;
+        if (l.corretorId && anyEquipeMembroIds?.has(l.corretorId)) return false;
+      } else if (!isCorretor && equipeFilter !== "all") {
+        const inPool = l.equipeId === equipeFilter;
+        const inMembros =
+          Boolean(l.corretorId) && Boolean(equipeMembros?.has(l.corretorId!));
+        if (!inPool && !inMembros) return false;
+      }
       if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter) return false;
       if (interesseFilter !== "all" && l.interesse !== interesseFilter) return false;
       if (origemFilter !== "all" && l.origem !== origemFilter) return false;
@@ -228,6 +269,8 @@ function LeadsPage() {
     debouncedSearch,
     stageFilter,
     corretorFilter,
+    equipeFilter,
+    equipes,
     prioridadeFilter,
     interesseFilter,
     origemFilter,
@@ -239,9 +282,21 @@ function LeadsPage() {
     setDebouncedSearch("");
     setStageFilter("all");
     setCorretorFilter("all");
+    setEquipeFilter("all");
     setPrioridadeFilter("all");
     setInteresseFilter("all");
     setOrigemFilter("all");
+  }
+
+  function equipeLabel(lead: Lead): string {
+    if (lead.equipe) return lead.equipe;
+    if (lead.corretorId) {
+      const eq = equipes.find((e) =>
+        e.membros.some((m) => m.id === lead.corretorId),
+      );
+      if (eq) return eq.name;
+    }
+    return "—";
   }
 
   function openCreate() {
@@ -773,6 +828,9 @@ function LeadsPage() {
                   <DetailField label="E-mail" value={detailLead.email} />
                   <DetailField label="Origem" value={detailLead.origem} />
                   {!isCorretor && <DetailField label="Corretor" value={detailLead.corretor} />}
+                  {!isCorretor && (
+                    <DetailField label="Equipe" value={equipeLabel(detailLead)} />
+                  )}
                 </div>
               </FormSection>
               <FormSection icon={<Wallet className="w-3.5 h-3.5 text-primary" />} title="Interesse e renda">
@@ -925,6 +983,21 @@ function LeadsPage() {
             </SelectContent>
           </Select>
           {!isCorretor && (
+            <Select value={equipeFilter} onValueChange={setEquipeFilter}>
+              <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Equipe" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas equipes</SelectItem>
+                <SelectItem value="none">Sem equipe</SelectItem>
+                {equipes.map((eq) => (
+                  <SelectItem key={eq.id} value={eq.id}>
+                    {eq.name}
+                    {eq.leadsCount != null ? ` (${eq.leadsCount})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {!isCorretor && (
             <Select value={corretorFilter} onValueChange={setCorretorFilter}>
               <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Corretor" /></SelectTrigger>
               <SelectContent>
@@ -1003,6 +1076,7 @@ function LeadsPage() {
               <TableHead>Origem</TableHead>
               <TableHead>Interesse</TableHead>
               <TableHead>Etapa</TableHead>
+              {!isCorretor && <TableHead>Equipe</TableHead>}
               {!isCorretor && <TableHead>Corretor</TableHead>}
               <TableHead>Renda</TableHead>
               <TableHead>Prioridade</TableHead>
@@ -1013,13 +1087,13 @@ function LeadsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={isCorretor ? 8 : 9} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={isCorretor ? 8 : 10} className="h-24 text-center text-sm text-muted-foreground">
                   Carregando leads...
                 </TableCell>
               </TableRow>
             ) : filteredLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isCorretor ? 8 : 9} className="h-24 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={isCorretor ? 8 : 10} className="h-24 text-center text-sm text-muted-foreground">
                   Nenhum lead encontrado com esses filtros.
                 </TableCell>
               </TableRow>
@@ -1045,6 +1119,9 @@ function LeadsPage() {
                   <TableCell className="text-sm">{l.origem}</TableCell>
                   <TableCell><Badge variant="outline">{l.interesse}</Badge></TableCell>
                   <TableCell><Badge className={stage.color}>{stage.name}</Badge></TableCell>
+                  {!isCorretor && (
+                    <TableCell className="text-sm">{equipeLabel(l)}</TableCell>
+                  )}
                   {!isCorretor && <TableCell className="text-sm">{l.corretor}</TableCell>}
                   <TableCell className="text-sm font-medium">
                     {l.renda != null ? brl(l.renda) : "—"}

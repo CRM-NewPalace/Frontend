@@ -28,6 +28,10 @@ export interface Lead {
   corretor: string;
   /** UUID do corretor no backend. */
   corretorId?: string | null;
+  /** UUID da equipe (pool ou herdada). */
+  equipeId?: string | null;
+  /** Nome da equipe para exibição. */
+  equipe?: string | null;
   construtoraId?: string | null;
   construtora?: { id: string; nome: string } | null;
   empreendimentoId?: string | null;
