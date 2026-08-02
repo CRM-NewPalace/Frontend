@@ -502,6 +502,7 @@ function LeadsPage() {
                     exportLeadsToPdf(
                       filteredLeads,
                       `leads-${new Date().toISOString().slice(0, 10)}.pdf`,
+                      user?.tenant?.name?.trim() || "Imobiliária",
                     )
                   }
                 >

@@ -345,10 +345,14 @@ export function exportLeadsToExcel(leads: Lead[], filename = "leads.xlsx") {
   );
 }
 
-export function exportLeadsToPdf(leads: Lead[], filename = "leads.pdf") {
+export function exportLeadsToPdf(
+  leads: Lead[],
+  filename = "leads.pdf",
+  imobiliariaNome = "Imobiliária",
+) {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(14);
-  doc.text("Leads — Zone Connection", 40, 36);
+  doc.text(`Leads — ${imobiliariaNome}`, 40, 36);
   doc.setFontSize(9);
   doc.setTextColor(100);
   doc.text(
