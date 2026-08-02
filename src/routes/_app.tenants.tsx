@@ -160,6 +160,7 @@ function TenantsPage() {
   const [editingAdmin, setEditingAdmin] = useState<TenantAdminUser | null>(
     null,
   );
+  const [editingUserCount, setEditingUserCount] = useState<number | null>(null);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [credentials, setCredentials] = useState<{
     name: string;
@@ -194,15 +195,17 @@ function TenantsPage() {
     setFormMode("create");
     setEditingId(null);
     setEditingAdmin(null);
+    setEditingUserCount(null);
     setForm(emptyTenantForm());
     setSlugTouched(false);
     setFormOpen(true);
   }
 
-  function openEdit(item: Tenant) {
+  async function openEdit(item: Tenant) {
     setFormMode("edit");
     setEditingId(item.id);
     setEditingAdmin(item.admin);
+    setEditingUserCount(null);
     setForm({
       name: item.name,
       slug: item.slug,
@@ -210,11 +213,32 @@ function TenantsPage() {
       logoUrl: item.logoUrl ?? "",
       plano: item.plano ?? "bronze",
       usuariosExtras: item.usuariosExtras ?? 0,
-      iaBotEnabled: item.iaBotEnabled ?? false,
+      iaBotEnabled: Boolean(item.iaBotEnabled),
       modules: modulesFromTenantJson(item.modules),
     });
     setSlugTouched(true);
     setFormOpen(true);
+    try {
+      const detail = await fetchTenant(item.id);
+      setEditingAdmin(detail.admin);
+      setEditingUserCount(detail.userCount);
+      setForm({
+        name: detail.name,
+        slug: detail.slug,
+        status: detail.status,
+        logoUrl: detail.logoUrl ?? "",
+        plano: detail.plano ?? "bronze",
+        usuariosExtras: detail.usuariosExtras ?? 0,
+        iaBotEnabled: Boolean(detail.iaBotEnabled),
+        modules: modulesFromTenantJson(detail.modules),
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar todos os dados do tenant.",
+      );
+    }
   }
 
   async function copyText(value: string, field: "email" | "password") {
@@ -634,7 +658,7 @@ function TenantsPage() {
                           variant="ghost"
                           size="icon"
                           title="Editar"
-                          onClick={() => openEdit(item)}
+                          onClick={() => void openEdit(item)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -738,6 +762,9 @@ function TenantsPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </FormSection>
+
+            <FormSection title="Plano e cotas">
               <div className="space-y-2">
                 <Label>Plano</Label>
                 <Select
@@ -790,6 +817,9 @@ function TenantsPage() {
                   <p className="text-xs text-muted-foreground">
                     Limite total:{" "}
                     {PLANO_MAX_USUARIOS[form.plano] + form.usuariosExtras}
+                    {editingUserCount != null
+                      ? ` · ${editingUserCount} em uso`
+                      : ""}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -1002,7 +1032,7 @@ function TenantsPage() {
                       {group.id === "administrativo" && !adminOn ? (
                         <p className="text-[11px] text-muted-foreground">
                           Desativar o administrativo oculta todos os módulos
-                          desta seção, exceto Usuários (criar usuário).
+                          desta seção, exceto Usuários e Configurações.
                         </p>
                       ) : null}
                       <div className="grid gap-2 sm:grid-cols-2 text-sm">

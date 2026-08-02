@@ -74,7 +74,11 @@ export const TENANT_MODULE_GROUPS: TenantModuleGroup[] = [
       { key: "propostas", label: "Propostas" },
       { key: "taxaConversao", label: "Taxa de conversão" },
       { key: "relatorios", label: "Relatórios" },
-      { key: "configuracoes", label: "Configurações" },
+      {
+        key: "configuracoes",
+        label: "Configurações",
+        keepOnAdminBulkOff: true,
+      },
     ],
   },
   {
@@ -182,7 +186,9 @@ export function modulesPresetForPlano(
     .modules.map((m) => m.key)) {
     next[key] = true;
   }
+  // Sempre disponíveis em qualquer plano.
   next.usuarios = true;
+  next.configuracoes = true;
   if (plano === "prata" || plano === "ouro") {
     for (const mod of TENANT_MODULE_GROUPS.find((g) => g.id === "administrativo")!
       .modules) {
