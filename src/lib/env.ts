@@ -11,5 +11,5 @@ export function getWhatsAppUrl(message?: string) {
   const number = WHATSAPP_NUMBER.replace(/\D/g, "");
   const url = new URL(`https://wa.me/${number}`);
   if (message) url.searchParams.set("text", message);
- git add  return url.toString();
+  return url.toString();
 }
