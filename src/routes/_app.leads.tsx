@@ -395,7 +395,6 @@ function LeadsPage() {
         valid.map((r) => ({
           nome: r.nome,
           telefone: r.telefone,
-          email: r.email || undefined,
           origem: r.origem || origemOptions[0] || "Importação",
           interesse: r.interesse,
           cidade: r.cidade || undefined,
@@ -1121,7 +1120,6 @@ function LeadsPage() {
                       <th className="p-2 font-medium">Data Captura</th>
                       <th className="p-2 font-medium">Nome do Cliente</th>
                       <th className="p-2 font-medium">Telefone</th>
-                      <th className="p-2 font-medium">E-mail</th>
                       <th className="p-2 font-medium">Origem</th>
                     </tr>
                   </thead>
@@ -1130,7 +1128,6 @@ function LeadsPage() {
                       <td className="p-2">02/08/2026</td>
                       <td className="p-2">Maria Silva</td>
                       <td className="p-2 tabular-nums">(81) 98888-7777</td>
-                      <td className="p-2">maria@email.com</td>
                       <td className="p-2">WhatsApp</td>
                     </tr>
                   </tbody>
@@ -1149,7 +1146,7 @@ function LeadsPage() {
                 <li>
                   Telefone já com DDD, ex.: (81) 98888-7777 ou 81 98888-7777
                 </li>
-                <li>E-mail, Data Captura e Origem são opcionais</li>
+                <li>Data Captura e Origem são opcionais</li>
                 <li>Uma linha = um lead</li>
               </ul>
             </div>
@@ -1196,8 +1193,8 @@ function LeadsPage() {
               {importFileName
                 ? `Arquivo: ${importFileName}. `
                 : ""}
-              Formato: Data Captura, Nome do Cliente, Telefone (com DDD),
-              E-mail e Origem. Hora, imóvel e mensagem são ignorados.
+              Formato: Data Captura, Nome do Cliente, Telefone (com DDD) e
+              Origem. Hora, e-mail, imóvel e mensagem são ignorados.
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto flex-1 min-h-0 border rounded-md">
@@ -1206,7 +1203,6 @@ function LeadsPage() {
                 <tr className="text-left text-muted-foreground border-b">
                   <th className="p-2 font-medium">Nome</th>
                   <th className="p-2 font-medium">Telefone</th>
-                  <th className="p-2 font-medium">E-mail</th>
                   <th className="p-2 font-medium">Origem</th>
                   <th className="p-2 font-medium">Status</th>
                 </tr>
@@ -1222,9 +1218,6 @@ function LeadsPage() {
                   >
                     <td className="p-2">{row.nome || "—"}</td>
                     <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
-                    <td className="p-2 text-muted-foreground">
-                      {row.email || "—"}
-                    </td>
                     <td className="p-2">{row.origem || "—"}</td>
                     <td className="p-2">
                       {row.error ? (

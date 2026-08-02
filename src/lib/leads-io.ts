@@ -14,7 +14,6 @@ export const LEAD_IO_COLUMNS = [
   "Data Captura",
   "Nome do Cliente",
   "Telefone",
-  "E-mail",
   "Origem",
 ] as const;
 
@@ -180,12 +179,11 @@ function rowsFromMatrix(
       });
     } else {
       // Formato unificado sem cabeçalho:
-      // Data | Nome | Telefone | E-mail | Origem
+      // Data | Nome | Telefone | Origem
       cells.data = row[0];
       cells.nome = row[1];
       cells.telefone = row[2];
-      cells.email = row[3];
-      cells.origem = row[4];
+      cells.origem = row[3];
     }
 
     // Fallback: achar telefone em qualquer célula
@@ -484,7 +482,6 @@ function leadsToSheetRows(leads: Lead[]): string[][] {
     l.updatedAt || "",
     l.nome || "",
     l.telefone || "",
-    l.email || "",
     l.origem || "",
   ]);
 }
@@ -529,7 +526,6 @@ export function exportLeadsToPdf(
       l.updatedAt,
       l.nome,
       l.telefone,
-      l.email || "—",
       l.origem || "—",
     ]),
     styles: { fontSize: 8, cellPadding: 4 },
@@ -546,7 +542,6 @@ export function downloadImportTemplate() {
       "02/08/2026",
       "Maria Silva",
       "(81) 98888-7777",
-      "maria@email.com",
       "WhatsApp",
     ],
   ]);
