@@ -138,6 +138,10 @@ function revalidateSessionInBackground(): void {
  * No primeiro acesso da página (ou com force), confirma cookies via /auth/me.
  * Nas navegações seguintes, usa o cache e revalida em background se estiver velho.
  */
+export function isSessionReady(): boolean {
+  return validatedThisDocument && !!getSession();
+}
+
 export async function ensureSession(options?: {
   force?: boolean;
 }): Promise<AuthUser | null> {
