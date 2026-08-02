@@ -6,11 +6,6 @@ import { getWhatsAppUrl } from "@/lib/env";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 
-const navLinks = [
-  { label: "Fale Conosco", href: getWhatsAppUrl(), external: true },
-  { label: "Login", to: "/login" },
-] as const;
-
 const linkClass =
   "text-sm font-medium text-brand-dark transition-colors hover:text-brand-accent";
 
@@ -52,6 +47,10 @@ function NavLink({
 
 export function MarketingNav() {
   const [isOpen, setIsOpen] = useState(false);
+  const navLinks = [
+    { label: "Fale Conosco", href: getWhatsAppUrl(), external: true },
+    { label: "Login", to: "/login" },
+  ] as const;
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -75,7 +74,12 @@ export function MarketingNav() {
         className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 lg:px-12"
         aria-label="Navegação principal"
       >
-        <Link to="/" onClick={() => setIsOpen(false)} className="shrink-0">
+        <Link
+          to="/"
+          search={{ site: "1" }}
+          onClick={() => setIsOpen(false)}
+          className="shrink-0"
+        >
           <span className="block sm:hidden">
             <Logo size="sm" />
           </span>

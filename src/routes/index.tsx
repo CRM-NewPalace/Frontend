@@ -1,18 +1,23 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { z } from "zod";
 import { getSession } from "@/lib/auth";
-import { hasMarketingHomeAccess } from "@/lib/marketing-nav";
 import { defaultRouteForRole } from "@/lib/permissions";
 import LeadingPage from "@/marketing/pages/LeadingPage";
 
+const siteSearchSchema = z.object({
+  site: z.literal("1").optional(),
+});
+
 export const Route = createFileRoute("/")({
   ssr: false,
-  beforeLoad: () => {
+  validateSearch: siteSearchSchema,
+  beforeLoad: ({ search }) => {
     const user = getSession();
     if (user) {
       throw redirect({ to: defaultRouteForRole(user.role, user) });
     }
 
-    if (typeof window !== "undefined" && !hasMarketingHomeAccess()) {
+    if (search.site !== "1") {
       throw redirect({ to: "/login" });
     }
   },
