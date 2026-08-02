@@ -116,9 +116,9 @@ function LoginPage() {
           <img
             src="/brand/zone-connection-logo.png"
             alt="Zone Connection"
-            className="h-14 w-auto max-w-[220px] rounded-none object-contain brightness-0 invert"
+            className="h-24 w-auto max-w-[320px] rounded-none object-contain brightness-0 invert"
           />
-          <p className="mt-3 text-sm font-semibold tracking-tight">
+          <p className="mt-4 text-base font-semibold tracking-tight">
             Zone{" "}
             <span className="text-[#079ED4]">Connection</span>
           </p>
@@ -180,18 +180,18 @@ function LoginPage() {
           onSubmit={onSubmit}
           className="relative w-full max-w-[400px] space-y-8 animate-[login-fade_0.6s_ease-out]"
         >
-          <div className="lg:hidden flex items-center gap-2.5">
+          <div className="lg:hidden flex items-center gap-3">
             <img
               src="/brand/zone-connection-logo.png"
               alt="Zone Connection"
-              className="h-9 w-auto max-w-[140px] rounded-none object-contain"
+              className="h-16 w-auto max-w-[200px] rounded-none object-contain"
             />
             <div>
-              <div className="font-semibold text-foreground leading-tight">
+              <div className="text-lg font-semibold text-foreground leading-tight">
                 Zone{" "}
                 <span className="text-brand-accent">Connection</span>
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Plataforma imobiliária
               </div>
             </div>
@@ -216,7 +216,7 @@ function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-11 rounded-full bg-white border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
+                className="h-11 rounded-full bg-card border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
                 required
               />
             </div>
@@ -232,7 +232,7 @@ function LoginPage() {
                 value={tenantSlug}
                 onChange={(e) => setTenantSlug(e.target.value.toLowerCase())}
                 placeholder="ex.: new-palace"
-                className="h-11 rounded-full bg-white border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
+                className="h-11 rounded-full bg-card border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
                 autoComplete="organization"
               />
               <p className="text-xs text-muted-foreground">
@@ -257,7 +257,7 @@ function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 pr-11 rounded-full bg-white border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
+                  className="h-11 pr-11 rounded-full bg-card border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
                   required
                 />
                 <Button
@@ -317,7 +317,7 @@ function LoginPage() {
                       setPassword(d.password);
                     }}
                     className={cn(
-                      "group w-full rounded-2xl border bg-white px-3.5 py-3 text-left transition-all",
+                      "group w-full rounded-2xl border bg-card px-3.5 py-3 text-left transition-all",
                       "hover:border-brand-accent/40 hover:bg-accent hover:shadow-sm",
                       email === d.email &&
                         "border-brand-accent/50 bg-accent ring-1 ring-brand-accent/20",
