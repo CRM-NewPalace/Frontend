@@ -128,6 +128,7 @@ function LeadsPage() {
     "Novo lead";
 
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [importHelpOpen, setImportHelpOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importRows, setImportRows] = useState<ParsedImportLead[]>([]);
   const [importParsing, setImportParsing] = useState(false);
@@ -446,34 +447,25 @@ function LeadsPage() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void handleImportFile(file);
+                if (file) {
+                  setImportHelpOpen(false);
+                  void handleImportFile(file);
+                }
               }}
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={importParsing}>
-                  {importParsing ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <Upload className="w-4 h-4 mr-1" />
-                  )}
-                  Importar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => importInputRef.current?.click()}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Escolher arquivo (Excel, PDF, Word)
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => downloadImportTemplate()}>
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Baixar modelo Excel
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={importParsing}
+              onClick={() => setImportHelpOpen(true)}
+            >
+              {importParsing ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-1" />
+              )}
+              Importar
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1102,6 +1094,93 @@ function LeadsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={importHelpOpen} onOpenChange={setImportHelpOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Importar leads</DialogTitle>
+            <DialogDescription>
+              Use o padrão abaixo para o arquivo ser lido corretamente.
+              Preferível Excel (.xlsx).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="font-medium mb-1.5">Colunas (nessa ordem)</p>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/60 text-left">
+                      <th className="p-2 font-medium">Data Captura</th>
+                      <th className="p-2 font-medium">Nome do Cliente</th>
+                      <th className="p-2 font-medium">Telefone</th>
+                      <th className="p-2 font-medium">E-mail</th>
+                      <th className="p-2 font-medium">Origem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t text-muted-foreground">
+                      <td className="p-2">02/08/2026</td>
+                      <td className="p-2">Maria Silva</td>
+                      <td className="p-2 tabular-nums">(81) 98888-7777</td>
+                      <td className="p-2">maria@email.com</td>
+                      <td className="p-2">WhatsApp</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-medium mb-1.5">Regras</p>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li>
+                  <span className="text-foreground">Nome do Cliente</span> e{" "}
+                  <span className="text-foreground">Telefone</span> são
+                  obrigatórios
+                </li>
+                <li>
+                  Telefone já com DDD, ex.: (81) 98888-7777 ou 81 98888-7777
+                </li>
+                <li>E-mail, Data Captura e Origem são opcionais</li>
+                <li>Uma linha = um lead</li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="font-medium mb-1.5">Não incluir</p>
+              <p className="text-muted-foreground">
+                Hora da captura, DDD em coluna separada, imóvel de interesse,
+                mensagem de captura, etapa, corretor ou prioridade.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => downloadImportTemplate()}
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1" />
+              Baixar modelo Excel
+            </Button>
+            <Button
+              type="button"
+              disabled={importParsing}
+              onClick={() => importInputRef.current?.click()}
+            >
+              {importParsing ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-1" />
+              )}
+              Escolher arquivo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
