@@ -41,7 +41,7 @@ type TriagemSearch = {
 };
 
 export const Route = createFileRoute("/_app/triagem")({
-  head: () => ({ meta: [{ title: "Triagem — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Triagem — Zone Connection" }] }),
   validateSearch: (search: Record<string, unknown>): TriagemSearch => ({
     leadId: typeof search.leadId === "string" ? search.leadId : undefined,
     stage: typeof search.stage === "string" ? search.stage : undefined,

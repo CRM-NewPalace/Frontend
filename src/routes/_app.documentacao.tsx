@@ -62,7 +62,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/documentacao")({
-  head: () => ({ meta: [{ title: "Documentação — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Documentação — Zone Connection" }] }),
   component: DocumentacaoPage,
 });
 

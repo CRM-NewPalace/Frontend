@@ -28,7 +28,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/leads-perdidos")({
-  head: () => ({ meta: [{ title: "Leads Perdidos — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Leads Perdidos — Zone Connection" }] }),
   component: LeadsPerdidos,
 });
 

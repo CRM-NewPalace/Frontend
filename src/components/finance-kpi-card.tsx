@@ -6,7 +6,7 @@ export type FinanceKpiTone = "teal" | "emerald" | "orange" | "red" | "blue" | "v
 
 const TONE: Record<FinanceKpiTone, { bar: string; icon: string }> = {
   teal: { bar: "bg-teal-600", icon: "bg-teal-600" },
-  emerald: { bar: "bg-amber-600", icon: "bg-amber-600" },
+  emerald: { bar: "bg-cyan-600", icon: "bg-cyan-600" },
   orange: { bar: "bg-orange-500", icon: "bg-orange-500" },
   red: { bar: "bg-red-600", icon: "bg-red-600" },
   blue: { bar: "bg-blue-600", icon: "bg-blue-600" },

@@ -468,9 +468,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => toggleSection(section.id)}
                 title={collapsedView ? section.label : undefined}
                 className={cn(
-                  "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "w-full flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors",
                   sectionActive
-                    ? "text-sidebar-accent-foreground bg-sidebar-accent/50"
+                    ? "text-sidebar-primary bg-sidebar-accent"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60",
                 )}
               >
@@ -502,9 +502,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             type="button"
                             onClick={() => toggleGroup(item.id)}
                             className={cn(
-                              "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                              "w-full flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-colors",
                               groupActive
-                                ? "bg-sidebar-accent/70 text-sidebar-accent-foreground font-medium"
+                                ? "bg-sidebar-accent text-sidebar-primary font-semibold"
                                 : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
                             )}
                           >
@@ -531,9 +531,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     to={child.to}
                                     onClick={onNavigate}
                                     className={cn(
-                                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                      "flex items-center gap-3 rounded-full px-3 py-2 text-sm transition-colors",
                                       active
-                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                                        ? "bg-sidebar-accent text-sidebar-primary font-semibold"
                                         : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
                                     )}
                                   >
@@ -561,9 +561,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         to={item.to}
                         onClick={onNavigate}
                         className={cn(
-                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                          "flex items-center gap-3 rounded-full px-3 py-2 text-sm transition-colors",
                           active
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            ? "bg-sidebar-accent text-sidebar-primary font-semibold"
                             : "hover:bg-sidebar-accent/60 text-sidebar-foreground/80",
                         )}
                       >
@@ -625,10 +625,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold leading-tight truncate">
-                {brandName}
+                {brandName === "Zone Connection" ? (
+                  <>
+                    Zone <span className="text-brand-accent">Connection</span>
+                  </>
+                ) : (
+                  brandName
+                )}
               </div>
               <div className="text-[10px] text-muted-foreground truncate">
-                {user?.role === "super_admin" ? "Zone Connection" : "CRM"}
+                {user?.role === "super_admin"
+                  ? "Plataforma"
+                  : "CRM conectado"}
               </div>
             </div>
           )}
@@ -687,10 +695,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold leading-tight truncate">
-              {brandName}
+              {brandName === "Zone Connection" ? (
+                <>
+                  Zone <span className="text-brand-accent">Connection</span>
+                </>
+              ) : (
+                brandName
+              )}
             </div>
             <div className="text-[10px] text-muted-foreground truncate">
-              {user?.role === "super_admin" ? "Zone Connection" : "CRM"}
+              {user?.role === "super_admin" ? "Plataforma" : "CRM conectado"}
             </div>
           </div>
           <Button
@@ -734,7 +748,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar..."
-                className="pl-8 sm:pl-9 h-9 bg-background text-sm"
+                className="pl-8 sm:pl-9 h-9 rounded-full bg-background text-sm"
               />
             </div>
           </div>
@@ -885,10 +899,15 @@ export function PageHeader({
   description?: string;
   actions?: React.ReactNode;
 }) {
+  const { brandName } = useTenantTheme();
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
       <div className="min-w-0">
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+        <p className="mb-1.5 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
+          <span className="size-1.5 rounded-full bg-brand-accent" />
+          {brandName}
+        </p>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-primary">
           {title}
         </h1>
         {description && (

@@ -76,7 +76,7 @@ const ANALISE_STAGE_SLUG = "em-analise";
 const COLUMN_STEP_PX = 288 + 12;
 
 export const Route = createFileRoute("/_app/funil")({
-  head: () => ({ meta: [{ title: "Funil de Vendas — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Funil de Vendas — Zone Connection" }] }),
   component: Funil,
 });
 

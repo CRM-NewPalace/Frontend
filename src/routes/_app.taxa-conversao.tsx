@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { SemConexao, BotaoSemConexao } from "@/components/sem-conexao";
 
 export const Route = createFileRoute("/_app/taxa-conversao")({
-  head: () => ({ meta: [{ title: "Taxa de conversão — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Taxa de conversão — Zone Connection" }] }),
   component: Page,
 });
 

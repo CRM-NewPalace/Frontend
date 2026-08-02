@@ -42,7 +42,7 @@ import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Zone Connection" }] }),
   component: Page,
 });
 

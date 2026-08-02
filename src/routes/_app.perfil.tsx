@@ -13,7 +13,7 @@ import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/perfil")({
-  head: () => ({ meta: [{ title: "Perfil — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Perfil — Zone Connection" }] }),
   component: Perfil,
 });
 

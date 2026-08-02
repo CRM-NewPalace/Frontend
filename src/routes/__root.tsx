@@ -100,6 +100,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     return {
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Blinker:wght@300;400;600;700;800&display=swap",
+      },
       { rel: "icon", href: "/favicon.ico?v=10", sizes: "any" },
       { rel: "icon", href: "/favicon-32.png?v=10", type: "image/png", sizes: "32x32" },
       { rel: "apple-touch-icon", href: "/favicon-48.png?v=10", sizes: "48x48" },
@@ -109,18 +119,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "NP Connect — Gestão Imobiliária" },
+      { title: "Zone Connection — Gestão Imobiliária" },
       {
         name: "description",
         content:
-          "NP Connect: CRM da Imobiliária New Palace para leads, funil, corretores, imóveis e propostas.",
+          "Zone Connection: CRM, financeiro, imóveis e atendimento em uma só plataforma para imobiliárias.",
       },
-      { name: "author", content: "NP Connect" },
-      { property: "og:title", content: "NP Connect — Gestão Imobiliária" },
+      { name: "author", content: "Zone Connection" },
+      { property: "og:title", content: "Zone Connection — Gestão Imobiliária" },
       {
         property: "og:description",
         content:
-          "Plataforma completa para imobiliárias gerenciarem leads, funil e vendas.",
+          "Tudo em uma só conexão para a gestão da sua imobiliária.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -71,7 +71,7 @@ export function TenantThemeProvider({
     const modules = normalizeModules(tenant?.modules ?? null);
     return {
       tenant,
-      brandName: tenant?.name ?? "NP Connect",
+      brandName: tenant?.name ?? "Zone Connection",
       logoUrl: resolveLogoUrl(tenant),
       homePath: "/dashboard",
       modules,
@@ -95,7 +95,7 @@ export function useTenantTheme() {
   if (!ctx) {
     return {
       tenant: null,
-      brandName: "NP Connect",
+      brandName: "Zone Connection",
       logoUrl: DEFAULT_TENANT_LOGO,
       homePath: "/dashboard",
       modules: {} as Record<string, boolean>,

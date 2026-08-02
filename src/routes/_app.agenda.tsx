@@ -97,7 +97,7 @@ type LayoutMode = "tabela" | "calendario";
 type AgendaSection = "agenda" | "solicitacoes";
 
 export const Route = createFileRoute("/_app/agenda")({
-  head: () => ({ meta: [{ title: "Agenda — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Agenda — Zone Connection" }] }),
   component: AgendaPage,
 });
 

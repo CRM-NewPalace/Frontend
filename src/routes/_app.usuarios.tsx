@@ -85,7 +85,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/usuarios")({
-  head: () => ({ meta: [{ title: "Usuários — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Usuários — Zone Connection" }] }),
   component: Usuarios,
 });
 

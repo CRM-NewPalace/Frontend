@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { SemConexao, BotaoSemConexao } from "@/components/sem-conexao";
 
 export const Route = createFileRoute("/_app/financeiro/visao-geral")({
-  head: () => ({ meta: [{ title: "Visão geral — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Visão geral — Zone Connection" }] }),
   component: Page,
 });
 

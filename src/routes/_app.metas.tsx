@@ -52,7 +52,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/metas")({
-  head: () => ({ meta: [{ title: "Metas — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Metas — Zone Connection" }] }),
   component: Page,
 });
 

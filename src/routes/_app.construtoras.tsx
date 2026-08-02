@@ -43,7 +43,7 @@ import {
 } from "@/lib/phone";
 
 export const Route = createFileRoute("/_app/construtoras")({
-  head: () => ({ meta: [{ title: "Construtoras — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Construtoras — Zone Connection" }] }),
   component: ConstrutorasPage,
 });
 

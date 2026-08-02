@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { phoneDigits } from "@/lib/phone";
 
 export const Route = createFileRoute("/_app/resultado")({
-  head: () => ({ meta: [{ title: "Análise — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Análise — Zone Connection" }] }),
   component: AnalisePage,
 });
 

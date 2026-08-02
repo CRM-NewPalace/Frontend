@@ -22,28 +22,16 @@ export const Route = createFileRoute("/login")({
   // SSR ativo: evita mismatch Suspense (servidor) vs página (cliente) no React 19.
   head: () => ({
     meta: [
-      { title: "Entrar — NP Connect" },
+      { title: "Entrar — Zone Connection" },
       {
         name: "description",
         content:
-          "Acesse o NP Connect para gerenciar leads, funil, imóveis e corretores.",
+          "Acesse a Zone Connection para gerenciar leads, funil, imóveis e corretores.",
       },
-      { property: "og:title", content: "Entrar — NP Connect" },
+      { property: "og:title", content: "Entrar — Zone Connection" },
       {
         property: "og:description",
-        content: "Acesse o NP Connect da Imobiliária New Palace.",
-      },
-    ],
-    links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap",
+        content: "Tudo em uma só conexão para a gestão da sua imobiliária.",
       },
     ],
   }),
@@ -106,74 +94,61 @@ function LoginPage() {
   }
 
   return (
-    <div
-      className="min-h-screen grid lg:grid-cols-2 bg-[#faf8f2]"
-      style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}
-    >
-      {/* Painel dourado New Palace */}
-      <aside className="hidden lg:flex relative flex-col justify-between overflow-hidden text-white p-10 xl:p-14 bg-[linear-gradient(155deg,#6B5018_0%,#C9A227_42%,#8B6914_100%)]">
-        {/* Atmosfera */}
+    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
+      {/* Painel navy Zone Connection */}
+      <aside className="hidden lg:flex relative flex-col justify-between overflow-hidden text-white p-10 xl:p-14 bg-[linear-gradient(155deg,#032734_0%,#053647_45%,#0a5a75_100%)]">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -left-16 w-[28rem] h-[28rem] rounded-full bg-white/10 blur-3xl animate-[login-float_8s_ease-in-out_infinite]" />
-          <div className="absolute bottom-10 -right-20 w-[22rem] h-[22rem] rounded-full bg-amber-950/35 blur-3xl animate-[login-float_10s_ease-in-out_infinite_reverse]" />
+          <div className="absolute -top-24 -left-16 w-[28rem] h-[28rem] rounded-full bg-[#079ED4]/25 blur-3xl animate-[login-float_8s_ease-in-out_infinite]" />
+          <div className="absolute bottom-10 -right-20 w-[22rem] h-[22rem] rounded-full bg-black/30 blur-3xl animate-[login-float_10s_ease-in-out_infinite_reverse]" />
           <div
-            className="absolute inset-0 opacity-[0.12]"
+            className="absolute inset-0 opacity-[0.14]"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)",
-              backgroundSize: "48px 48px",
-              maskImage:
-                "radial-gradient(ellipse at 30% 20%, black 20%, transparent 70%)",
+                "radial-gradient(circle at center, transparent 0%, transparent 35%, rgba(7,158,212,0.35) 36%, transparent 37%), radial-gradient(circle at center, transparent 0%, transparent 55%, rgba(7,158,212,0.2) 56%, transparent 57%)",
+              backgroundPosition: "70% 45%, 70% 45%",
+              backgroundSize: "420px 420px, 560px 560px",
+              backgroundRepeat: "no-repeat",
             }}
           />
-          {/* Skyline sutil */}
-          <svg
-            className="absolute bottom-0 left-0 right-0 h-40 opacity-20"
-            viewBox="0 0 800 160"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <path
-              fill="currentColor"
-              d="M0 160V98h40V60h28v38h36V40h44v58h32V72h50v88H0zm280 0V70h36V48h24v22h40V88h28v72H280zm170 0V55h48v25h36V40h52v35h40v85H450zm220 0V82h34V50h40v32h46V66h38v94H670z"
-            />
-          </svg>
         </div>
 
         <div className="relative z-10 animate-[login-fade_0.7s_ease-out]">
           <img
             src="/brand/zone-connection-logo.png"
-            alt="NP Connect"
-            className="h-16 w-auto max-w-[220px] rounded-none object-contain drop-shadow-md"
+            alt="Zone Connection"
+            className="h-14 w-auto max-w-[220px] rounded-none object-contain brightness-0 invert"
           />
+          <p className="mt-3 text-sm font-semibold tracking-tight">
+            Zone{" "}
+            <span className="text-[#079ED4]">Connection</span>
+          </p>
         </div>
 
         <div className="relative z-10 max-w-lg space-y-8 animate-[login-fade_0.9s_ease-out]">
           <div className="space-y-4">
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/70">
-              NP Connect · Operação comercial
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#079ED4]">
+              <span className="size-1.5 rounded-full bg-[#079ED4]" />
+              Zone Connection · Imobiliárias
             </p>
-            <h1
-              className="text-4xl xl:text-5xl font-semibold leading-[1.12] tracking-tight"
-              style={{ fontFamily: '"Fraunces", Georgia, serif' }}
-            >
-              O ritmo da imobiliária, num só painel.
+            <h1 className="text-4xl xl:text-5xl font-semibold leading-[1.12] tracking-tight">
+              Toda a gestão da sua imobiliária em{" "}
+              <span className="text-[#079ED4]">um único lugar.</span>
             </h1>
-            <p className="text-base text-white/85 leading-relaxed max-w-md">
-              Leads, funil, visitas e financeiro conectados — para a equipe
-              vender com clareza e a gestão acompanhar de perto.
+            <p className="text-base text-white/80 leading-relaxed max-w-md">
+              CRM, financeiro, imóveis, atendimento e funil comercial conectados
+              — sem retrabalho, sem informação perdida.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             {[
-              { icon: Users, label: "Leads em tempo real" },
-              { icon: Kanban, label: "Funil visual" },
-              { icon: Building2, label: "Imóveis New Palace" },
+              { icon: Users, label: "CRM integrado" },
+              { icon: Kanban, label: "Funil comercial" },
+              { icon: Building2, label: "Gestão de imóveis" },
             ].map((item) => (
               <div
                 key={item.label}
-                className="inline-flex items-center gap-2 rounded-full bg-white/12 backdrop-blur-sm px-3.5 py-2 text-sm text-white/95 ring-1 ring-white/15"
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-3.5 py-2 text-sm text-white/95 ring-1 ring-white/15"
               >
                 <item.icon className="w-3.5 h-3.5 opacity-90" />
                 {item.label}
@@ -183,21 +158,20 @@ function LoginPage() {
         </div>
 
         <div className="relative z-10 flex items-end justify-between gap-4 animate-[login-fade_1.1s_ease-out]">
-          <p className="text-xs text-white/60">© 2026 NP Connect</p>
+          <p className="text-xs text-white/55">© 2026 Zone Connection</p>
           <div className="hidden xl:flex items-center gap-2 text-xs text-white/70">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-200 animate-pulse" />
-            Ambiente de demonstração
+            <span className="w-1.5 h-1.5 rounded-full bg-[#079ED4] animate-pulse" />
+            Tudo em uma só conexão
           </div>
         </div>
       </aside>
 
-      {/* Formulário branco */}
       <main className="relative flex items-center justify-center p-6 sm:p-10 xl:p-16">
         <div
-          className="pointer-events-none absolute inset-0 opacity-40"
+          className="pointer-events-none absolute inset-0 opacity-50"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(160,120,30,0.08) 1px, transparent 0)",
+              "radial-gradient(circle at 1px 1px, rgba(5,54,71,0.06) 1px, transparent 0)",
             backgroundSize: "22px 22px",
           }}
         />
@@ -209,24 +183,22 @@ function LoginPage() {
           <div className="lg:hidden flex items-center gap-2.5">
             <img
               src="/brand/zone-connection-logo.png"
-              alt="NP Connect"
+              alt="Zone Connection"
               className="h-9 w-auto max-w-[140px] rounded-none object-contain"
             />
             <div>
               <div className="font-semibold text-foreground leading-tight">
-                NP Connect
+                Zone{" "}
+                <span className="text-brand-accent">Connection</span>
               </div>
               <div className="text-[11px] text-muted-foreground">
-                New Palace
+                Plataforma imobiliária
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <h2
-              className="text-3xl font-semibold tracking-tight text-foreground"
-              style={{ fontFamily: '"Fraunces", Georgia, serif' }}
-            >
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground">
               Bem-vindo de volta
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -244,7 +216,7 @@ function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-11 bg-white border-border/80 shadow-sm focus-visible:ring-primary/30"
+                className="h-11 rounded-full bg-white border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
                 required
               />
             </div>
@@ -260,7 +232,7 @@ function LoginPage() {
                 value={tenantSlug}
                 onChange={(e) => setTenantSlug(e.target.value.toLowerCase())}
                 placeholder="ex.: new-palace"
-                className="h-11 bg-white border-border/80 shadow-sm focus-visible:ring-primary/30"
+                className="h-11 rounded-full bg-white border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
                 autoComplete="organization"
               />
               <p className="text-xs text-muted-foreground">
@@ -274,7 +246,7 @@ function LoginPage() {
                 </Label>
                 <button
                   type="button"
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-semibold text-brand-accent hover:underline"
                 >
                   Esqueci minha senha
                 </button>
@@ -285,7 +257,7 @@ function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 pr-11 bg-white border-border/80 shadow-sm focus-visible:ring-primary/30"
+                  className="h-11 pr-11 rounded-full bg-white border-border/80 shadow-sm focus-visible:ring-brand-accent/30"
                   required
                 />
                 <Button
@@ -317,7 +289,7 @@ function LoginPage() {
 
           <Button
             type="submit"
-            className="w-full h-11 text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25 transition-shadow"
+            className="w-full h-11 text-sm shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25 transition-shadow"
             disabled={loading}
           >
             {loading ? (
@@ -345,17 +317,17 @@ function LoginPage() {
                       setPassword(d.password);
                     }}
                     className={cn(
-                      "group w-full rounded-xl border bg-white px-3.5 py-3 text-left transition-all",
-                      "hover:border-primary/40 hover:bg-primary/3 hover:shadow-sm",
+                      "group w-full rounded-2xl border bg-white px-3.5 py-3 text-left transition-all",
+                      "hover:border-brand-accent/40 hover:bg-accent hover:shadow-sm",
                       email === d.email &&
-                        "border-primary/50 bg-primary/4 ring-1 ring-primary/20",
+                        "border-brand-accent/50 bg-accent ring-1 ring-brand-accent/20",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium text-foreground">
                         {d.role}
                       </span>
-                      <span className="text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
+                      <span className="text-[11px] text-muted-foreground group-hover:text-brand-accent transition-colors">
                         usar →
                       </span>
                     </div>

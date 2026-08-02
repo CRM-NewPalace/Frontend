@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/configuracoes")({
-  head: () => ({ meta: [{ title: "Configurações — NP Connect" }] }),
+  head: () => ({ meta: [{ title: "Configurações — Zone Connection" }] }),
   component: Config,
 });
 
