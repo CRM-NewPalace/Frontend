@@ -70,14 +70,36 @@ const FEATURE_PILLS = [
   { label: "Gestão de imóveis", icon: Building2 },
 ] as const;
 
-function ConcentricRings() {
+function ConcentricRings({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute left-[70%] top-[40%] h-44 w-44 -translate-x-1/2 -translate-y-1/2 sm:h-52 sm:w-52"
+      className={cn(
+        "pointer-events-none absolute left-[70%] top-[40%] h-44 w-44 -translate-x-1/2 -translate-y-1/2 sm:h-52 sm:w-52",
+        className,
+      )}
     >
       <div className="absolute inset-0 rounded-full border border-brand-accent/15" />
       <div className="absolute inset-7 rounded-full border border-brand-accent/30 sm:inset-8 animate-[login-ring-pulse_3.5s_ease-in-out_infinite]" />
+    </div>
+  );
+}
+
+/** Atmosfera visual só no mobile — degradê + motion mínimo. */
+function MobileLoginAtmosphere() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden lg:hidden"
+      style={{
+        background:
+          "radial-gradient(circle at 18% 12%, #0b7088 0%, #053647 42%, #021923 100%)",
+      }}
+    >
+      <div className="absolute -left-16 top-8 h-56 w-56 rounded-full bg-brand-accent/20 blur-3xl animate-[login-orb-drift_12s_ease-in-out_infinite]" />
+      <div className="absolute -right-10 bottom-24 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl animate-[login-orb-drift_16s_ease-in-out_infinite_reverse]" />
+      <ConcentricRings className="left-[78%] top-[18%] opacity-80" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-linear-to-t from-[#021923]/80 to-transparent" />
     </div>
   );
 }
@@ -295,18 +317,31 @@ function LoginPage() {
         </div>
       </aside>
 
-      <main className="flex min-h-screen flex-1 items-center justify-center bg-surface-muted px-6 py-8 sm:px-10 lg:min-h-0 lg:py-16">
-        <div className="flex w-full max-w-md flex-col items-center gap-5 lg:gap-0 animate-[login-fade_0.55s_ease-out_0.15s_both]">
-          <Link
-            to="/"
-            search={{ site: "1" }}
-            aria-label="Voltar ao site"
-            className="lg:hidden"
-          >
-            <LoginBrandLogo size="md" />
-          </Link>
+      <main className="relative flex min-h-screen flex-1 items-center justify-center overflow-hidden px-5 py-8 sm:px-10 lg:min-h-0 lg:overflow-visible lg:bg-surface-muted lg:py-16">
+        <MobileLoginAtmosphere />
 
-          <div className="w-full rounded-3xl border border-border bg-white p-6 shadow-sm sm:p-8">
+        <div className="relative z-10 flex w-full max-w-md flex-col items-center gap-5 lg:gap-0 animate-[login-fade_0.55s_ease-out_0.15s_both]">
+          <div className="flex w-full flex-col items-start gap-3 lg:hidden">
+            <Link
+              to="/"
+              search={{ site: "1" }}
+              aria-label="Zone Connection"
+              className="animate-[login-fade_0.5s_ease-out_0.08s_both]"
+            >
+              <LoginBrandLogo size="md" tone="light" />
+            </Link>
+
+            <Link
+              to="/"
+              search={{ site: "1" }}
+              className="inline-flex items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-white animate-[login-fade_0.5s_ease-out_0.12s_both]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao site
+            </Link>
+          </div>
+
+          <div className="w-full rounded-3xl border border-white/15 bg-white/95 p-6 shadow-[0_20px_50px_-24px_rgba(2,25,35,0.55)] backdrop-blur-sm sm:p-8 lg:border-border lg:bg-white lg:shadow-sm lg:backdrop-blur-none">
             <div className="mb-6 space-y-2">
               <span className="text-xs font-semibold uppercase tracking-widest text-brand-accent">
                 Acesso
@@ -445,6 +480,10 @@ function LoginPage() {
         @keyframes login-ring-pulse {
           0%, 100% { transform: scale(1); opacity: 0.35; }
           50% { transform: scale(2); opacity: 0.65; }
+        }
+        @keyframes login-orb-drift {
+          0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+          50% { transform: translate3d(18px, -22px, 0) scale(1.08); }
         }
       `}</style>
     </div>
