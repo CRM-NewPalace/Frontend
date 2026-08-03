@@ -525,6 +525,10 @@ function DocumentacaoPage() {
         if (!day) return false;
         if (periodRange.de && day < periodRange.de) return false;
         if (periodRange.ate && day > periodRange.ate) return false;
+      } else if (filterCampoData !== "createdAt") {
+        // Com "todo o período", Data por Análise/Venda ainda restringe
+        // às fichas que têm essa data preenchida.
+        if (!docDateDay(doc, filterCampoData)) return false;
       }
       if (!q) return true;
       const hay = [
@@ -625,6 +629,15 @@ function DocumentacaoPage() {
           setFilterDataAte("");
           setFilterCampoData("createdAt");
         },
+      });
+    } else if (filterCampoData !== "createdAt") {
+      const campo =
+        CAMPO_DATA_OPTIONS.find((o) => o.value === filterCampoData)?.label ??
+        filterCampoData;
+      chips.push({
+        id: "campo-data",
+        label: `Só com data de ${campo.toLowerCase()}`,
+        onClear: () => setFilterCampoData("createdAt"),
       });
     }
     if (filterStatus1 !== "__all__") {
