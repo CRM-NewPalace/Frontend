@@ -1705,6 +1705,7 @@ function DocumentacaoPage() {
                   <TableHead>Empreendimento</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Corretor</TableHead>
+                  <TableHead>Gerente</TableHead>
                   <TableHead>VGV</TableHead>
                   <TableHead className="w-[120px]" />
                 </TableRow>
@@ -1749,6 +1750,7 @@ function DocumentacaoPage() {
                     <TableCell>
                       {doc.corretor?.name ?? doc.lead.corretor?.name ?? "—"}
                     </TableCell>
+                    <TableCell>{doc.gerente?.name ?? "—"}</TableCell>
                     <TableCell>
                       {doc.vgv != null ? brl(doc.vgv) : "—"}
                     </TableCell>
