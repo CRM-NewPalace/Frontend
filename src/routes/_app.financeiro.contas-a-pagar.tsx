@@ -2,10 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import {
   MOCK_A_PAGAR,
+  CENTROS_DESPESA,
   brl,
   formatDate,
   statusBadgeClass,
@@ -39,17 +37,17 @@ function Page() {
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
   const [centro, setCentro] = useState("todos");
 
-  const centroOptions = useMemo(() => {
-    const set = new Set(MOCK_A_PAGAR.map((t) => t.centro));
-    return [
+  const centroOptions = useMemo(
+    () => [
       { value: "todos", label: "Todos os centros" },
-      ...[...set].sort().map((c) => ({ value: c, label: c })),
-    ];
-  }, []);
+      ...CENTROS_DESPESA.map((c) => ({ value: c, label: c })),
+    ],
+    [],
+  );
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const now = new Date(2026, 6, 31);
+    const now = new Date();
     return MOCK_A_PAGAR.filter((t) => {
       if (status !== "todos" && t.status !== status) return false;
       if (centro !== "todos" && t.centro !== centro) return false;
@@ -108,17 +106,13 @@ function Page() {
     <div>
       <PageHeader
         title="Contas a pagar"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Obrigações com fornecedores e repasses
-            <MockBanner />
-          </span>
-        }
+        description="Obrigações com fornecedores e repasses"
         actions={
           <Button
             onClick={() =>
-              toast.message("Dados demonstrativos", {
-                description: "Inclusão real estará disponível com a API.",
+              toast.message("Em breve", {
+                description:
+                  "Disponível quando a API financeira estiver conectada.",
               })
             }
           >

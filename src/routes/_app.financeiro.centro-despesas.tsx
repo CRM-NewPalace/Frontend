@@ -2,10 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -73,12 +70,7 @@ function Page() {
     <div>
       <PageHeader
         title="Centro de despesas"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Orçado versus realizado por centro de custo
-            <MockBanner />
-          </span>
-        }
+        description="Orçado versus realizado por centro de custo"
       />
 
       <FinanceiroFiltrosBar

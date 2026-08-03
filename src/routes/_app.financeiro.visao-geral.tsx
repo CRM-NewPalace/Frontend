@@ -2,10 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -43,7 +40,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/_app/financeiro/visao-geral")({
-  head: () => ({ meta: [{ title: "Visão geral — Zone Connection" }] }),
+  head: () => ({ meta: [{ title: "Vis?o geral ? Zone Connection" }] }),
   component: Page,
 });
 
@@ -80,23 +77,19 @@ function Page() {
   return (
     <div>
       <PageHeader
-        title="Visão geral"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Resumo financeiro da imobiliária
-            <MockBanner />
-          </span>
-        }
+        title="Vis?o geral"
+        description="Resumo financeiro da imobili?ria"
         actions={
           <Button
             onClick={() =>
-              toast.message("Dados demonstrativos", {
-                description: "Lançamentos reais estarão disponíveis com a API.",
+              toast.message("Em breve", {
+                description:
+                  "Dispon?vel quando a API financeira estiver conectada.",
               })
             }
           >
             <Plus className="w-4 h-4 mr-1" />
-            Novo lançamento
+            Novo lan?amento
           </Button>
         }
       />
@@ -156,41 +149,47 @@ function Page() {
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Receitas × despesas</CardTitle>
+            <CardTitle className="text-base">Receitas x despesas</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={barConfig} className="h-[280px] w-full">
-              <BarChart data={MOCK_MESES_RESUMO} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="mes" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={64}
-                  tickFormatter={(v) =>
-                    `${(Number(v) / 1000).toFixed(0)}k`
-                  }
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Legend />
-                <Bar
-                  dataKey="receitas"
-                  fill="var(--color-receitas)"
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar
-                  dataKey="despesas"
-                  fill="var(--color-despesas)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
+            {MOCK_MESES_RESUMO.length === 0 ? (
+              <p className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
+                Sem dados no per�odo.
+              </p>
+            ) : (
+              <ChartContainer config={barConfig} className="h-[280px] w-full">
+                <BarChart data={MOCK_MESES_RESUMO} margin={{ left: 8, right: 8 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={64}
+                    tickFormatter={(v) =>
+                      `${(Number(v) / 1000).toFixed(0)}k`
+                    }
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="receitas"
+                    fill="var(--color-receitas)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="despesas"
+                    fill="var(--color-despesas)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -199,33 +198,39 @@ function Page() {
             <CardTitle className="text-base">Despesas por centro</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              config={{ value: { label: "Valor", color: pieColors[0] } }}
-              className="h-[280px] w-full"
-            >
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={2}
-                >
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={pieColors[i % pieColors.length]} />
-                  ))}
-                </Pie>
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Legend />
-              </PieChart>
-            </ChartContainer>
+            {pieData.length === 0 ? (
+              <p className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
+                Sem dados no per�odo.
+              </p>
+            ) : (
+              <ChartContainer
+                config={{ value: { label: "Valor", color: pieColors[0] } }}
+                className="h-[280px] w-full"
+              >
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={2}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={pieColors[i % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Legend />
+                </PieChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
       </div>

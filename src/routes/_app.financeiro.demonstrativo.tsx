@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -103,12 +100,7 @@ function Page() {
     <div>
       <PageHeader
         title="Demonstrativo"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Demonstrativo de resultados (DRE simplificado)
-            <MockBanner />
-          </span>
-        }
+        description="Demonstrativo de resultados (DRE simplificado)"
       />
 
       <FinanceiroFiltrosBar
@@ -124,36 +116,42 @@ function Page() {
             <CardTitle className="text-base">Receitas × despesas</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[260px] w-full">
-              <BarChart data={resultadoSerie} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="mes" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={56}
-                  tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Legend />
-                <Bar
-                  dataKey="receitas"
-                  fill="var(--color-receitas)"
-                  radius={[3, 3, 0, 0]}
-                />
-                <Bar
-                  dataKey="despesas"
-                  fill="var(--color-despesas)"
-                  radius={[3, 3, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
+            {resultadoSerie.length === 0 ? (
+              <p className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                Sem dados no período.
+              </p>
+            ) : (
+              <ChartContainer config={chartConfig} className="h-[260px] w-full">
+                <BarChart data={resultadoSerie} margin={{ left: 8, right: 8 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={56}
+                    tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="receitas"
+                    fill="var(--color-receitas)"
+                    radius={[3, 3, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="despesas"
+                    fill="var(--color-despesas)"
+                    radius={[3, 3, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 

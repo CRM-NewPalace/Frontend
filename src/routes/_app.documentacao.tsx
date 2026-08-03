@@ -759,6 +759,12 @@ function DocumentacaoPage() {
       return {
         ...prev,
         nome: contact.nome,
+        telefoneNovo: contact.telefone
+          ? formatPhone(contact.telefone)
+          : "",
+        emailNovo: contact.email?.includes("@pendente.local")
+          ? ""
+          : (contact.email ?? ""),
         corretorId,
         gerenteId,
         construtoraId: contact.construtoraId ?? prev.construtoraId,
@@ -774,8 +780,6 @@ function DocumentacaoPage() {
       ...prev,
       contatoId: id,
       novoCliente: false,
-      telefoneNovo: "",
-      emailNovo: "",
     }));
     const contact = leads.find((l) => l.id === id);
     if (contact) applyContact(contact);
@@ -795,11 +799,14 @@ function DocumentacaoPage() {
   }
 
   function fillFromDoc(doc: Documentacao) {
+    const lead = leads.find((l) => l.id === doc.leadId);
     setForm({
       contatoId: doc.leadId,
       novoCliente: false,
-      telefoneNovo: "",
-      emailNovo: "",
+      telefoneNovo: lead?.telefone ? formatPhone(lead.telefone) : "",
+      emailNovo: lead?.email?.includes("@pendente.local")
+        ? ""
+        : (lead?.email ?? ""),
       nome: doc.nome,
       construtoraId: doc.construtoraId ?? "",
       empreendimentoId: doc.empreendimentoId ?? "",
@@ -864,10 +871,19 @@ function DocumentacaoPage() {
     setSaving(true);
     try {
       let leadId = form.contatoId;
+      const criarClienteNovo =
+        formMode === "create" &&
+        (form.novoCliente || !leadId);
 
-      if (formMode === "create" && form.novoCliente) {
+      if (criarClienteNovo) {
         if (form.nome.trim().length < 2) {
           toast.error("Informe o nome do cliente.");
+          return;
+        }
+        if (!form.telefoneNovo.trim()) {
+          toast.error(
+            "Informe o contato (telefone) do cliente ou selecione um lead/cliente existente.",
+          );
           return;
         }
         if (!isValidPhone(form.telefoneNovo)) {
@@ -890,9 +906,6 @@ function DocumentacaoPage() {
           corretorId: form.corretorId || undefined,
         });
         leadId = created.id;
-      } else if (formMode === "create" && !leadId) {
-        toast.error("Selecione um lead/cliente ou marque cliente novo.");
-        return;
       }
 
       if (!leadId && formMode === "edit") {
@@ -906,7 +919,7 @@ function DocumentacaoPage() {
       if (formMode === "create") {
         await createDocumentacao(payload);
         toast.success(
-          form.novoCliente
+          criarClienteNovo
             ? "Cliente e documentação criados."
             : "Documentação criada.",
         );
@@ -1804,11 +1817,18 @@ function DocumentacaoPage() {
                     <Label>Lead ou cliente</Label>
                     <Select
                       value={form.contatoId || "__none__"}
-                      onValueChange={(v) =>
-                        v === "__none__"
-                          ? setField("contatoId", "")
-                          : selectContato(v)
-                      }
+                      onValueChange={(v) => {
+                        if (v === "__none__") {
+                          setForm((prev) => ({
+                            ...prev,
+                            contatoId: "",
+                            telefoneNovo: "",
+                            emailNovo: "",
+                          }));
+                          return;
+                        }
+                        selectContato(v);
+                      }}
                       disabled={readOnly || formMode === "edit"}
                     >
                       <SelectTrigger>
@@ -1824,38 +1844,7 @@ function DocumentacaoPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="telefoneNovo">Telefone *</Label>
-                      <Input
-                        id="telefoneNovo"
-                        value={form.telefoneNovo}
-                        onChange={(e) =>
-                          setField("telefoneNovo", formatPhone(e.target.value))
-                        }
-                        placeholder={PHONE_PLACEHOLDER}
-                        disabled={readOnly}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="emailNovo">
-                        E-mail{" "}
-                        <span className="font-normal text-muted-foreground">
-                          (opcional)
-                        </span>
-                      </Label>
-                      <Input
-                        id="emailNovo"
-                        type="email"
-                        value={form.emailNovo}
-                        onChange={(e) => setField("emailNovo", e.target.value)}
-                        placeholder="Opcional"
-                        disabled={readOnly}
-                      />
-                    </div>
-                  </div>
-                )}
+                ) : null}
               </div>
             </FormSection>
 
@@ -1869,6 +1858,55 @@ function DocumentacaoPage() {
                     onChange={(e) => setField("nome", e.target.value)}
                     disabled={readOnly}
                     required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="telefoneNovo">
+                    Contato (telefone)
+                    {formMode === "create" &&
+                    (form.novoCliente || !form.contatoId)
+                      ? " *"
+                      : ""}
+                  </Label>
+                  <Input
+                    id="telefoneNovo"
+                    value={form.telefoneNovo}
+                    onChange={(e) =>
+                      setField("telefoneNovo", formatPhone(e.target.value))
+                    }
+                    placeholder={PHONE_PLACEHOLDER}
+                    disabled={
+                      readOnly ||
+                      formMode === "edit" ||
+                      formMode === "view" ||
+                      (formMode === "create" &&
+                        !form.novoCliente &&
+                        Boolean(form.contatoId))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emailNovo">
+                    E-mail{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (opcional)
+                    </span>
+                  </Label>
+                  <Input
+                    id="emailNovo"
+                    type="email"
+                    value={form.emailNovo}
+                    onChange={(e) => setField("emailNovo", e.target.value)}
+                    placeholder="Opcional"
+                    disabled={
+                      readOnly ||
+                      (formMode === "create" &&
+                        !form.novoCliente &&
+                        Boolean(form.contatoId)) ||
+                      formMode === "edit" ||
+                      formMode === "view"
+                    }
                   />
                 </div>
 

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,17 +15,6 @@ import {
   type StatusTitulo,
 } from "@/lib/financeiro-mock";
 import { Search, X } from "lucide-react";
-
-export function MockBanner() {
-  return (
-    <Badge
-      variant="outline"
-      className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 font-normal"
-    >
-      Dados demonstrativos — módulo sem API
-    </Badge>
-  );
-}
 
 export function FinanceiroFiltrosBar({
   search,

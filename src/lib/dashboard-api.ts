@@ -126,12 +126,32 @@ export type DashboardAdmin = {
   };
 };
 
+export type DashboardFiltros = {
+  /** Mês 1–12. Omite = mês atual. */
+  mes?: number;
+  /** Ano calendário. Omite = ano atual. */
+  ano?: number;
+  /** Origem do lead (catálogo). Omite = todas. */
+  origem?: string;
+};
+
+function dashboardQuery(params?: DashboardFiltros): string {
+  const qs = new URLSearchParams();
+  if (params?.mes != null) qs.set("mes", String(params.mes));
+  if (params?.ano != null) qs.set("ano", String(params.ano));
+  if (params?.origem) qs.set("origem", params.origem);
+  const query = qs.toString();
+  return query ? `?${query}` : "";
+}
+
 export async function fetchDashboardCorretor(): Promise<DashboardCorretor> {
   return apiFetch<DashboardCorretor>("/dashboard/corretor");
 }
 
-export async function fetchDashboardAdmin(): Promise<DashboardAdmin> {
-  return apiFetch<DashboardAdmin>("/dashboard/admin");
+export async function fetchDashboardAdmin(
+  params?: DashboardFiltros,
+): Promise<DashboardAdmin> {
+  return apiFetch<DashboardAdmin>(`/dashboard/admin${dashboardQuery(params)}`);
 }
 
 export type DashboardRankingMeta = {
@@ -195,6 +215,10 @@ export type DashboardRanking = {
   gerentes: DashboardRankingGerente[];
 };
 
-export async function fetchDashboardRanking(): Promise<DashboardRanking> {
-  return apiFetch<DashboardRanking>("/dashboard/ranking");
+export async function fetchDashboardRanking(
+  params?: DashboardFiltros,
+): Promise<DashboardRanking> {
+  return apiFetch<DashboardRanking>(
+    `/dashboard/ranking${dashboardQuery(params)}`,
+  );
 }
