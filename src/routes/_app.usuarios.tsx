@@ -63,6 +63,7 @@ import {
   Check,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
+import { isAnalistaAllowed } from "@/lib/tenant-modules";
 import { canViewTeamData } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import { useLeads } from "@/lib/leads-store";
@@ -213,6 +214,10 @@ function Usuarios() {
   const session = getSession();
   const isAdmin = session?.role === "admin";
   const isManager = session ? canViewTeamData(session.role) : false;
+  const canUseAnalista = isAnalistaAllowed(
+    session?.tenant?.plano,
+    session?.tenant?.modules ?? null,
+  );
   const { refresh: refreshLeads } = useLeads();
 
   const cachedUsers = getUsersCache();
@@ -540,7 +545,9 @@ function Usuarios() {
               <SelectItem value="all">Todos os perfis</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
               <SelectItem value="gerente">Gerente</SelectItem>
-              <SelectItem value="analista">Analista</SelectItem>
+              {canUseAnalista && (
+                <SelectItem value="analista">Analista</SelectItem>
+              )}
               <SelectItem value="corretor">Corretor</SelectItem>
             </SelectContent>
           </Select>
@@ -823,7 +830,9 @@ function Usuarios() {
                     <SelectContent>
                       <SelectItem value="admin">Administrador</SelectItem>
                       <SelectItem value="gerente">Gerente</SelectItem>
-                      <SelectItem value="analista">Analista</SelectItem>
+                      {canUseAnalista && (
+                        <SelectItem value="analista">Analista</SelectItem>
+                      )}
                       <SelectItem value="corretor">Corretor</SelectItem>
                     </SelectContent>
                   </Select>

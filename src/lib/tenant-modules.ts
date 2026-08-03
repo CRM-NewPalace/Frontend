@@ -132,17 +132,108 @@ export function modulesFromTenantJson(
   return base;
 }
 
-export function adminGroupEnabled(
+export type TenantPlano = "bronze" | "prata" | "ouro";
+
+export const PLANO_MAX_USUARIOS: Record<TenantPlano, number> = {
+  bronze: 5,
+  prata: 15,
+  ouro: 30,
+};
+
+export const PLANO_LABELS: Record<TenantPlano, string> = {
+  bronze: "Bronze — CRM",
+  prata: "Prata — CRM + Administrativo ou Financeiro",
+  ouro: "Ouro — Todos os módulos",
+};
+
+const ADMIN_TOGGLE_KEYS: TenantModuleKey[] = [
+  "equipes",
+  "corretores",
+  "documentacao",
+  "analise",
+  "metas",
+  "propostas",
+  "taxaConversao",
+];
+
+export function isAdminGroupEnabled(
   modules: Record<TenantModuleKey, boolean>,
 ): boolean {
-  const admin = TENANT_MODULE_GROUPS.find((g) => g.id === "administrativo");
-  if (!admin) return true;
-  return admin.modules
-    .filter((m) => !m.keepOnAdminBulkOff)
-    .every((m) => modules[m.key] !== false);
+  return ADMIN_TOGGLE_KEYS.every((k) => modules[k] !== false);
 }
 
-/** Desliga todos do Administrativo, mantendo "criar usuário". */
+/** @deprecated Use isAdminGroupEnabled */
+export const adminGroupEnabled = isAdminGroupEnabled;
+
+/** Analista: nunca no Bronze; Prata/Ouro só com administrativo ativo. */
+export function isAnalistaAllowed(
+  plano: TenantPlano | null | undefined,
+  modules?: Record<string, boolean> | null,
+): boolean {
+  if (!plano || plano === "bronze") return false;
+  const normalized = modulesFromTenantJson(modules);
+  return isAdminGroupEnabled(normalized);
+}
+
+/**
+ * Normaliza módulos pelas regras do plano (espelha o backend).
+ * Prata: administrativo XOR financeiro (se ambos, prioriza administrativo).
+ */
+export function normalizeModulesForPlano(
+  plano: TenantPlano,
+  modules: Record<TenantModuleKey, boolean>,
+): Record<TenantModuleKey, boolean> {
+  const next = { ...modules };
+  for (const key of TENANT_MODULE_GROUPS.find((g) => g.id === "operacional")!
+    .modules.map((m) => m.key)) {
+    if (typeof next[key] !== "boolean") next[key] = true;
+  }
+  next.usuarios = true;
+  next.configuracoes = true;
+
+  if (plano === "bronze") {
+    for (const key of ADMIN_TOGGLE_KEYS) next[key] = false;
+    next.financeiro = false;
+  } else if (plano === "prata") {
+    const adminOn = ADMIN_TOGGLE_KEYS.every((k) => next[k] !== false);
+    const financeOn = next.financeiro === true;
+    if (adminOn && financeOn) {
+      next.financeiro = false;
+    } else if (financeOn && !adminOn) {
+      for (const key of ADMIN_TOGGLE_KEYS) next[key] = false;
+      next.financeiro = true;
+    } else if (adminOn) {
+      next.financeiro = false;
+    }
+  }
+
+  return next;
+}
+
+/** Preset de módulos por plano (espelha o backend). */
+export function modulesPresetForPlano(
+  plano: TenantPlano,
+): Record<TenantModuleKey, boolean> {
+  const next = defaultModulesRecord(false);
+  for (const key of TENANT_MODULE_GROUPS.find((g) => g.id === "operacional")!
+    .modules.map((m) => m.key)) {
+    next[key] = true;
+  }
+  next.usuarios = true;
+  next.configuracoes = true;
+  if (plano === "prata" || plano === "ouro") {
+    for (const mod of TENANT_MODULE_GROUPS.find((g) => g.id === "administrativo")!
+      .modules) {
+      next[mod.key] = true;
+    }
+  }
+  if (plano === "ouro") {
+    next.financeiro = true;
+  }
+  return normalizeModulesForPlano(plano, next);
+}
+
+/** Desliga todos do Administrativo, mantendo "criar usuário" / config. */
 export function setAdminGroupEnabled(
   modules: Record<TenantModuleKey, boolean>,
   enabled: boolean,
@@ -156,44 +247,6 @@ export function setAdminGroupEnabled(
       continue;
     }
     next[mod.key] = enabled;
-  }
-  return next;
-}
-
-export type TenantPlano = "bronze" | "prata" | "ouro";
-
-export const PLANO_MAX_USUARIOS: Record<TenantPlano, number> = {
-  bronze: 5,
-  prata: 15,
-  ouro: 30,
-};
-
-export const PLANO_LABELS: Record<TenantPlano, string> = {
-  bronze: "Bronze — CRM",
-  prata: "Prata — CRM + Administrativo",
-  ouro: "Ouro — Todos os módulos",
-};
-
-/** Preset de módulos por plano (espelha o backend). */
-export function modulesPresetForPlano(
-  plano: TenantPlano,
-): Record<TenantModuleKey, boolean> {
-  const next = defaultModulesRecord(false);
-  for (const key of TENANT_MODULE_GROUPS.find((g) => g.id === "operacional")!
-    .modules.map((m) => m.key)) {
-    next[key] = true;
-  }
-  // Sempre disponíveis em qualquer plano.
-  next.usuarios = true;
-  next.configuracoes = true;
-  if (plano === "prata" || plano === "ouro") {
-    for (const mod of TENANT_MODULE_GROUPS.find((g) => g.id === "administrativo")!
-      .modules) {
-      next[mod.key] = true;
-    }
-  }
-  if (plano === "ouro") {
-    next.financeiro = true;
   }
   return next;
 }

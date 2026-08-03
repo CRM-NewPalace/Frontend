@@ -64,6 +64,7 @@ import {
   adminGroupEnabled,
   modulesFromTenantJson,
   modulesPresetForPlano,
+  normalizeModulesForPlano,
   PLANO_LABELS,
   PLANO_MAX_USUARIOS,
   setAdminGroupEnabled,
@@ -326,7 +327,7 @@ function TenantsPage() {
       return;
     }
 
-    const modules = { ...form.modules };
+    const modules = normalizeModulesForPlano(form.plano, form.modules);
 
     if (formMode === "create") {
       setSaving(true);
@@ -989,14 +990,31 @@ function TenantsPage() {
 
             <FormSection title="Módulos">
               <p className="text-xs text-muted-foreground -mt-1">
-                Marque os módulos ativos para este tenant. Desmarcados ficam
-                ocultos no menu.
+                {form.plano === "bronze"
+                  ? "Bronze inclui apenas o CRM operacional (Usuários e Configurações ficam para o admin)."
+                  : form.plano === "prata"
+                    ? "Prata: escolha Administrativo ou Financeiro (não os dois). Analista só com Administrativo."
+                    : "Marque os módulos ativos para este tenant. Desmarcados ficam ocultos no menu."}
               </p>
               <div className="space-y-4">
                 {TENANT_MODULE_GROUPS.map((group) => {
                   const adminOn =
                     group.id === "administrativo" &&
                     adminGroupEnabled(form.modules);
+                  const bronzeLocked =
+                    form.plano === "bronze" &&
+                    (group.id === "administrativo" ||
+                      group.id === "financeiro");
+                  const prataFinanceLockedByAdmin =
+                    form.plano === "prata" &&
+                    group.id === "financeiro" &&
+                    adminGroupEnabled(form.modules);
+                  const prataAdminLockedByFinance =
+                    form.plano === "prata" &&
+                    group.id === "administrativo" &&
+                    form.modules.financeiro === true &&
+                    !adminGroupEnabled(form.modules);
+
                   return (
                     <div
                       key={group.id}
@@ -1004,7 +1022,8 @@ function TenantsPage() {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold">{group.label}</p>
-                        {group.id === "administrativo" ? (
+                        {group.id === "administrativo" &&
+                        form.plano !== "bronze" ? (
                           <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
                             <span className="text-muted-foreground">
                               {adminOn ? "Ativo" : "Desativado"}
@@ -1013,12 +1032,22 @@ function TenantsPage() {
                               type="checkbox"
                               className="h-4 w-4"
                               checked={adminOn}
+                              disabled={prataAdminLockedByFinance}
                               onChange={(e) =>
                                 setForm((prev) => ({
                                   ...prev,
-                                  modules: setAdminGroupEnabled(
-                                    prev.modules,
-                                    e.target.checked,
+                                  modules: normalizeModulesForPlano(
+                                    prev.plano,
+                                    {
+                                      ...setAdminGroupEnabled(
+                                        prev.modules,
+                                        e.target.checked,
+                                      ),
+                                      ...(e.target.checked &&
+                                      prev.plano === "prata"
+                                        ? { financeiro: false }
+                                        : {}),
+                                    },
                                   ),
                                 }))
                               }
@@ -1029,18 +1058,36 @@ function TenantsPage() {
                           </label>
                         ) : null}
                       </div>
-                      {group.id === "administrativo" && !adminOn ? (
+                      {bronzeLocked ? (
                         <p className="text-[11px] text-muted-foreground">
-                          Desativar o administrativo oculta todos os módulos
-                          desta seção, exceto Usuários e Configurações.
+                          Indisponível no plano Bronze.
+                        </p>
+                      ) : null}
+                      {group.id === "administrativo" &&
+                      !adminOn &&
+                      form.plano !== "bronze" ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          Desativar o administrativo oculta estes módulos
+                          (exceto Usuários e Configurações) e remove o perfil
+                          Analista.
+                        </p>
+                      ) : null}
+                      {prataFinanceLockedByAdmin ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          Com Administrativo ativo no Prata, o Financeiro fica
+                          desligado.
                         </p>
                       ) : null}
                       <div className="grid gap-2 sm:grid-cols-2 text-sm">
                         {group.modules.map((mod) => {
                           const lockedOff =
-                            group.id === "administrativo" &&
-                            !adminOn &&
-                            !mod.keepOnAdminBulkOff;
+                            bronzeLocked ||
+                            prataFinanceLockedByAdmin ||
+                            (group.id === "administrativo" &&
+                              !adminOn &&
+                              !mod.keepOnAdminBulkOff) ||
+                            (prataAdminLockedByFinance &&
+                              !mod.keepOnAdminBulkOff);
                           return (
                             <label
                               key={mod.key}
@@ -1053,15 +1100,32 @@ function TenantsPage() {
                               <input
                                 type="checkbox"
                                 checked={form.modules[mod.key] !== false}
-                                disabled={lockedOff}
+                                disabled={lockedOff || bronzeLocked}
                                 onChange={(e) =>
-                                  setForm((prev) => ({
-                                    ...prev,
-                                    modules: {
+                                  setForm((prev) => {
+                                    let modules = {
                                       ...prev.modules,
                                       [mod.key]: e.target.checked,
-                                    },
-                                  }))
+                                    };
+                                    if (
+                                      prev.plano === "prata" &&
+                                      mod.key === "financeiro" &&
+                                      e.target.checked
+                                    ) {
+                                      modules = setAdminGroupEnabled(
+                                        modules,
+                                        false,
+                                      );
+                                      modules.financeiro = true;
+                                    }
+                                    return {
+                                      ...prev,
+                                      modules: normalizeModulesForPlano(
+                                        prev.plano,
+                                        modules,
+                                      ),
+                                    };
+                                  })
                                 }
                               />
                               <span>{mod.label}</span>

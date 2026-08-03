@@ -51,6 +51,9 @@ function formatMesLabel(inicioIso: string) {
 function Page() {
   const user = getSession();
   const canView = user?.role === "admin" || user?.role === "gerente";
+  const isGerente = user?.role === "gerente";
+  /** Ranking entre gerentes: só admin. */
+  const showRankingGerentes = user?.role === "admin";
   const [data, setData] = useState<DashboardRanking | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -87,7 +90,7 @@ function Page() {
         />
         <SemConexao
           title="Acesso restrito"
-          description="O ranking de corretores e gerentes está disponível para administradores e gerentes."
+          description="O ranking de corretores está disponível para administradores e gerentes."
         />
       </div>
     );
@@ -101,7 +104,11 @@ function Page() {
     <div>
       <PageHeader
         title="Corretores"
-        description={`Ranking completo e métricas de ${mesLabel}.`}
+        description={
+          isGerente
+            ? `Ranking dos corretores da sua equipe · ${mesLabel}.`
+            : `Ranking completo e métricas de ${mesLabel}.`
+        }
       />
 
       {loading && !data ? (
@@ -149,16 +156,21 @@ function Page() {
 
           <p className="mt-3 text-xs text-muted-foreground">
             {data.totais.corretores} corretor
-            {data.totais.corretores === 1 ? "" : "es"} · {data.totais.gerentes}{" "}
-            gerente
-            {data.totais.gerentes === 1 ? "" : "s"} · {data.totais.visitas}{" "}
-            visita
+            {data.totais.corretores === 1 ? "" : "es"}
+            {showRankingGerentes && (
+              <>
+                {" "}
+                · {data.totais.gerentes} gerente
+                {data.totais.gerentes === 1 ? "" : "s"}
+              </>
+            )}{" "}
+            · {data.totais.visitas} visita
             {data.totais.visitas === 1 ? "" : "s"} · {data.totais.perdidos}{" "}
             perdido
             {data.totais.perdidos === 1 ? "" : "s"} no mês
           </p>
 
-          <section className="mt-5">
+          <section className={isGerente ? "mt-5 mb-6" : "mt-5"}>
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -166,7 +178,9 @@ function Page() {
                   Ranking Corretores
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Ordenado por VGV do mês · comparação com o mês anterior.
+                  {isGerente
+                    ? "Corretores da sua equipe · ordenado por VGV do mês."
+                    : "Ordenado por VGV do mês · comparação com o mês anterior."}
                 </p>
               </CardHeader>
               <CardContent className="overflow-x-auto">
@@ -218,64 +232,66 @@ function Page() {
             </Card>
           </section>
 
-          <section className="mt-5 mb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <UsersRound className="h-4 w-4 text-primary" />
-                  Ranking Gerentes
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Agregado pela equipe liderada · ordenado por VGV do mês.
-                </p>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                {data.gerentes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">
-                    Nenhuma equipe com gerente cadastrada.
+          {showRankingGerentes && (
+            <section className="mt-5 mb-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <UsersRound className="h-4 w-4 text-primary" />
+                    Ranking Gerentes
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Agregado pela equipe liderada · ordenado por VGV do mês.
                   </p>
-                ) : (
-                  <table className="w-full min-w-[800px] text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-2 pr-2 font-medium w-10">#</th>
-                        <th className="pb-2 pr-2 font-medium">Gerente</th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Corretores
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Leads
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Entradas
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Visitas
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Vendas
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          VGV
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Conv.
-                        </th>
-                        <th className="pb-2 font-medium text-right">
-                          Perdidos
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.gerentes.map((r) => (
-                        <GerenteRow key={r.gerenteId} row={r} />
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </CardContent>
-            </Card>
-          </section>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  {data.gerentes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4">
+                      Nenhuma equipe com gerente cadastrada.
+                    </p>
+                  ) : (
+                    <table className="w-full min-w-[800px] text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-muted-foreground">
+                          <th className="pb-2 pr-2 font-medium w-10">#</th>
+                          <th className="pb-2 pr-2 font-medium">Gerente</th>
+                          <th className="pb-2 pr-2 font-medium text-right">
+                            Corretores
+                          </th>
+                          <th className="pb-2 pr-2 font-medium text-right">
+                            Leads
+                          </th>
+                          <th className="pb-2 pr-2 font-medium text-right">
+                            Entradas
+                          </th>
+                          <th className="pb-2 pr-2 font-medium text-right">
+                            Visitas
+                          </th>
+                          <th className="pb-2 pr-2 font-medium text-right">
+                            Vendas
+                          </th>
+                          <th className="pb-2 pr-2 font-medium text-right">
+                            VGV
+                          </th>
+                          <th className="pb-2 pr-2 font-medium text-right">
+                            Conv.
+                          </th>
+                          <th className="pb-2 font-medium text-right">
+                            Perdidos
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.gerentes.map((r) => (
+                          <GerenteRow key={r.gerenteId} row={r} />
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+          )}
         </>
       )}
     </div>

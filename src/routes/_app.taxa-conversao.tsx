@@ -81,6 +81,9 @@ function money(n: number) {
 function Page() {
   const user = getSession();
   const canView = user?.role === "admin" || user?.role === "gerente";
+  /** Ranking entre gerentes/equipes: só admin. */
+  const showRankingGerentes = user?.role === "admin";
+  const isGerente = user?.role === "gerente";
 
   const [admin, setAdmin] = useState<DashboardAdmin | null>(null);
   const [ranking, setRanking] = useState<DashboardRanking | null>(null);
@@ -179,7 +182,9 @@ function Page() {
       }));
   }, [corretoresFiltrados]);
 
-  const hasActiveFilters = Boolean(search || equipe !== "__all__");
+  const hasActiveFilters = Boolean(
+    search || (!isGerente && equipe !== "__all__"),
+  );
 
   if (!canView) {
     return (
@@ -325,23 +330,29 @@ function Page() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar corretor, equipe, gerente…"
+            placeholder={
+              isGerente
+                ? "Buscar corretor…"
+                : "Buscar corretor, equipe, gerente…"
+            }
             className="pl-9"
           />
         </div>
-        <Select value={equipe} onValueChange={setEquipe}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Equipe" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todas as equipes</SelectItem>
-            {equipes.map((e) => (
-              <SelectItem key={e} value={e}>
-                {e}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!isGerente && (
+          <Select value={equipe} onValueChange={setEquipe}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Equipe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as equipes</SelectItem>
+              {equipes.map((e) => (
+                <SelectItem key={e} value={e}>
+                  {e}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select
           value={sortBy}
           onValueChange={(v) => setSortBy(v as SortKey)}
@@ -502,89 +513,96 @@ function Page() {
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <UsersRound className="h-4 w-4 text-primary" />
-            Conversão por gerente / equipe
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          {ranking.gerentes.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">
-              Nenhuma equipe com gerente cadastrada.
-            </p>
-          ) : (
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-2 font-medium w-10">#</th>
-                  <th className="pb-2 pr-2 font-medium">Gerente</th>
-                  <th className="pb-2 pr-2 font-medium text-right">Corretores</th>
-                  <th className="pb-2 pr-2 font-medium text-right">Entradas</th>
-                  <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
-                  <th className="pb-2 pr-2 font-medium text-right">Taxa</th>
-                  <th className="pb-2 font-medium text-right">VGV</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...ranking.gerentes]
-                  .sort(
-                    (a, b) =>
-                      b.taxaConversao.valor - a.taxaConversao.valor ||
-                      b.vendas.valor - a.vendas.valor,
-                  )
-                  .map((g, idx) => (
-                    <tr key={g.gerenteId} className="border-b border-border/40">
-                      <td className="py-2.5 pr-2 text-muted-foreground">
-                        {idx + 1}
-                      </td>
-                      <td className="py-2.5 pr-2">
-                        <div className="font-medium">{g.nome}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {g.equipe}
-                        </div>
-                      </td>
-                      <td className="py-2.5 pr-2 text-right tabular-nums">
-                        {g.corretores}
-                      </td>
-                      <td className="py-2.5 pr-2 text-right">
-                        <div className="tabular-nums font-medium">
-                          {g.entradas.valor}
-                        </div>
-                        <EvolucaoBadge
-                          value={g.entradas.evolucaoPct}
-                          previous={g.entradas.valorMesAnterior}
-                        />
-                      </td>
-                      <td className="py-2.5 pr-2 text-right">
-                        <div className="tabular-nums font-medium">
-                          {g.vendas.valor}
-                        </div>
-                        <EvolucaoBadge
-                          value={g.vendas.evolucaoPct}
-                          previous={g.vendas.valorMesAnterior}
-                        />
-                      </td>
-                      <td className="py-2.5 pr-2 text-right">
-                        <div className="tabular-nums font-semibold">
-                          {g.taxaConversao.valor.toLocaleString("pt-BR", {
-                            maximumFractionDigits: 1,
-                          })}
-                          %
-                        </div>
-                        <EvolucaoBadge value={g.taxaConversao.evolucaoPct} />
-                      </td>
-                      <td className="py-2.5 text-right tabular-nums font-medium">
-                        {money(g.vgv.valor)}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+      {showRankingGerentes && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <UsersRound className="h-4 w-4 text-primary" />
+              Conversão por gerente / equipe
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            {ranking.gerentes.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">
+                Nenhuma equipe com gerente cadastrada.
+              </p>
+            ) : (
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 pr-2 font-medium w-10">#</th>
+                    <th className="pb-2 pr-2 font-medium">Gerente</th>
+                    <th className="pb-2 pr-2 font-medium text-right">
+                      Corretores
+                    </th>
+                    <th className="pb-2 pr-2 font-medium text-right">Entradas</th>
+                    <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
+                    <th className="pb-2 pr-2 font-medium text-right">Taxa</th>
+                    <th className="pb-2 font-medium text-right">VGV</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...ranking.gerentes]
+                    .sort(
+                      (a, b) =>
+                        b.taxaConversao.valor - a.taxaConversao.valor ||
+                        b.vendas.valor - a.vendas.valor,
+                    )
+                    .map((g, idx) => (
+                      <tr
+                        key={g.gerenteId}
+                        className="border-b border-border/40"
+                      >
+                        <td className="py-2.5 pr-2 text-muted-foreground">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2.5 pr-2">
+                          <div className="font-medium">{g.nome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {g.equipe}
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-2 text-right tabular-nums">
+                          {g.corretores}
+                        </td>
+                        <td className="py-2.5 pr-2 text-right">
+                          <div className="tabular-nums font-medium">
+                            {g.entradas.valor}
+                          </div>
+                          <EvolucaoBadge
+                            value={g.entradas.evolucaoPct}
+                            previous={g.entradas.valorMesAnterior}
+                          />
+                        </td>
+                        <td className="py-2.5 pr-2 text-right">
+                          <div className="tabular-nums font-medium">
+                            {g.vendas.valor}
+                          </div>
+                          <EvolucaoBadge
+                            value={g.vendas.evolucaoPct}
+                            previous={g.vendas.valorMesAnterior}
+                          />
+                        </td>
+                        <td className="py-2.5 pr-2 text-right">
+                          <div className="tabular-nums font-semibold">
+                            {g.taxaConversao.valor.toLocaleString("pt-BR", {
+                              maximumFractionDigits: 1,
+                            })}
+                            %
+                          </div>
+                          <EvolucaoBadge value={g.taxaConversao.evolucaoPct} />
+                        </td>
+                        <td className="py-2.5 text-right tabular-nums font-medium">
+                          {money(g.vgv.valor)}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

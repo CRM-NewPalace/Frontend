@@ -221,6 +221,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const { brandName, logoUrl, modules } = useTenantTheme();
+  const plano = user?.tenant?.plano ?? null;
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
   });
@@ -374,16 +375,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .map((item) => {
             if (isNavGroup(item)) {
               const children = item.children.filter((c) =>
-                canAccessRoute(user.role, c.to, modules),
+                canAccessRoute(user.role, c.to, modules, plano),
               );
               return children.length ? { ...item, children } : null;
             }
-            return canAccessRoute(user.role, item.to, modules) ? item : null;
+            return canAccessRoute(user.role, item.to, modules, plano)
+              ? item
+              : null;
           })
           .filter((item): item is NavItem => item !== null),
       }))
       .filter((section) => section.items.length > 0);
-  }, [user, modules]);
+  }, [user, modules, plano]);
 
   useEffect(() => {
     const active = navSections.find((section) =>
@@ -444,7 +447,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .slice(0, 2)
       .join("") ?? "U";
   const canSettings = user
-    ? canAccessRoute(user.role, "/configuracoes")
+    ? canAccessRoute(user.role, "/configuracoes", modules, plano)
     : false;
 
   // Renderiza as seções de navegação. Reaproveitado tanto pelo <aside> fixo

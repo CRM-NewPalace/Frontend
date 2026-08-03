@@ -164,6 +164,7 @@ function equipeName(p: Proposta): string {
 function Page() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
+  const isGerente = user?.role === "gerente";
   const { leads, assignees } = useLeads();
 
   const [items, setItems] = useState<Proposta[]>([]);
@@ -198,7 +199,7 @@ function Page() {
         fetchPropostas(),
         fetchConstrutoras().catch(() => [] as Construtora[]),
         fetchEmpreendimentos().catch(() => [] as Empreendimento[]),
-        isManager
+        isManager && !isGerente
           ? fetchEquipes().catch(() => [] as Equipe[])
           : Promise.resolve([] as Equipe[]),
       ]);
@@ -289,7 +290,7 @@ function Page() {
     search ||
       status !== "todos" ||
       corretorId !== "todos" ||
-      equipeId !== "todos",
+      (!isGerente && equipeId !== "todos"),
   );
 
   function openCreate() {
@@ -488,34 +489,34 @@ function Page() {
           </SelectContent>
         </Select>
         {isManager && (
-          <>
-            <Select value={corretorId} onValueChange={setCorretorId}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Corretor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os corretores</SelectItem>
-                {corretorOptions.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={equipeId} onValueChange={setEquipeId}>
-              <SelectTrigger className="w-full sm:w-[170px]">
-                <SelectValue placeholder="Equipe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todas as equipes</SelectItem>
-                {equipes.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </>
+          <Select value={corretorId} onValueChange={setCorretorId}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Corretor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os corretores</SelectItem>
+              {corretorOptions.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {isManager && !isGerente && (
+          <Select value={equipeId} onValueChange={setEquipeId}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="Equipe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as equipes</SelectItem>
+              {equipes.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
         {hasActive && (
           <Button

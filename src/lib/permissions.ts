@@ -1,5 +1,5 @@
 import type { AuthUser, Role } from "@/lib/auth";
-import { ROUTE_MODULE_KEY } from "@/lib/tenant-modules";
+import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
 
 /**
  * Rotas por perfil:
@@ -65,6 +65,18 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
   analista: ["/funil", "/resultado", "/documentacao", "/imoveis", "/perfil"],
 };
 
+/** No Bronze o gerente acessa só o CRM operacional. */
+const GERENTE_BRONZE_ROUTES: readonly string[] = [
+  "/dashboard",
+  "/leads",
+  "/funil",
+  "/agenda",
+  "/imoveis",
+  "/triagem",
+  "/construtoras",
+  "/perfil",
+];
+
 export function getAllowedRoutes(role: Role): readonly string[] {
   return ROLE_ROUTES[role];
 }
@@ -73,9 +85,14 @@ export function canAccessRoute(
   role: Role,
   pathname: string,
   modules?: Record<string, boolean> | null,
+  plano?: TenantPlano | null,
 ): boolean {
   const path = pathname.split("?")[0].replace(/\/$/, "") || "/";
-  const allowedByRole = ROLE_ROUTES[role].some(
+  const roleRoutes =
+    role === "gerente" && plano === "bronze"
+      ? GERENTE_BRONZE_ROUTES
+      : ROLE_ROUTES[role];
+  const allowedByRole = roleRoutes.some(
     (route) => path === route || path.startsWith(`${route}/`),
   );
   if (!allowedByRole) return false;
@@ -98,7 +115,15 @@ export function defaultRouteForRole(
   if (role === "analista") return "/funil";
 
   const home = user?.tenant?.homePath?.trim();
-  if (home && canAccessRoute(role, home, user?.tenant?.modules ?? null)) {
+  if (
+    home &&
+    canAccessRoute(
+      role,
+      home,
+      user?.tenant?.modules ?? null,
+      user?.tenant?.plano ?? null,
+    )
+  ) {
     return home;
   }
   return "/dashboard";

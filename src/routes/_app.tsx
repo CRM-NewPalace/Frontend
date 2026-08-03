@@ -12,7 +12,14 @@ import { CatalogProvider } from "@/lib/catalog-store";
 import { TenantThemeProvider } from "@/lib/tenant-theme";
 
 function guardUser(user: AuthUser, pathname: string) {
-  if (!canAccessRoute(user.role, pathname, user.tenant?.modules ?? null)) {
+  if (
+    !canAccessRoute(
+      user.role,
+      pathname,
+      user.tenant?.modules ?? null,
+      user.tenant?.plano ?? null,
+    )
+  ) {
     throw redirect({ to: defaultRouteForRole(user.role, user) });
   }
   return { user };
