@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -39,6 +40,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   FormDialogActions,
   FormDialogBody,
   FormDialogShell,
@@ -70,6 +85,15 @@ import {
   type DocumentacaoFonte,
 } from "@/lib/documentacao-api";
 import {
+  dedupeImportDocs,
+  downloadDocumentacaoImportTemplate,
+  exportDocumentacoesToExcel,
+  exportDocumentacoesToPdf,
+  normalizePersonName,
+  parseDocumentacoesFile,
+  type ParsedImportDoc,
+} from "@/lib/documentacao-io";
+import {
   createConstrutora,
   fetchConstrutoras,
   type Construtora,
@@ -93,6 +117,10 @@ import {
   Filter,
   Search,
   X,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -150,6 +178,65 @@ function toDateInput(value: string | null | undefined): string {
   return value.slice(0, 10);
 }
 
+type DocPeriodo = "todos" | "7d" | "30d" | "mes" | "custom";
+type DocCampoData = "createdAt" | "dataAnalise" | "dataVenda";
+
+const PERIODO_DOC_OPTIONS: { value: DocPeriodo; label: string }[] = [
+  { value: "todos", label: "Todo o período" },
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "30d", label: "Últimos 30 dias" },
+  { value: "mes", label: "Mês atual" },
+  { value: "custom", label: "Personalizado" },
+];
+
+const CAMPO_DATA_OPTIONS: { value: DocCampoData; label: string }[] = [
+  { value: "createdAt", label: "Cadastro" },
+  { value: "dataAnalise", label: "Análise" },
+  { value: "dataVenda", label: "Venda" },
+];
+
+function toIsoDay(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function resolveDocPeriodRange(
+  periodo: DocPeriodo,
+  de: string,
+  ate: string,
+): { de: string | null; ate: string | null } {
+  if (periodo === "todos") return { de: null, ate: null };
+  if (periodo === "custom") {
+    return { de: de || null, ate: ate || null };
+  }
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  if (periodo === "7d") {
+    const from = new Date(today);
+    from.setDate(from.getDate() - 6);
+    return { de: toIsoDay(from), ate: toIsoDay(today) };
+  }
+  if (periodo === "30d") {
+    const from = new Date(today);
+    from.setDate(from.getDate() - 29);
+    return { de: toIsoDay(from), ate: toIsoDay(today) };
+  }
+  const from = new Date(today.getFullYear(), today.getMonth(), 1);
+  return { de: toIsoDay(from), ate: toIsoDay(today) };
+}
+
+function docDateDay(doc: Documentacao, campo: DocCampoData): string | null {
+  if (campo === "createdAt") return toDateInput(doc.createdAt);
+  if (campo === "dataAnalise") return toDateInput(doc.dataAnalise);
+  return toDateInput(doc.dataVenda);
+}
+
+function formatDayBr(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR");
+}
+
 function DocumentacaoPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
@@ -175,6 +262,20 @@ function DocumentacaoPage() {
     useState("__all__");
   const [filterTipo, setFilterTipo] = useState("__all__");
   const [filterGerenteId, setFilterGerenteId] = useState("__all__");
+  const [filterPeriodo, setFilterPeriodo] = useState<DocPeriodo>("todos");
+  const [filterCampoData, setFilterCampoData] =
+    useState<DocCampoData>("createdAt");
+  const [filterDataDe, setFilterDataDe] = useState("");
+  const [filterDataAte, setFilterDataAte] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importHelpOpen, setImportHelpOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ParsedImportDoc[]>([]);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importSaving, setImportSaving] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
 
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
@@ -330,6 +431,11 @@ function DocumentacaoPage() {
     }
   }, []);
 
+  const periodRange = useMemo(
+    () => resolveDocPeriodRange(filterPeriodo, filterDataDe, filterDataAte),
+    [filterPeriodo, filterDataDe, filterDataAte],
+  );
+
   const filteredItems = useMemo(() => {
     const q = filterSearch.trim().toLowerCase();
     return items.filter((doc) => {
@@ -364,6 +470,12 @@ function DocumentacaoPage() {
       if (filterGerenteId !== "__all__" && doc.gerenteId !== filterGerenteId) {
         return false;
       }
+      if (periodRange.de || periodRange.ate) {
+        const day = docDateDay(doc, filterCampoData);
+        if (!day) return false;
+        if (periodRange.de && day < periodRange.de) return false;
+        if (periodRange.ate && day > periodRange.ate) return false;
+      }
       if (!q) return true;
       const hay = [
         doc.nome,
@@ -392,6 +504,8 @@ function DocumentacaoPage() {
     filterTipo,
     filterCorretorId,
     filterGerenteId,
+    periodRange,
+    filterCampoData,
   ]);
 
   const filterEmpreendimentoOptions = useMemo(() => {
@@ -407,6 +521,28 @@ function DocumentacaoPage() {
     onClear: () => void;
   };
 
+  const advancedFiltersCount = useMemo(() => {
+    let n = 0;
+    if (filterStatus1 !== "__all__") n += 1;
+    if (filterStatus2 !== "__all__") n += 1;
+    if (filterFonte !== "__all__") n += 1;
+    if (filterTipo !== "__all__") n += 1;
+    if (filterConstrutoraId !== "__all__") n += 1;
+    if (filterEmpreendimentoId !== "__all__") n += 1;
+    if (filterCorretorId !== "__all__") n += 1;
+    if (filterGerenteId !== "__all__") n += 1;
+    return n;
+  }, [
+    filterStatus1,
+    filterStatus2,
+    filterFonte,
+    filterTipo,
+    filterConstrutoraId,
+    filterEmpreendimentoId,
+    filterCorretorId,
+    filterGerenteId,
+  ]);
+
   const activeFilterChips = useMemo(() => {
     const chips: ActiveFilterChip[] = [];
     if (filterSearch.trim()) {
@@ -414,6 +550,31 @@ function DocumentacaoPage() {
         id: "search",
         label: `Busca: ${filterSearch.trim()}`,
         onClear: () => setFilterSearch(""),
+      });
+    }
+    if (filterPeriodo !== "todos") {
+      const campo =
+        CAMPO_DATA_OPTIONS.find((o) => o.value === filterCampoData)?.label ??
+        "Cadastro";
+      let label = `Período (${campo}): `;
+      if (filterPeriodo === "custom") {
+        const de = filterDataDe ? formatDayBr(filterDataDe) : "…";
+        const ate = filterDataAte ? formatDayBr(filterDataAte) : "…";
+        label += `${de} – ${ate}`;
+      } else {
+        label +=
+          PERIODO_DOC_OPTIONS.find((o) => o.value === filterPeriodo)?.label ??
+          filterPeriodo;
+      }
+      chips.push({
+        id: "periodo",
+        label,
+        onClear: () => {
+          setFilterPeriodo("todos");
+          setFilterDataDe("");
+          setFilterDataAte("");
+          setFilterCampoData("createdAt");
+        },
       });
     }
     if (filterStatus1 !== "__all__") {
@@ -487,6 +648,10 @@ function DocumentacaoPage() {
     return chips;
   }, [
     filterSearch,
+    filterPeriodo,
+    filterCampoData,
+    filterDataDe,
+    filterDataAte,
     filterStatus1,
     filterStatus2,
     filterFonte,
@@ -513,6 +678,10 @@ function DocumentacaoPage() {
     setFilterTipo("__all__");
     setFilterCorretorId("__all__");
     setFilterGerenteId("__all__");
+    setFilterPeriodo("todos");
+    setFilterCampoData("createdAt");
+    setFilterDataDe("");
+    setFilterDataAte("");
   }
 
   useEffect(() => {
@@ -802,6 +971,153 @@ function DocumentacaoPage() {
     toast.success("Status adicionado e selecionado.");
   }
 
+  const phoneByLeadId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const l of leads) {
+      if (l.telefone) map[l.id] = l.telefone;
+    }
+    return map;
+  }, [leads]);
+
+  function findLeadForImport(row: ParsedImportDoc): Lead | undefined {
+    if (row.telefone && isValidPhone(row.telefone)) {
+      const digits = phoneDigits(row.telefone);
+      const byPhone = leads.find((l) => phoneDigits(l.telefone) === digits);
+      if (byPhone) return byPhone;
+    }
+    const nome = normalizePersonName(row.nome);
+    return leads.find((l) => normalizePersonName(l.nome) === nome);
+  }
+
+  function resolveIdByName(
+    list: { id: string; nome?: string; name?: string }[],
+    raw: string,
+  ): string | null {
+    const n = normalizePersonName(raw);
+    if (!n) return null;
+    const found = list.find(
+      (item) => normalizePersonName(item.nome ?? item.name ?? "") === n,
+    );
+    return found?.id ?? null;
+  }
+
+  async function handleImportFile(file: File) {
+    setImportParsing(true);
+    setImportFileName(file.name);
+    try {
+      const rows = dedupeImportDocs(await parseDocumentacoesFile(file));
+      if (rows.length === 0) {
+        toast.error("Nenhuma linha encontrada no arquivo.");
+        return;
+      }
+      setImportRows(rows);
+      setImportOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao ler o arquivo.",
+      );
+    } finally {
+      setImportParsing(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
+  async function confirmImport() {
+    const valid = importRows.filter((r) => !r.error);
+    if (valid.length === 0) {
+      toast.error("Nenhuma ficha válida para importar.");
+      return;
+    }
+
+    setImportSaving(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      for (const row of valid) {
+        try {
+          let lead = findLeadForImport(row);
+          if (!lead) {
+            if (!row.telefone || !isValidPhone(row.telefone)) {
+              fail += 1;
+              continue;
+            }
+            const digits = phoneDigits(row.telefone);
+            const corretorId =
+              resolveIdByName(corretorOptions, row.corretorNome) ??
+              (user?.role === "corretor" ? user.id : undefined);
+            lead = await addLead({
+              tipo: "cliente",
+              nome: row.nome,
+              telefone: row.telefone,
+              email: `cliente.${digits}@pendente.local`,
+              origem: origens[0] ?? "Documentação",
+              interesse: "Comprar",
+              cidade: "",
+              bairro: "",
+              stage: defaultStageId,
+              corretorId: corretorId || undefined,
+            });
+          }
+
+          const construtoraId = resolveIdByName(
+            construtoras,
+            row.construtoraNome,
+          );
+          let empreendimentoId = resolveIdByName(
+            empreendimentos,
+            row.empreendimentoNome,
+          );
+          if (empreendimentoId && construtoraId) {
+            const emp = empreendimentos.find((e) => e.id === empreendimentoId);
+            if (
+              emp?.construtoraId &&
+              emp.construtoraId !== construtoraId
+            ) {
+              empreendimentoId = null;
+            }
+          }
+
+          await createDocumentacao({
+            leadId: lead.id,
+            nome: row.nome,
+            construtoraId,
+            empreendimentoId,
+            fonte: row.fonte,
+            status1: row.status1,
+            status2: row.status2,
+            corretorId:
+              resolveIdByName(corretorOptions, row.corretorNome) ??
+              lead.corretorId ??
+              null,
+            gerenteId: resolveIdByName(gerenteOptions, row.gerenteNome),
+            dataAnalise: row.dataAnalise || null,
+            dataVenda: row.dataVenda || null,
+            vgv: row.vgv,
+            obs: row.obs || null,
+          });
+          ok += 1;
+        } catch {
+          fail += 1;
+        }
+      }
+
+      setImportOpen(false);
+      setImportRows([]);
+      await loadItems();
+      if (ok > 0) {
+        toast.success(
+          fail > 0
+            ? `${ok} importada(s), ${fail} com erro.`
+            : `${ok} documentação(ões) importada(s).`,
+        );
+      } else {
+        toast.error("Não foi possível importar as fichas.");
+      }
+    } finally {
+      setImportSaving(false);
+    }
+  }
+
   const readOnly = formMode === "view";
 
   return (
@@ -810,234 +1126,439 @@ function DocumentacaoPage() {
         title="Documentação"
         description="Fichas operacionais vinculadas a leads e clientes."
         actions={
-          <Button onClick={openCreate} disabled={leadsLoading}>
-            <Plus className="w-4 h-4 mr-1" />
-            Nova documentação
-          </Button>
+          <>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setImportHelpOpen(false);
+                  void handleImportFile(file);
+                }
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={importParsing}
+              onClick={() => setImportHelpOpen(true)}
+            >
+              {importParsing ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-1" />
+              )}
+              Importar
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={filteredItems.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    exportDocumentacoesToExcel(
+                      filteredItems,
+                      `documentacao-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                      phoneByLeadId,
+                    )
+                  }
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    exportDocumentacoesToPdf(
+                      filteredItems,
+                      `documentacao-${new Date().toISOString().slice(0, 10)}.pdf`,
+                      user?.tenant?.name?.trim() || "Imobiliária",
+                    )
+                  }
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={openCreate} disabled={leadsLoading} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Nova documentação
+            </Button>
+          </>
         }
       />
 
       <div className="mb-4 space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={filterSearch}
-              onChange={(e) => setFilterSearch(e.target.value)}
-              placeholder="Buscar nome, construtora, status…"
-              className="pl-9"
-            />
-          </div>
+        <div className="rounded-xl border border-border/60 bg-card/40 p-3 space-y-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+            <div className="relative flex-1 min-w-[200px] lg:max-w-sm">
+              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                Busca
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  placeholder="Nome, construtora, status…"
+                  className="pl-9"
+                />
+              </div>
+            </div>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className={cn(
-                  activeFiltersCount > 0 && "border-primary text-primary",
-                )}
+            <div className="w-full sm:w-[150px]">
+              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                Data por
+              </Label>
+              <Select
+                value={filterCampoData}
+                onValueChange={(v) => setFilterCampoData(v as DocCampoData)}
               >
-                <Filter className="w-4 h-4 mr-1.5" />
-                Filtros
-                {activeFiltersCount > 0 ? (
-                  <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px]">
-                    {activeFiltersCount}
-                  </Badge>
-                ) : null}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 space-y-3 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium">Filtros</p>
-                {activeFiltersCount > 0 ? (
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CAMPO_DATA_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full sm:w-[170px]">
+              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                Período
+              </Label>
+              <Select
+                value={filterPeriodo}
+                onValueChange={(v) => {
+                  const next = v as DocPeriodo;
+                  setFilterPeriodo(next);
+                  if (next !== "custom") {
+                    setFilterDataDe("");
+                    setFilterDataAte("");
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERIODO_DOC_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {filterPeriodo === "custom" ? (
+              <>
+                <div className="w-full sm:w-[150px]">
+                  <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                    De
+                  </Label>
+                  <Input
+                    type="date"
+                    value={filterDataDe}
+                    onChange={(e) => setFilterDataDe(e.target.value)}
+                  />
+                </div>
+                <div className="w-full sm:w-[150px]">
+                  <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                    Até
+                  </Label>
+                  <Input
+                    type="date"
+                    value={filterDataAte}
+                    onChange={(e) => setFilterDataAte(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-2 lg:pb-0.5">
+              <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <PopoverTrigger asChild>
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={clearAllFilters}
-                  >
-                    Limpar
-                  </Button>
-                ) : null}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Status 1</Label>
-                <Select value={filterStatus1} onValueChange={setFilterStatus1}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todos</SelectItem>
-                    {status1Options.map((label) => (
-                      <SelectItem key={label} value={label}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Status 2</Label>
-                <Select value={filterStatus2} onValueChange={setFilterStatus2}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todos</SelectItem>
-                    {status2Options.map((label) => (
-                      <SelectItem key={label} value={label}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Fonte</Label>
-                <Select value={filterFonte} onValueChange={setFilterFonte}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todas</SelectItem>
-                    {(Object.keys(FONTE_LABELS) as DocumentacaoFonte[]).map(
-                      (k) => (
-                        <SelectItem key={k} value={k}>
-                          {FONTE_LABELS[k]}
-                        </SelectItem>
-                      ),
+                    variant="outline"
+                    className={cn(
+                      advancedFiltersCount > 0 &&
+                        "border-primary text-primary",
                     )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Tipo</Label>
-                <Select value={filterTipo} onValueChange={setFilterTipo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Lead e cliente</SelectItem>
-                    <SelectItem value="lead">Lead</SelectItem>
-                    <SelectItem value="cliente">Cliente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  Construtora
-                </Label>
-                <Select
-                  value={filterConstrutoraId}
-                  onValueChange={(v) => {
-                    setFilterConstrutoraId(v);
-                    setFilterEmpreendimentoId("__all__");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todas</SelectItem>
-                    {construtoras.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  Empreendimento
-                </Label>
-                <Select
-                  value={filterEmpreendimentoId}
-                  onValueChange={setFilterEmpreendimentoId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todos</SelectItem>
-                    {filterEmpreendimentoOptions.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {isManager ? (
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Corretor
-                  </Label>
-                  <Select
-                    value={filterCorretorId}
-                    onValueChange={setFilterCorretorId}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todos</SelectItem>
-                      {corretorOptions.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
+                    <Filter className="w-4 h-4 mr-1.5" />
+                    Mais filtros
+                    {advancedFiltersCount > 0 ? (
+                      <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px]">
+                        {advancedFiltersCount}
+                      </Badge>
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-[min(92vw,34rem)] p-0"
+                >
+                  <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">Filtros avançados</p>
+                      <p className="text-xs text-muted-foreground">
+                        Situação, imóvel e equipe
+                      </p>
+                    </div>
+                    {advancedFiltersCount > 0 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          setFilterStatus1("__all__");
+                          setFilterStatus2("__all__");
+                          setFilterFonte("__all__");
+                          setFilterTipo("__all__");
+                          setFilterConstrutoraId("__all__");
+                          setFilterEmpreendimentoId("__all__");
+                          setFilterCorretorId("__all__");
+                          setFilterGerenteId("__all__");
+                        }}
+                      >
+                        Limpar
+                      </Button>
+                    ) : null}
+                  </div>
 
-              {isManager ? (
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Gerente
-                  </Label>
-                  <Select
-                    value={filterGerenteId}
-                    onValueChange={setFilterGerenteId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Todos</SelectItem>
-                      {gerenteOptions.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-            </PopoverContent>
-          </Popover>
+                  <div className="max-h-[70vh] overflow-y-auto p-4 space-y-5">
+                    <div className="space-y-2.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Situação
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Status 1
+                          </Label>
+                          <Select
+                            value={filterStatus1}
+                            onValueChange={setFilterStatus1}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Todos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todos</SelectItem>
+                              {status1Options.map((label) => (
+                                <SelectItem key={label} value={label}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Status 2
+                          </Label>
+                          <Select
+                            value={filterStatus2}
+                            onValueChange={setFilterStatus2}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Todos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todos</SelectItem>
+                              {status2Options.map((label) => (
+                                <SelectItem key={label} value={label}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Fonte
+                          </Label>
+                          <Select
+                            value={filterFonte}
+                            onValueChange={setFilterFonte}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Todas" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todas</SelectItem>
+                              {(
+                                Object.keys(FONTE_LABELS) as DocumentacaoFonte[]
+                              ).map((k) => (
+                                <SelectItem key={k} value={k}>
+                                  {FONTE_LABELS[k]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Tipo
+                          </Label>
+                          <Select
+                            value={filterTipo}
+                            onValueChange={setFilterTipo}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Todos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">
+                                Lead e cliente
+                              </SelectItem>
+                              <SelectItem value="lead">Lead</SelectItem>
+                              <SelectItem value="cliente">Cliente</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
 
-          {activeFiltersCount > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={clearAllFilters}
-            >
-              <X className="h-4 w-4 mr-1" />
-              Limpar
-            </Button>
-          ) : null}
+                    <div className="space-y-2.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Imóvel
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Construtora
+                          </Label>
+                          <Select
+                            value={filterConstrutoraId}
+                            onValueChange={(v) => {
+                              setFilterConstrutoraId(v);
+                              setFilterEmpreendimentoId("__all__");
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Todas" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todas</SelectItem>
+                              {construtoras.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Empreendimento
+                          </Label>
+                          <Select
+                            value={filterEmpreendimentoId}
+                            onValueChange={setFilterEmpreendimentoId}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Todos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__all__">Todos</SelectItem>
+                              {filterEmpreendimentoOptions.map((e) => (
+                                <SelectItem key={e.id} value={e.id}>
+                                  {e.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isManager ? (
+                      <div className="space-y-2.5">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Equipe
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Corretor
+                            </Label>
+                            <Select
+                              value={filterCorretorId}
+                              onValueChange={setFilterCorretorId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Todos" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__all__">Todos</SelectItem>
+                                {corretorOptions.map((a) => (
+                                  <SelectItem key={a.id} value={a.id}>
+                                    {a.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Gerente
+                            </Label>
+                            <Select
+                              value={filterGerenteId}
+                              onValueChange={setFilterGerenteId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Todos" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__all__">Todos</SelectItem>
+                                {gerenteOptions.map((a) => (
+                                  <SelectItem key={a.id} value={a.id}>
+                                    {a.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {activeFiltersCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpar
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         {activeFilterChips.length > 0 ? (
@@ -1705,6 +2226,178 @@ function DocumentacaoPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={importHelpOpen} onOpenChange={setImportHelpOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Importar documentação</DialogTitle>
+            <DialogDescription>
+              Use o padrão abaixo para o arquivo ser lido corretamente.
+              Preferível Excel (.xlsx).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="font-medium mb-1.5">Colunas do modelo</p>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="bg-muted/60 text-left">
+                      <th className="p-2 font-medium">Nome</th>
+                      <th className="p-2 font-medium">Telefone</th>
+                      <th className="p-2 font-medium">Construtora</th>
+                      <th className="p-2 font-medium">Empreendimento</th>
+                      <th className="p-2 font-medium">Fonte</th>
+                      <th className="p-2 font-medium">Status 1</th>
+                      <th className="p-2 font-medium">Status 2</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t text-muted-foreground">
+                      <td className="p-2">Maria Silva</td>
+                      <td className="p-2 tabular-nums">(81) 98888-7777</td>
+                      <td className="p-2">Cyrela</td>
+                      <td className="p-2">Torre Aurora</td>
+                      <td className="p-2">Indicação</td>
+                      <td className="p-2">Análise</td>
+                      <td className="p-2">Andamento</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Também: Corretor, Gerente, Data Análise, Data Venda, VGV e
+                Observação.
+              </p>
+            </div>
+
+            <div>
+              <p className="font-medium mb-1.5">Regras</p>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li>
+                  <span className="text-foreground">Nome</span> é obrigatório
+                </li>
+                <li>
+                  Se o contato não existir, o{" "}
+                  <span className="text-foreground">Telefone</span> é
+                  obrigatório para criar o cliente
+                </li>
+                <li>
+                  Construtora, empreendimento, corretor e gerente são
+                  vinculados pelo nome (precisam existir no sistema)
+                </li>
+                <li>Uma linha = uma ficha de documentação</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => downloadDocumentacaoImportTemplate()}
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1" />
+              Baixar modelo Excel
+            </Button>
+            <Button
+              type="button"
+              disabled={importParsing}
+              onClick={() => importInputRef.current?.click()}
+            >
+              {importParsing ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-1" />
+              )}
+              Escolher arquivo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Confirmar importação</DialogTitle>
+            <DialogDescription>
+              {importFileName ? `Arquivo: ${importFileName}. ` : ""}
+              Revise as linhas antes de confirmar. Linhas inválidas serão
+              ignoradas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto flex-1 min-h-0 border rounded-md">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+                <tr className="text-left text-muted-foreground border-b">
+                  <th className="p-2 font-medium">Nome</th>
+                  <th className="p-2 font-medium">Telefone</th>
+                  <th className="p-2 font-medium">Empreendimento</th>
+                  <th className="p-2 font-medium">Status</th>
+                  <th className="p-2 font-medium">Resultado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importRows.map((row, index) => (
+                  <tr
+                    key={`${row.nome}-${row.telefone}-${index}`}
+                    className={cn(
+                      "border-b last:border-0",
+                      row.error && "bg-destructive/5",
+                    )}
+                  >
+                    <td className="p-2">{row.nome || "—"}</td>
+                    <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
+                    <td className="p-2">{row.empreendimentoNome || "—"}</td>
+                    <td className="p-2 text-xs">
+                      {row.status1} · {row.status2}
+                    </td>
+                    <td className="p-2">
+                      {row.error ? (
+                        <span className="text-xs text-destructive">
+                          {row.error}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                          OK
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {importRows.filter((r) => !r.error).length} válido(s) ·{" "}
+            {importRows.filter((r) => r.error).length} inválido(s) (serão
+            ignorados)
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={importSaving}
+              onClick={() => setImportOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                importSaving || importRows.every((r) => Boolean(r.error))
+              }
+              onClick={() => void confirmImport()}
+            >
+              {importSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Importar válidos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

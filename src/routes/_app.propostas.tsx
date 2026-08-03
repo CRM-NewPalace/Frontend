@@ -1,11 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import { MockBanner } from "@/components/financeiro-filtros";
+import {
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
+} from "@/components/form-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,30 +35,65 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getSession } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
+import { brl } from "@/lib/crm-types";
+import { canViewTeamData } from "@/lib/permissions";
+import { useLeads } from "@/lib/leads-store";
 import {
-  MOCK_PROPOSTAS,
+  fetchConstrutoras,
+  type Construtora,
+} from "@/lib/construtoras-api";
+import {
+  fetchEmpreendimentos,
+  type Empreendimento,
+} from "@/lib/empreendimentos-api";
+import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
+import {
+  createProposta,
+  deleteProposta,
+  fetchPropostas,
+  formatPropostaDate,
   PROPOSTA_STATUS_LABEL,
-  brl,
-  formatDate,
   propostaStatusClass,
+  updateProposta,
+  type CreatePropostaInput,
   type Proposta,
   type PropostaStatus,
-} from "@/lib/propostas-mock";
+} from "@/lib/propostas-api";
+import {
+  formatPhone,
+  phoneDigits,
+  PHONE_PLACEHOLDER,
+} from "@/lib/phone";
 import {
   CheckCircle2,
   Clock3,
   Eye,
   FileText,
   Handshake,
+  Loader2,
+  Pencil,
   Plus,
   Search,
   Send,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
@@ -66,46 +114,154 @@ const STATUS_OPTIONS: { value: PropostaStatus | "todos"; label: string }[] = [
   { value: "expirada", label: "Expirada" },
 ];
 
+type FormState = {
+  leadId: string;
+  clienteNome: string;
+  clienteTelefone: string;
+  construtoraId: string;
+  empreendimentoId: string;
+  unidade: string;
+  corretorId: string;
+  valor: string;
+  entrada: string;
+  financiamento: string;
+  status: PropostaStatus;
+  validade: string;
+  observacao: string;
+};
+
+const emptyForm = (): FormState => ({
+  leadId: "",
+  clienteNome: "",
+  clienteTelefone: "",
+  construtoraId: "",
+  empreendimentoId: "",
+  unidade: "",
+  corretorId: "",
+  valor: "",
+  entrada: "",
+  financiamento: "",
+  status: "rascunho",
+  validade: "",
+  observacao: "",
+});
+
+function parseMoney(raw: string): number | null {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+  return Number(digits);
+}
+
+function toDateInput(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
+
+function equipeName(p: Proposta): string {
+  return p.lead?.equipe?.name ?? "—";
+}
+
 function Page() {
+  const user = getSession();
+  const isManager = user ? canViewTeamData(user.role) : false;
+  const { leads, assignees } = useLeads();
+
+  const [items, setItems] = useState<Proposta[]>([]);
+  const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
+  const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<PropostaStatus | "todos">("todos");
-  const [corretor, setCorretor] = useState("todos");
-  const [equipe, setEquipe] = useState("todos");
+  const [corretorId, setCorretorId] = useState("todos");
+  const [equipeId, setEquipeId] = useState("todos");
+
   const [selected, setSelected] = useState<Proposta | null>(null);
+  const [open, setOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const corretorOptions = useMemo(() => {
-    const set = new Set(MOCK_PROPOSTAS.map((p) => p.corretor));
-    return [
-      { value: "todos", label: "Todos os corretores" },
-      ...[...set].sort().map((c) => ({ value: c, label: c })),
-    ];
-  }, []);
+  const corretorOptions = useMemo(
+    () => assignees.filter((a) => !a.role || a.role === "corretor"),
+    [assignees],
+  );
 
-  const equipeOptions = useMemo(() => {
-    const set = new Set(MOCK_PROPOSTAS.map((p) => p.equipe));
-    return [
-      { value: "todos", label: "Todas as equipes" },
-      ...[...set].sort().map((e) => ({ value: e, label: e })),
-    ];
-  }, []);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [propostas, cons, emps, eqs] = await Promise.all([
+        fetchPropostas(),
+        fetchConstrutoras().catch(() => [] as Construtora[]),
+        fetchEmpreendimentos().catch(() => [] as Empreendimento[]),
+        isManager
+          ? fetchEquipes().catch(() => [] as Equipe[])
+          : Promise.resolve([] as Equipe[]),
+      ]);
+      setItems(propostas);
+      setConstrutoras(cons);
+      setEmpreendimentos(emps);
+      setEquipes(eqs);
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Falha ao carregar propostas.";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [isManager]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filteredEmpreendimentos = useMemo(() => {
+    if (!form.construtoraId) return empreendimentos;
+    return empreendimentos.filter(
+      (e) => !e.construtoraId || e.construtoraId === form.construtoraId,
+    );
+  }, [empreendimentos, form.construtoraId]);
+
+  const visibleLeads = useMemo(() => {
+    if (!user) return [];
+    if (!isManager) {
+      return leads.filter(
+        (l) => l.corretorId === user.id || l.corretor === user.name,
+      );
+    }
+    return leads;
+  }, [leads, user, isManager]);
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return MOCK_PROPOSTAS.filter((p) => {
+    return items.filter((p) => {
       if (status !== "todos" && p.status !== status) return false;
-      if (corretor !== "todos" && p.corretor !== corretor) return false;
-      if (equipe !== "todos" && p.equipe !== equipe) return false;
+      if (corretorId !== "todos" && p.corretorId !== corretorId) return false;
+      if (equipeId !== "todos") {
+        const eq = p.lead?.equipe?.id;
+        if (eq !== equipeId) return false;
+      }
       if (!q) return true;
-      return (
-        p.codigo.toLowerCase().includes(q) ||
-        p.cliente.toLowerCase().includes(q) ||
-        p.empreendimento.toLowerCase().includes(q) ||
-        p.construtora.toLowerCase().includes(q) ||
-        p.unidade.toLowerCase().includes(q) ||
-        p.corretor.toLowerCase().includes(q)
-      );
+      const hay = [
+        p.codigo,
+        p.clienteNome,
+        p.clienteTelefone,
+        p.empreendimento?.nome,
+        p.construtora?.nome,
+        p.unidade,
+        p.corretor?.name,
+        p.lead?.equipe?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
     });
-  }, [search, status, corretor, equipe]);
+  }, [items, search, status, corretorId, equipeId]);
 
   const kpis = useMemo(() => {
     const total = rows.length;
@@ -114,17 +270,11 @@ function Page() {
     const emAberto = rows.filter((r) =>
       ["enviada", "negociacao", "rascunho"].includes(r.status),
     );
+    const decididas = rows.filter((r) =>
+      ["aceita", "recusada", "expirada"].includes(r.status),
+    ).length;
     const taxaAceite =
-      total > 0
-        ? (aceitas.length /
-            Math.max(
-              rows.filter((r) =>
-                ["aceita", "recusada", "expirada"].includes(r.status),
-              ).length,
-              1,
-            )) *
-          100
-        : 0;
+      total > 0 ? (aceitas.length / Math.max(decididas, 1)) * 100 : 0;
     return {
       total,
       valor,
@@ -136,28 +286,144 @@ function Page() {
   }, [rows]);
 
   const hasActive = Boolean(
-    search || status !== "todos" || corretor !== "todos" || equipe !== "todos",
+    search ||
+      status !== "todos" ||
+      corretorId !== "todos" ||
+      equipeId !== "todos",
   );
+
+  function openCreate() {
+    setFormMode("create");
+    setEditingId(null);
+    const next = emptyForm();
+    if (user?.role === "corretor") next.corretorId = user.id;
+    setForm(next);
+    setOpen(true);
+  }
+
+  function openEdit(p: Proposta) {
+    setFormMode("edit");
+    setEditingId(p.id);
+    setForm({
+      leadId: p.leadId ?? "",
+      clienteNome: p.clienteNome,
+      clienteTelefone: p.clienteTelefone
+        ? formatPhone(p.clienteTelefone)
+        : "",
+      construtoraId: p.construtoraId ?? "",
+      empreendimentoId: p.empreendimentoId ?? "",
+      unidade: p.unidade ?? "",
+      corretorId: p.corretorId ?? "",
+      valor: String(p.valor),
+      entrada: p.entrada != null ? String(p.entrada) : "",
+      financiamento: p.financiamento != null ? String(p.financiamento) : "",
+      status: p.status,
+      validade: toDateInput(p.validade),
+      observacao: p.observacao ?? "",
+    });
+    setSelected(null);
+    setOpen(true);
+  }
+
+  function onLeadSelect(leadId: string) {
+    const lead = visibleLeads.find((l) => l.id === leadId);
+    setForm((f) => ({
+      ...f,
+      leadId,
+      clienteNome: lead?.nome ?? f.clienteNome,
+      clienteTelefone: lead?.telefone
+        ? formatPhone(lead.telefone)
+        : f.clienteTelefone,
+      corretorId: lead?.corretorId || f.corretorId,
+      construtoraId: lead?.construtoraId || f.construtoraId,
+      empreendimentoId: lead?.empreendimentoId || f.empreendimentoId,
+    }));
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const valor = parseMoney(form.valor);
+    if (!form.clienteNome.trim() || valor == null) {
+      toast.error("Informe o cliente e o valor da proposta.");
+      return;
+    }
+
+    const payload: CreatePropostaInput = {
+      leadId: form.leadId || null,
+      clienteNome: form.clienteNome.trim(),
+      clienteTelefone: form.clienteTelefone
+        ? phoneDigits(form.clienteTelefone)
+        : null,
+      construtoraId: form.construtoraId || null,
+      empreendimentoId: form.empreendimentoId || null,
+      unidade: form.unidade.trim() || null,
+      corretorId: form.corretorId || null,
+      valor,
+      entrada: parseMoney(form.entrada),
+      financiamento: parseMoney(form.financiamento),
+      status: form.status,
+      validade: form.validade || null,
+      observacao: form.observacao.trim() || null,
+    };
+
+    setSaving(true);
+    try {
+      if (formMode === "create") {
+        await createProposta(payload);
+        toast.success("Proposta criada.");
+      } else if (editingId) {
+        await updateProposta(editingId, payload);
+        toast.success("Proposta atualizada.");
+      }
+      setOpen(false);
+      await load();
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Não foi possível salvar.";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function patchStatus(id: string, next: PropostaStatus) {
+    setActionLoading(true);
+    try {
+      const updated = await updateProposta(id, { status: next });
+      setItems((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      setSelected(updated);
+      toast.success(`Status: ${PROPOSTA_STATUS_LABEL[next]}`);
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Falha ao atualizar status.";
+      toast.error(msg);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteId) return;
+    try {
+      await deleteProposta(deleteId);
+      toast.success("Proposta excluída.");
+      setDeleteId(null);
+      setSelected(null);
+      await load();
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Falha ao excluir.";
+      toast.error(msg);
+    }
+  }
 
   return (
     <div>
       <PageHeader
         title="Propostas"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Propostas comerciais enviadas aos clientes
-            <MockBanner />
-          </span>
-        }
+        description="Propostas comerciais enviadas aos clientes"
         actions={
-          <Button
-            onClick={() =>
-              toast.message("Dados demonstrativos", {
-                description:
-                  "Criação de propostas reais estará disponível com a API.",
-              })
-            }
-          >
+          <Button onClick={openCreate}>
             <Plus className="w-4 h-4 mr-1" />
             Nova proposta
           </Button>
@@ -221,30 +487,36 @@ function Page() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={corretor} onValueChange={setCorretor}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Corretor" />
-          </SelectTrigger>
-          <SelectContent>
-            {corretorOptions.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={equipe} onValueChange={setEquipe}>
-          <SelectTrigger className="w-full sm:w-[170px]">
-            <SelectValue placeholder="Equipe" />
-          </SelectTrigger>
-          <SelectContent>
-            {equipeOptions.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isManager && (
+          <>
+            <Select value={corretorId} onValueChange={setCorretorId}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Corretor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os corretores</SelectItem>
+                {corretorOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={equipeId} onValueChange={setEquipeId}>
+              <SelectTrigger className="w-full sm:w-[170px]">
+                <SelectValue placeholder="Equipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as equipes</SelectItem>
+                {equipes.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        )}
         {hasActive && (
           <Button
             type="button"
@@ -253,8 +525,8 @@ function Page() {
             onClick={() => {
               setSearch("");
               setStatus("todos");
-              setCorretor("todos");
-              setEquipe("todos");
+              setCorretorId("todos");
+              setEquipeId("todos");
             }}
           >
             <X className="h-4 w-4 mr-1" />
@@ -278,7 +550,17 @@ function Page() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={8}
+                  className="text-center text-muted-foreground py-10"
+                >
+                  <Loader2 className="h-5 w-5 animate-spin inline mr-2" />
+                  Carregando…
+                </TableCell>
+              </TableRow>
+            ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={8}
@@ -298,21 +580,24 @@ function Page() {
                     {p.codigo}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{p.cliente}</div>
+                    <div className="font-medium">{p.clienteNome}</div>
                     <div className="text-xs text-muted-foreground">
-                      {p.telefone}
+                      {p.clienteTelefone
+                        ? formatPhone(p.clienteTelefone)
+                        : "—"}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div>{p.empreendimento}</div>
+                    <div>{p.empreendimento?.nome ?? "—"}</div>
                     <div className="text-xs text-muted-foreground">
-                      Un. {p.unidade} · {p.construtora}
+                      {p.unidade ? `Un. ${p.unidade}` : "Sem unidade"}
+                      {p.construtora ? ` · ${p.construtora.nome}` : ""}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div>{p.corretor}</div>
+                    <div>{p.corretor?.name ?? "—"}</div>
                     <div className="text-xs text-muted-foreground">
-                      {p.equipe}
+                      {equipeName(p)}
                     </div>
                   </TableCell>
                   <TableCell className="text-right tabular-nums font-semibold">
@@ -327,7 +612,7 @@ function Page() {
                     </Badge>
                   </TableCell>
                   <TableCell className="tabular-nums whitespace-nowrap">
-                    {formatDate(p.validade)}
+                    {formatPropostaDate(p.validade)}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -350,7 +635,7 @@ function Page() {
         </Table>
       </div>
       <p className="text-xs text-muted-foreground mt-2">
-        {rows.length} de {MOCK_PROPOSTAS.length} propostas
+        {rows.length} de {items.length} propostas
       </p>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
@@ -368,21 +653,34 @@ function Page() {
                   </Badge>
                 </DialogTitle>
                 <DialogDescription>
-                  Detalhes da proposta comercial (dados demonstrativos).
+                  Detalhes da proposta comercial.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="grid gap-3 text-sm">
-                <DetailRow label="Cliente" value={selected.cliente} />
-                <DetailRow label="Telefone" value={selected.telefone} />
+                <DetailRow label="Cliente" value={selected.clienteNome} />
+                <DetailRow
+                  label="Telefone"
+                  value={
+                    selected.clienteTelefone
+                      ? formatPhone(selected.clienteTelefone)
+                      : "—"
+                  }
+                />
                 <DetailRow
                   label="Empreendimento"
-                  value={`${selected.empreendimento} · Un. ${selected.unidade}`}
+                  value={
+                    (selected.empreendimento?.nome ?? "—") +
+                    (selected.unidade ? ` · Un. ${selected.unidade}` : "")
+                  }
                 />
-                <DetailRow label="Construtora" value={selected.construtora} />
+                <DetailRow
+                  label="Construtora"
+                  value={selected.construtora?.nome ?? "—"}
+                />
                 <DetailRow
                   label="Corretor"
-                  value={`${selected.corretor} · ${selected.equipe}`}
+                  value={`${selected.corretor?.name ?? "—"} · ${equipeName(selected)}`}
                 />
                 <div className="grid grid-cols-3 gap-2 rounded-lg border border-border/60 p-3 bg-muted/30">
                   <div>
@@ -398,7 +696,7 @@ function Page() {
                       Entrada
                     </div>
                     <div className="font-semibold tabular-nums">
-                      {brl(selected.entrada)}
+                      {selected.entrada != null ? brl(selected.entrada) : "—"}
                     </div>
                   </div>
                   <div>
@@ -406,43 +704,52 @@ function Page() {
                       Financiamento
                     </div>
                     <div className="font-semibold tabular-nums">
-                      {brl(selected.financiamento)}
+                      {selected.financiamento != null
+                        ? brl(selected.financiamento)
+                        : "—"}
                     </div>
                   </div>
                 </div>
                 <DetailRow
                   label="Criada em"
-                  value={formatDate(selected.criadaEm)}
+                  value={formatPropostaDate(selected.createdAt)}
                 />
                 <DetailRow
                   label="Enviada em"
                   value={
                     selected.enviadaEm
-                      ? formatDate(selected.enviadaEm)
+                      ? formatPropostaDate(selected.enviadaEm)
                       : "Ainda não enviada"
                   }
                 />
                 <DetailRow
                   label="Validade"
-                  value={formatDate(selected.validade)}
+                  value={formatPropostaDate(selected.validade)}
                 />
-                <div>
-                  <div className="text-[11px] text-muted-foreground mb-1">
-                    Observação
+                {selected.observacao ? (
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Observação
+                    </div>
+                    <p className="text-foreground">{selected.observacao}</p>
                   </div>
-                  <p className="text-foreground">{selected.observacao}</p>
-                </div>
+                ) : null}
               </div>
 
               <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openEdit(selected)}
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
                 {selected.status === "rascunho" && (
                   <Button
                     size="sm"
-                    onClick={() =>
-                      toast.message("Dados demonstrativos", {
-                        description: "Envio real estará disponível com a API.",
-                      })
-                    }
+                    disabled={actionLoading}
+                    onClick={() => void patchStatus(selected.id, "enviada")}
                   >
                     <Send className="h-4 w-4 mr-1" />
                     Enviar proposta
@@ -453,9 +760,8 @@ function Page() {
                   <>
                     <Button
                       size="sm"
-                      onClick={() =>
-                        toast.success("Simulação: proposta marcada como aceita")
-                      }
+                      disabled={actionLoading}
+                      onClick={() => void patchStatus(selected.id, "aceita")}
                     >
                       <CheckCircle2 className="h-4 w-4 mr-1" />
                       Aceitar
@@ -463,15 +769,23 @@ function Page() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        toast.message("Simulação: proposta recusada")
-                      }
+                      disabled={actionLoading}
+                      onClick={() => void patchStatus(selected.id, "recusada")}
                     >
                       <XCircle className="h-4 w-4 mr-1" />
                       Recusar
                     </Button>
                   </>
                 )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => setDeleteId(selected.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Excluir
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -484,6 +798,292 @@ function Page() {
           )}
         </DialogContent>
       </Dialog>
+
+      <FormDialogShell
+        open={open}
+        onOpenChange={setOpen}
+        icon={<FileText className="w-5 h-5" />}
+        title={formMode === "create" ? "Nova proposta" : "Editar proposta"}
+        description="Preencha os dados comerciais da proposta."
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" form="proposta-form" disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Salvar
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          <form id="proposta-form" className="space-y-5" onSubmit={onSubmit}>
+            <FormSection title="Cliente">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2 space-y-1.5">
+                  <Label>Lead / cliente (opcional)</Label>
+                  <Select
+                    value={form.leadId || "__none__"}
+                    onValueChange={(v) =>
+                      onLeadSelect(v === "__none__" ? "" : v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar lead" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sem vínculo</SelectItem>
+                      {visibleLeads.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.nome}
+                          {l.telefone ? ` · ${formatPhone(l.telefone)}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="clienteNome">Nome *</Label>
+                  <Input
+                    id="clienteNome"
+                    value={form.clienteNome}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, clienteNome: e.target.value }))
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="clienteTelefone">Telefone</Label>
+                  <Input
+                    id="clienteTelefone"
+                    value={form.clienteTelefone}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        clienteTelefone: formatPhone(e.target.value),
+                      }))
+                    }
+                    placeholder={PHONE_PLACEHOLDER}
+                  />
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection title="Imóvel">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Construtora</Label>
+                  <Select
+                    value={form.construtoraId || "__none__"}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        construtoraId: v === "__none__" ? "" : v,
+                        empreendimentoId: "",
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Construtora" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nenhuma</SelectItem>
+                      {construtoras.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Empreendimento</Label>
+                  <Select
+                    value={form.empreendimentoId || "__none__"}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        empreendimentoId: v === "__none__" ? "" : v,
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Empreendimento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nenhum</SelectItem>
+                      {filteredEmpreendimentos.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="unidade">Unidade</Label>
+                  <Input
+                    id="unidade"
+                    value={form.unidade}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, unidade: e.target.value }))
+                    }
+                    placeholder="Ex.: 802"
+                  />
+                </div>
+                {isManager && (
+                  <div className="space-y-1.5">
+                    <Label>Corretor</Label>
+                    <Select
+                      value={form.corretorId || "__none__"}
+                      onValueChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          corretorId: v === "__none__" ? "" : v,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Corretor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Não definido</SelectItem>
+                        {corretorOptions.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </FormSection>
+
+            <FormSection title="Valores e status">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="valor">Valor (R$) *</Label>
+                  <Input
+                    id="valor"
+                    inputMode="numeric"
+                    value={form.valor}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        valor: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="entrada">Entrada (R$)</Label>
+                  <Input
+                    id="entrada"
+                    inputMode="numeric"
+                    value={form.entrada}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        entrada: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="financiamento">Financiamento (R$)</Label>
+                  <Input
+                    id="financiamento"
+                    inputMode="numeric"
+                    value={form.financiamento}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        financiamento: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select
+                    value={form.status}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        status: v as PropostaStatus,
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.filter((o) => o.value !== "todos").map(
+                        (o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="validade">Validade</Label>
+                  <Input
+                    id="validade"
+                    type="date"
+                    value={form.validade}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, validade: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="sm:col-span-3 space-y-1.5">
+                  <Label htmlFor="observacao">Observação</Label>
+                  <Textarea
+                    id="observacao"
+                    value={form.observacao}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, observacao: e.target.value }))
+                    }
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </FormSection>
+          </form>
+        </FormDialogBody>
+      </FormDialogShell>
+
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(o) => !o && setDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir proposta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmDelete()}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
