@@ -1151,23 +1151,57 @@ function AnalistaFunilBoard() {
     }
   }
 
+  /** Evita auto-registro quando o usuário escolhe preencher o formulário. */
+  const skipAutoDocRef = useRef(false);
+
+  function defaultDocFonte() {
+    return fonteOptions.includes("Outro")
+      ? "Outro"
+      : (fonteOptions[0] ?? "Outro");
+  }
+
+  function defaultDocStatus1() {
+    return status1Options.includes("Análise")
+      ? "Análise"
+      : (status1Options[0] ?? "Análise");
+  }
+
+  function defaultDocStatus2() {
+    return status2Options.includes("Andamento")
+      ? "Andamento"
+      : (status2Options[0] ?? "Andamento");
+  }
+
+  async function autoRegisterDoc(item: Analise) {
+    try {
+      await createDocumentacao({
+        leadId: item.leadId,
+        nome: item.nome,
+        construtoraId: item.lead.construtoraId,
+        empreendimentoId: item.lead.empreendimentoId,
+        fonte: defaultDocFonte(),
+        status1: defaultDocStatus1(),
+        status2: defaultDocStatus2(),
+        corretorId: item.lead.corretorId,
+        vgv: null,
+        obs: null,
+        dataAnalise: new Date().toISOString().slice(0, 10),
+      });
+      toast.success("Documentação registrada automaticamente.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível registrar a documentação automaticamente.",
+      );
+    }
+  }
+
   function openDocForm(item: Analise) {
     setDocTarget(item);
-    setDocFonte(
-      fonteOptions.includes("Outro")
-        ? "Outro"
-        : (fonteOptions[0] ?? "Outro"),
-    );
-    setDocStatus1(
-      status1Options.includes("Análise")
-        ? "Análise"
-        : (status1Options[0] ?? "Análise"),
-    );
-    setDocStatus2(
-      status2Options.includes("Andamento")
-        ? "Andamento"
-        : (status2Options[0] ?? "Andamento"),
-    );
+    setDocFonte(defaultDocFonte());
+    setDocStatus1(defaultDocStatus1());
+    setDocStatus2(defaultDocStatus2());
     setDocObs("");
     setDocOpen(true);
   }
@@ -1350,14 +1384,22 @@ function AnalistaFunilBoard() {
 
       <AlertDialog
         open={Boolean(docPrompt)}
-        onOpenChange={(o) => !o && setDocPrompt(null)}
+        onOpenChange={(open) => {
+          if (open) return;
+          const target = docPrompt;
+          setDocPrompt(null);
+          if (!skipAutoDocRef.current && target) {
+            void autoRegisterDoc(target);
+          }
+          skipAutoDocRef.current = false;
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Registrar documentação?</AlertDialogTitle>
             <AlertDialogDescription>
               {docPrompt
-                ? `O processo de ${docPrompt.nome} foi assumido. Deseja registrar a documentação agora? Construtora e empreendimento já vêm do lead.`
+                ? `O processo de ${docPrompt.nome} foi assumido. Deseja registrar a documentação agora? Construtora e empreendimento já vêm do lead. Se preferir depois, a documentação será criada automaticamente com valores padrão.`
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1366,6 +1408,7 @@ function AnalistaFunilBoard() {
             <AlertDialogAction
               onClick={() => {
                 if (!docPrompt) return;
+                skipAutoDocRef.current = true;
                 const target = docPrompt;
                 setDocPrompt(null);
                 openDocForm(target);
