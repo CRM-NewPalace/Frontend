@@ -163,6 +163,10 @@ function LeadsPage() {
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
   const canDistribuir = user?.role === "admin" || user?.role === "gerente";
+  /** Só admin/analista filtram entre várias equipes; gerente já vê só a própria. */
+  const canFilterEquipe =
+    user?.role === "admin" || user?.role === "analista";
+  const isGerente = user?.role === "gerente";
 
   const {
     leads: allLeads,
@@ -249,7 +253,7 @@ function LeadsPage() {
   const [showExtraFilters, setShowExtraFilters] = useState(false);
 
   useEffect(() => {
-    if (isCorretor) return;
+    if (!canFilterEquipe) return;
     let cancelled = false;
     void fetchEquipes()
       .then((list) => {
@@ -261,7 +265,7 @@ function LeadsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isCorretor]);
+  }, [canFilterEquipe]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -272,7 +276,7 @@ function LeadsPage() {
     debouncedSearch !== "" ||
     stageFilter !== "all" ||
     corretorFilter !== "all" ||
-    equipeFilter !== "all" ||
+    (canFilterEquipe && equipeFilter !== "all") ||
     prioridadeFilter !== "all" ||
     interesseFilter !== "all" ||
     origemFilter !== "all";
@@ -308,16 +312,25 @@ function LeadsPage() {
         if (!hay.includes(q) && !phoneOk) return false;
       }
       if (stageFilter !== "all" && l.stage !== stageFilter) return false;
+      if (!isCorretor && corretorFilter !== "all") {
+        if (corretorFilter === "__none__") {
+          if (l.corretorId) return false;
+        } else if (l.corretorId !== corretorFilter) {
+          return false;
+        }
+      }
       if (
+        canFilterEquipe &&
         !isCorretor &&
-        corretorFilter !== "all" &&
-        l.corretorId !== corretorFilter
-      )
-        return false;
-      if (!isCorretor && equipeFilter === "none") {
+        equipeFilter === "none"
+      ) {
         if (l.equipeId) return false;
         if (l.corretorId && anyEquipeMembroIds?.has(l.corretorId)) return false;
-      } else if (!isCorretor && equipeFilter !== "all") {
+      } else if (
+        canFilterEquipe &&
+        !isCorretor &&
+        equipeFilter !== "all"
+      ) {
         const inPool = l.equipeId === equipeFilter;
         const inMembros =
           Boolean(l.corretorId) && Boolean(equipeMembros?.has(l.corretorId!));
@@ -342,7 +355,104 @@ function LeadsPage() {
     interesseFilter,
     origemFilter,
     isCorretor,
+    canFilterEquipe,
   ]);
+
+  /** Contagem de leads ativos por corretor (respeita demais filtros, ignora filtro de corretor). */
+  const leadsAtivosPorCorretor = useMemo(() => {
+    if (isCorretor) return [];
+
+    const q = debouncedSearch.toLowerCase();
+    const qDigits = phoneDigits(debouncedSearch);
+    const equipeMembros =
+      equipeFilter === "all" || equipeFilter === "none"
+        ? null
+        : new Set(
+            equipes
+              .find((e) => e.id === equipeFilter)
+              ?.membros.map((m) => m.id) ?? [],
+          );
+    const anyEquipeMembroIds =
+      equipeFilter === "none"
+        ? new Set(equipes.flatMap((e) => e.membros.map((m) => m.id)))
+        : null;
+
+    const scoped = leads.filter((l) => {
+      if (q) {
+        const hay = `${l.nome} ${l.email} ${l.telefone}`.toLowerCase();
+        const phoneOk =
+          qDigits.length >= 3 && phoneDigits(l.telefone).includes(qDigits);
+        if (!hay.includes(q) && !phoneOk) return false;
+      }
+      if (stageFilter !== "all" && l.stage !== stageFilter) return false;
+      if (canFilterEquipe && equipeFilter === "none") {
+        if (l.equipeId) return false;
+        if (l.corretorId && anyEquipeMembroIds?.has(l.corretorId)) return false;
+      } else if (canFilterEquipe && equipeFilter !== "all") {
+        const inPool = l.equipeId === equipeFilter;
+        const inMembros =
+          Boolean(l.corretorId) && Boolean(equipeMembros?.has(l.corretorId!));
+        if (!inPool && !inMembros) return false;
+      }
+      if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter)
+        return false;
+      if (interesseFilter !== "all" && l.interesse !== interesseFilter)
+        return false;
+      if (origemFilter !== "all" && l.origem !== origemFilter) return false;
+      return true;
+    });
+
+    const byId = new Map<
+      string,
+      { id: string; name: string; count: number }
+    >();
+    for (const a of corretorAssignees) {
+      byId.set(a.id, { id: a.id, name: a.name, count: 0 });
+    }
+
+    let semCorretor = 0;
+    for (const l of scoped) {
+      if (!l.corretorId) {
+        semCorretor += 1;
+        continue;
+      }
+      const existing = byId.get(l.corretorId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        byId.set(l.corretorId, {
+          id: l.corretorId,
+          name: l.corretor || "Corretor",
+          count: 1,
+        });
+      }
+    }
+
+    const rows = [...byId.values()].sort(
+      (a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"),
+    );
+    if (semCorretor > 0) {
+      rows.push({ id: "__none__", name: "Sem corretor", count: semCorretor });
+    }
+    return rows;
+  }, [
+    isCorretor,
+    leads,
+    debouncedSearch,
+    stageFilter,
+    equipeFilter,
+    equipes,
+    prioridadeFilter,
+    interesseFilter,
+    origemFilter,
+    canFilterEquipe,
+    corretorAssignees,
+  ]);
+
+  const totalAtivosResumo = useMemo(
+    () => leadsAtivosPorCorretor.reduce((s, r) => s + r.count, 0),
+    [leadsAtivosPorCorretor],
+  );
 
   function clearFilters() {
     setSearch("");
@@ -572,7 +682,9 @@ function LeadsPage() {
             : filteredLeads.length === leads.length && !filtersActive
               ? isCorretor
                 ? `${leads.length} leads atribuídos a você`
-                : `${leads.length} leads de toda a equipe no funil`
+                : isGerente
+                  ? `${leads.length} leads da sua equipe no funil`
+                  : `${leads.length} leads de toda a equipe no funil`
               : `${filteredLeads.length} de ${leads.length} leads`
         }
         actions={
@@ -1195,6 +1307,71 @@ function LeadsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {!isCorretor && leadsAtivosPorCorretor.length > 0 && (
+        <Card className="mb-4">
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">Leads ativos por corretor</p>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {totalAtivosResumo} no filtro
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setCorretorFilter("all")}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                  corretorFilter === "all"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border/60 hover:bg-muted/50",
+                )}
+              >
+                Todos
+                <Badge variant="secondary" className="tabular-nums h-5 px-1.5">
+                  {totalAtivosResumo}
+                </Badge>
+              </button>
+              {leadsAtivosPorCorretor.map((row) => {
+                const selected =
+                  row.id === "__none__"
+                    ? corretorFilter === "__none__"
+                    : corretorFilter === row.id;
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() =>
+                      setCorretorFilter(
+                        selected
+                          ? "all"
+                          : row.id === "__none__"
+                            ? "__none__"
+                            : row.id,
+                      )
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                      selected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border/60 hover:bg-muted/50",
+                    )}
+                  >
+                    <span className="max-w-[140px] truncate">{row.name}</span>
+                    <Badge
+                      variant="secondary"
+                      className="tabular-nums h-5 px-1.5"
+                    >
+                      {row.count}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="mb-4">
         <CardContent className="p-3 flex flex-wrap gap-2 items-center">
           <div className="relative flex-1 min-w-[220px]">
@@ -1219,7 +1396,7 @@ function LeadsPage() {
               ))}
             </SelectContent>
           </Select>
-          {!isCorretor && (
+          {canFilterEquipe && (
             <Select value={equipeFilter} onValueChange={setEquipeFilter}>
               <SelectTrigger className="w-44 h-9">
                 <SelectValue placeholder="Equipe" />
@@ -1243,11 +1420,17 @@ function LeadsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos corretores</SelectItem>
-                {corretorFilterOptions.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="__none__">Sem corretor</SelectItem>
+                {corretorFilterOptions.map((a) => {
+                  const count =
+                    leadsAtivosPorCorretor.find((r) => r.id === a.id)?.count ??
+                    0;
+                  return (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} ({count})
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           )}
@@ -1276,6 +1459,7 @@ function LeadsPage() {
           {(search ||
             stageFilter !== "all" ||
             corretorFilter !== "all" ||
+            (canFilterEquipe && equipeFilter !== "all") ||
             extraFiltersActive) && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="w-4 h-4 mr-1" />
