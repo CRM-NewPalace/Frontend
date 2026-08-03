@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,14 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ApiError } from "@/lib/api";
+import { fetchDemonstrativo } from "@/lib/financeiro-api";
 import {
-  MESES_DEMONSTRATIVO,
-  MOCK_DEMONSTRATIVO,
-  MOCK_MESES_RESUMO,
   brl,
   type PeriodoFiltro,
+  type LinhaDemonstrativo,
+  type MesResumo,
 } from "@/lib/financeiro-mock";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Bar,
   BarChart,
@@ -56,30 +58,49 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 }
 
 function Page() {
+  const [linhas, setLinhas] = useState<LinhaDemonstrativo[]>([]);
+  const [meses, setMeses] = useState<string[]>([]);
+  const [mesesResumo, setMesesResumo] = useState<MesResumo[]>([]);
+  useEffect(() => {
+    void fetchDemonstrativo()
+      .then((data) => {
+        setLinhas(data.linhas);
+        setMeses(data.meses);
+        setMesesResumo(data.mesesResumo);
+      })
+      .catch((err) =>
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Nao foi possivel carregar o demonstrativo.",
+        ),
+      );
+  }, []);
+
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("trimestre");
 
   const meses = useMemo(() => {
     if (periodo === "mes") return ["Jul"] as string[];
     if (periodo === "ano" || periodo === "tudo")
-      return MOCK_MESES_RESUMO.map((m) => m.mes);
-    return [...MESES_DEMONSTRATIVO];
+      return mesesResumo.map((m) => m.mes);
+    return [...meses];
   }, [periodo]);
 
   const linhas = useMemo(() => {
     if (periodo === "mes" || periodo === "trimestre") {
-      return MOCK_DEMONSTRATIVO.map((l) => ({
+      return linhas.map((l) => ({
         ...l,
         valores: Object.fromEntries(meses.map((m) => [m, l.valores[m] ?? 0])),
       }));
     }
     // Ano / tudo: projeta Mai–Jul a partir do resumo mensal + linhas relativas
-    return MOCK_DEMONSTRATIVO.map((l) => {
+    return linhas.map((l) => {
       const valores: Record<string, number> = {};
       for (const mes of meses) {
-        const base = MOCK_DEMONSTRATIVO.find((x) => x.id === l.id);
+        const base = linhas.find((x) => x.id === l.id);
         const jul = base?.valores.Jul ?? 0;
-        const ref = MOCK_MESES_RESUMO.find((m) => m.mes === mes);
-        const julRef = MOCK_MESES_RESUMO.find((m) => m.mes === "Jul");
+        const ref = mesesResumo.find((m) => m.mes === mes);
+        const julRef = mesesResumo.find((m) => m.mes === "Jul");
         if (!ref || !julRef || !julRef.receitas) {
           valores[mes] = 0;
           continue;
@@ -93,7 +114,7 @@ function Page() {
 
   const resultadoSerie = useMemo(
     () =>
-      MOCK_MESES_RESUMO.map((m) => ({
+      mesesResumo.map((m) => ({
         mes: m.mes,
         receitas: m.receitas,
         despesas: m.despesas,

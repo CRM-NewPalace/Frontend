@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -13,13 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ApiError } from "@/lib/api";
+import { fetchMovimentos } from "@/lib/financeiro-api";
 import {
-  MOCK_MOVIMENTOS,
   brl,
   filterByPeriodo,
   formatDate,
   statusBadgeClass,
   statusLabel,
+  type MovimentoFinanceiro,
   type PeriodoFiltro,
   type StatusTitulo,
   type TipoMovimento,
@@ -41,14 +43,27 @@ const TIPO_OPTIONS = [
 ];
 
 function Page() {
+  const [items, setItems] = useState<MovimentoFinanceiro[]>([]);
   const [search, setSearch] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
   const [tipo, setTipo] = useState("todos");
 
+  useEffect(() => {
+    void fetchMovimentos()
+      .then(setItems)
+      .catch((err) =>
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Nao foi possivel carregar movimentacoes.",
+        ),
+      );
+  }, []);
+
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return filterByPeriodo(MOCK_MOVIMENTOS, periodo, "data").filter((m) => {
+    return filterByPeriodo(items, periodo, "data").filter((m) => {
       if (status !== "todos" && m.status !== status) return false;
       if (tipo !== "todos" && m.tipo !== (tipo as TipoMovimento)) return false;
       if (!q) return true;
@@ -59,7 +74,7 @@ function Page() {
         m.centro.toLowerCase().includes(q)
       );
     });
-  }, [search, periodo, status, tipo]);
+  }, [items, search, periodo, status, tipo]);
 
   const totais = useMemo(() => {
     let entradas = 0;

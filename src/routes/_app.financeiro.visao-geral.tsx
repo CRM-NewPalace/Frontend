@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -10,17 +10,19 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { ApiError } from "@/lib/api";
+import { fetchVisaoGeral } from "@/lib/financeiro-api";
 import {
-  MOCK_CENTROS,
-  MOCK_MESES_RESUMO,
-  VISAO_GERAL_KPIS,
   brl,
+  type CentroDespesaResumo,
+  type MesResumo,
   type PeriodoFiltro,
 } from "@/lib/financeiro-mock";
 import {
   ArrowDownRight,
   ArrowUpRight,
   Banknote,
+  Loader2,
   Plus,
   TrendingUp,
   Wallet,
@@ -40,7 +42,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/_app/financeiro/visao-geral")({
-  head: () => ({ meta: [{ title: "Visão geral — Zone Connection" }] }),
+  head: () => ({ meta: [{ title: "Visao geral - Zone Connection" }] }),
   component: Page,
 });
 
@@ -58,6 +60,18 @@ const pieColors = [
   "hsl(215 20% 55%)",
 ];
 
+const EMPTY_KPIS = {
+  saldoAtual: 0,
+  receitasMes: 0,
+  despesasMes: 0,
+  aReceber: 0,
+  aPagar: 0,
+  resultadoMes: 0,
+  evolucaoReceitas: null as number | null,
+  evolucaoDespesas: null as number | null,
+  evolucaoResultado: null as number | null,
+};
+
 function ResponsiveChartShell({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
@@ -68,8 +82,39 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 
 function Page() {
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
-  const k = VISAO_GERAL_KPIS;
+  const [loading, setLoading] = useState(true);
+  const [kpis, setKpis] = useState(EMPTY_KPIS);
+  const [mesesResumo, setMesesResumo] = useState<MesResumo[]>([]);
+  const [centros, setCentros] = useState<CentroDespesaResumo[]>([]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchVisaoGeral();
+        if (cancelled) return;
+        setKpis(data.kpis);
+        setMesesResumo(data.mesesResumo);
+        setCentros(data.centros);
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(
+            err instanceof ApiError
+              ? err.message
+              : "Nao foi possivel carregar a visao geral.",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const k = kpis;
   const fator =
     periodo === "trimestre"
       ? 2.8
@@ -81,29 +126,29 @@ function Page() {
 
   const pieData = useMemo(
     () =>
-      MOCK_CENTROS.map((c) => ({
+      centros.map((c) => ({
         name: c.centro,
         value: Math.round(c.realizado * fator),
       })),
-    [fator],
+    [centros, fator],
   );
 
   return (
     <div>
       <PageHeader
-        title="Visão geral"
-        description="Resumo financeiro da imobiliária"
+        title="Visao geral"
+        description="Resumo financeiro da imobiliaria"
         actions={
           <Button
             onClick={() =>
               toast.message("Em breve", {
                 description:
-                  "Disponível quando a API financeira estiver conectada.",
+                  "Cadastro de lancamentos pela tela de movimentacao.",
               })
             }
           >
             <Plus className="w-4 h-4 mr-1" />
-            Novo lançamento
+            Novo lancamento
           </Button>
         }
       />
@@ -114,6 +159,13 @@ function Page() {
         hasActive={periodo !== "mes"}
         onClear={() => setPeriodo("mes")}
       />
+
+      {loading ? (
+        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Carregando indicadores...
+        </div>
+      ) : null}
 
       <section className="grid gap-3 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 mb-6">
         <FinanceKpiCard
@@ -163,12 +215,12 @@ function Page() {
       <div className="grid gap-4 min-w-0 lg:grid-cols-5">
         <Card className="min-w-0 overflow-hidden lg:col-span-3">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Receitas × despesas</CardTitle>
+            <CardTitle className="text-base">Receitas x despesas</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0">
-            {MOCK_MESES_RESUMO.length === 0 ? (
+            {mesesResumo.length === 0 ? (
               <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
-                Sem dados no período.
+                Sem dados no periodo.
               </p>
             ) : (
               <ResponsiveChartShell>
@@ -177,7 +229,7 @@ function Page() {
                   className="aspect-auto! h-70 w-full min-w-120"
                 >
                   <BarChart
-                    data={MOCK_MESES_RESUMO}
+                    data={mesesResumo}
                     margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
                   >
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -192,8 +244,8 @@ function Page() {
                       tickLine={false}
                       axisLine={false}
                       width={48}
-                      tick={{ fontSize: 11 }}
                       tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                      tick={{ fontSize: 11 }}
                     />
                     <ChartTooltip
                       content={
@@ -227,7 +279,7 @@ function Page() {
           <CardContent className="min-w-0">
             {pieData.length === 0 ? (
               <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
-                Sem dados no período.
+                Sem dados no periodo.
               </p>
             ) : (
               <ResponsiveChartShell>

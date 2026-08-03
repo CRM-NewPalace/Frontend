@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ApiError } from "@/lib/api";
+import { fetchFluxoCaixa } from "@/lib/financeiro-api";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -19,11 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  MOCK_FLUXO_CAIXA,
   brl,
   type PeriodoFiltro,
+  type FluxoDia,
 } from "@/lib/financeiro-mock";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { toast } from "sonner";
 import {
   Area,
   AreaChart,
@@ -55,14 +58,27 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 }
 
 function Page() {
+  const [items, setItems] = useState<FluxoDia[]>([]);
+  useEffect(() => {
+    void fetchFluxoCaixa()
+      .then(setItems)
+      .catch((err) =>
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Nao foi possivel carregar fluxo de caixa.",
+        ),
+      );
+  }, []);
+
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
 
   const data = useMemo(() => {
     if (periodo === "mes")
-      return MOCK_FLUXO_CAIXA.filter((d) => d.dia.includes("/07"));
-    if (periodo === "trimestre") return MOCK_FLUXO_CAIXA;
-    return MOCK_FLUXO_CAIXA;
-  }, [periodo]);
+      return items.filter((d) => d.dia.includes("/07"));
+    if (periodo === "trimestre") return items;
+    return items;
+  }, [items, periodo]);
 
   const totais = useMemo(() => {
     const entradas = data.reduce((s, d) => s + d.entradas, 0);

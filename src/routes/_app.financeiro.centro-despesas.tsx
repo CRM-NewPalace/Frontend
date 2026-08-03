@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ApiError } from "@/lib/api";
+import { fetchCentrosDespesa } from "@/lib/financeiro-api";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -20,11 +22,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  MOCK_CENTROS,
   brl,
   type PeriodoFiltro,
+  type CentroDespesaResumo,
 } from "@/lib/financeiro-mock";
 import { FolderKanban, Target } from "lucide-react";
+import { toast } from "sonner";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 export const Route = createFileRoute("/_app/financeiro/centro-despesas")({
@@ -38,6 +41,19 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function Page() {
+  const [items, setItems] = useState<CentroDespesaResumo[]>([]);
+  useEffect(() => {
+    void fetchCentrosDespesa()
+      .then(setItems)
+      .catch((err) =>
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Nao foi possivel carregar centros de despesa.",
+        ),
+      );
+  }, []);
+
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [search, setSearch] = useState("");
 
@@ -46,14 +62,14 @@ function Page() {
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return MOCK_CENTROS.filter((c) =>
+    return items.filter((c) =>
       q ? c.centro.toLowerCase().includes(q) : true,
     ).map((c) => ({
       ...c,
       orcado: Math.round(c.orcado * fator),
       realizado: Math.round(c.realizado * fator),
     }));
-  }, [search, fator]);
+  }, [items, search, fator]);
 
   const totais = useMemo(() => {
     const orcado = rows.reduce((s, r) => s + r.orcado, 0);

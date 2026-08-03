@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ApiError } from "@/lib/api";
+import { fetchTitulos } from "@/lib/financeiro-api";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -14,13 +16,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  MOCK_A_RECEBER,
   brl,
   formatDate,
   statusBadgeClass,
   statusLabel,
   type PeriodoFiltro,
   type StatusTitulo,
+  type TituloFinanceiro,
 } from "@/lib/financeiro-mock";
 import { AlertTriangle, CheckCircle2, Clock3, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -31,14 +33,27 @@ export const Route = createFileRoute("/_app/financeiro/contas-a-receber")({
 });
 
 function Page() {
+  const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [search, setSearch] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("tudo");
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
 
+  useEffect(() => {
+    void fetchTitulos("receber")
+      .then(setItems)
+      .catch((err) =>
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Nao foi possivel carregar contas a receber.",
+        ),
+      );
+  }, []);
+
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     const now = new Date();
-    return MOCK_A_RECEBER.filter((t) => {
+    return items.filter((t) => {
       if (status !== "todos" && t.status !== status) return false;
       if (periodo !== "tudo") {
         const d = new Date(t.vencimento + "T12:00:00");
@@ -69,7 +84,7 @@ function Page() {
         t.categoria.toLowerCase().includes(q)
       );
     });
-  }, [search, periodo, status]);
+  }, [items, search, periodo, status]);
 
   const kpis = useMemo(() => {
     const aberto = rows

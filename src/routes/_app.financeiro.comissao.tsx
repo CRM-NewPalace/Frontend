@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ApiError } from "@/lib/api";
+import { fetchComissoes } from "@/lib/financeiro-api";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -21,12 +23,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  MOCK_COMISSOES,
   brl,
   formatDate,
   statusBadgeClass,
   statusLabel,
   type PeriodoFiltro,
+  type ComissaoItem,
 } from "@/lib/financeiro-mock";
 import { Banknote, CheckCircle2, Clock3, Percent, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -44,23 +46,36 @@ const STATUS_COMISSAO = [
 ];
 
 function Page() {
+  const [items, setItems] = useState<ComissaoItem[]>([]);
   const [search, setSearch] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [status, setStatus] = useState("todos");
   const [equipe, setEquipe] = useState("todos");
 
   const equipeOptions = useMemo(() => {
-    const set = new Set(MOCK_COMISSOES.map((c) => c.equipe));
+    const set = new Set(items.map((c) => c.equipe));
     return [
       { value: "todos", label: "Todas as equipes" },
       ...[...set].sort().map((e) => ({ value: e, label: e })),
     ];
-  }, []);
+  }, [items]);
+
+  useEffect(() => {
+    void fetchComissoes()
+      .then(setItems)
+      .catch((err) =>
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Nao foi possivel carregar comissoes.",
+        ),
+      );
+  }, [items]);
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     const now = new Date();
-    return MOCK_COMISSOES.filter((c) => {
+    return items.filter((c) => {
       if (status !== "todos" && c.status !== status) return false;
       if (equipe !== "todos" && c.equipe !== equipe) return false;
       if (periodo !== "tudo") {
@@ -88,7 +103,7 @@ function Page() {
         c.empreendimento.toLowerCase().includes(q)
       );
     });
-  }, [search, periodo, status, equipe]);
+  }, [items, search, periodo, status, equipe]);
 
   const kpis = useMemo(() => {
     const total = rows.reduce((s, r) => s + r.valor, 0);
