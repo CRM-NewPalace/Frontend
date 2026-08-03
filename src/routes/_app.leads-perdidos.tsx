@@ -42,6 +42,7 @@ import {
 } from "@/lib/lost-leads-cache";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
 import { useCatalog } from "@/lib/catalog-store";
+import { displayEmail } from "@/lib/email";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/leads-perdidos")({
@@ -262,7 +263,10 @@ function LeadsPerdidos() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Telefone" value={detail.telefone} />
-                  <DetailField label="E-mail" value={detail.email} />
+                  <DetailField
+                    label="E-mail"
+                    value={displayEmail(detail.email) || "—"}
+                  />
                   <DetailField label="Origem" value={detail.origem} />
                   <DetailField label="Corretor" value={detail.corretor} />
                 </div>

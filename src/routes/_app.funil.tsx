@@ -84,6 +84,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { displayEmail } from "@/lib/email";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Análise pendente",
@@ -639,7 +640,10 @@ function ComercialFunilBoard() {
                     }
                   />
                   <DetailField label="Telefone" value={detailLead.telefone} />
-                  <DetailField label="E-mail" value={detailLead.email} />
+                  <DetailField
+                    label="E-mail"
+                    value={displayEmail(detailLead.email) || "—"}
+                  />
                   <DetailField label="Origem" value={detailLead.origem} />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detailLead.corretor} />

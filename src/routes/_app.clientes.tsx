@@ -58,6 +58,7 @@ import {
   PHONE_INVALID_MESSAGE,
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
+import { displayEmail, isPlaceholderEmail } from "@/lib/email";
 import {
   Plus,
   MoreHorizontal,
@@ -112,7 +113,7 @@ function leadToForm(lead: Lead): FormState {
   return {
     nome: lead.nome,
     telefone: formatPhone(lead.telefone),
-    email: lead.email,
+    email: isPlaceholderEmail(lead.email) ? "" : lead.email,
     origem: lead.origem,
     interesse: lead.interesse,
     renda: lead.renda != null ? String(lead.renda) : "",
@@ -376,9 +377,11 @@ function Clientes() {
                     </Avatar>
                     <div>
                       <div className="text-sm font-medium">{l.nome}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {l.email}
-                      </div>
+                      {displayEmail(l.email) ? (
+                        <div className="text-xs text-muted-foreground">
+                          {displayEmail(l.email)}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </TableCell>
@@ -748,7 +751,10 @@ function Clientes() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Telefone" value={detail.telefone} />
-                  <DetailField label="E-mail" value={detail.email} />
+                  <DetailField
+                    label="E-mail"
+                    value={displayEmail(detail.email) || "—"}
+                  />
                   <DetailField label="Origem" value={detail.origem} />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detail.corretor} />

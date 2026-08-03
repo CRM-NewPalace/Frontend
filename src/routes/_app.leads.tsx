@@ -92,6 +92,7 @@ import {
   PHONE_INVALID_MESSAGE,
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
+import { displayEmail, isPlaceholderEmail } from "@/lib/email";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -146,7 +147,7 @@ function leadToForm(lead: Lead): FormState {
   return {
     nome: lead.nome,
     telefone: formatPhone(lead.telefone),
-    email: lead.email,
+    email: isPlaceholderEmail(lead.email) ? "" : lead.email,
     origem: lead.origem,
     interesse: lead.interesse,
     cidade: lead.cidade,
@@ -1126,7 +1127,10 @@ function LeadsPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <DetailField label="Telefone" value={detailLead.telefone} />
-                  <DetailField label="E-mail" value={detailLead.email} />
+                  <DetailField
+                    label="E-mail"
+                    value={displayEmail(detailLead.email) || "—"}
+                  />
                   <DetailField label="Origem" value={detailLead.origem} />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detailLead.corretor} />
@@ -1649,11 +1653,19 @@ function LeadsPage() {
                           size="icon"
                           className="h-7 w-7"
                           title="E-mail"
-                          onClick={() =>
+                          disabled={!displayEmail(l.email)}
+                          onClick={() => {
+                            const email = displayEmail(l.email);
+                            if (!email) {
+                              toast.message(`E-mail — ${l.nome}`, {
+                                description: "Sem e-mail cadastrado",
+                              });
+                              return;
+                            }
                             toast.message(`E-mail — ${l.nome}`, {
-                              description: l.email,
-                            })
-                          }
+                              description: email,
+                            });
+                          }}
                         >
                           <Mail className="w-3.5 h-3.5" />
                         </Button>

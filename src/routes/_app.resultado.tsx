@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { phoneDigits } from "@/lib/phone";
+import { displayEmail } from "@/lib/email";
 
 export const Route = createFileRoute("/_app/resultado")({
   head: () => ({ meta: [{ title: "Análise — Zone Connection" }] }),
@@ -406,7 +407,10 @@ function AnalisePage() {
                 title="Cadastro"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <DetailField label="E-mail" value={detail.email} />
+                  <DetailField
+                    label="E-mail"
+                    value={displayEmail(detail.email) || "—"}
+                  />
                   <DetailField label="Telefone" value={detail.telefone} />
                   <DetailField label="Origem" value={detail.origem} />
                   <DetailField label="Interesse" value={detail.interesse} />
