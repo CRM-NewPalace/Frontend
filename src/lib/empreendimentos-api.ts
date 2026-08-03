@@ -15,7 +15,7 @@ export type Empreendimento = {
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
-  construtora: { id: string; nome: string } | null;
+  construtora: { id: string; nome: string; cor: string | null } | null;
 };
 
 export type SyncEmpreendimentosResult = {

@@ -44,7 +44,7 @@ export interface Analise {
       equipe: { gerente: { id: string; name: string } } | null;
     } | null;
     construtoraId: string | null;
-    construtora: { id: string; nome: string } | null;
+    construtora: { id: string; nome: string; cor: string | null } | null;
     empreendimentoId: string | null;
     empreendimento: { id: string; nome: string; cidade: string | null } | null;
   };

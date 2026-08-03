@@ -58,7 +58,7 @@ export type Proposta = {
   updatedAt: string;
   autor: { id: string; name: string };
   corretor: { id: string; name: string } | null;
-  construtora: { id: string; nome: string } | null;
+  construtora: { id: string; nome: string; cor: string | null } | null;
   empreendimento: { id: string; nome: string; cidade: string | null } | null;
   lead: {
     id: string;

@@ -54,7 +54,7 @@ export interface Documentacao {
   createdAt: string;
   updatedAt: string;
   autor: { id: string; name: string };
-  construtora: { id: string; nome: string } | null;
+  construtora: { id: string; nome: string; cor: string | null } | null;
   empreendimento: { id: string; nome: string; cidade: string | null } | null;
   corretor: { id: string; name: string } | null;
   gerente: { id: string; name: string } | null;

@@ -39,6 +39,8 @@ import {
 } from "@/lib/empreendimentos-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  CONSTRUTORA_CORES_PRESET,
+  construtoraBadgeStyle,
   createConstrutora,
   deleteConstrutora,
   fetchConstrutoras,
@@ -71,6 +73,7 @@ export const Route = createFileRoute("/_app/construtoras")({
 
 type FormState = {
   nome: string;
+  cor: string;
   contato: string;
   endereco: string;
   viabilizadorNome: string;
@@ -79,6 +82,7 @@ type FormState = {
 
 const emptyForm = (): FormState => ({
   nome: "",
+  cor: "",
   contato: "",
   endereco: "",
   viabilizadorNome: "",
@@ -142,6 +146,7 @@ function ConstrutorasPage() {
     setEditingId(item.id);
     setForm({
       nome: item.nome,
+      cor: item.cor ?? "",
       contato: item.contato ? formatPhone(item.contato) : "",
       endereco: item.endereco ?? "",
       viabilizadorNome: item.viabilizadorNome ?? "",
@@ -193,6 +198,7 @@ function ConstrutorasPage() {
 
     const payload = {
       nome: form.nome.trim(),
+      cor: form.cor.trim() || null,
       contato: form.contato.trim() || null,
       endereco: form.endereco.trim() || null,
       viabilizadorNome: form.viabilizadorNome.trim() || null,
@@ -204,6 +210,7 @@ function ConstrutorasPage() {
       if (formMode === "create") {
         await createConstrutora({
           nome: payload.nome,
+          cor: payload.cor,
           contato: payload.contato ?? undefined,
           endereco: payload.endereco ?? undefined,
           viabilizadorNome: payload.viabilizadorNome ?? undefined,
@@ -311,7 +318,19 @@ function ConstrutorasPage() {
               <TableBody>
                 {items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.nome}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.cor ? (
+                        <Badge
+                          variant="secondary"
+                          className="border-transparent font-medium"
+                          style={construtoraBadgeStyle(item.cor)}
+                        >
+                          {item.nome}
+                        </Badge>
+                      ) : (
+                        item.nome
+                      )}
+                    </TableCell>
                     <TableCell>{item.contato || "—"}</TableCell>
                     <TableCell>
                       {item.viabilizadorNome ? (
@@ -402,6 +421,60 @@ function ConstrutorasPage() {
                     disabled={readOnly}
                     required
                   />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="cor">Cor do nome</Label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      id="cor"
+                      type="color"
+                      value={form.cor || "#3b82f6"}
+                      onChange={(e) => setField("cor", e.target.value)}
+                      disabled={readOnly}
+                      className="h-10 w-14 cursor-pointer p-1"
+                    />
+                    <Input
+                      value={form.cor}
+                      onChange={(e) => setField("cor", e.target.value)}
+                      disabled={readOnly}
+                      placeholder="#3b82f6"
+                      maxLength={7}
+                      className="max-w-[140px] font-mono text-sm"
+                    />
+                    {!readOnly ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setField("cor", "")}
+                      >
+                        Limpar
+                      </Button>
+                    ) : null}
+                    {form.nome.trim() && form.cor ? (
+                      <Badge
+                        variant="secondary"
+                        className="border-transparent"
+                        style={construtoraBadgeStyle(form.cor)}
+                      >
+                        {form.nome.trim()}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {!readOnly ? (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {CONSTRUTORA_CORES_PRESET.map((hex) => (
+                        <button
+                          key={hex}
+                          type="button"
+                          title={hex}
+                          className="h-6 w-6 rounded-md border border-border"
+                          style={{ backgroundColor: hex }}
+                          onClick={() => setField("cor", hex)}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contato">

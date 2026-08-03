@@ -94,6 +94,8 @@ import {
   type ParsedImportDoc,
 } from "@/lib/documentacao-io";
 import {
+  CONSTRUTORA_CORES_PRESET,
+  construtoraBadgeStyle,
   createConstrutora,
   fetchConstrutoras,
   type Construtora,
@@ -315,6 +317,7 @@ function DocumentacaoPage() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickNome, setQuickNome] = useState("");
   const [quickContato, setQuickContato] = useState("");
+  const [quickCor, setQuickCor] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
 
   const [empOpen, setEmpOpen] = useState(false);
@@ -969,12 +972,14 @@ function DocumentacaoPage() {
       const created = await createConstrutora({
         nome: quickNome.trim(),
         contato: quickContato.trim() || undefined,
+        cor: quickCor.trim() || undefined,
       });
       await loadLookups();
       setField("construtoraId", created.id);
       setQuickOpen(false);
       setQuickNome("");
       setQuickContato("");
+      setQuickCor("");
       toast.success("Construtora criada.");
     } catch (err) {
       toast.error(
@@ -1719,7 +1724,19 @@ function DocumentacaoPage() {
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>{doc.construtora?.nome ?? "—"}</TableCell>
+                    <TableCell>
+                      {doc.construtora?.nome ? (
+                        <Badge
+                          variant="secondary"
+                          className="border-transparent font-medium"
+                          style={construtoraBadgeStyle(doc.construtora.cor)}
+                        >
+                          {doc.construtora.nome}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell>{doc.empreendimento?.nome ?? "—"}</TableCell>
                     <TableCell>
                       <div className="space-y-1">
@@ -1944,6 +1961,23 @@ function DocumentacaoPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {(() => {
+                    const selected = construtoras.find(
+                      (c) => c.id === form.construtoraId,
+                    );
+                    if (!selected?.nome) return null;
+                    return (
+                      <div className="pt-1">
+                        <Badge
+                          variant="secondary"
+                          className="border-transparent"
+                          style={construtoraBadgeStyle(selected.cor)}
+                        >
+                          {selected.nome}
+                        </Badge>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-2">
@@ -2231,6 +2265,46 @@ function DocumentacaoPage() {
                   onChange={(e) => setQuickContato(formatPhone(e.target.value))}
                   maxLength={15}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quickCor">Cor do nome</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    id="quickCor"
+                    type="color"
+                    value={quickCor || "#3b82f6"}
+                    onChange={(e) => setQuickCor(e.target.value)}
+                    className="h-10 w-14 cursor-pointer p-1"
+                  />
+                  <Input
+                    value={quickCor}
+                    onChange={(e) => setQuickCor(e.target.value)}
+                    placeholder="#3b82f6"
+                    maxLength={7}
+                    className="max-w-[140px] font-mono text-sm"
+                  />
+                  {quickNome.trim() && quickCor ? (
+                    <Badge
+                      variant="secondary"
+                      className="border-transparent"
+                      style={construtoraBadgeStyle(quickCor)}
+                    >
+                      {quickNome.trim()}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {CONSTRUTORA_CORES_PRESET.map((hex) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      title={hex}
+                      className="h-6 w-6 rounded-md border border-border"
+                      style={{ backgroundColor: hex }}
+                      onClick={() => setQuickCor(hex)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </FormDialogBody>
