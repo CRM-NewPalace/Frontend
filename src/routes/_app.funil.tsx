@@ -63,11 +63,11 @@ import {
 } from "@/lib/analise-api";
 import {
   createDocumentacao,
-  FONTE_LABELS,
+  DEFAULT_DOCUMENTACAO_FONTES,
   DEFAULT_STATUS1,
   DEFAULT_STATUS2,
-  type DocumentacaoFonte,
 } from "@/lib/documentacao-api";
+import { nextCatalogColor } from "@/lib/catalog-colors";
 import {
   Clock,
   User,
@@ -1080,17 +1080,40 @@ const ANALISTA_COLUMNS: {
 
 function AnalistaFunilBoard() {
   const navigate = useNavigate();
+  const {
+    documentacaoFontes,
+    documentacaoStatus1,
+    documentacaoStatus2,
+    addItem,
+  } = useCatalog();
+  const fonteOptions =
+    documentacaoFontes.length > 0
+      ? documentacaoFontes
+      : [...DEFAULT_DOCUMENTACAO_FONTES];
+  const status1Options =
+    documentacaoStatus1.length > 0
+      ? documentacaoStatus1
+      : [...DEFAULT_STATUS1];
+  const status2Options =
+    documentacaoStatus2.length > 0
+      ? documentacaoStatus2
+      : [...DEFAULT_STATUS2];
+
   const [items, setItems] = useState<Analise[]>([]);
   const [loading, setLoading] = useState(true);
   const [docPrompt, setDocPrompt] = useState<Analise | null>(null);
   const [docOpen, setDocOpen] = useState(false);
   const [docTarget, setDocTarget] = useState<Analise | null>(null);
   const [docSaving, setDocSaving] = useState(false);
-  const [docFonte, setDocFonte] = useState<DocumentacaoFonte>("outro");
-  const [docStatus1, setDocStatus1] = useState<string>("Análise");
-  const [docStatus2, setDocStatus2] = useState<string>("Andamento");
+  const [docFonte, setDocFonte] = useState("Outro");
+  const [docStatus1, setDocStatus1] = useState("Análise");
+  const [docStatus2, setDocStatus2] = useState("Andamento");
   const [docObs, setDocObs] = useState("");
-  const [docVgv, setDocVgv] = useState("");
+  const [quickCatalogOpen, setQuickCatalogOpen] = useState<
+    null | "documentacao_fonte" | "documentacao_status1" | "documentacao_status2"
+  >(null);
+  const [quickCatalogLabel, setQuickCatalogLabel] = useState("");
+  const [quickCatalogSaving, setQuickCatalogSaving] = useState(false);
   const [parecerTarget, setParecerTarget] = useState<Analise | null>(null);
   const [parecerStatus, setParecerStatus] = useState<AnaliseStatus>("aprovado");
   const [parecerTexto, setParecerTexto] = useState("");
@@ -1130,19 +1153,66 @@ function AnalistaFunilBoard() {
 
   function openDocForm(item: Analise) {
     setDocTarget(item);
-    setDocFonte("outro");
-    setDocStatus1("analise");
-    setDocStatus2("andamento");
+    setDocFonte(
+      fonteOptions.includes("Outro")
+        ? "Outro"
+        : (fonteOptions[0] ?? "Outro"),
+    );
+    setDocStatus1(
+      status1Options.includes("Análise")
+        ? "Análise"
+        : (status1Options[0] ?? "Análise"),
+    );
+    setDocStatus2(
+      status2Options.includes("Andamento")
+        ? "Andamento"
+        : (status2Options[0] ?? "Andamento"),
+    );
     setDocObs("");
-    setDocVgv("");
     setDocOpen(true);
+  }
+
+  async function saveQuickCatalog() {
+    if (!quickCatalogOpen) return;
+    const label = quickCatalogLabel.trim();
+    if (!label) {
+      toast.error("Informe um nome.");
+      return;
+    }
+    setQuickCatalogSaving(true);
+    try {
+      const count =
+        quickCatalogOpen === "documentacao_fonte"
+          ? fonteOptions.length
+          : quickCatalogOpen === "documentacao_status1"
+            ? status1Options.length
+            : status2Options.length;
+      await addItem({
+        type: quickCatalogOpen,
+        label,
+        color: nextCatalogColor(count),
+      });
+      if (quickCatalogOpen === "documentacao_fonte") setDocFonte(label);
+      if (quickCatalogOpen === "documentacao_status1") setDocStatus1(label);
+      if (quickCatalogOpen === "documentacao_status2") setDocStatus2(label);
+      setQuickCatalogOpen(null);
+      setQuickCatalogLabel("");
+      toast.success(`"${label}" adicionado.`);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível adicionar.",
+      );
+    } finally {
+      setQuickCatalogSaving(false);
+    }
   }
 
   async function saveDoc() {
     if (!docTarget) return;
     setDocSaving(true);
     try {
-      const vgvDigits = docVgv.replace(/\D/g, "");
       await createDocumentacao({
         leadId: docTarget.leadId,
         nome: docTarget.nome,
@@ -1152,7 +1222,7 @@ function AnalistaFunilBoard() {
         status1: docStatus1,
         status2: docStatus2,
         corretorId: docTarget.lead.corretorId,
-        vgv: vgvDigits ? Number(vgvDigits) : null,
+        vgv: null,
         obs: docObs.trim() || null,
         dataAnalise: new Date().toISOString().slice(0, 10),
       });
@@ -1322,36 +1392,28 @@ function AnalistaFunilBoard() {
           <FormSection title="Dados restantes">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Fonte</Label>
-                <Select
-                  value={docFonte}
-                  onValueChange={(v) => setDocFonte(v as DocumentacaoFonte)}
-                >
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Fonte</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setQuickCatalogLabel("");
+                      setQuickCatalogOpen("documentacao_fonte");
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Nova
+                  </Button>
+                </div>
+                <Select value={docFonte} onValueChange={setDocFonte}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(FONTE_LABELS) as DocumentacaoFonte[]).map(
-                      (k) => (
-                        <SelectItem key={k} value={k}>
-                          {FONTE_LABELS[k]}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Status 1</Label>
-                <Select
-                  value={docStatus1}
-                  onValueChange={setDocStatus1}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_STATUS1.map((label) => (
+                    {fonteOptions.map((label) => (
                       <SelectItem key={label} value={label}>
                         {label}
                       </SelectItem>
@@ -1360,16 +1422,28 @@ function AnalistaFunilBoard() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Status 2</Label>
-                <Select
-                  value={docStatus2}
-                  onValueChange={setDocStatus2}
-                >
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Status 1</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setQuickCatalogLabel("");
+                      setQuickCatalogOpen("documentacao_status1");
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Novo
+                  </Button>
+                </div>
+                <Select value={docStatus1} onValueChange={setDocStatus1}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEFAULT_STATUS2.map((label) => (
+                    {status1Options.map((label) => (
                       <SelectItem key={label} value={label}>
                         {label}
                       </SelectItem>
@@ -1378,12 +1452,34 @@ function AnalistaFunilBoard() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>VGV (R$)</Label>
-                <Input
-                  inputMode="numeric"
-                  value={docVgv}
-                  onChange={(e) => setDocVgv(e.target.value)}
-                />
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Status 2</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setQuickCatalogLabel("");
+                      setQuickCatalogOpen("documentacao_status2");
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Novo
+                  </Button>
+                </div>
+                <Select value={docStatus2} onValueChange={setDocStatus2}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {status2Options.map((label) => (
+                      <SelectItem key={label} value={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>OBS</Label>
@@ -1457,6 +1553,59 @@ function AnalistaFunilBoard() {
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               )}
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(quickCatalogOpen)}
+        onOpenChange={(o) => !o && setQuickCatalogOpen(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {quickCatalogOpen === "documentacao_fonte"
+                ? "Nova fonte"
+                : quickCatalogOpen === "documentacao_status1"
+                  ? "Novo status 1"
+                  : "Novo status 2"}
+            </DialogTitle>
+            <DialogDescription>
+              O item fica disponível na fila do analista e em Configurações.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Nome</Label>
+            <Input
+              value={quickCatalogLabel}
+              onChange={(e) => setQuickCatalogLabel(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void saveQuickCatalog();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQuickCatalogOpen(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={quickCatalogSaving}
+              onClick={() => void saveQuickCatalog()}
+            >
+              {quickCatalogSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Adicionar
             </Button>
           </DialogFooter>
         </DialogContent>

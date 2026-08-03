@@ -66,6 +66,9 @@ type CatalogContextValue = {
   origens: string[];
   motivos: string[];
   tags: string[];
+  documentacaoFontes: string[];
+  documentacaoStatus1: string[];
+  documentacaoStatus2: string[];
   /** Cor Tailwind do item pelo label; fallback neutro se não houver. */
   colorByLabel: (type: CatalogType, label: string) => string;
   addItem: (input: CreateCatalogInput) => Promise<CatalogItem>;
@@ -80,6 +83,9 @@ const emptyGrouped = (): GroupedCatalog => ({
   origem: [],
   motivo_perda: [],
   tag: [],
+  documentacao_fonte: [],
+  documentacao_status1: [],
+  documentacao_status2: [],
 });
 
 const CatalogContext = createContext<CatalogContextValue | null>(null);
@@ -151,6 +157,18 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [catalog.motivo_perda],
   );
   const tags = useMemo(() => catalog.tag.map((i) => i.label), [catalog.tag]);
+  const documentacaoFontes = useMemo(
+    () => catalog.documentacao_fonte.map((i) => i.label),
+    [catalog.documentacao_fonte],
+  );
+  const documentacaoStatus1 = useMemo(
+    () => catalog.documentacao_status1.map((i) => i.label),
+    [catalog.documentacao_status1],
+  );
+  const documentacaoStatus2 = useMemo(
+    () => catalog.documentacao_status2.map((i) => i.label),
+    [catalog.documentacao_status2],
+  );
 
   const colorByLabel = useCallback(
     (type: CatalogType, label: string) => {
@@ -229,6 +247,9 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       origens,
       motivos,
       tags,
+      documentacaoFontes,
+      documentacaoStatus1,
+      documentacaoStatus2,
       colorByLabel,
       addItem,
       updateItem,
@@ -247,6 +268,9 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       origens,
       motivos,
       tags,
+      documentacaoFontes,
+      documentacaoStatus1,
+      documentacaoStatus2,
       colorByLabel,
       addItem,
       updateItem,

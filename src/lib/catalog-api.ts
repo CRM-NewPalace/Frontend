@@ -1,6 +1,13 @@
 import { apiFetch } from "@/lib/api";
 
-export type CatalogType = "funil_etapa" | "origem" | "motivo_perda" | "tag";
+export type CatalogType =
+  | "funil_etapa"
+  | "origem"
+  | "motivo_perda"
+  | "tag"
+  | "documentacao_fonte"
+  | "documentacao_status1"
+  | "documentacao_status2";
 
 export type FunilEtapaPapel = "inicial" | "analise" | "venda" | "perdido";
 
@@ -38,6 +45,9 @@ const emptyGrouped = (): GroupedCatalog => ({
   origem: [],
   motivo_perda: [],
   tag: [],
+  documentacao_fonte: [],
+  documentacao_status1: [],
+  documentacao_status2: [],
 });
 
 /** Busca todos os tipos agrupados. `activeOnly` filtra itens desativados. */

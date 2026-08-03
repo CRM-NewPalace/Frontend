@@ -1,15 +1,27 @@
 import { apiFetch } from "@/lib/api";
 import type { ContatoTipo, StageId } from "@/lib/crm-types";
 
-export type DocumentacaoFonte =
-  "indicacao" | "lead_proprio" | "lista" | "campanha" | "outro";
+/** Defaults legados (fallback se o catálogo ainda não carregou). */
+export const DEFAULT_DOCUMENTACAO_FONTES = [
+  "Indicação",
+  "Lead próprio",
+  "Lista",
+  "Campanha",
+  "Outro",
+] as const;
 
-export const FONTE_LABELS: Record<DocumentacaoFonte, string> = {
+/** @deprecated Use labels do catálogo; mantido para compat com import/export. */
+export const FONTE_LABELS: Record<string, string> = {
   indicacao: "Indicação",
   lead_proprio: "Lead próprio",
   lista: "Lista",
   campanha: "Campanha",
   outro: "Outro",
+  Indicação: "Indicação",
+  "Lead próprio": "Lead próprio",
+  Lista: "Lista",
+  Campanha: "Campanha",
+  Outro: "Outro",
 };
 
 /** Defaults de Status 1 (crédito/análise). */
@@ -30,7 +42,7 @@ export interface Documentacao {
   nome: string;
   construtoraId: string | null;
   empreendimentoId: string | null;
-  fonte: DocumentacaoFonte;
+  fonte: string;
   status1: string;
   status2: string;
   corretorId: string | null;
@@ -61,7 +73,7 @@ export type CreateDocumentacaoInput = {
   nome: string;
   construtoraId?: string | null;
   empreendimentoId?: string | null;
-  fonte: DocumentacaoFonte;
+  fonte: string;
   status1: string;
   status2: string;
   corretorId?: string | null;
@@ -108,4 +120,9 @@ export async function deleteDocumentacao(id: string): Promise<void> {
   await apiFetch<{ ok: boolean }>(`/documentacao/${id}`, {
     method: "DELETE",
   });
+}
+
+/** Normaliza valor de fonte (slug legado ou label) para o label exibido. */
+export function displayFonte(fonte: string): string {
+  return FONTE_LABELS[fonte] ?? fonte;
 }

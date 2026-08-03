@@ -34,7 +34,13 @@ export const Route = createFileRoute("/_app/configuracoes")({
   component: Config,
 });
 
-type ListKind = "origens" | "motivos" | "tags";
+type ListKind =
+  | "origens"
+  | "motivos"
+  | "tags"
+  | "docFontes"
+  | "docStatus1"
+  | "docStatus2";
 
 const LIST_META: Record<
   ListKind,
@@ -57,6 +63,24 @@ const LIST_META: Record<
     singular: "tag",
     addLabel: "Adicionar tag",
     type: "tag",
+  },
+  docFontes: {
+    title: "Fontes da documentação",
+    singular: "fonte",
+    addLabel: "Adicionar fonte",
+    type: "documentacao_fonte",
+  },
+  docStatus1: {
+    title: "Status 1 (análise)",
+    singular: "status 1",
+    addLabel: "Adicionar status 1",
+    type: "documentacao_status1",
+  },
+  docStatus2: {
+    title: "Status 2 (comercial)",
+    singular: "status 2",
+    addLabel: "Adicionar status 2",
+    type: "documentacao_status2",
   },
 };
 
@@ -126,12 +150,7 @@ function Config() {
   const [editColor, setEditColor] = useState<string>(DEFAULT_CATALOG_COLOR);
 
   function openAddList(kind: ListKind) {
-    const count =
-      kind === "origens"
-        ? catalog.origem.length
-        : kind === "motivos"
-          ? catalog.motivo_perda.length
-          : catalog.tag.length;
+    const count = catalog[LIST_META[kind].type].length;
     setListKind(kind);
     setListValue("");
     setListColor(nextCatalogColor(count));
@@ -214,13 +233,16 @@ function Config() {
     origens: catalog.origem,
     motivos: catalog.motivo_perda,
     tags: catalog.tag,
+    docFontes: catalog.documentacao_fonte,
+    docStatus1: catalog.documentacao_status1,
+    docStatus2: catalog.documentacao_status2,
   };
 
   return (
     <div>
       <PageHeader
         title="Configurações"
-        description="Personalize funil, origens, motivos de perda e tags."
+        description="Personalize funil, documentação do analista, origens, motivos e tags."
       />
 
       {error && (
@@ -230,8 +252,9 @@ function Config() {
       )}
 
       <Tabs defaultValue="funil">
-        <TabsList>
+        <TabsList className="flex h-auto flex-wrap gap-1">
           <TabsTrigger value="funil">Funil</TabsTrigger>
+          <TabsTrigger value="documentacao">Documentação</TabsTrigger>
           <TabsTrigger value="origens">Origens</TabsTrigger>
           <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
@@ -241,7 +264,72 @@ function Config() {
           <ConfigFunisPanel />
         </TabsContent>
 
-        {(Object.keys(LIST_META) as ListKind[]).map((kind) => (
+        <TabsContent value="documentacao" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Opções usadas no formulário rápido do analista e na tela
+            Documentação. Crie fontes e status para seleção rápida.
+          </p>
+          {(["docFontes", "docStatus1", "docStatus2"] as ListKind[]).map(
+            (kind) => (
+              <Card key={kind}>
+                <CardHeader className="flex-row justify-between items-center">
+                  <CardTitle className="text-base">
+                    {LIST_META[kind].title}
+                  </CardTitle>
+                  <Button size="sm" onClick={() => openAddList(kind)}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Adicionar
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {loading && (
+                    <p className="text-sm text-muted-foreground">Carregando…</p>
+                  )}
+                  {!loading && listItemsByKind[kind].length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum item cadastrado.
+                    </p>
+                  )}
+                  {listItemsByKind[kind].map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40"
+                    >
+                      <Badge
+                        className={cn(
+                          "text-sm py-1 px-3",
+                          item.color ?? DEFAULT_CATALOG_COLOR,
+                        )}
+                      >
+                        {item.label}
+                      </Badge>
+                      <div className="ml-auto flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditItem(item)}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => handleRemoveItem(item)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ),
+          )}
+        </TabsContent>
+
+        {(["origens", "motivos", "tags"] as ListKind[]).map((kind) => (
           <TabsContent key={kind} value={kind}>
             <Card>
               <CardHeader className="flex-row justify-between items-center">

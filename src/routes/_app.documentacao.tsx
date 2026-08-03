@@ -77,12 +77,12 @@ import {
   deleteDocumentacao,
   fetchDocumentacoes,
   updateDocumentacao,
-  FONTE_LABELS,
+  DEFAULT_DOCUMENTACAO_FONTES,
   DEFAULT_STATUS1,
   DEFAULT_STATUS2,
+  displayFonte,
   type CreateDocumentacaoInput,
   type Documentacao,
-  type DocumentacaoFonte,
 } from "@/lib/documentacao-api";
 import {
   dedupeImportDocs,
@@ -143,7 +143,7 @@ type FormState = {
   nome: string;
   construtoraId: string;
   empreendimentoId: string;
-  fonte: DocumentacaoFonte;
+  fonte: string;
   status1: string;
   status2: string;
   corretorId: string;
@@ -162,7 +162,7 @@ const emptyForm = (): FormState => ({
   nome: "",
   construtoraId: "",
   empreendimentoId: "",
-  fonte: "outro",
+  fonte: "Outro",
   status1: "Análise",
   status2: "Andamento",
   corretorId: "",
@@ -242,7 +242,20 @@ function DocumentacaoPage() {
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
   const { leads, assignees, loading: leadsLoading, addLead } = useLeads();
-  const { funnelStages, defaultStageId, origens } = useCatalog();
+  const { funnelStages, defaultStageId, origens, documentacaoFontes, documentacaoStatus1, documentacaoStatus2, addItem } =
+    useCatalog();
+  const fonteCatalog =
+    documentacaoFontes.length > 0
+      ? documentacaoFontes
+      : [...DEFAULT_DOCUMENTACAO_FONTES];
+  const status1Catalog =
+    documentacaoStatus1.length > 0
+      ? documentacaoStatus1
+      : [...DEFAULT_STATUS1];
+  const status2Catalog =
+    documentacaoStatus2.length > 0
+      ? documentacaoStatus2
+      : [...DEFAULT_STATUS2];
   const canQuickCreateEmpreendimento =
     user?.role === "admin" || user?.role === "gerente";
   const canCreateStatus = true;
@@ -374,23 +387,32 @@ function DocumentacaoPage() {
 
   const status1Options = useMemo(() => {
     const set = new Set<string>([
-      ...DEFAULT_STATUS1,
+      ...status1Catalog,
       ...extraStatus1,
       ...items.map((i) => i.status1).filter(Boolean),
       form.status1,
     ]);
     return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [extraStatus1, items, form.status1]);
+  }, [status1Catalog, extraStatus1, items, form.status1]);
 
   const status2Options = useMemo(() => {
     const set = new Set<string>([
-      ...DEFAULT_STATUS2,
+      ...status2Catalog,
       ...extraStatus2,
       ...items.map((i) => i.status2).filter(Boolean),
       form.status2,
     ]);
     return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [extraStatus2, items, form.status2]);
+  }, [status2Catalog, extraStatus2, items, form.status2]);
+
+  const fonteOptions = useMemo(() => {
+    const set = new Set<string>([
+      ...fonteCatalog,
+      ...items.map((i) => displayFonte(i.fonte)).filter(Boolean),
+      displayFonte(form.fonte),
+    ]);
+    return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [fonteCatalog, items, form.fonte]);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -445,7 +467,7 @@ function DocumentacaoPage() {
       if (filterStatus2 !== "__all__" && doc.status2 !== filterStatus2) {
         return false;
       }
-      if (filterFonte !== "__all__" && doc.fonte !== filterFonte) {
+      if (filterFonte !== "__all__" && displayFonte(doc.fonte) !== filterFonte) {
         return false;
       }
       if (
@@ -486,7 +508,7 @@ function DocumentacaoPage() {
         doc.lead.nome,
         doc.status1,
         doc.status2,
-        FONTE_LABELS[doc.fonte],
+        displayFonte(doc.fonte),
       ]
         .filter(Boolean)
         .join(" ")
@@ -594,7 +616,7 @@ function DocumentacaoPage() {
     if (filterFonte !== "__all__") {
       chips.push({
         id: "fonte",
-        label: `Fonte: ${FONTE_LABELS[filterFonte as DocumentacaoFonte] ?? filterFonte}`,
+        label: `Fonte: ${displayFonte(filterFonte)}`,
         onClear: () => setFilterFonte("__all__"),
       });
     }
@@ -956,14 +978,25 @@ function DocumentacaoPage() {
       toast.error("Informe o nome do status.");
       return;
     }
-    if (statusOpen === "status1") {
-      setExtraStatus1((prev) =>
-        prev.includes(label) ? prev : [...prev, label],
-      );
-    } else {
-      setExtraStatus2((prev) =>
-        prev.includes(label) ? prev : [...prev, label],
-      );
+    try {
+      await addItem({
+        type:
+          statusOpen === "status1"
+            ? "documentacao_status1"
+            : "documentacao_status2",
+        label,
+      });
+    } catch {
+      // se já existir no catálogo, segue só selecionando
+      if (statusOpen === "status1") {
+        setExtraStatus1((prev) =>
+          prev.includes(label) ? prev : [...prev, label],
+        );
+      } else {
+        setExtraStatus2((prev) =>
+          prev.includes(label) ? prev : [...prev, label],
+        );
+      }
     }
     setField(statusOpen, label);
     setStatusOpen(null);
@@ -1405,11 +1438,9 @@ function DocumentacaoPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__all__">Todas</SelectItem>
-                              {(
-                                Object.keys(FONTE_LABELS) as DocumentacaoFonte[]
-                              ).map((k) => (
-                                <SelectItem key={k} value={k}>
-                                  {FONTE_LABELS[k]}
+                              {fonteOptions.map((label) => (
+                                <SelectItem key={label} value={label}>
+                                  {label}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1874,22 +1905,18 @@ function DocumentacaoPage() {
                   <Label>Fonte</Label>
                   <Select
                     value={form.fonte}
-                    onValueChange={(v) =>
-                      setField("fonte", v as DocumentacaoFonte)
-                    }
+                    onValueChange={(v) => setField("fonte", v)}
                     disabled={readOnly}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(FONTE_LABELS) as DocumentacaoFonte[]).map(
-                        (k) => (
-                          <SelectItem key={k} value={k}>
-                            {FONTE_LABELS[k]}
-                          </SelectItem>
-                        ),
-                      )}
+                      {fonteOptions.map((label) => (
+                        <SelectItem key={label} value={label}>
+                          {label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

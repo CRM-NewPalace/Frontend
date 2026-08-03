@@ -2,9 +2,9 @@ import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
+  displayFonte,
   FONTE_LABELS,
   type Documentacao,
-  type DocumentacaoFonte,
 } from "@/lib/documentacao-api";
 import { formatPhone, isValidPhone, phoneDigits } from "@/lib/phone";
 
@@ -29,7 +29,7 @@ export type ParsedImportDoc = {
   telefone: string;
   construtoraNome: string;
   empreendimentoNome: string;
-  fonte: DocumentacaoFonte;
+  fonte: string;
   fonteLabel: string;
   status1: string;
   status2: string;
@@ -130,18 +130,15 @@ function formatDayBr(iso: string | null | undefined): string {
   return new Date(day + "T12:00:00").toLocaleDateString("pt-BR");
 }
 
-export function parseFonteLabel(raw: string): DocumentacaoFonte {
+export function parseFonteLabel(raw: string): string {
   const n = normalizeHeader(raw);
-  if (!n) return "outro";
-  for (const [key, label] of Object.entries(FONTE_LABELS) as [
-    DocumentacaoFonte,
-    string,
-  ][]) {
+  if (!n) return "Outro";
+  for (const [key, label] of Object.entries(FONTE_LABELS)) {
     if (normalizeHeader(key) === n || normalizeHeader(label) === n) {
-      return key;
+      return label;
     }
   }
-  return "outro";
+  return raw.trim() || "Outro";
 }
 
 function buildDocFromCells(cells: CellMap): ParsedImportDoc {
@@ -159,7 +156,7 @@ function buildDocFromCells(cells: CellMap): ParsedImportDoc {
     construtoraNome: String(cells.construtora ?? "").trim(),
     empreendimentoNome: String(cells.empreendimento ?? "").trim(),
     fonte,
-    fonteLabel: fonteRaw || FONTE_LABELS[fonte],
+    fonteLabel: fonteRaw || displayFonte(fonte),
     status1,
     status2,
     corretorNome: String(cells.corretor ?? "").trim(),
@@ -244,7 +241,7 @@ function docsToRows(
       phoneRaw ? formatPhone(phoneRaw) : "",
       d.construtora?.nome ?? "",
       d.empreendimento?.nome ?? "",
-      FONTE_LABELS[d.fonte] ?? d.fonte,
+      displayFonte(d.fonte),
       d.status1 || "",
       d.status2 || "",
       d.corretor?.name ?? "",
@@ -334,7 +331,7 @@ export function exportDocumentacoesToPdf(
       d.nome,
       d.construtora?.nome ?? "—",
       d.empreendimento?.nome ?? "—",
-      FONTE_LABELS[d.fonte] ?? d.fonte,
+      displayFonte(d.fonte),
       d.status1,
       d.status2,
       d.corretor?.name ?? "—",
