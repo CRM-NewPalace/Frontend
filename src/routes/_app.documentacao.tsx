@@ -173,6 +173,19 @@ const emptyForm = (): FormState => ({
   obs: "",
 });
 
+function todayDateInput(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isStatusAnaliseLabel(status: string): boolean {
+  return status
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .startsWith("analise");
+}
+
 function toDateInput(value: string | null | undefined): string {
   if (!value) return "";
   return value.slice(0, 10);
@@ -344,6 +357,18 @@ function DocumentacaoPage() {
               email: "",
               status: "ativo" as const,
             }));
+    const fromCorretorEquipe = assignees.flatMap((a) =>
+      a.gerente
+        ? [
+            {
+              id: a.gerente.id,
+              name: a.gerente.name,
+              email: "",
+              status: "ativo" as const,
+            },
+          ]
+        : [],
+    );
     const managerFromDocs = items.flatMap((doc) =>
       doc.gerente
         ? [
@@ -356,7 +381,7 @@ function DocumentacaoPage() {
           ]
         : [],
     );
-    return [...options, ...managerFromDocs].filter(
+    return [...options, ...fromCorretorEquipe, ...managerFromDocs].filter(
       (option, index, all) =>
         all.findIndex((candidate) => candidate.id === option.id) === index,
     );
@@ -422,7 +447,7 @@ function DocumentacaoPage() {
       ]);
       setConstrutoras(c);
       setEmpreendimentos(e);
-      if (isManager) {
+      if (user?.role === "admin") {
         try {
           setGerentes(await fetchEquipeGerentes());
         } catch {
@@ -436,7 +461,7 @@ function DocumentacaoPage() {
           : "Não foi possível carregar construtoras/empreendimentos.",
       );
     }
-  }, [isManager]);
+  }, [user?.role]);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -718,14 +743,30 @@ function DocumentacaoPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function gerenteIdOfCorretor(corretorId: string): string {
+    if (!corretorId) return "";
+    return assignees.find((a) => a.id === corretorId)?.gerenteId ?? "";
+  }
+
   function applyContact(contact: Lead) {
-    setForm((prev) => ({
-      ...prev,
-      nome: contact.nome,
-      corretorId: contact.corretorId ?? prev.corretorId,
-      construtoraId: contact.construtoraId ?? prev.construtoraId,
-      empreendimentoId: contact.empreendimentoId ?? prev.empreendimentoId,
-    }));
+    setForm((prev) => {
+      const corretorId = contact.corretorId ?? prev.corretorId;
+      const gerenteId =
+        gerenteIdOfCorretor(corretorId) || prev.gerenteId;
+      const dataAnalise =
+        prev.dataAnalise ||
+        (isStatusAnaliseLabel(prev.status1) ? todayDateInput() : "");
+      return {
+        ...prev,
+        nome: contact.nome,
+        corretorId,
+        gerenteId,
+        construtoraId: contact.construtoraId ?? prev.construtoraId,
+        empreendimentoId:
+          contact.empreendimentoId ?? prev.empreendimentoId,
+        dataAnalise,
+      };
+    });
   }
 
   function selectContato(id: string) {
@@ -744,8 +785,10 @@ function DocumentacaoPage() {
     setFormMode("create");
     setEditingId(null);
     const base = emptyForm();
+    base.dataAnalise = todayDateInput();
     if (user?.role === "corretor") {
       base.corretorId = user.id;
+      base.gerenteId = gerenteIdOfCorretor(user.id);
     }
     setForm(base);
     setOpen(true);
@@ -1940,7 +1983,16 @@ function DocumentacaoPage() {
                   </div>
                   <Select
                     value={form.status1}
-                    onValueChange={(v) => setField("status1", v)}
+                    onValueChange={(v) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        status1: v,
+                        dataAnalise:
+                          isStatusAnaliseLabel(v) && !prev.dataAnalise
+                            ? todayDateInput()
+                            : prev.dataAnalise,
+                      }));
+                    }}
                     disabled={readOnly}
                   >
                     <SelectTrigger>
@@ -1995,9 +2047,16 @@ function DocumentacaoPage() {
                   <Label>Corretor</Label>
                   <Select
                     value={form.corretorId || "__none__"}
-                    onValueChange={(v) =>
-                      setField("corretorId", v === "__none__" ? "" : v)
-                    }
+                    onValueChange={(v) => {
+                      const corretorId = v === "__none__" ? "" : v;
+                      setForm((prev) => ({
+                        ...prev,
+                        corretorId,
+                        gerenteId: corretorId
+                          ? gerenteIdOfCorretor(corretorId) || prev.gerenteId
+                          : prev.gerenteId,
+                      }));
+                    }}
                     disabled={readOnly}
                   >
                     <SelectTrigger>

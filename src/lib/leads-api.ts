@@ -103,7 +103,14 @@ export function mapApiLead(api: ApiLead): Lead {
   };
 }
 
-export type LeadAssignee = { id: string; name: string; role?: string };
+export type LeadAssignee = {
+  id: string;
+  name: string;
+  role?: string;
+  /** Gerente da equipe do corretor (quando vinculado). */
+  gerenteId?: string | null;
+  gerente?: { id: string; name: string } | null;
+};
 
 /** Usuários ativos para o select de corretor (admin/gerente: equipe; corretor: só ele). */
 export async function fetchLeadAssignees(): Promise<LeadAssignee[]> {

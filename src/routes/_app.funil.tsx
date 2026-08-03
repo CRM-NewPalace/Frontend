@@ -376,11 +376,15 @@ function ComercialFunilBoard() {
       return;
     }
 
-    const { id, nome } = lostTarget;
+    const { id, nome, tipo } = lostTarget;
     setLostTarget(null);
     setLostMotivo("");
     setLostMotivoOutro("");
-    toast.success(`${nome} movido para Leads Perdidos.`);
+    toast.success(
+      tipo === "cliente"
+        ? `${nome} excluído da carteira.`
+        : `${nome} movido para Leads Perdidos.`,
+    );
     try {
       await markLeadLost(id, motivo);
     } catch (err) {
@@ -771,7 +775,9 @@ function ComercialFunilBoard() {
             <AlertDialogTitle>Por que este lead foi perdido?</AlertDialogTitle>
             <AlertDialogDescription>
               {lostTarget
-                ? `${lostTarget.nome} sairá do funil e das listas operacionais, e irá para Leads Perdidos (visível só para o administrador).`
+                ? lostTarget.tipo === "cliente"
+                  ? `${lostTarget.nome} será removido da carteira e do funil. Clientes não vão para Leads Perdidos.`
+                  : `${lostTarget.nome} sairá do funil e das listas operacionais, e irá para Leads Perdidos (visível só para o administrador).`
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
