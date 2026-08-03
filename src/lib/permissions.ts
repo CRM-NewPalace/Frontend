@@ -3,8 +3,8 @@ import { ROUTE_MODULE_KEY } from "@/lib/tenant-modules";
 
 /**
  * Rotas por perfil:
- * - admin: tudo, inclusive financeiro
- * - gerente: operação da equipe + administração limitada, sem financeiro
+ * - admin: operação + financeiro; carteira de clientes só no funil (sem /clientes)
+ * - gerente: operação da equipe; carteira de clientes só no funil (sem /clientes)
  * - corretor: essencial (próprios leads/agenda/clientes)
  * - analista: funil de análise, documentação e resultado (visão global)
  */
@@ -16,7 +16,6 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/funil",
     "/agenda",
     "/imoveis",
-    "/clientes",
     "/corretores",
     "/metas",
     "/triagem",
@@ -38,7 +37,6 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/funil",
     "/agenda",
     "/imoveis",
-    "/clientes",
     "/corretores",
     "/metas",
     "/triagem",

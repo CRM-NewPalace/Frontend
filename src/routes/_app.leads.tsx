@@ -75,6 +75,7 @@ import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { importLeads } from "@/lib/leads-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
@@ -182,7 +183,6 @@ function LeadsPage() {
   const {
     funnelStages,
     origens: origemOptions,
-    motivos: motivoOptions,
     colorByLabel,
   } = useCatalog();
   // Backend atribui a etapa inicial (Novo lead) quando stage é omitido.
@@ -584,11 +584,7 @@ function LeadsPage() {
         ? deleteMotivoOutro.trim()
         : deleteMotivo.trim();
     if (!motivo) {
-      toast.error(
-        motivoOptions.length === 0
-          ? "Informe o motivo da exclusão."
-          : "Selecione o motivo da exclusão.",
-      );
+      toast.error("Selecione ou informe o motivo da exclusão.");
       return;
     }
     try {
@@ -1236,65 +1232,15 @@ function LeadsPage() {
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-3 py-1">
-            {motivoOptions.length > 0 ? (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Motivo
-                  </Label>
-                  <Select value={deleteMotivo} onValueChange={setDeleteMotivo}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Selecione o motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {motivoOptions.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="__outro__">Outro…</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {deleteMotivo === "__outro__" && (
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="motivo-outro"
-                      className="text-xs text-muted-foreground"
-                    >
-                      Descreva o motivo
-                    </Label>
-                    <Input
-                      id="motivo-outro"
-                      value={deleteMotivoOutro}
-                      onChange={(e) => setDeleteMotivoOutro(e.target.value)}
-                      placeholder="Ex.: Cliente sem interesse"
-                      className="h-10"
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="motivo-livre"
-                  className="text-xs text-muted-foreground"
-                >
-                  Motivo
-                </Label>
-                <Input
-                  id="motivo-livre"
-                  value={deleteMotivo}
-                  onChange={(e) => setDeleteMotivo(e.target.value)}
-                  placeholder="Ex.: Cliente sem interesse"
-                  className="h-10"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Cadastre motivos em Configurações para selecionar depois.
-                </p>
-              </div>
-            )}
+          <div className="py-1">
+            <LostMotivoFields
+              value={deleteMotivo}
+              outroValue={deleteMotivoOutro}
+              onChange={setDeleteMotivo}
+              onOutroChange={setDeleteMotivoOutro}
+              selectId="leads-lost-motivo"
+              outroId="motivo-outro"
+            />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

@@ -50,6 +50,7 @@ import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { brl, type Lead } from "@/lib/crm-types";
 import {
   formatPhone,
@@ -152,7 +153,6 @@ function Clientes() {
     funnelStages,
     origens: origemOptions,
     tags: tagOptions,
-    motivos: motivoOptions,
     colorByLabel,
   } = useCatalog();
 
@@ -305,11 +305,7 @@ function Clientes() {
         ? deleteMotivoOutro.trim()
         : deleteMotivo.trim();
     if (!motivo) {
-      toast.error(
-        motivoOptions.length === 0
-          ? "Informe o motivo da exclusão."
-          : "Selecione o motivo da exclusão.",
-      );
+      toast.error("Selecione ou informe o motivo da exclusão.");
       return;
     }
     try {
@@ -842,62 +838,15 @@ function Clientes() {
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-3 py-1">
-            {motivoOptions.length > 0 ? (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Motivo
-                  </Label>
-                  <Select value={deleteMotivo} onValueChange={setDeleteMotivo}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Selecione o motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {motivoOptions.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="__outro__">Outro…</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {deleteMotivo === "__outro__" && (
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="cli-motivo-outro"
-                      className="text-xs text-muted-foreground"
-                    >
-                      Descreva o motivo
-                    </Label>
-                    <Input
-                      id="cli-motivo-outro"
-                      value={deleteMotivoOutro}
-                      onChange={(e) => setDeleteMotivoOutro(e.target.value)}
-                      placeholder="Ex.: Cliente sem interesse"
-                      className="h-10"
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="cli-motivo-livre"
-                  className="text-xs text-muted-foreground"
-                >
-                  Motivo
-                </Label>
-                <Input
-                  id="cli-motivo-livre"
-                  value={deleteMotivo}
-                  onChange={(e) => setDeleteMotivo(e.target.value)}
-                  placeholder="Ex.: Cliente sem interesse"
-                  className="h-10"
-                />
-              </div>
-            )}
+          <div className="py-1">
+            <LostMotivoFields
+              value={deleteMotivo}
+              outroValue={deleteMotivoOutro}
+              onChange={setDeleteMotivo}
+              onOutroChange={setDeleteMotivoOutro}
+              selectId="cli-lost-motivo"
+              outroId="cli-motivo-outro"
+            />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

@@ -41,6 +41,7 @@ import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { ApiError } from "@/lib/api";
 import {
   FormDialogActions,
@@ -136,7 +137,6 @@ function ComercialFunilBoard() {
   } = useLeads();
   const {
     funnelStages,
-    motivos: motivoOptions,
     loading: catalogLoading,
     colorByLabel,
     stageByPapel,
@@ -372,11 +372,7 @@ function ComercialFunilBoard() {
     const motivo =
       lostMotivo === "__outro__" ? lostMotivoOutro.trim() : lostMotivo.trim();
     if (!motivo) {
-      toast.error(
-        motivoOptions.length === 0
-          ? "Informe o motivo da perda."
-          : "Selecione o motivo da perda.",
-      );
+      toast.error("Selecione ou informe o motivo da perda.");
       return;
     }
 
@@ -779,65 +775,15 @@ function ComercialFunilBoard() {
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-3 py-1">
-            {motivoOptions.length > 0 ? (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Motivo
-                  </Label>
-                  <Select value={lostMotivo} onValueChange={setLostMotivo}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Selecione o motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {motivoOptions.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="__outro__">Outro…</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {lostMotivo === "__outro__" && (
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="funil-motivo-outro"
-                      className="text-xs text-muted-foreground"
-                    >
-                      Descreva o motivo
-                    </Label>
-                    <Input
-                      id="funil-motivo-outro"
-                      value={lostMotivoOutro}
-                      onChange={(e) => setLostMotivoOutro(e.target.value)}
-                      placeholder="Ex.: Cliente sem interesse"
-                      className="h-10"
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="funil-motivo-livre"
-                  className="text-xs text-muted-foreground"
-                >
-                  Motivo
-                </Label>
-                <Input
-                  id="funil-motivo-livre"
-                  value={lostMotivo}
-                  onChange={(e) => setLostMotivo(e.target.value)}
-                  placeholder="Ex.: Cliente sem interesse"
-                  className="h-10"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Cadastre motivos em Configurações para selecionar depois.
-                </p>
-              </div>
-            )}
+          <div className="py-1">
+            <LostMotivoFields
+              value={lostMotivo}
+              outroValue={lostMotivoOutro}
+              onChange={setLostMotivo}
+              onOutroChange={setLostMotivoOutro}
+              selectId="funil-lost-motivo"
+              outroId="funil-motivo-outro"
+            />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
