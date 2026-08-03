@@ -2,10 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +37,7 @@ function Page() {
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const now = new Date(2026, 6, 31);
+    const now = new Date();
     return MOCK_A_RECEBER.filter((t) => {
       if (status !== "todos" && t.status !== status) return false;
       if (periodo !== "tudo") {
@@ -95,17 +92,13 @@ function Page() {
     <div>
       <PageHeader
         title="Contas a receber"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Títulos a receber de construtoras e clientes
-            <MockBanner />
-          </span>
-        }
+        description="Títulos a receber de construtoras e clientes"
         actions={
           <Button
             onClick={() =>
-              toast.message("Dados demonstrativos", {
-                description: "Inclusão real estará disponível com a API.",
+              toast.message("Em breve", {
+                description:
+                  "Disponível quando a API financeira estiver conectada.",
               })
             }
           >

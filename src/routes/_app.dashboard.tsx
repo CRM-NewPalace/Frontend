@@ -4,6 +4,14 @@ import { PageHeader } from "@/components/app-shell";
 import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ChartContainer,
   ChartTooltip,
@@ -118,8 +126,32 @@ const META_TIPO_LABEL: Record<string, string> = {
   vgv: "VGV",
 };
 
+const MESES_PT = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+] as const;
+
 function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Ano/mês corrente no fuso de Brasília (UTC−3). */
+function agoraBrasil() {
+  const brasil = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  return {
+    ano: brasil.getUTCFullYear(),
+    mes: brasil.getUTCMonth() + 1,
+  };
 }
 
 function Page() {
@@ -148,14 +180,30 @@ function Page() {
 }
 
 function DashboardAdminView() {
-  const { funnelStages } = useCatalog();
+  const { funnelStages, origens } = useCatalog();
+  const agora = useMemo(() => agoraBrasil(), []);
+  const [mes, setMes] = useState(agora.mes);
+  const [ano, setAno] = useState(agora.ano);
+  const [origemFilter, setOrigemFilter] = useState("all");
   const [summary, setSummary] = useState<DashboardAdmin | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const anosDisponiveis = useMemo(() => {
+    const list: number[] = [];
+    for (let y = agora.ano; y >= agora.ano - 5; y -= 1) list.push(y);
+    return list;
+  }, [agora.ano]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setSummary(await fetchDashboardAdmin());
+      setSummary(
+        await fetchDashboardAdmin({
+          mes,
+          ano,
+          origem: origemFilter === "all" ? undefined : origemFilter,
+        }),
+      );
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -165,7 +213,7 @@ function DashboardAdminView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mes, ano, origemFilter]);
 
   useEffect(() => {
     void load();
@@ -184,12 +232,74 @@ function DashboardAdminView() {
     return summary.funil.map((i) => ({ etapa: i.etapa, total: i.total }));
   }, [summary, funnelStages]);
 
-  if (loading) {
+  const mesLabel = useMemo(
+    () =>
+      new Date(Date.UTC(ano, mes - 1, 1)).toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+    [mes, ano],
+  );
+
+  const filtros = (
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="space-y-1">
+        <Label className="text-[11px] text-muted-foreground">Mês</Label>
+        <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+          <SelectTrigger className="h-9 w-[9.5rem] bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MESES_PT.map((nome, idx) => (
+              <SelectItem key={nome} value={String(idx + 1)}>
+                {nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-[11px] text-muted-foreground">Ano</Label>
+        <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+          <SelectTrigger className="h-9 w-[5.5rem] bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {anosDisponiveis.map((y) => (
+              <SelectItem key={y} value={String(y)}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-[11px] text-muted-foreground">Origem</Label>
+        <Select value={origemFilter} onValueChange={setOrigemFilter}>
+          <SelectTrigger className="h-9 w-44 bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {origens.map((o) => (
+              <SelectItem key={o} value={o}>
+                {o}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+  if (loading && !summary) {
     return (
       <div>
         <PageHeader
           title="Dashboard"
           description="Visão gerencial da imobiliária."
+          actions={filtros}
         />
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -202,7 +312,7 @@ function DashboardAdminView() {
   if (!summary) {
     return (
       <div>
-        <PageHeader title="Dashboard" />
+        <PageHeader title="Dashboard" actions={filtros} />
         <SemConexao
           title="Indicadores indisponíveis"
           description="Não foi possível carregar os dados do dashboard."
@@ -211,17 +321,20 @@ function DashboardAdminView() {
     );
   }
 
-  const mes = new Date(summary.periodo.mesAtual.inicio).toLocaleDateString(
-    "pt-BR",
-    { month: "long", year: "numeric" },
-  );
-
   return (
     <div>
       <PageHeader
         title="Dashboard"
-        description={`Visão gerencial · ${mes} · comparação com o mês anterior.`}
+        description={`Visão gerencial · ${mesLabel} · comparação com o mês anterior.`}
+        actions={filtros}
       />
+
+      {loading ? (
+        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Atualizando indicadores…
+        </div>
+      ) : null}
 
       <section className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <FinanceKpiCard

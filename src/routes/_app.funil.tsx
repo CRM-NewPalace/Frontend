@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -56,6 +57,7 @@ import {
   fetchEmpreendimentos,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
+import { createTriagemEvent } from "@/lib/triagem-api";
 import {
   assumirAnalise,
   fetchAnalises,
@@ -107,6 +109,7 @@ function analiseBadgeClass(status: AnaliseStatus) {
 /** Slug legado (fallback se o funil não tiver papel configurado). */
 const LOST_STAGE_SLUG_FALLBACK = "perdido";
 const ANALISE_STAGE_SLUG_FALLBACK = "em-analise";
+const MAX_HISTORICO_TEXTO = 400;
 
 /** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
 const COLUMN_STEP_PX = 288 + 12;
@@ -125,7 +128,6 @@ function Funil() {
 }
 
 function ComercialFunilBoard() {
-  const navigate = useNavigate();
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
@@ -144,6 +146,19 @@ function ComercialFunilBoard() {
   const analiseStageSlug =
     stageByPapel("analise") ?? ANALISE_STAGE_SLUG_FALLBACK;
   const lostStageSlug = stageByPapel("perdido") ?? LOST_STAGE_SLUG_FALLBACK;
+
+  function isAnaliseStage(stage: StageId): boolean {
+    const found = funnelStages.find((s) => s.id === stage);
+    if (found?.papel === "analise") return true;
+    return stage === analiseStageSlug || stage === ANALISE_STAGE_SLUG_FALLBACK;
+  }
+
+  function isLostStage(stage: StageId): boolean {
+    const found = funnelStages.find((s) => s.id === stage);
+    if (found?.papel === "perdido") return true;
+    return stage === lostStageSlug || stage === LOST_STAGE_SLUG_FALLBACK;
+  }
+
   const leads =
     isCorretor && user
       ? allLeads.filter(
@@ -164,6 +179,9 @@ function ComercialFunilBoard() {
 
   /** Envio para análise: exige construtora + empreendimento. */
   const [analiseTarget, setAnaliseTarget] = useState<Lead | null>(null);
+  const [analiseTargetStage, setAnaliseTargetStage] = useState<StageId>(
+    analiseStageSlug,
+  );
   const [analiseConstrutoraId, setAnaliseConstrutoraId] = useState("");
   const [analiseEmpreendimentoId, setAnaliseEmpreendimentoId] = useState("");
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
@@ -176,13 +194,15 @@ function ComercialFunilBoard() {
   const [quickEmpreendimentoSaving, setQuickEmpreendimentoSaving] =
     useState(false);
 
-  /** Após mudar etapa (só corretor): pergunta se quer registrar histórico na Triagem. */
+  /** Após mudar etapa (só corretor): formulário para registrar histórico. */
   const [triagemPrompt, setTriagemPrompt] = useState<{
     leadId: string;
     leadNome: string;
     stage: StageId;
     stageName: string;
   } | null>(null);
+  const [triagemTexto, setTriagemTexto] = useState("");
+  const [triagemSaving, setTriagemSaving] = useState(false);
 
   useEffect(() => {
     void Promise.all([
@@ -208,6 +228,7 @@ function ComercialFunilBoard() {
   function offerTriagemHistory(lead: Lead, stage: StageId) {
     if (!isCorretor) return;
     const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
+    setTriagemTexto("");
     setTriagemPrompt({
       leadId: lead.id,
       leadNome: lead.nome,
@@ -216,8 +237,49 @@ function ComercialFunilBoard() {
     });
   }
 
-  function openAnaliseDialog(lead: Lead) {
+  function closeTriagemPrompt() {
+    setTriagemPrompt(null);
+    setTriagemTexto("");
+    setTriagemSaving(false);
+  }
+
+  async function saveTriagemHistory() {
+    if (!triagemPrompt) return;
+    const texto = triagemTexto.trim();
+    if (!texto) {
+      toast.error("Escreva o relato do histórico ou pule esta etapa.");
+      return;
+    }
+    if (texto.length > MAX_HISTORICO_TEXTO) {
+      toast.error(
+        `O relato deve ter no máximo ${MAX_HISTORICO_TEXTO} caracteres.`,
+      );
+      return;
+    }
+    setTriagemSaving(true);
+    try {
+      await createTriagemEvent({
+        leadId: triagemPrompt.leadId,
+        texto,
+        origem: "funil",
+        stage: triagemPrompt.stage,
+      });
+      toast.success("Histórico registrado na Triagem.");
+      closeTriagemPrompt();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível salvar o histórico.",
+      );
+    } finally {
+      setTriagemSaving(false);
+    }
+  }
+
+  function openAnaliseDialog(lead: Lead, stage: StageId = analiseStageSlug) {
     setAnaliseTarget(lead);
+    setAnaliseTargetStage(stage);
     setAnaliseConstrutoraId(lead.construtoraId ?? "");
     setAnaliseEmpreendimentoId(lead.empreendimentoId ?? "");
   }
@@ -277,18 +339,18 @@ function ComercialFunilBoard() {
       return;
     }
     const lead = analiseTarget;
+    const targetStage = analiseTargetStage;
     const stageName =
-      funnelStages.find((s) => s.id === analiseStageSlug)?.name ??
-      "Em análise";
+      funnelStages.find((s) => s.id === targetStage)?.name ?? "Em análise";
     setAnaliseSaving(true);
     try {
-      await updateLeadStage(lead.id, analiseStageSlug, {
+      await updateLeadStage(lead.id, targetStage, {
         construtoraId: analiseConstrutoraId,
         empreendimentoId: analiseEmpreendimentoId,
       });
       setAnaliseTarget(null);
       toast.success(`${lead.nome} enviado para ${stageName}`);
-      offerTriagemHistory(lead, analiseStageSlug);
+      offerTriagemHistory(lead, targetStage);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -341,15 +403,15 @@ function ComercialFunilBoard() {
     if (!lead || lead.stage === stage) return;
 
     // Perdido não é uma etapa comum: pede o motivo e faz soft-delete.
-    if (stage === lostStageSlug) {
+    if (isLostStage(stage)) {
       setLostMotivo("");
       setLostMotivoOutro("");
       setLostTarget(lead);
       return;
     }
 
-    if (stage === analiseStageSlug) {
-      openAnaliseDialog(lead);
+    if (isAnaliseStage(stage)) {
+      openAnaliseDialog(lead, stage);
       return;
     }
 
@@ -360,7 +422,7 @@ function ComercialFunilBoard() {
     try {
       await updateLeadStage(leadId, stage);
     } catch (err) {
-      setTriagemPrompt(null);
+      closeTriagemPrompt();
       toast.error(
         err instanceof Error ? err.message : "Não foi possível mover o lead.",
       );
@@ -405,7 +467,7 @@ function ComercialFunilBoard() {
     if (!detailLead || stage === detailLead.stage) return;
 
     // Perdido: fecha o detalhe e abre o modal de motivo (soft-delete).
-    if (stage === lostStageSlug) {
+    if (isLostStage(stage)) {
       const target = detailLead;
       setDetailLead(null);
       setLostMotivo("");
@@ -414,10 +476,10 @@ function ComercialFunilBoard() {
       return;
     }
 
-    if (stage === analiseStageSlug) {
+    if (isAnaliseStage(stage)) {
       const target = detailLead;
       setDetailLead(null);
-      openAnaliseDialog(target);
+      openAnaliseDialog(target, stage);
       return;
     }
 
@@ -430,7 +492,7 @@ function ComercialFunilBoard() {
     try {
       await updateLeadStage(detailLead.id, stage);
     } catch (err) {
-      setTriagemPrompt(null);
+      closeTriagemPrompt();
       setDetailLead((cur) =>
         cur && cur.id === detailLead.id
           ? { ...cur, stage: previousStage }
@@ -809,7 +871,7 @@ function ComercialFunilBoard() {
       <Dialog
         open={Boolean(triagemPrompt)}
         onOpenChange={(open) => {
-          if (!open) setTriagemPrompt(null);
+          if (!open) closeTriagemPrompt();
         }}
       >
         <DialogContent className="max-w-md">
@@ -819,36 +881,51 @@ function ComercialFunilBoard() {
                 <ClipboardList className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <DialogTitle>Adicionar relato?</DialogTitle>
+                <DialogTitle>Registrar histórico?</DialogTitle>
                 <DialogDescription>
                   {triagemPrompt
-                    ? `${triagemPrompt.leadNome} foi movido para ${triagemPrompt.stageName}. A etapa já foi registrada na Triagem. Deseja incluir um relato com mais detalhes?`
+                    ? `${triagemPrompt.leadNome} foi movido para ${triagemPrompt.stageName}. Deseja registrar um relato nesta mudança de etapa?`
                     : null}
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
+          <div className="space-y-2 py-1">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="funil-historico-texto">Relato</Label>
+              <span className="text-xs text-muted-foreground">
+                {triagemTexto.length}/{MAX_HISTORICO_TEXTO}
+              </span>
+            </div>
+            <Textarea
+              id="funil-historico-texto"
+              value={triagemTexto}
+              onChange={(e) => setTriagemTexto(e.target.value)}
+              placeholder="Ex.: Cliente pediu simulação do empreendimento X…"
+              maxLength={MAX_HISTORICO_TEXTO}
+              rows={4}
+              disabled={triagemSaving}
+              autoFocus
+            />
+          </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setTriagemPrompt(null)}
+              disabled={triagemSaving}
+              onClick={closeTriagemPrompt}
             >
               Não, obrigado
             </Button>
             <Button
               type="button"
-              onClick={() => {
-                if (!triagemPrompt) return;
-                const { leadId, stage } = triagemPrompt;
-                setTriagemPrompt(null);
-                void navigate({
-                  to: "/triagem",
-                  search: { leadId, stage },
-                });
-              }}
+              disabled={triagemSaving}
+              onClick={() => void saveTriagemHistory()}
             >
-              Adicionar relato
+              {triagemSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Salvar histórico
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -865,7 +942,7 @@ function ComercialFunilBoard() {
             <DialogTitle>Enviar para análise</DialogTitle>
             <DialogDescription>
               {analiseTarget
-                ? `Informe a construtora e o empreendimento de ${analiseTarget.nome} antes de subir o processo.`
+                ? `Informe a construtora e o empreendimento de ${analiseTarget.nome} antes de avançar para esta etapa.`
                 : null}
             </DialogDescription>
           </DialogHeader>

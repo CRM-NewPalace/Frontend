@@ -2,10 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -78,12 +75,7 @@ function Page() {
     <div>
       <PageHeader
         title="Fluxo de caixa"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Evolução diária de entradas, saídas e saldo
-            <MockBanner />
-          </span>
-        }
+        description="Evolução diária de entradas, saídas e saldo"
       />
 
       <FinanceiroFiltrosBar
@@ -126,6 +118,11 @@ function Page() {
             <CardTitle className="text-base">Entradas × saídas</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0">
+            {data.length === 0 ? (
+              <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
+                Sem dados no período.
+              </p>
+            ) : (
             <ResponsiveChartShell>
               <ChartContainer
                 config={fluxoConfig}
@@ -172,6 +169,7 @@ function Page() {
                 </BarChart>
               </ChartContainer>
             </ResponsiveChartShell>
+            )}
           </CardContent>
         </Card>
 

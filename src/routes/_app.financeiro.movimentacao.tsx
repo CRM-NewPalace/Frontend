@@ -2,10 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,17 +79,13 @@ function Page() {
     <div>
       <PageHeader
         title="Movimentação financeira"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Lançamentos de entrada e saída
-            <MockBanner />
-          </span>
-        }
+        description="Lançamentos de entrada e saída"
         actions={
           <Button
             onClick={() =>
-              toast.message("Dados demonstrativos", {
-                description: "Novos lançamentos reais virão com a API.",
+              toast.message("Em breve", {
+                description:
+                  "Disponível quando a API financeira estiver conectada.",
               })
             }
           >

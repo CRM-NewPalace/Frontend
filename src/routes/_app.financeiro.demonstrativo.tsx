@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -109,12 +106,7 @@ function Page() {
     <div>
       <PageHeader
         title="Demonstrativo"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Demonstrativo de resultados (DRE simplificado)
-            <MockBanner />
-          </span>
-        }
+        description="Demonstrativo de resultados (DRE simplificado)"
       />
 
       <FinanceiroFiltrosBar
@@ -130,6 +122,11 @@ function Page() {
             <CardTitle className="text-base">Receitas × despesas</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0">
+            {resultadoSerie.length === 0 ? (
+              <p className="flex h-65 items-center justify-center text-sm text-muted-foreground">
+                Sem dados no período.
+              </p>
+            ) : (
             <ResponsiveChartShell>
               <ChartContainer
                 config={chartConfig}
@@ -175,6 +172,7 @@ function Page() {
                 </BarChart>
               </ChartContainer>
             </ResponsiveChartShell>
+            )}
           </CardContent>
         </Card>
 

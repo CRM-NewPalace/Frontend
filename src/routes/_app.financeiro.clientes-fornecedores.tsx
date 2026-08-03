@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import {
-  FinanceiroFiltrosBar,
-  MockBanner,
-} from "@/components/financeiro-filtros";
+import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +29,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/financeiro/clientes-fornecedores")({
   head: () => ({
-    meta: [{ title: "Clientes e fornecedores — Zone Connection" }],
+    meta: [{ title: "Clientes e fornecedores ? Zone Connection" }],
   }),
   component: Page,
 });
@@ -77,17 +74,13 @@ function Page() {
     <div>
       <PageHeader
         title="Clientes e fornecedores"
-        description={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Cadastro de parceiros financeiros
-            <MockBanner />
-          </span>
-        }
+        description="Cadastro de parceiros financeiros"
         actions={
           <Button
             onClick={() =>
-              toast.message("Dados demonstrativos", {
-                description: "Cadastro real estará disponível com a API.",
+              toast.message("Em breve", {
+                description:
+                  "Dispon�vel quando a API financeira estiver conectada.",
               })
             }
           >
@@ -100,7 +93,7 @@ function Page() {
       <FinanceiroFiltrosBar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar nome, CNPJ, cidade…"
+        searchPlaceholder="Buscar nome, CNPJ, cidade?"
         tipo={tipo}
         onTipoChange={setTipo}
         tipoOptions={TIPO_OPTIONS}
