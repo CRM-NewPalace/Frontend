@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import {
@@ -49,11 +49,20 @@ const fluxoConfig = {
   saldo: { label: "Saldo", color: "hsl(199 89% 48%)" },
 } satisfies ChartConfig;
 
+function ResponsiveChartShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
+      {children}
+    </div>
+  );
+}
+
 function Page() {
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
 
   const data = useMemo(() => {
-    if (periodo === "mes") return MOCK_FLUXO_CAIXA.filter((d) => d.dia.includes("/07"));
+    if (periodo === "mes")
+      return MOCK_FLUXO_CAIXA.filter((d) => d.dia.includes("/07"));
     if (periodo === "trimestre") return MOCK_FLUXO_CAIXA;
     return MOCK_FLUXO_CAIXA;
   }, [periodo]);
@@ -84,7 +93,7 @@ function Page() {
         onClear={() => setPeriodo("mes")}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4 mb-4">
         <FinanceKpiCard
           label="Entradas no período"
           value={totais.entradas}
@@ -111,81 +120,113 @@ function Page() {
         />
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2 mb-4">
-        <Card>
+      <div className="grid gap-4 min-w-0 lg:grid-cols-2 mb-4">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Entradas × saídas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={fluxoConfig} className="h-[280px] w-full">
-              <BarChart data={data} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="dia" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={56}
-                  tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Legend />
-                <Bar
-                  dataKey="entradas"
-                  fill="var(--color-entradas)"
-                  radius={[3, 3, 0, 0]}
-                />
-                <Bar
-                  dataKey="saidas"
-                  fill="var(--color-saidas)"
-                  radius={[3, 3, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
+          <CardContent className="min-w-0">
+            <ResponsiveChartShell>
+              <ChartContainer
+                config={fluxoConfig}
+                className="aspect-auto! h-70 w-full min-w-120"
+              >
+                <BarChart
+                  data={data}
+                  margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="dia"
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                    tick={{ fontSize: 11 }}
+                    minTickGap={16}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="entradas"
+                    fill="var(--color-entradas)"
+                    radius={[3, 3, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="saidas"
+                    fill="var(--color-saidas)"
+                    radius={[3, 3, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </ResponsiveChartShell>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Saldo acumulado</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={fluxoConfig} className="h-[280px] w-full">
-              <AreaChart data={data} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="dia" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={56}
-                  tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Area
-                  type="monotone"
-                  dataKey="saldo"
-                  stroke="var(--color-saldo)"
-                  fill="var(--color-saldo)"
-                  fillOpacity={0.2}
-                />
-              </AreaChart>
-            </ChartContainer>
+          <CardContent className="min-w-0">
+            <ResponsiveChartShell>
+              <ChartContainer
+                config={fluxoConfig}
+                className="aspect-auto! h-70 w-full min-w-120"
+              >
+                <AreaChart
+                  data={data}
+                  margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="dia"
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                    tick={{ fontSize: 11 }}
+                    minTickGap={16}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="saldo"
+                    stroke="var(--color-saldo)"
+                    fill="var(--color-saldo)"
+                    fillOpacity={0.2}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </ResponsiveChartShell>
           </CardContent>
         </Card>
       </div>
 
-      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+      <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

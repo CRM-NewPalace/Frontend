@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import {
@@ -61,12 +61,26 @@ const pieColors = [
   "hsl(215 20% 55%)",
 ];
 
+function ResponsiveChartShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
+      {children}
+    </div>
+  );
+}
+
 function Page() {
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const k = VISAO_GERAL_KPIS;
 
   const fator =
-    periodo === "trimestre" ? 2.8 : periodo === "ano" ? 9.5 : periodo === "tudo" ? 12 : 1;
+    periodo === "trimestre"
+      ? 2.8
+      : periodo === "ano"
+        ? 9.5
+        : periodo === "tudo"
+          ? 12
+          : 1;
 
   const pieData = useMemo(
     () =>
@@ -108,7 +122,7 @@ function Page() {
         onClear={() => setPeriodo("mes")}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 mb-6">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 mb-6">
         <FinanceKpiCard
           label="Saldo em caixa"
           value={Math.round(k.saldoAtual * (periodo === "mes" ? 1 : 1.05))}
@@ -153,79 +167,99 @@ function Page() {
         />
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
+      <div className="grid gap-4 min-w-0 lg:grid-cols-5">
+        <Card className="min-w-0 overflow-hidden lg:col-span-3">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Receitas × despesas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={barConfig} className="h-[280px] w-full">
-              <BarChart data={MOCK_MESES_RESUMO} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="mes" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={64}
-                  tickFormatter={(v) =>
-                    `${(Number(v) / 1000).toFixed(0)}k`
-                  }
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Legend />
-                <Bar
-                  dataKey="receitas"
-                  fill="var(--color-receitas)"
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar
-                  dataKey="despesas"
-                  fill="var(--color-despesas)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
+          <CardContent className="min-w-0">
+            <ResponsiveChartShell>
+              <ChartContainer
+                config={barConfig}
+                className="aspect-auto! h-70 w-full min-w-120"
+              >
+                <BarChart
+                  data={MOCK_MESES_RESUMO}
+                  margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="mes"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="receitas"
+                    fill="var(--color-receitas)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="despesas"
+                    fill="var(--color-despesas)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </ResponsiveChartShell>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="min-w-0 overflow-hidden lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Despesas por centro</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{ value: { label: "Valor", color: pieColors[0] } }}
-              className="h-[280px] w-full"
-            >
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={2}
-                >
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={pieColors[i % pieColors.length]} />
-                  ))}
-                </Pie>
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Legend />
-              </PieChart>
-            </ChartContainer>
+          <CardContent className="min-w-0">
+            <ResponsiveChartShell>
+              <ChartContainer
+                config={{ value: { label: "Valor", color: pieColors[0] } }}
+                className="aspect-auto! mx-auto h-70 w-full min-w-80"
+              >
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={84}
+                    paddingAngle={2}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={pieColors[i % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: 12 }}
+                    formatter={(value) => (
+                      <span className="text-xs text-foreground">{value}</span>
+                    )}
+                  />
+                </PieChart>
+              </ChartContainer>
+            </ResponsiveChartShell>
           </CardContent>
         </Card>
       </div>

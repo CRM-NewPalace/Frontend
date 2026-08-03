@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -43,14 +49,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/taxa-conversao")({
@@ -76,6 +75,14 @@ function formatMesLabel(inicioIso: string) {
 
 function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function ResponsiveChartShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
+      {children}
+    </div>
+  );
 }
 
 function Page() {
@@ -235,7 +242,7 @@ function Page() {
         description={`Leads do mês × vendas · ${mes} · comparação com o mês anterior.`}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 mb-4">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 mb-4">
         <FinanceKpiCard
           label="Leads no mês"
           value={conv.entradas.valor}
@@ -296,7 +303,8 @@ function Page() {
           <CardTitle className="text-base">Funil do mês</CardTitle>
           <p className="text-sm text-muted-foreground">
             Dos {conv.entradas.valor} leads que entraram, {conv.vendas.valor}{" "}
-            viraram venda ({conv.taxa.valor.toLocaleString("pt-BR", {
+            viraram venda (
+            {conv.taxa.valor.toLocaleString("pt-BR", {
               maximumFractionDigits: 1,
             })}
             %).
@@ -325,7 +333,7 @@ function Page() {
       </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center mb-4">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-50 max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
@@ -340,7 +348,7 @@ function Page() {
         </div>
         {!isGerente && (
           <Select value={equipe} onValueChange={setEquipe}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-45">
               <SelectValue placeholder="Equipe" />
             </SelectTrigger>
             <SelectContent>
@@ -353,11 +361,8 @@ function Page() {
             </SelectContent>
           </Select>
         )}
-        <Select
-          value={sortBy}
-          onValueChange={(v) => setSortBy(v as SortKey)}
-        >
-          <SelectTrigger className="w-full sm:w-[180px]">
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+          <SelectTrigger className="w-full sm:w-45">
             <SelectValue placeholder="Ordenar" />
           </SelectTrigger>
           <SelectContent>
@@ -384,85 +389,120 @@ function Page() {
         ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 mb-4">
-        <Card>
+      <div className="grid gap-4 lg:grid-cols-2 mb-4 min-w-0">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Entradas × vendas</CardTitle>
             <p className="text-sm text-muted-foreground">
               Top 8 corretores por taxa (filtro aplicado).
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
             {chartData.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">
                 Sem dados para o filtro.
               </p>
             ) : (
-              <ChartContainer config={chartConfig} className="h-[280px] w-full">
-                <BarChart data={chartData} margin={{ left: 8, right: 8 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="nome" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={36} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
-                  <Bar
-                    dataKey="entradas"
-                    fill="var(--color-entradas)"
-                    radius={[3, 3, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="vendas"
-                    fill="var(--color-vendas)"
-                    radius={[3, 3, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
+              <ResponsiveChartShell>
+                <ChartContainer
+                  config={chartConfig}
+                  className="aspect-auto! h-70 w-full min-w-120"
+                >
+                  <BarChart
+                    data={chartData}
+                    margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="nome"
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      tick={{ fontSize: 11 }}
+                      height={40}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={36}
+                      allowDecimals={false}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Bar
+                      dataKey="entradas"
+                      fill="var(--color-entradas)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="vendas"
+                      fill="var(--color-vendas)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </ResponsiveChartShell>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Taxa por corretor (%)</CardTitle>
             <p className="text-sm text-muted-foreground">
               Conversão = vendas ÷ entradas do mês.
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
             {chartData.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">
                 Sem dados para o filtro.
               </p>
             ) : (
-              <ChartContainer config={chartConfig} className="h-[280px] w-full">
-                <BarChart data={chartData} margin={{ left: 8, right: 8 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="nome" tickLine={false} axisLine={false} />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    width={36}
-                    domain={[0, 100]}
-                    tickFormatter={(v) => `${v}%`}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value) =>
-                          `${Number(value).toLocaleString("pt-BR", {
-                            maximumFractionDigits: 1,
-                          })}%`
-                        }
-                      />
-                    }
-                  />
-                  <Bar
-                    dataKey="taxa"
-                    fill="var(--color-taxa)"
-                    radius={[3, 3, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
+              <ResponsiveChartShell>
+                <ChartContainer
+                  config={chartConfig}
+                  className="aspect-auto! h-70 w-full min-w-120"
+                >
+                  <BarChart
+                    data={chartData}
+                    margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="nome"
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      tick={{ fontSize: 11 }}
+                      height={40}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={40}
+                      domain={[0, 100]}
+                      tickFormatter={(v) => `${v}%`}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) =>
+                            `${Number(value).toLocaleString("pt-BR", {
+                              maximumFractionDigits: 1,
+                            })}%`
+                          }
+                        />
+                      }
+                    />
+                    <Bar
+                      dataKey="taxa"
+                      fill="var(--color-taxa)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </ResponsiveChartShell>
             )}
           </CardContent>
         </Card>
@@ -485,7 +525,7 @@ function Page() {
               Nenhum corretor para os filtros.
             </p>
           ) : (
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-225 text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 pr-2 font-medium w-10">#</th>
@@ -527,7 +567,7 @@ function Page() {
                 Nenhuma equipe com gerente cadastrada.
               </p>
             ) : (
-              <table className="w-full min-w-[720px] text-sm">
+              <table className="w-full min-w-180 text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="pb-2 pr-2 font-medium w-10">#</th>
@@ -535,7 +575,9 @@ function Page() {
                     <th className="pb-2 pr-2 font-medium text-right">
                       Corretores
                     </th>
-                    <th className="pb-2 pr-2 font-medium text-right">Entradas</th>
+                    <th className="pb-2 pr-2 font-medium text-right">
+                      Entradas
+                    </th>
                     <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
                     <th className="pb-2 pr-2 font-medium text-right">Taxa</th>
                     <th className="pb-2 font-medium text-right">VGV</th>
@@ -652,7 +694,7 @@ function CorretorConversaoRow({
           {row.equipe ?? "Sem equipe"}
           {row.gerente ? ` · ${row.gerente}` : ""}
         </div>
-        <div className="mt-1.5 max-w-[160px]">
+        <div className="mt-1.5 max-w-40">
           <Progress value={Math.min(taxa, 100)} className="h-1.5" />
         </div>
       </td>

@@ -67,6 +67,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -534,7 +540,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     className={cn(
                                       "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                                       active
-                                        ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-brand-accent"
+                                        ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.75 before:rounded-full before:bg-brand-accent"
                                         : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
                                     )}
                                   >
@@ -564,7 +570,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         className={cn(
                           "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                           active
-                            ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-brand-accent"
+                            ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.75 before:rounded-full before:bg-brand-accent"
                             : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
                         )}
                       >
@@ -731,7 +737,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-card/90 backdrop-blur sticky top-0 z-30 flex justify-between items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
+        <header className="h-14 border-b bg-card/90 backdrop-blur sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Button
               type="button"
@@ -752,16 +758,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-center">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             {!isPlatformAdmin && (
-              <DropdownMenu
+              <Popover
                 open={notifOpen}
                 onOpenChange={(o) => {
                   setNotifOpen(o);
                   if (o) void loadNotificacoes();
                 }}
               >
-                <DropdownMenuTrigger asChild>
+                <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -775,12 +781,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       </Badge>
                     )}
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 p-0">
+                </PopoverTrigger>
+                {/* Âncora no canto direito do header para o painel abrir alinhado à página */}
+                <PopoverAnchor asChild>
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute right-3 top-full h-0 w-0 sm:right-6"
+                  />
+                </PopoverAnchor>
+                <PopoverContent
+                  align="end"
+                  side="bottom"
+                  sideOffset={8}
+                  className="w-80 p-0"
+                >
                   <div className="flex items-center justify-between px-3 py-2 border-b">
-                    <DropdownMenuLabel className="p-0">
-                      Notificações
-                    </DropdownMenuLabel>
+                    <p className="text-sm font-semibold">Notificações</p>
                     {unreadCount > 0 && (
                       <Button
                         type="button"
@@ -819,8 +835,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       ))
                     )}
                   </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverContent>
+              </Popover>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

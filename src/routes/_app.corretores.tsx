@@ -123,7 +123,7 @@ function Page() {
         />
       ) : (
         <>
-          <section className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="mt-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
             <FinanceKpiCard
               label="Entradas do mês"
               value={data.totais.entradas}
@@ -189,7 +189,7 @@ function Page() {
                     Nenhum corretor ativo.
                   </p>
                 ) : (
-                  <table className="w-full min-w-[960px] text-sm">
+                  <table className="w-full min-w-240 text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="pb-2 pr-2 font-medium w-10">#</th>
@@ -250,7 +250,7 @@ function Page() {
                       Nenhuma equipe com gerente cadastrada.
                     </p>
                   ) : (
-                    <table className="w-full min-w-[800px] text-sm">
+                    <table className="w-full min-w-200 text-sm">
                       <thead>
                         <tr className="border-b text-left text-muted-foreground">
                           <th className="pb-2 pr-2 font-medium w-10">#</th>
@@ -349,7 +349,7 @@ function CorretorRow({ row }: { row: DashboardRankingCorretor }) {
       <td className="py-2.5 pr-2 text-right tabular-nums">{row.perdidos}</td>
       <td className="py-2.5 text-right">
         {row.meta ? (
-          <div className="min-w-[88px] ml-auto">
+          <div className="min-w-22 ml-auto">
             <div className="flex items-center justify-end gap-1 text-xs">
               <Badge variant="secondary" className="text-[10px] px-1.5">
                 {META_TIPO_LABEL[row.meta.tipo] ?? row.meta.tipo}

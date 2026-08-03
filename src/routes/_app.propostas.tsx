@@ -56,10 +56,7 @@ import { ApiError } from "@/lib/api";
 import { brl } from "@/lib/crm-types";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
-import {
-  fetchConstrutoras,
-  type Construtora,
-} from "@/lib/construtoras-api";
+import { fetchConstrutoras, type Construtora } from "@/lib/construtoras-api";
 import {
   fetchEmpreendimentos,
   type Empreendimento,
@@ -77,11 +74,7 @@ import {
   type Proposta,
   type PropostaStatus,
 } from "@/lib/propostas-api";
-import {
-  formatPhone,
-  phoneDigits,
-  PHONE_PLACEHOLDER,
-} from "@/lib/phone";
+import { formatPhone, phoneDigits, PHONE_PLACEHOLDER } from "@/lib/phone";
 import {
   CheckCircle2,
   Clock3,
@@ -288,9 +281,9 @@ function Page() {
 
   const hasActive = Boolean(
     search ||
-      status !== "todos" ||
-      corretorId !== "todos" ||
-      (!isGerente && equipeId !== "todos"),
+    status !== "todos" ||
+    corretorId !== "todos" ||
+    (!isGerente && equipeId !== "todos"),
   );
 
   function openCreate() {
@@ -308,9 +301,7 @@ function Page() {
     setForm({
       leadId: p.leadId ?? "",
       clienteNome: p.clienteNome,
-      clienteTelefone: p.clienteTelefone
-        ? formatPhone(p.clienteTelefone)
-        : "",
+      clienteTelefone: p.clienteTelefone ? formatPhone(p.clienteTelefone) : "",
       construtoraId: p.construtoraId ?? "",
       empreendimentoId: p.empreendimentoId ?? "",
       unidade: p.unidade ?? "",
@@ -412,8 +403,7 @@ function Page() {
       setSelected(null);
       await load();
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Falha ao excluir.";
+      const msg = err instanceof ApiError ? err.message : "Falha ao excluir.";
       toast.error(msg);
     }
   }
@@ -431,7 +421,7 @@ function Page() {
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4 mb-4">
         <FinanceKpiCard
           label="Propostas (filtro)"
           value={kpis.total}
@@ -464,7 +454,7 @@ function Page() {
       </section>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center mb-4">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-50 max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
@@ -477,7 +467,7 @@ function Page() {
           value={status}
           onValueChange={(v) => setStatus(v as PropostaStatus | "todos")}
         >
-          <SelectTrigger className="w-full sm:w-[170px]">
+          <SelectTrigger className="w-full sm:w-42.5">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -490,7 +480,7 @@ function Page() {
         </Select>
         {isManager && (
           <Select value={corretorId} onValueChange={setCorretorId}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-45">
               <SelectValue placeholder="Corretor" />
             </SelectTrigger>
             <SelectContent>
@@ -505,7 +495,7 @@ function Page() {
         )}
         {isManager && !isGerente && (
           <Select value={equipeId} onValueChange={setEquipeId}>
-            <SelectTrigger className="w-full sm:w-[170px]">
+            <SelectTrigger className="w-full sm:w-42.5">
               <SelectValue placeholder="Equipe" />
             </SelectTrigger>
             <SelectContent>
@@ -583,9 +573,7 @@ function Page() {
                   <TableCell>
                     <div className="font-medium">{p.clienteNome}</div>
                     <div className="text-xs text-muted-foreground">
-                      {p.clienteTelefone
-                        ? formatPhone(p.clienteTelefone)
-                        : "—"}
+                      {p.clienteTelefone ? formatPhone(p.clienteTelefone) : "—"}
                     </div>
                   </TableCell>
                   <TableCell>

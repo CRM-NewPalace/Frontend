@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import {
   FinanceiroFiltrosBar,
@@ -50,6 +50,14 @@ const chartConfig = {
   resultado: { label: "Resultado", color: "hsl(199 89% 48%)" },
 } satisfies ChartConfig;
 
+function ResponsiveChartShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
+      {children}
+    </div>
+  );
+}
+
 function Page() {
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("trimestre");
 
@@ -64,9 +72,7 @@ function Page() {
     if (periodo === "mes" || periodo === "trimestre") {
       return MOCK_DEMONSTRATIVO.map((l) => ({
         ...l,
-        valores: Object.fromEntries(
-          meses.map((m) => [m, l.valores[m] ?? 0]),
-        ),
+        valores: Object.fromEntries(meses.map((m) => [m, l.valores[m] ?? 0])),
       }));
     }
     // Ano / tudo: projeta Mai–Jul a partir do resumo mensal + linhas relativas
@@ -118,76 +124,106 @@ function Page() {
         onClear={() => setPeriodo("trimestre")}
       />
 
-      <div className="grid gap-4 lg:grid-cols-2 mb-4">
-        <Card>
+      <div className="grid gap-4 min-w-0 lg:grid-cols-2 mb-4">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Receitas × despesas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[260px] w-full">
-              <BarChart data={resultadoSerie} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="mes" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={56}
-                  tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Legend />
-                <Bar
-                  dataKey="receitas"
-                  fill="var(--color-receitas)"
-                  radius={[3, 3, 0, 0]}
-                />
-                <Bar
-                  dataKey="despesas"
-                  fill="var(--color-despesas)"
-                  radius={[3, 3, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
+          <CardContent className="min-w-0">
+            <ResponsiveChartShell>
+              <ChartContainer
+                config={chartConfig}
+                className="aspect-auto! h-65 w-full min-w-120"
+              >
+                <BarChart
+                  data={resultadoSerie}
+                  margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="mes"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="receitas"
+                    fill="var(--color-receitas)"
+                    radius={[3, 3, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="despesas"
+                    fill="var(--color-despesas)"
+                    radius={[3, 3, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </ResponsiveChartShell>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Resultado líquido</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[260px] w-full">
-              <LineChart data={resultadoSerie} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="mes" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={56}
-                  tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => brl(Number(value))}
-                    />
-                  }
-                />
-                <Line
-                  type="monotone"
-                  dataKey="resultado"
-                  stroke="var(--color-resultado)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              </LineChart>
-            </ChartContainer>
+          <CardContent className="min-w-0">
+            <ResponsiveChartShell>
+              <ChartContainer
+                config={chartConfig}
+                className="aspect-auto! h-65 w-full min-w-120"
+              >
+                <LineChart
+                  data={resultadoSerie}
+                  margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="mes"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => brl(Number(value))}
+                      />
+                    }
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="resultado"
+                    stroke="var(--color-resultado)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </ResponsiveChartShell>
           </CardContent>
         </Card>
       </div>
@@ -196,7 +232,7 @@ function Page() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[220px]">Conta</TableHead>
+              <TableHead className="min-w-55">Conta</TableHead>
               {meses.map((m) => (
                 <TableHead key={m} className="text-right">
                   {m}/2026
@@ -226,7 +262,9 @@ function Page() {
                       className={cn(
                         "text-right tabular-nums",
                         v < 0 && "text-destructive",
-                        l.destaque && v >= 0 && "text-emerald-700 dark:text-emerald-400",
+                        l.destaque &&
+                          v >= 0 &&
+                          "text-emerald-700 dark:text-emerald-400",
                       )}
                     >
                       {brl(v)}

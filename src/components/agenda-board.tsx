@@ -248,7 +248,7 @@ function TimeGridBoard({
       ) : null}
 
       <div
-        className="grid min-w-[640px]"
+        className="grid min-w-160"
         style={{
           gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))`,
         }}
@@ -299,10 +299,7 @@ function TimeGridBoard({
           return (
             <div
               key={key}
-              className={cn(
-                "relative border-l",
-                isToday && "bg-primary/[0.03]",
-              )}
+              className={cn("relative border-l", isToday && "bg-primary/3")}
               style={{ height: gridHeight }}
             >
               {hours.map((h) => (
@@ -321,7 +318,7 @@ function TimeGridBoard({
 
               {isToday && showNowLine && nowTop >= 0 && nowTop <= gridHeight ? (
                 <div
-                  className="pointer-events-none absolute inset-x-0 z-[5] border-t-2 border-red-500"
+                  className="pointer-events-none absolute inset-x-0 z-5 border-t-2 border-red-500"
                   style={{ top: nowTop }}
                 >
                   <span className="absolute -left-1 -top-1.5 size-2.5 rounded-full bg-red-500" />
@@ -355,7 +352,7 @@ function TimeGridBoard({
                       onEdit(item);
                     }}
                     className={cn(
-                      "absolute left-1 right-1 z-[6] overflow-hidden rounded-md border px-1.5 py-1 text-left shadow-sm transition hover:brightness-110",
+                      "absolute left-1 right-1 z-6 overflow-hidden rounded-md border px-1.5 py-1 text-left shadow-sm transition hover:brightness-110",
                       AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
                       item.status === "concluido" && "opacity-80",
                       item.status === "cancelado" && "opacity-50 grayscale",
@@ -454,9 +451,9 @@ function MonthBoard({
             <div
               key={key}
               className={cn(
-                "border-t border-l p-1.5 min-h-[110px] flex flex-col gap-1",
+                "border-t border-l p-1.5 min-h-27.5 flex flex-col gap-1",
                 !inMonth && "bg-muted/20 text-muted-foreground",
-                isToday && "bg-primary/[0.04]",
+                isToday && "bg-primary/4",
               )}
             >
               <div className="flex items-center justify-between gap-1">

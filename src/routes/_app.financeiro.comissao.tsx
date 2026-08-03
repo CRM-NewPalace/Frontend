@@ -69,20 +69,16 @@ function Page() {
       if (periodo !== "tudo") {
         const d = new Date(c.dataVenda + "T12:00:00");
         if (periodo === "mes") {
-          if (
-            !(
-              d.getMonth() === now.getMonth() &&
-              d.getFullYear() === now.getFullYear()
-            )
-          )
+          if (!(
+            d.getMonth() === now.getMonth() &&
+            d.getFullYear() === now.getFullYear()
+          ))
             return false;
         } else if (periodo === "trimestre") {
-          if (
-            !(
-              Math.floor(d.getMonth() / 3) === Math.floor(now.getMonth() / 3) &&
-              d.getFullYear() === now.getFullYear()
-            )
-          )
+          if (!(
+            Math.floor(d.getMonth() / 3) === Math.floor(now.getMonth() / 3) &&
+            d.getFullYear() === now.getFullYear()
+          ))
             return false;
         } else if (periodo === "ano") {
           if (d.getFullYear() !== now.getFullYear()) return false;
@@ -140,7 +136,7 @@ function Page() {
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4 mb-4">
         <FinanceKpiCard
           label="Total comissões"
           value={kpis.total}
@@ -178,7 +174,7 @@ function Page() {
         tipoOptions={STATUS_COMISSAO}
         extra={
           <Select value={equipe} onValueChange={setEquipe}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-45">
               <SelectValue placeholder="Equipe" />
             </SelectTrigger>
             <SelectContent>
