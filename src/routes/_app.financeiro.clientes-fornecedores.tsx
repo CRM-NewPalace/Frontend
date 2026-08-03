@@ -29,7 +29,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/financeiro/clientes-fornecedores")({
   head: () => ({
-    meta: [{ title: "Clientes e fornecedores ? Zone Connection" }],
+    meta: [{ title: "Clientes e fornecedores — Zone Connection" }],
   }),
   component: Page,
 });
@@ -80,7 +80,7 @@ function Page() {
             onClick={() =>
               toast.message("Em breve", {
                 description:
-                  "Dispon�vel quando a API financeira estiver conectada.",
+                  "Disponível quando a API financeira estiver conectada.",
               })
             }
           >
@@ -93,7 +93,7 @@ function Page() {
       <FinanceiroFiltrosBar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar nome, CNPJ, cidade?"
+        searchPlaceholder="Buscar nome, CNPJ, cidade…"
         tipo={tipo}
         onTipoChange={setTipo}
         tipoOptions={TIPO_OPTIONS}

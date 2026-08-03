@@ -40,7 +40,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/_app/financeiro/visao-geral")({
-  head: () => ({ meta: [{ title: "Vis?o geral ? Zone Connection" }] }),
+  head: () => ({ meta: [{ title: "Visão geral — Zone Connection" }] }),
   component: Page,
 });
 
@@ -91,19 +91,19 @@ function Page() {
   return (
     <div>
       <PageHeader
-        title="Vis�o geral"
-        description="Resumo financeiro da imobili�ria"
+        title="Visão geral"
+        description="Resumo financeiro da imobiliária"
         actions={
           <Button
             onClick={() =>
               toast.message("Em breve", {
                 description:
-                  "Dispon�vel quando a API financeira estiver conectada.",
+                  "Disponível quando a API financeira estiver conectada.",
               })
             }
           >
             <Plus className="w-4 h-4 mr-1" />
-            Novo lan�amento
+            Novo lançamento
           </Button>
         }
       />
@@ -163,59 +163,59 @@ function Page() {
       <div className="grid gap-4 min-w-0 lg:grid-cols-5">
         <Card className="min-w-0 overflow-hidden lg:col-span-3">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Receitas x despesas</CardTitle>
+            <CardTitle className="text-base">Receitas × despesas</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0">
             {MOCK_MESES_RESUMO.length === 0 ? (
               <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
-                Sem dados no per?odo.
+                Sem dados no período.
               </p>
             ) : (
-            <ResponsiveChartShell>
-              <ChartContainer
-                config={barConfig}
-                className="aspect-auto! h-70 w-full min-w-120"
-              >
-                <BarChart
-                  data={MOCK_MESES_RESUMO}
-                  margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+              <ResponsiveChartShell>
+                <ChartContainer
+                  config={barConfig}
+                  className="aspect-auto! h-70 w-full min-w-120"
                 >
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="mes"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    width={48}
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value) => brl(Number(value))}
-                      />
-                    }
-                  />
-                  <Legend />
-                  <Bar
-                    dataKey="receitas"
-                    fill="var(--color-receitas)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="despesas"
-                    fill="var(--color-despesas)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
-            </ResponsiveChartShell>
+                  <BarChart
+                    data={MOCK_MESES_RESUMO}
+                    margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="mes"
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={48}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => brl(Number(value))}
+                        />
+                      }
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="receitas"
+                      fill="var(--color-receitas)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="despesas"
+                      fill="var(--color-despesas)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </ResponsiveChartShell>
             )}
           </CardContent>
         </Card>
@@ -227,43 +227,43 @@ function Page() {
           <CardContent className="min-w-0">
             {pieData.length === 0 ? (
               <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
-                Sem dados no per?odo.
+                Sem dados no período.
               </p>
             ) : (
-            <ResponsiveChartShell>
-              <ChartContainer
-                config={{ value: { label: "Valor", color: pieColors[0] } }}
-                className="aspect-auto! mx-auto h-70 w-full min-w-80"
-              >
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={50}
-                    outerRadius={84}
-                    paddingAngle={2}
-                  >
-                    {pieData.map((_, i) => (
-                      <Cell key={i} fill={pieColors[i % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value) => brl(Number(value))}
-                      />
-                    }
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: 12 }}
-                    formatter={(value) => (
-                      <span className="text-xs text-foreground">{value}</span>
-                    )}
-                  />
-                </PieChart>
-              </ChartContainer>
-            </ResponsiveChartShell>
+              <ResponsiveChartShell>
+                <ChartContainer
+                  config={{ value: { label: "Valor", color: pieColors[0] } }}
+                  className="aspect-auto! mx-auto h-70 w-full min-w-80"
+                >
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={50}
+                      outerRadius={84}
+                      paddingAngle={2}
+                    >
+                      {pieData.map((_, i) => (
+                        <Cell key={i} fill={pieColors[i % pieColors.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => brl(Number(value))}
+                        />
+                      }
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: 12 }}
+                      formatter={(value) => (
+                        <span className="text-xs text-foreground">{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ChartContainer>
+              </ResponsiveChartShell>
             )}
           </CardContent>
         </Card>
