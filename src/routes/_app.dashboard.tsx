@@ -196,6 +196,7 @@ function DashboardAdminView() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setSummary(null);
     try {
       setSummary(
         await fetchDashboardAdmin({
