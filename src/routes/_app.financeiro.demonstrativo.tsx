@@ -58,14 +58,14 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 }
 
 function Page() {
-  const [linhas, setLinhas] = useState<LinhaDemonstrativo[]>([]);
-  const [meses, setMeses] = useState<string[]>([]);
+  const [linhasApi, setLinhasApi] = useState<LinhaDemonstrativo[]>([]);
+  const [mesesApi, setMesesApi] = useState<string[]>([]);
   const [mesesResumo, setMesesResumo] = useState<MesResumo[]>([]);
   useEffect(() => {
     void fetchDemonstrativo()
       .then((data) => {
-        setLinhas(data.linhas);
-        setMeses(data.meses);
+        setLinhasApi(data.linhas);
+        setMesesApi(data.meses);
         setMesesResumo(data.mesesResumo);
       })
       .catch((err) =>
@@ -83,21 +83,21 @@ function Page() {
     if (periodo === "mes") return ["Jul"] as string[];
     if (periodo === "ano" || periodo === "tudo")
       return mesesResumo.map((m) => m.mes);
-    return [...meses];
-  }, [periodo]);
+    return [...mesesApi];
+  }, [periodo, mesesApi, mesesResumo]);
 
   const linhas = useMemo(() => {
     if (periodo === "mes" || periodo === "trimestre") {
-      return linhas.map((l) => ({
+      return linhasApi.map((l) => ({
         ...l,
         valores: Object.fromEntries(meses.map((m) => [m, l.valores[m] ?? 0])),
       }));
     }
     // Ano / tudo: projeta Mai–Jul a partir do resumo mensal + linhas relativas
-    return linhas.map((l) => {
+    return linhasApi.map((l) => {
       const valores: Record<string, number> = {};
       for (const mes of meses) {
-        const base = linhas.find((x) => x.id === l.id);
+        const base = linhasApi.find((x) => x.id === l.id);
         const jul = base?.valores.Jul ?? 0;
         const ref = mesesResumo.find((m) => m.mes === mes);
         const julRef = mesesResumo.find((m) => m.mes === "Jul");
@@ -110,7 +110,7 @@ function Page() {
       }
       return { ...l, valores };
     });
-  }, [meses, periodo]);
+  }, [meses, periodo, linhasApi, mesesResumo]);
 
   const resultadoSerie = useMemo(
     () =>
