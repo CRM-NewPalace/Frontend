@@ -46,7 +46,6 @@ import {
   updateParceiro,
 } from "@/lib/financeiro-api";
 import {
-  brl,
   type ParceiroFinanceiro,
   type TipoParceiro,
 } from "@/lib/financeiro-mock";
@@ -87,7 +86,6 @@ type FormState = {
   email: string;
   telefone: string;
   cidade: string;
-  saldoAberto: string;
   ativo: boolean;
 };
 
@@ -98,7 +96,6 @@ const EMPTY_FORM: FormState = {
   email: "",
   telefone: "",
   cidade: "",
-  saldoAberto: "0",
   ativo: true,
 };
 
@@ -110,7 +107,6 @@ function toForm(p: ParceiroFinanceiro): FormState {
     email: p.email || "",
     telefone: p.telefone || "",
     cidade: p.cidade || "",
-    saldoAberto: String(p.saldoAberto ?? 0),
     ativo: p.ativo,
   };
 }
@@ -319,7 +315,6 @@ function Page() {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Cidade</TableHead>
                 <TableHead>Contato</TableHead>
-                <TableHead className="text-right">Saldo aberto</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[88px] text-right">A??es</TableHead>
               </TableRow>
@@ -328,7 +323,7 @@ function Page() {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="text-center text-muted-foreground py-10"
                   >
                     Nenhum parceiro encontrado para os filtros.
@@ -352,17 +347,6 @@ function Page() {
                       <div className="text-muted-foreground">
                         {p.telefone || "?"}
                       </div>
-                    </TableCell>
-                    <TableCell
-                      className={`text-right tabular-nums font-medium ${
-                        p.saldoAberto < 0
-                          ? "text-destructive"
-                          : p.saldoAberto > 0
-                            ? "text-emerald-600"
-                            : ""
-                      }`}
-                    >
-                      {brl(p.saldoAberto)}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -502,20 +486,6 @@ function Page() {
                     placeholder="S?o Paulo"
                   />
                 </div>
-                {formMode === "edit" ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="parceiro-saldo">Saldo aberto</Label>
-                    <Input
-                      id="parceiro-saldo"
-                      value={brl(Number(form.saldoAberto) || 0)}
-                      readOnly
-                      disabled
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Calculado pelos lançamentos em aberto ou atrasados.
-                    </p>
-                  </div>
-                ) : null}
                 <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:col-span-2">
                   <div>
                     <div className="text-sm font-medium">Ativo</div>
