@@ -68,7 +68,6 @@ import { ApiError } from "@/lib/api";
 import {
   formatPhone,
   isValidPhone,
-  phoneDigits,
   PHONE_INVALID_MESSAGE,
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
@@ -91,6 +90,7 @@ import {
   exportDocumentacoesToPdf,
   normalizePersonName,
   parseDocumentacoesFile,
+  placeholderClientPhone,
   type ParsedImportDoc,
 } from "@/lib/documentacao-io";
 import {
@@ -141,7 +141,7 @@ export const Route = createFileRoute("/_app/documentacao")({
 type FormState = {
   contatoId: string;
   novoCliente: boolean;
-  telefoneNovo: string;
+
   emailNovo: string;
   nome: string;
   construtoraId: string;
@@ -160,7 +160,7 @@ type FormState = {
 const emptyForm = (): FormState => ({
   contatoId: "",
   novoCliente: false,
-  telefoneNovo: "",
+
   emailNovo: "",
   nome: "",
   construtoraId: "",
@@ -784,9 +784,7 @@ function DocumentacaoPage() {
       return {
         ...prev,
         nome: contact.nome,
-        telefoneNovo: contact.telefone
-          ? formatPhone(contact.telefone)
-          : "",
+
         emailNovo: contact.email?.includes("@pendente.local")
           ? ""
           : (contact.email ?? ""),
@@ -828,7 +826,7 @@ function DocumentacaoPage() {
     setForm({
       contatoId: doc.leadId,
       novoCliente: false,
-      telefoneNovo: lead?.telefone ? formatPhone(lead.telefone) : "",
+
       emailNovo: lead?.email?.includes("@pendente.local")
         ? ""
         : (lead?.email ?? ""),
@@ -905,32 +903,30 @@ function DocumentacaoPage() {
           toast.error("Informe o nome do cliente.");
           return;
         }
-        if (!form.telefoneNovo.trim()) {
-          toast.error(
-            "Informe o contato (telefone) do cliente ou selecione um lead/cliente existente.",
-          );
-          return;
+        const nomeNorm = normalizePersonName(form.nome);
+        const existingByName = leads.find(
+          (l) => normalizePersonName(l.nome) === nomeNorm,
+        );
+        if (existingByName) {
+          leadId = existingByName.id;
+        } else {
+          const telefone = placeholderClientPhone(form.nome.trim());
+          const created = await addLead({
+            tipo: "cliente",
+            nome: form.nome.trim(),
+            telefone,
+            email:
+              form.emailNovo.trim() ||
+              `cliente.${Date.now().toString(36)}@pendente.local`,
+            origem: origens[0] ?? "Documentação",
+            interesse: "Comprar",
+            cidade: "",
+            bairro: "",
+            stage: defaultStageId,
+            corretorId: form.corretorId || undefined,
+          });
+          leadId = created.id;
         }
-        if (!isValidPhone(form.telefoneNovo)) {
-          toast.error(PHONE_INVALID_MESSAGE);
-          return;
-        }
-        const digits = phoneDigits(form.telefoneNovo);
-        const created = await addLead({
-          tipo: "cliente",
-          nome: form.nome.trim(),
-          telefone: form.telefoneNovo.trim(),
-          email:
-            form.emailNovo.trim() ||
-            `cliente.${digits}@pendente.local`,
-          origem: origens[0] ?? "Documentação",
-          interesse: "Comprar",
-          cidade: "",
-          bairro: "",
-          stage: defaultStageId,
-          corretorId: form.corretorId || undefined,
-        });
-        leadId = created.id;
       }
 
       if (!leadId && formMode === "edit") {
@@ -1087,24 +1083,13 @@ function DocumentacaoPage() {
     toast.success("Status adicionado e selecionado.");
   }
 
-  const phoneByLeadId = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const l of leads) {
-      if (l.telefone) map[l.id] = l.telefone;
-    }
-    return map;
-  }, [leads]);
 
   function findLeadForImport(
     row: ParsedImportDoc,
     leadList: typeof leads,
   ): (typeof leads)[number] | undefined {
-    if (row.telefone && isValidPhone(row.telefone)) {
-      const digits = phoneDigits(row.telefone);
-      const byPhone = leadList.find((l) => phoneDigits(l.telefone) === digits);
-      if (byPhone) return byPhone;
-    }
     const nome = normalizePersonName(row.nome);
+    if (!nome) return undefined;
     return leadList.find((l) => normalizePersonName(l.nome) === nome);
   }
 
@@ -1142,10 +1127,6 @@ function DocumentacaoPage() {
     return `Import${Date.now().toString(36)}Aa1`;
   }
 
-  function placeholderClientPhone() {
-    const n = String(Date.now()).slice(-8).padStart(8, "0");
-    return formatPhone(`819${n}`);
-  }
 
   async function handleImportFile(file: File) {
     setImportParsing(true);
@@ -1279,16 +1260,12 @@ function DocumentacaoPage() {
           // Cliente / lead
           let lead = findLeadForImport(row, localLeads);
           if (!lead) {
-            const telefone =
-              row.telefone && isValidPhone(row.telefone)
-                ? row.telefone
-                : placeholderClientPhone();
-            const digits = phoneDigits(telefone);
+            const telefone = placeholderClientPhone(row.nome);
             lead = await addLead({
               tipo: "cliente",
               nome: row.nome,
               telefone,
-              email: `cliente.${digits}@pendente.local`,
+              email: `cliente.${Date.now().toString(36)}@pendente.local`,
               origem: origens[0] ?? "Documentação",
               interesse: "Comprar",
               cidade: "",
@@ -1468,7 +1445,6 @@ function DocumentacaoPage() {
                     exportDocumentacoesToExcel(
                       filteredItems,
                       `documentacao-${new Date().toISOString().slice(0, 10)}.xlsx`,
-                      phoneByLeadId,
                     )
                   }
                 >
@@ -2018,7 +1994,6 @@ function DocumentacaoPage() {
                           ...prev,
                           novoCliente: on,
                           contatoId: on ? "" : prev.contatoId,
-                          telefoneNovo: on ? prev.telefoneNovo : "",
                           emailNovo: on ? prev.emailNovo : "",
                         }));
                       }}
@@ -2045,7 +2020,6 @@ function DocumentacaoPage() {
                           setForm((prev) => ({
                             ...prev,
                             contatoId: "",
-                            telefoneNovo: "",
                             emailNovo: "",
                           }));
                           return;
@@ -2085,31 +2059,6 @@ function DocumentacaoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="telefoneNovo">
-                    Contato (telefone)
-                    {formMode === "create" &&
-                    (form.novoCliente || !form.contatoId)
-                      ? " *"
-                      : ""}
-                  </Label>
-                  <Input
-                    id="telefoneNovo"
-                    value={form.telefoneNovo}
-                    onChange={(e) =>
-                      setField("telefoneNovo", formatPhone(e.target.value))
-                    }
-                    placeholder={PHONE_PLACEHOLDER}
-                    disabled={
-                      readOnly ||
-                      formMode === "edit" ||
-                      formMode === "view" ||
-                      (formMode === "create" &&
-                        !form.novoCliente &&
-                        Boolean(form.contatoId))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="emailNovo">
                     E-mail{" "}
                     <span className="font-normal text-muted-foreground">
@@ -2124,11 +2073,10 @@ function DocumentacaoPage() {
                     placeholder="Opcional"
                     disabled={
                       readOnly ||
+                      formMode === "edit" ||
                       (formMode === "create" &&
                         !form.novoCliente &&
-                        Boolean(form.contatoId)) ||
-                      formMode === "edit" ||
-                      formMode === "view"
+                        Boolean(form.contatoId))
                     }
                   />
                 </div>
@@ -2654,7 +2602,6 @@ function DocumentacaoPage() {
                   <thead>
                     <tr className="bg-muted/60 text-left">
                       <th className="p-2 font-medium">Nome</th>
-                      <th className="p-2 font-medium">Telefone</th>
                       <th className="p-2 font-medium">Construtora</th>
                       <th className="p-2 font-medium">Empreendimento</th>
                       <th className="p-2 font-medium">Fonte</th>
@@ -2665,7 +2612,6 @@ function DocumentacaoPage() {
                   <tbody>
                     <tr className="border-t text-muted-foreground">
                       <td className="p-2">Maria Silva</td>
-                      <td className="p-2 tabular-nums">(81) 98888-7777</td>
                       <td className="p-2">Cyrela</td>
                       <td className="p-2">Torre Aurora</td>
                       <td className="p-2">Indicação</td>
@@ -2689,8 +2635,7 @@ function DocumentacaoPage() {
                 </li>
                 <li>
                   Se o contato não existir, o sistema cria o{" "}
-                  <span className="text-foreground">cliente</span> (telefone
-                  ajuda a evitar duplicados)
+                  <span className="text-foreground">cliente</span> pelo nome
                 </li>
                 <li>
                   Construtora, empreendimento, fonte, status 1/2, corretor e
@@ -2747,7 +2692,6 @@ function DocumentacaoPage() {
               <thead className="sticky top-0 bg-muted/80 backdrop-blur">
                 <tr className="text-left text-muted-foreground border-b">
                   <th className="p-2 font-medium">Nome</th>
-                  <th className="p-2 font-medium">Telefone</th>
                   <th className="p-2 font-medium">Empreendimento</th>
                   <th className="p-2 font-medium">Status</th>
                   <th className="p-2 font-medium">Resultado</th>
@@ -2756,14 +2700,13 @@ function DocumentacaoPage() {
               <tbody>
                 {importRows.map((row, index) => (
                   <tr
-                    key={`${row.nome}-${row.telefone}-${index}`}
+                    key={`${row.nome}-${index}`}
                     className={cn(
                       "border-b last:border-0",
                       row.error && "bg-destructive/5",
                     )}
                   >
                     <td className="p-2">{row.nome || "—"}</td>
-                    <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
                     <td className="p-2">{row.empreendimentoNome || "—"}</td>
                     <td className="p-2 text-xs">
                       {row.status1} · {row.status2}

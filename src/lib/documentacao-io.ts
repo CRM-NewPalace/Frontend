@@ -6,11 +6,10 @@ import {
   FONTE_LABELS,
   type Documentacao,
 } from "@/lib/documentacao-api";
-import { formatPhone, isValidPhone, phoneDigits } from "@/lib/phone";
+import { formatPhone } from "@/lib/phone";
 
 export const DOC_IO_COLUMNS = [
   "Nome",
-  "Telefone",
   "Construtora",
   "Empreendimento",
   "Fonte",
@@ -26,7 +25,6 @@ export const DOC_IO_COLUMNS = [
 
 export type ParsedImportDoc = {
   nome: string;
-  telefone: string;
   construtoraNome: string;
   empreendimentoNome: string;
   fonte: string;
@@ -49,11 +47,6 @@ const HEADER_ALIASES: Record<string, string> = {
   name: "nome",
   cliente: "nome",
   "nome do cliente": "nome",
-  telefone: "telefone",
-  phone: "telefone",
-  celular: "telefone",
-  whatsapp: "telefone",
-  fone: "telefone",
   construtora: "construtora",
   empreendimento: "empreendimento",
   fonte: "fonte",
@@ -141,10 +134,17 @@ export function parseFonteLabel(raw: string): string {
   return raw.trim() || "Outro";
 }
 
+/** Telefone provisório exigido pelo cadastro de lead (não aparece na documentação). */
+export function placeholderClientPhone(seed?: string): string {
+  const base = (seed ?? Date.now().toString())
+    .replace(/\D/g, "")
+    .slice(-8)
+    .padStart(8, "0");
+  return formatPhone(`819${base}`);
+}
+
 function buildDocFromCells(cells: CellMap): ParsedImportDoc {
   const nome = String(cells.nome ?? "").trim();
-  const telefoneRaw = String(cells.telefone ?? "").trim();
-  const telefone = telefoneRaw ? formatPhone(telefoneRaw) : "";
   const fonteRaw = String(cells.fonte ?? "").trim();
   const fonte = parseFonteLabel(fonteRaw);
   const status1 = String(cells.status1 ?? "").trim() || "Análise";
@@ -152,7 +152,6 @@ function buildDocFromCells(cells: CellMap): ParsedImportDoc {
 
   const row: ParsedImportDoc = {
     nome,
-    telefone,
     construtoraNome: String(cells.construtora ?? "").trim(),
     empreendimentoNome: String(cells.empreendimento ?? "").trim(),
     fonte,
@@ -168,7 +167,6 @@ function buildDocFromCells(cells: CellMap): ParsedImportDoc {
   };
 
   if (nome.length < 2) row.error = "Nome inválido";
-  else if (telefone && !isValidPhone(telefone)) row.error = "Telefone inválido";
 
   return row;
 }
@@ -200,28 +198,17 @@ function rowsFromMatrix(matrix: unknown[][]): ParsedImportDoc[] {
       });
     } else {
       cells.nome = row[0];
-      cells.telefone = row[1];
-      cells.construtora = row[2];
-      cells.empreendimento = row[3];
-      cells.fonte = row[4];
-      cells.status1 = row[5];
-      cells.status2 = row[6];
-      cells.corretor = row[7];
-      cells.gerente = row[8];
-      cells.dataAnalise = row[9];
-      cells.dataVenda = row[10];
-      cells.vgv = row[11];
-      cells.obs = row[12];
-    }
-
-    if (!cells.telefone) {
-      for (const cell of row) {
-        const formatted = formatPhone(String(cell ?? ""));
-        if (isValidPhone(formatted)) {
-          cells.telefone = formatted;
-          break;
-        }
-      }
+      cells.construtora = row[1];
+      cells.empreendimento = row[2];
+      cells.fonte = row[3];
+      cells.status1 = row[4];
+      cells.status2 = row[5];
+      cells.corretor = row[6];
+      cells.gerente = row[7];
+      cells.dataAnalise = row[8];
+      cells.dataVenda = row[9];
+      cells.vgv = row[10];
+      cells.obs = row[11];
     }
 
     results.push(buildDocFromCells(cells));
@@ -230,28 +217,21 @@ function rowsFromMatrix(matrix: unknown[][]): ParsedImportDoc[] {
   return results;
 }
 
-function docsToRows(
-  docs: Documentacao[],
-  phoneByLeadId?: Record<string, string>,
-): string[][] {
-  return docs.map((d) => {
-    const phoneRaw = phoneByLeadId?.[d.leadId] ?? "";
-    return [
-      d.nome || "",
-      phoneRaw ? formatPhone(phoneRaw) : "",
-      d.construtora?.nome ?? "",
-      d.empreendimento?.nome ?? "",
-      displayFonte(d.fonte),
-      d.status1 || "",
-      d.status2 || "",
-      d.corretor?.name ?? "",
-      d.gerente?.name ?? "",
-      formatDayBr(d.dataAnalise),
-      formatDayBr(d.dataVenda),
-      d.vgv != null ? String(d.vgv) : "",
-      d.obs ?? "",
-    ];
-  });
+function docsToRows(docs: Documentacao[]): string[][] {
+  return docs.map((d) => [
+    d.nome || "",
+    d.construtora?.nome ?? "",
+    d.empreendimento?.nome ?? "",
+    displayFonte(d.fonte),
+    d.status1 || "",
+    d.status2 || "",
+    d.corretor?.name ?? "",
+    d.gerente?.name ?? "",
+    formatDayBr(d.dataAnalise),
+    formatDayBr(d.dataVenda),
+    d.vgv != null ? String(d.vgv) : "",
+    d.obs ?? "",
+  ]);
 }
 
 function buildDocSheet(rows: string[][]) {
@@ -278,10 +258,9 @@ function buildDocSheet(rows: string[][]) {
 export function exportDocumentacoesToExcel(
   docs: Documentacao[],
   filename = "documentacao.xlsx",
-  phoneByLeadId?: Record<string, string>,
 ) {
   const workbook = XLSX.utils.book_new();
-  const sheet = buildDocSheet(docsToRows(docs, phoneByLeadId));
+  const sheet = buildDocSheet(docsToRows(docs));
   XLSX.utils.book_append_sheet(workbook, sheet, "Documentação");
   const data = XLSX.write(workbook, {
     bookType: "xlsx",
@@ -335,17 +314,11 @@ export function exportDocumentacoesToPdf(
       d.status1,
       d.status2,
       d.corretor?.name ?? "—",
-      d.vgv != null
-        ? d.vgv.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-            maximumFractionDigits: 0,
-          })
-        : "—",
+      d.vgv != null ? String(d.vgv) : "—",
       formatDayBr(d.dataVenda) || "—",
     ]),
-    styles: { fontSize: 7, cellPadding: 3 },
-    headStyles: { fillColor: [7, 158, 212] },
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [30, 41, 59] },
   });
 
   pdf.save(filename);
@@ -356,7 +329,6 @@ export function downloadDocumentacaoImportTemplate() {
   const sheet = buildDocSheet([
     [
       "Maria Silva",
-      "(81) 98888-7777",
       "Cyrela",
       "Torre Aurora",
       "Indicação",
@@ -429,10 +401,13 @@ async function parseDocumentacoesFromPdf(
     if (current.trim()) lines.push(current.trim());
   }
 
-  const matrix: unknown[][] = lines.map((line) =>
-    line.split(/\s{2,}|\t|\|/).map((c) => c.trim()),
-  );
-  return rowsFromMatrix(matrix);
+  // PDF sem tabela estruturada: cada linha com nome no início vira uma ficha mínima.
+  return lines
+    .map((line) => {
+      const nome = line.split(/\s{2,}|\t/)[0]?.trim() ?? "";
+      return buildDocFromCells({ nome });
+    })
+    .filter((r) => !r.error);
 }
 
 export async function parseDocumentacoesFile(
@@ -440,12 +415,7 @@ export async function parseDocumentacoesFile(
 ): Promise<ParsedImportDoc[]> {
   const buffer = await file.arrayBuffer();
   const name = file.name.toLowerCase();
-
-  if (
-    name.endsWith(".xlsx") ||
-    name.endsWith(".xls") ||
-    name.endsWith(".csv")
-  ) {
+  if (name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv")) {
     return parseDocumentacoesFromExcel(buffer);
   }
   if (name.endsWith(".pdf")) {
@@ -457,8 +427,8 @@ export async function parseDocumentacoesFile(
 export function dedupeImportDocs(rows: ParsedImportDoc[]): ParsedImportDoc[] {
   const seen = new Set<string>();
   return rows.filter((r) => {
-    const key = `${normalizeHeader(r.nome)}|${phoneDigits(r.telefone)}`;
-    if (seen.has(key)) return false;
+    const key = normalizeHeader(r.nome);
+    if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
