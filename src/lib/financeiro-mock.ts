@@ -83,6 +83,7 @@ export interface MovimentoFinanceiro {
   id: string;
   data: string;
   descricao: string;
+  parceiroId?: string | null;
   parceiro: string;
   categoria: string;
   centro: string;

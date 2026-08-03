@@ -79,6 +79,49 @@ export async function fetchMovimentos(): Promise<MovimentoFinanceiro[]> {
   return apiFetch<MovimentoFinanceiro[]>("/financeiro/movimentos");
 }
 
+export type CreateMovimentoInput = {
+  data: string;
+  descricao: string;
+  parceiroId?: string;
+  parceiroNome?: string;
+  categoria: string;
+  centro?: string;
+  tipo: "entrada" | "saida";
+  valor: number;
+  status?: "aberto" | "pago" | "atrasado" | "cancelado";
+  formaPagamento?: string;
+};
+
+export type UpdateMovimentoInput = Partial<CreateMovimentoInput> & {
+  parceiroId?: string | null;
+  parceiroNome?: string | null;
+};
+
+export async function createMovimento(
+  input: CreateMovimentoInput,
+): Promise<MovimentoFinanceiro> {
+  return apiFetch<MovimentoFinanceiro>("/financeiro/movimentos", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateMovimento(
+  id: string,
+  input: UpdateMovimentoInput,
+): Promise<MovimentoFinanceiro> {
+  return apiFetch<MovimentoFinanceiro>(`/financeiro/movimentos/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteMovimento(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/movimentos/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchTitulos(
   tipo?: "receber" | "pagar",
 ): Promise<TituloFinanceiro[]> {
