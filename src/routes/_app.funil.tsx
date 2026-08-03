@@ -64,11 +64,9 @@ import {
 import {
   createDocumentacao,
   FONTE_LABELS,
-  STATUS1_LABELS,
-  STATUS2_LABELS,
+  DEFAULT_STATUS1,
+  DEFAULT_STATUS2,
   type DocumentacaoFonte,
-  type DocumentacaoStatus1,
-  type DocumentacaoStatus2,
 } from "@/lib/documentacao-api";
 import {
   Clock,
@@ -1082,9 +1080,8 @@ function AnalistaFunilBoard() {
   const [docTarget, setDocTarget] = useState<Analise | null>(null);
   const [docSaving, setDocSaving] = useState(false);
   const [docFonte, setDocFonte] = useState<DocumentacaoFonte>("outro");
-  const [docStatus1, setDocStatus1] = useState<DocumentacaoStatus1>("analise");
-  const [docStatus2, setDocStatus2] =
-    useState<DocumentacaoStatus2>("andamento");
+  const [docStatus1, setDocStatus1] = useState<string>("Análise");
+  const [docStatus2, setDocStatus2] = useState<string>("Andamento");
   const [docObs, setDocObs] = useState("");
   const [docVgv, setDocVgv] = useState("");
   const [parecerTarget, setParecerTarget] = useState<Analise | null>(null);
@@ -1341,19 +1338,17 @@ function AnalistaFunilBoard() {
                 <Label>Status 1</Label>
                 <Select
                   value={docStatus1}
-                  onValueChange={(v) => setDocStatus1(v as DocumentacaoStatus1)}
+                  onValueChange={setDocStatus1}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(STATUS1_LABELS) as DocumentacaoStatus1[]).map(
-                      (k) => (
-                        <SelectItem key={k} value={k}>
-                          {STATUS1_LABELS[k]}
-                        </SelectItem>
-                      ),
-                    )}
+                    {DEFAULT_STATUS1.map((label) => (
+                      <SelectItem key={label} value={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1361,19 +1356,17 @@ function AnalistaFunilBoard() {
                 <Label>Status 2</Label>
                 <Select
                   value={docStatus2}
-                  onValueChange={(v) => setDocStatus2(v as DocumentacaoStatus2)}
+                  onValueChange={setDocStatus2}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(STATUS2_LABELS) as DocumentacaoStatus2[]).map(
-                      (k) => (
-                        <SelectItem key={k} value={k}>
-                          {STATUS2_LABELS[k]}
-                        </SelectItem>
-                      ),
-                    )}
+                    {DEFAULT_STATUS2.map((label) => (
+                      <SelectItem key={label} value={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

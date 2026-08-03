@@ -53,6 +53,7 @@ import { ApiError } from "@/lib/api";
 import {
   formatPhone,
   isValidPhone,
+  phoneDigits,
   PHONE_INVALID_MESSAGE,
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
@@ -62,13 +63,11 @@ import {
   fetchDocumentacoes,
   updateDocumentacao,
   FONTE_LABELS,
-  STATUS1_LABELS,
-  STATUS2_LABELS,
+  DEFAULT_STATUS1,
+  DEFAULT_STATUS2,
   type CreateDocumentacaoInput,
   type Documentacao,
   type DocumentacaoFonte,
-  type DocumentacaoStatus1,
-  type DocumentacaoStatus2,
 } from "@/lib/documentacao-api";
 import {
   createConstrutora,
@@ -76,10 +75,12 @@ import {
   type Construtora,
 } from "@/lib/construtoras-api";
 import {
+  createEmpreendimento,
   fetchEmpreendimentos,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import { fetchEquipeGerentes, type EquipeOptionUser } from "@/lib/equipes-api";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   FolderOpen,
   Plus,
@@ -88,8 +89,18 @@ import {
   Pencil,
   Eye,
   Building,
+  Building2,
+  Filter,
+  Search,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export const Route = createFileRoute("/_app/documentacao")({
   head: () => ({ meta: [{ title: "Documentação — Zone Connection" }] }),
@@ -97,14 +108,16 @@ export const Route = createFileRoute("/_app/documentacao")({
 });
 
 type FormState = {
-  leadId: string;
-  clienteId: string;
+  contatoId: string;
+  novoCliente: boolean;
+  telefoneNovo: string;
+  emailNovo: string;
   nome: string;
   construtoraId: string;
   empreendimentoId: string;
   fonte: DocumentacaoFonte;
-  status1: DocumentacaoStatus1;
-  status2: DocumentacaoStatus2;
+  status1: string;
+  status2: string;
   corretorId: string;
   gerenteId: string;
   dataAnalise: string;
@@ -114,14 +127,16 @@ type FormState = {
 };
 
 const emptyForm = (): FormState => ({
-  leadId: "",
-  clienteId: "",
+  contatoId: "",
+  novoCliente: false,
+  telefoneNovo: "",
+  emailNovo: "",
   nome: "",
   construtoraId: "",
   empreendimentoId: "",
   fonte: "outro",
-  status1: "analise",
-  status2: "andamento",
+  status1: "Análise",
+  status2: "Andamento",
   corretorId: "",
   gerenteId: "",
   dataAnalise: "",
@@ -139,8 +154,11 @@ function DocumentacaoPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
-  const { leads, assignees, loading: leadsLoading } = useLeads();
-  const { funnelStages } = useCatalog();
+  const { leads, assignees, loading: leadsLoading, addLead } = useLeads();
+  const { funnelStages, defaultStageId, origens } = useCatalog();
+  const canQuickCreateEmpreendimento =
+    user?.role === "admin" || user?.role === "gerente";
+  const canCreateStatus = true;
 
   const [items, setItems] = useState<Documentacao[]>([]);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
@@ -148,6 +166,15 @@ function DocumentacaoPage() {
   const [gerentes, setGerentes] = useState<EquipeOptionUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCorretorId, setFilterCorretorId] = useState<string>("__all__");
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStatus1, setFilterStatus1] = useState("__all__");
+  const [filterStatus2, setFilterStatus2] = useState("__all__");
+  const [filterFonte, setFilterFonte] = useState("__all__");
+  const [filterConstrutoraId, setFilterConstrutoraId] = useState("__all__");
+  const [filterEmpreendimentoId, setFilterEmpreendimentoId] =
+    useState("__all__");
+  const [filterTipo, setFilterTipo] = useState("__all__");
+  const [filterGerenteId, setFilterGerenteId] = useState("__all__");
 
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
@@ -162,6 +189,18 @@ function DocumentacaoPage() {
   const [quickNome, setQuickNome] = useState("");
   const [quickContato, setQuickContato] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
+
+  const [empOpen, setEmpOpen] = useState(false);
+  const [empNome, setEmpNome] = useState("");
+  const [empCidade, setEmpCidade] = useState("");
+  const [empSaving, setEmpSaving] = useState(false);
+
+  const [statusOpen, setStatusOpen] = useState<"status1" | "status2" | null>(
+    null,
+  );
+  const [statusLabel, setStatusLabel] = useState("");
+  const [extraStatus1, setExtraStatus1] = useState<string[]>([]);
+  const [extraStatus2, setExtraStatus2] = useState<string[]>([]);
 
   const stageLabel = useCallback(
     (slug: string) => funnelStages.find((s) => s.id === slug)?.name ?? slug,
@@ -223,20 +262,34 @@ function DocumentacaoPage() {
         (l) => l.corretorId === user.id || l.corretor === user.name,
       );
     }
-    if (filterCorretorId !== "__all__") {
-      return leads.filter((l) => l.corretorId === filterCorretorId);
-    }
     return leads;
-  }, [leads, user, isManager, filterCorretorId]);
+  }, [leads, user, isManager]);
 
-  const leadOptions = useMemo(
-    () => visibleLeads.filter((l) => l.tipo === "lead"),
-    [visibleLeads],
-  );
-  const clienteOptions = useMemo(
-    () => visibleLeads.filter((l) => l.tipo === "cliente"),
-    [visibleLeads],
-  );
+  const contatoOptions = useMemo(() => {
+    return [...visibleLeads].sort((a, b) =>
+      a.nome.localeCompare(b.nome, "pt-BR"),
+    );
+  }, [visibleLeads]);
+
+  const status1Options = useMemo(() => {
+    const set = new Set<string>([
+      ...DEFAULT_STATUS1,
+      ...extraStatus1,
+      ...items.map((i) => i.status1).filter(Boolean),
+      form.status1,
+    ]);
+    return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [extraStatus1, items, form.status1]);
+
+  const status2Options = useMemo(() => {
+    const set = new Set<string>([
+      ...DEFAULT_STATUS2,
+      ...extraStatus2,
+      ...items.map((i) => i.status2).filter(Boolean),
+      form.status2,
+    ]);
+    return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [extraStatus2, items, form.status2]);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -265,11 +318,7 @@ function DocumentacaoPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const corretorId =
-        isManager && filterCorretorId !== "__all__"
-          ? filterCorretorId
-          : undefined;
-      setItems(await fetchDocumentacoes(corretorId));
+      setItems(await fetchDocumentacoes());
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -279,7 +328,192 @@ function DocumentacaoPage() {
     } finally {
       setLoading(false);
     }
-  }, [isManager, filterCorretorId]);
+  }, []);
+
+  const filteredItems = useMemo(() => {
+    const q = filterSearch.trim().toLowerCase();
+    return items.filter((doc) => {
+      if (filterStatus1 !== "__all__" && doc.status1 !== filterStatus1) {
+        return false;
+      }
+      if (filterStatus2 !== "__all__" && doc.status2 !== filterStatus2) {
+        return false;
+      }
+      if (filterFonte !== "__all__" && doc.fonte !== filterFonte) {
+        return false;
+      }
+      if (
+        filterConstrutoraId !== "__all__" &&
+        doc.construtoraId !== filterConstrutoraId
+      ) {
+        return false;
+      }
+      if (
+        filterEmpreendimentoId !== "__all__" &&
+        doc.empreendimentoId !== filterEmpreendimentoId
+      ) {
+        return false;
+      }
+      if (filterTipo !== "__all__" && doc.tipoContato !== filterTipo) {
+        return false;
+      }
+      if (filterCorretorId !== "__all__") {
+        const corretorId = doc.corretorId ?? doc.lead.corretorId;
+        if (corretorId !== filterCorretorId) return false;
+      }
+      if (filterGerenteId !== "__all__" && doc.gerenteId !== filterGerenteId) {
+        return false;
+      }
+      if (!q) return true;
+      const hay = [
+        doc.nome,
+        doc.construtora?.nome,
+        doc.empreendimento?.nome,
+        doc.corretor?.name,
+        doc.gerente?.name,
+        doc.lead.nome,
+        doc.status1,
+        doc.status2,
+        FONTE_LABELS[doc.fonte],
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [
+    items,
+    filterSearch,
+    filterStatus1,
+    filterStatus2,
+    filterFonte,
+    filterConstrutoraId,
+    filterEmpreendimentoId,
+    filterTipo,
+    filterCorretorId,
+    filterGerenteId,
+  ]);
+
+  const filterEmpreendimentoOptions = useMemo(() => {
+    if (filterConstrutoraId === "__all__") return empreendimentos;
+    return empreendimentos.filter(
+      (e) => !e.construtoraId || e.construtoraId === filterConstrutoraId,
+    );
+  }, [empreendimentos, filterConstrutoraId]);
+
+  type ActiveFilterChip = {
+    id: string;
+    label: string;
+    onClear: () => void;
+  };
+
+  const activeFilterChips = useMemo(() => {
+    const chips: ActiveFilterChip[] = [];
+    if (filterSearch.trim()) {
+      chips.push({
+        id: "search",
+        label: `Busca: ${filterSearch.trim()}`,
+        onClear: () => setFilterSearch(""),
+      });
+    }
+    if (filterStatus1 !== "__all__") {
+      chips.push({
+        id: "status1",
+        label: `Status 1: ${filterStatus1}`,
+        onClear: () => setFilterStatus1("__all__"),
+      });
+    }
+    if (filterStatus2 !== "__all__") {
+      chips.push({
+        id: "status2",
+        label: `Status 2: ${filterStatus2}`,
+        onClear: () => setFilterStatus2("__all__"),
+      });
+    }
+    if (filterFonte !== "__all__") {
+      chips.push({
+        id: "fonte",
+        label: `Fonte: ${FONTE_LABELS[filterFonte as DocumentacaoFonte] ?? filterFonte}`,
+        onClear: () => setFilterFonte("__all__"),
+      });
+    }
+    if (filterConstrutoraId !== "__all__") {
+      chips.push({
+        id: "construtora",
+        label: `Construtora: ${
+          construtoras.find((c) => c.id === filterConstrutoraId)?.nome ?? "—"
+        }`,
+        onClear: () => {
+          setFilterConstrutoraId("__all__");
+          setFilterEmpreendimentoId("__all__");
+        },
+      });
+    }
+    if (filterEmpreendimentoId !== "__all__") {
+      chips.push({
+        id: "empreendimento",
+        label: `Empreendimento: ${
+          empreendimentos.find((e) => e.id === filterEmpreendimentoId)?.nome ??
+          "—"
+        }`,
+        onClear: () => setFilterEmpreendimentoId("__all__"),
+      });
+    }
+    if (filterTipo !== "__all__") {
+      chips.push({
+        id: "tipo",
+        label: `Tipo: ${filterTipo === "cliente" ? "Cliente" : "Lead"}`,
+        onClear: () => setFilterTipo("__all__"),
+      });
+    }
+    if (filterCorretorId !== "__all__") {
+      chips.push({
+        id: "corretor",
+        label: `Corretor: ${
+          corretorOptions.find((a) => a.id === filterCorretorId)?.name ?? "—"
+        }`,
+        onClear: () => setFilterCorretorId("__all__"),
+      });
+    }
+    if (filterGerenteId !== "__all__") {
+      chips.push({
+        id: "gerente",
+        label: `Gerente: ${
+          gerenteOptions.find((a) => a.id === filterGerenteId)?.name ?? "—"
+        }`,
+        onClear: () => setFilterGerenteId("__all__"),
+      });
+    }
+    return chips;
+  }, [
+    filterSearch,
+    filterStatus1,
+    filterStatus2,
+    filterFonte,
+    filterConstrutoraId,
+    filterEmpreendimentoId,
+    filterTipo,
+    filterCorretorId,
+    filterGerenteId,
+    construtoras,
+    empreendimentos,
+    corretorOptions,
+    gerenteOptions,
+  ]);
+
+  const activeFiltersCount = activeFilterChips.length;
+
+  function clearAllFilters() {
+    setFilterSearch("");
+    setFilterStatus1("__all__");
+    setFilterStatus2("__all__");
+    setFilterFonte("__all__");
+    setFilterConstrutoraId("__all__");
+    setFilterEmpreendimentoId("__all__");
+    setFilterTipo("__all__");
+    setFilterCorretorId("__all__");
+    setFilterGerenteId("__all__");
+  }
 
   useEffect(() => {
     void loadItems();
@@ -298,17 +532,19 @@ function DocumentacaoPage() {
       ...prev,
       nome: contact.nome,
       corretorId: contact.corretorId ?? prev.corretorId,
+      construtoraId: contact.construtoraId ?? prev.construtoraId,
+      empreendimentoId: contact.empreendimentoId ?? prev.empreendimentoId,
     }));
   }
 
-  function selectLead(id: string) {
-    setForm((prev) => ({ ...prev, leadId: id, clienteId: "" }));
-    const contact = leads.find((l) => l.id === id);
-    if (contact) applyContact(contact);
-  }
-
-  function selectCliente(id: string) {
-    setForm((prev) => ({ ...prev, clienteId: id, leadId: "" }));
+  function selectContato(id: string) {
+    setForm((prev) => ({
+      ...prev,
+      contatoId: id,
+      novoCliente: false,
+      telefoneNovo: "",
+      emailNovo: "",
+    }));
     const contact = leads.find((l) => l.id === id);
     if (contact) applyContact(contact);
   }
@@ -326,8 +562,10 @@ function DocumentacaoPage() {
 
   function fillFromDoc(doc: Documentacao) {
     setForm({
-      leadId: doc.tipoContato === "lead" ? doc.leadId : "",
-      clienteId: doc.tipoContato === "cliente" ? doc.leadId : "",
+      contatoId: doc.leadId,
+      novoCliente: false,
+      telefoneNovo: "",
+      emailNovo: "",
       nome: doc.nome,
       construtoraId: doc.construtoraId ?? "",
       empreendimentoId: doc.empreendimentoId ?? "",
@@ -357,14 +595,13 @@ function DocumentacaoPage() {
     setOpen(true);
   }
 
-  function buildPayload(): CreateDocumentacaoInput | null {
-    const leadId = form.leadId || form.clienteId;
-    if (!leadId) {
-      toast.error("Selecione um lead ou cliente.");
-      return null;
-    }
+  function buildPayload(leadId: string): CreateDocumentacaoInput | null {
     if (form.nome.trim().length < 2) {
       toast.error("Informe o nome.");
+      return null;
+    }
+    if (!form.status1.trim() || !form.status2.trim()) {
+      toast.error("Informe os status.");
       return null;
     }
 
@@ -375,8 +612,8 @@ function DocumentacaoPage() {
       construtoraId: form.construtoraId || null,
       empreendimentoId: form.empreendimentoId || null,
       fonte: form.fonte,
-      status1: form.status1,
-      status2: form.status2,
+      status1: form.status1.trim(),
+      status2: form.status2.trim(),
       corretorId: form.corretorId || null,
       gerenteId: form.gerenteId || null,
       dataAnalise: form.dataAnalise || null,
@@ -389,14 +626,56 @@ function DocumentacaoPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (formMode === "view") return;
-    const payload = buildPayload();
-    if (!payload) return;
 
     setSaving(true);
     try {
+      let leadId = form.contatoId;
+
+      if (formMode === "create" && form.novoCliente) {
+        if (form.nome.trim().length < 2) {
+          toast.error("Informe o nome do cliente.");
+          return;
+        }
+        if (!isValidPhone(form.telefoneNovo)) {
+          toast.error(PHONE_INVALID_MESSAGE);
+          return;
+        }
+        const digits = phoneDigits(form.telefoneNovo);
+        const created = await addLead({
+          tipo: "cliente",
+          nome: form.nome.trim(),
+          telefone: form.telefoneNovo.trim(),
+          email:
+            form.emailNovo.trim() ||
+            `cliente.${digits}@pendente.local`,
+          origem: origens[0] ?? "Documentação",
+          interesse: "Comprar",
+          cidade: "",
+          bairro: "",
+          stage: defaultStageId,
+          corretorId: form.corretorId || undefined,
+        });
+        leadId = created.id;
+      } else if (formMode === "create" && !leadId) {
+        toast.error("Selecione um lead/cliente ou marque cliente novo.");
+        return;
+      }
+
+      if (!leadId && formMode === "edit") {
+        toast.error("Contato inválido.");
+        return;
+      }
+
+      const payload = buildPayload(leadId);
+      if (!payload) return;
+
       if (formMode === "create") {
         await createDocumentacao(payload);
-        toast.success("Documentação criada.");
+        toast.success(
+          form.novoCliente
+            ? "Cliente e documentação criados."
+            : "Documentação criada.",
+        );
       } else if (editingId) {
         const { leadId: _leadId, ...patch } = payload;
         await updateDocumentacao(editingId, patch);
@@ -459,6 +738,70 @@ function DocumentacaoPage() {
     }
   }
 
+  function openQuickEmpreendimento() {
+    if (!form.construtoraId) {
+      toast.error(
+        "Selecione a construtora antes de cadastrar um empreendimento.",
+      );
+      return;
+    }
+    setEmpNome("");
+    setEmpCidade("");
+    setEmpOpen(true);
+  }
+
+  async function handleQuickCreateEmpreendimento(e: FormEvent) {
+    e.preventDefault();
+    if (!form.construtoraId) return;
+    if (empNome.trim().length < 2) {
+      toast.error("Informe o nome do empreendimento.");
+      return;
+    }
+    setEmpSaving(true);
+    try {
+      const created = await createEmpreendimento({
+        nome: empNome.trim(),
+        construtoraId: form.construtoraId,
+        cidade: empCidade.trim() || undefined,
+      });
+      await loadLookups();
+      setField("empreendimentoId", created.id);
+      setEmpOpen(false);
+      toast.success("Empreendimento cadastrado e selecionado.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível cadastrar o empreendimento.",
+      );
+    } finally {
+      setEmpSaving(false);
+    }
+  }
+
+  async function handleQuickCreateStatus(e: FormEvent) {
+    e.preventDefault();
+    if (!statusOpen) return;
+    const label = statusLabel.trim();
+    if (label.length < 2) {
+      toast.error("Informe o nome do status.");
+      return;
+    }
+    if (statusOpen === "status1") {
+      setExtraStatus1((prev) =>
+        prev.includes(label) ? prev : [...prev, label],
+      );
+    } else {
+      setExtraStatus2((prev) =>
+        prev.includes(label) ? prev : [...prev, label],
+      );
+    }
+    setField(statusOpen, label);
+    setStatusOpen(null);
+    setStatusLabel("");
+    toast.success("Status adicionado e selecionado.");
+  }
+
   const readOnly = formMode === "view";
 
   return (
@@ -474,24 +817,251 @@ function DocumentacaoPage() {
         }
       />
 
-      {isManager && (
-        <div className="mb-4 max-w-xs">
-          <Label className="mb-1.5 block">Filtrar por corretor</Label>
-          <Select value={filterCorretorId} onValueChange={setFilterCorretorId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos</SelectItem>
-              {corretorOptions.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              placeholder="Buscar nome, construtora, status…"
+              className="pl-9"
+            />
+          </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  activeFiltersCount > 0 && "border-primary text-primary",
+                )}
+              >
+                <Filter className="w-4 h-4 mr-1.5" />
+                Filtros
+                {activeFiltersCount > 0 ? (
+                  <Badge className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px]">
+                    {activeFiltersCount}
+                  </Badge>
+                ) : null}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 space-y-3 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Filtros</p>
+                {activeFiltersCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={clearAllFilters}
+                  >
+                    Limpar
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Status 1</Label>
+                <Select value={filterStatus1} onValueChange={setFilterStatus1}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos</SelectItem>
+                    {status1Options.map((label) => (
+                      <SelectItem key={label} value={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Status 2</Label>
+                <Select value={filterStatus2} onValueChange={setFilterStatus2}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos</SelectItem>
+                    {status2Options.map((label) => (
+                      <SelectItem key={label} value={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Fonte</Label>
+                <Select value={filterFonte} onValueChange={setFilterFonte}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todas</SelectItem>
+                    {(Object.keys(FONTE_LABELS) as DocumentacaoFonte[]).map(
+                      (k) => (
+                        <SelectItem key={k} value={k}>
+                          {FONTE_LABELS[k]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Tipo</Label>
+                <Select value={filterTipo} onValueChange={setFilterTipo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Lead e cliente</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                    <SelectItem value="cliente">Cliente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Construtora
+                </Label>
+                <Select
+                  value={filterConstrutoraId}
+                  onValueChange={(v) => {
+                    setFilterConstrutoraId(v);
+                    setFilterEmpreendimentoId("__all__");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todas</SelectItem>
+                    {construtoras.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Empreendimento
+                </Label>
+                <Select
+                  value={filterEmpreendimentoId}
+                  onValueChange={setFilterEmpreendimentoId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos</SelectItem>
+                    {filterEmpreendimentoOptions.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isManager ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Corretor
+                  </Label>
+                  <Select
+                    value={filterCorretorId}
+                    onValueChange={setFilterCorretorId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todos</SelectItem>
+                      {corretorOptions.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
+              {isManager ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Gerente
+                  </Label>
+                  <Select
+                    value={filterGerenteId}
+                    onValueChange={setFilterGerenteId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todos</SelectItem>
+                      {gerenteOptions.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </PopoverContent>
+          </Popover>
+
+          {activeFiltersCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Limpar
+            </Button>
+          ) : null}
         </div>
-      )}
+
+        {activeFilterChips.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {activeFilterChips.map((chip) => (
+              <Badge
+                key={chip.id}
+                variant="secondary"
+                className="gap-1 pl-2.5 pr-1 py-1 font-normal"
+              >
+                {chip.label}
+                <button
+                  type="button"
+                  className="rounded-sm p-0.5 hover:bg-muted-foreground/20"
+                  onClick={chip.onClear}
+                  aria-label={`Remover filtro ${chip.label}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <Card>
         <CardContent className="p-0">
@@ -504,6 +1074,14 @@ function DocumentacaoPage() {
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
               <FolderOpen className="w-8 h-8 opacity-40" />
               <p>Nenhuma documentação cadastrada.</p>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+              <Filter className="w-8 h-8 opacity-40" />
+              <p>Nenhuma documentação para os filtros selecionados.</p>
+              <Button type="button" variant="outline" size="sm" onClick={clearAllFilters}>
+                Limpar filtros
+              </Button>
             </div>
           ) : (
             <Table>
@@ -519,7 +1097,7 @@ function DocumentacaoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((doc) => (
+                {filteredItems.map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell>
                       <div className="font-medium">{doc.nome}</div>
@@ -537,13 +1115,9 @@ function DocumentacaoPage() {
                     <TableCell>{doc.empreendimento?.nome ?? "—"}</TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <Badge variant="outline">
-                          {STATUS1_LABELS[doc.status1]}
-                        </Badge>
+                        <Badge variant="outline">{doc.status1}</Badge>
                         <div>
-                          <Badge variant="secondary">
-                            {STATUS2_LABELS[doc.status2]}
-                          </Badge>
+                          <Badge variant="secondary">{doc.status2}</Badge>
                         </div>
                       </div>
                     </TableCell>
@@ -602,53 +1176,86 @@ function DocumentacaoPage() {
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
             <FormSection title="Lead / Cliente">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Lead</Label>
-                  <Select
-                    value={form.leadId || "__none__"}
-                    onValueChange={(v) =>
-                      v === "__none__" ? setField("leadId", "") : selectLead(v)
-                    }
-                    disabled={readOnly || formMode === "edit"}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {leadOptions.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Cliente</Label>
-                  <Select
-                    value={form.clienteId || "__none__"}
-                    onValueChange={(v) =>
-                      v === "__none__"
-                        ? setField("clienteId", "")
-                        : selectCliente(v)
-                    }
-                    disabled={readOnly || formMode === "edit"}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {clienteOptions.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-4">
+                {formMode === "create" && (
+                  <label className="flex items-start gap-2 rounded-lg border border-border/60 p-3 cursor-pointer hover:bg-muted/30">
+                    <Checkbox
+                      checked={form.novoCliente}
+                      onCheckedChange={(checked) => {
+                        const on = checked === true;
+                        setForm((prev) => ({
+                          ...prev,
+                          novoCliente: on,
+                          contatoId: on ? "" : prev.contatoId,
+                          telefoneNovo: on ? prev.telefoneNovo : "",
+                          emailNovo: on ? prev.emailNovo : "",
+                        }));
+                      }}
+                      disabled={readOnly}
+                      className="mt-0.5"
+                    />
+                    <span className="text-sm leading-snug">
+                      <span className="font-medium">Cliente novo</span>
+                      <span className="block text-muted-foreground text-xs">
+                        Marque se o cliente ainda não está no banco — ao
+                        salvar, o cadastro é criado junto com a documentação.
+                      </span>
+                    </span>
+                  </label>
+                )}
+
+                {!form.novoCliente ? (
+                  <div className="space-y-2">
+                    <Label>Lead ou cliente</Label>
+                    <Select
+                      value={form.contatoId || "__none__"}
+                      onValueChange={(v) =>
+                        v === "__none__"
+                          ? setField("contatoId", "")
+                          : selectContato(v)
+                      }
+                      disabled={readOnly || formMode === "edit"}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">—</SelectItem>
+                        {contatoOptions.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.nome} · {l.tipo === "cliente" ? "Cliente" : "Lead"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="telefoneNovo">Telefone *</Label>
+                      <Input
+                        id="telefoneNovo"
+                        value={form.telefoneNovo}
+                        onChange={(e) =>
+                          setField("telefoneNovo", formatPhone(e.target.value))
+                        }
+                        placeholder={PHONE_PLACEHOLDER}
+                        disabled={readOnly}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="emailNovo">E-mail</Label>
+                      <Input
+                        id="emailNovo"
+                        type="email"
+                        value={form.emailNovo}
+                        onChange={(e) => setField("emailNovo", e.target.value)}
+                        placeholder="Opcional"
+                        disabled={readOnly}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </FormSection>
 
@@ -702,7 +1309,19 @@ function DocumentacaoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Empreendimento</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Empreendimento</Label>
+                    {canQuickCreateEmpreendimento && !readOnly && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={openQuickEmpreendimento}
+                      >
+                        + Novo empreendimento
+                      </Button>
+                    )}
+                  </div>
                   <Select
                     value={form.empreendimentoId || "__none__"}
                     onValueChange={(v) =>
@@ -750,23 +1369,34 @@ function DocumentacaoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Status 1</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Status 1</Label>
+                    {canCreateStatus && !readOnly && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => {
+                          setStatusLabel("");
+                          setStatusOpen("status1");
+                        }}
+                      >
+                        + Novo status
+                      </Button>
+                    )}
+                  </div>
                   <Select
                     value={form.status1}
-                    onValueChange={(v) =>
-                      setField("status1", v as DocumentacaoStatus1)
-                    }
+                    onValueChange={(v) => setField("status1", v)}
                     disabled={readOnly}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(
-                        Object.keys(STATUS1_LABELS) as DocumentacaoStatus1[]
-                      ).map((k) => (
-                        <SelectItem key={k} value={k}>
-                          {STATUS1_LABELS[k]}
+                      {status1Options.map((label) => (
+                        <SelectItem key={label} value={label}>
+                          {label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -774,23 +1404,34 @@ function DocumentacaoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Status 2</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Status 2</Label>
+                    {canCreateStatus && !readOnly && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => {
+                          setStatusLabel("");
+                          setStatusOpen("status2");
+                        }}
+                      >
+                        + Novo status
+                      </Button>
+                    )}
+                  </div>
                   <Select
                     value={form.status2}
-                    onValueChange={(v) =>
-                      setField("status2", v as DocumentacaoStatus2)
-                    }
+                    onValueChange={(v) => setField("status2", v)}
                     disabled={readOnly}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(
-                        Object.keys(STATUS2_LABELS) as DocumentacaoStatus2[]
-                      ).map((k) => (
-                        <SelectItem key={k} value={k}>
-                          {STATUS2_LABELS[k]}
+                      {status2Options.map((label) => (
+                        <SelectItem key={label} value={label}>
+                          {label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -953,6 +1594,92 @@ function DocumentacaoPage() {
             </Button>
             <Button type="submit" disabled={quickSaving}>
               {quickSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Criar
+            </Button>
+          </FormDialogActions>
+        </form>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={empOpen}
+        onOpenChange={setEmpOpen}
+        icon={<Building2 className="w-5 h-5" />}
+        title="Novo empreendimento"
+      >
+        <form
+          onSubmit={handleQuickCreateEmpreendimento}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          <FormDialogBody>
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="empNome">Nome *</Label>
+                <Input
+                  id="empNome"
+                  value={empNome}
+                  onChange={(e) => setEmpNome(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="empCidade">Cidade</Label>
+                <Input
+                  id="empCidade"
+                  value={empCidade}
+                  onChange={(e) => setEmpCidade(e.target.value)}
+                />
+              </div>
+            </div>
+          </FormDialogBody>
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEmpOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={empSaving}>
+              {empSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Criar
+            </Button>
+          </FormDialogActions>
+        </form>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={statusOpen !== null}
+        onOpenChange={(o) => !o && setStatusOpen(null)}
+        icon={<FolderOpen className="w-5 h-5" />}
+        title={
+          statusOpen === "status2" ? "Novo status 2" : "Novo status 1"
+        }
+      >
+        <form
+          onSubmit={handleQuickCreateStatus}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          <FormDialogBody>
+            <div className="space-y-2">
+              <Label htmlFor="statusLabel">Nome do status *</Label>
+              <Input
+                id="statusLabel"
+                value={statusLabel}
+                onChange={(e) => setStatusLabel(e.target.value)}
+                placeholder="Ex.: Pendente documentação"
+                required
+              />
+            </div>
+          </FormDialogBody>
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStatusOpen(null)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit">
               Criar
             </Button>
           </FormDialogActions>

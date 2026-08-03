@@ -4,10 +4,6 @@ import type { ContatoTipo, StageId } from "@/lib/crm-types";
 export type DocumentacaoFonte =
   "indicacao" | "lead_proprio" | "lista" | "campanha" | "outro";
 
-export type DocumentacaoStatus1 = "aprovado" | "analise" | "aprovado_restricao";
-
-export type DocumentacaoStatus2 = "vendido" | "bacen" | "andamento";
-
 export const FONTE_LABELS: Record<DocumentacaoFonte, string> = {
   indicacao: "Indicação",
   lead_proprio: "Lead próprio",
@@ -16,17 +12,15 @@ export const FONTE_LABELS: Record<DocumentacaoFonte, string> = {
   outro: "Outro",
 };
 
-export const STATUS1_LABELS: Record<DocumentacaoStatus1, string> = {
-  aprovado: "Aprovado",
-  analise: "Análise",
-  aprovado_restricao: "Aprovado c/ restrição",
-};
+/** Defaults de Status 1 (crédito/análise). */
+export const DEFAULT_STATUS1 = [
+  "Aprovado",
+  "Análise",
+  "Aprovado c/ restrição",
+] as const;
 
-export const STATUS2_LABELS: Record<DocumentacaoStatus2, string> = {
-  vendido: "Vendido",
-  bacen: "Bacen",
-  andamento: "Andamento",
-};
+/** Defaults de Status 2 (andamento comercial). */
+export const DEFAULT_STATUS2 = ["Vendido", "Bacen", "Andamento"] as const;
 
 export interface Documentacao {
   id: string;
@@ -37,8 +31,8 @@ export interface Documentacao {
   construtoraId: string | null;
   empreendimentoId: string | null;
   fonte: DocumentacaoFonte;
-  status1: DocumentacaoStatus1;
-  status2: DocumentacaoStatus2;
+  status1: string;
+  status2: string;
   corretorId: string | null;
   gerenteId: string | null;
   dataAnalise: string | null;
@@ -68,8 +62,8 @@ export type CreateDocumentacaoInput = {
   construtoraId?: string | null;
   empreendimentoId?: string | null;
   fonte: DocumentacaoFonte;
-  status1: DocumentacaoStatus1;
-  status2: DocumentacaoStatus2;
+  status1: string;
+  status2: string;
   corretorId?: string | null;
   gerenteId?: string | null;
   dataAnalise?: string | null;
