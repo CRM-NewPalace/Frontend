@@ -105,6 +105,7 @@ import {
   fetchEmpreendimentos,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
+import { createUser } from "@/lib/users-api";
 import { fetchEquipeGerentes, type EquipeOptionUser } from "@/lib/equipes-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -256,9 +257,17 @@ function DocumentacaoPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
-  const { leads, assignees, loading: leadsLoading, addLead } = useLeads();
-  const { funnelStages, defaultStageId, origens, documentacaoFontes, documentacaoStatus1, documentacaoStatus2, addItem } =
-    useCatalog();
+  const { leads, assignees, loading: leadsLoading, addLead, refresh: refreshLeads } =
+    useLeads();
+  const {
+    funnelStages,
+    defaultStageId,
+    origens,
+    documentacaoFontes,
+    documentacaoStatus1,
+    documentacaoStatus2,
+    addItem,
+  } = useCatalog();
   const fonteCatalog =
     documentacaoFontes.length > 0
       ? documentacaoFontes
@@ -1086,14 +1095,17 @@ function DocumentacaoPage() {
     return map;
   }, [leads]);
 
-  function findLeadForImport(row: ParsedImportDoc): Lead | undefined {
+  function findLeadForImport(
+    row: ParsedImportDoc,
+    leadList: typeof leads,
+  ): (typeof leads)[number] | undefined {
     if (row.telefone && isValidPhone(row.telefone)) {
       const digits = phoneDigits(row.telefone);
-      const byPhone = leads.find((l) => phoneDigits(l.telefone) === digits);
+      const byPhone = leadList.find((l) => phoneDigits(l.telefone) === digits);
       if (byPhone) return byPhone;
     }
     const nome = normalizePersonName(row.nome);
-    return leads.find((l) => normalizePersonName(l.nome) === nome);
+    return leadList.find((l) => normalizePersonName(l.nome) === nome);
   }
 
   function resolveIdByName(
@@ -1106,6 +1118,33 @@ function DocumentacaoPage() {
       (item) => normalizePersonName(item.nome ?? item.name ?? "") === n,
     );
     return found?.id ?? null;
+  }
+
+  function catalogHasLabel(labels: string[], raw: string) {
+    const n = normalizePersonName(raw);
+    if (!n) return false;
+    return labels.some((l) => normalizePersonName(l) === n);
+  }
+
+  function importEmailFromName(name: string, role: string) {
+    const slug =
+      name
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ".")
+        .replace(/^\.+|\.+$/g, "")
+        .slice(0, 40) || role;
+    return `${role}.${slug}.${Date.now().toString(36)}@example.com`;
+  }
+
+  function importTempPassword() {
+    return `Import${Date.now().toString(36)}Aa1`;
+  }
+
+  function placeholderClientPhone() {
+    const n = String(Date.now()).slice(-8).padStart(8, "0");
+    return formatPhone(`819${n}`);
   }
 
   async function handleImportFile(file: File) {
@@ -1139,23 +1178,116 @@ function DocumentacaoPage() {
     setImportSaving(true);
     let ok = 0;
     let fail = 0;
+    let createdExtras = 0;
+
+    const localConstrutoras = [...construtoras];
+    const localEmpreendimentos = [...empreendimentos];
+    const localCorretores = [...corretorOptions];
+    const localGerentes = [...gerenteOptions];
+    const localLeads = [...leads];
+    const localFontes = [...fonteOptions];
+    const localStatus1 = [...status1Options];
+    const localStatus2 = [...status2Options];
+
     try {
       for (const row of valid) {
         try {
-          let lead = findLeadForImport(row);
-          if (!lead) {
-            if (!row.telefone || !isValidPhone(row.telefone)) {
-              fail += 1;
-              continue;
+          // Fonte / status → catálogo
+          if (row.fonte && !catalogHasLabel(localFontes, row.fonte)) {
+            try {
+              await addItem({ type: "documentacao_fonte", label: row.fonte });
+              localFontes.push(row.fonte);
+              createdExtras += 1;
+            } catch {
+              /* já existe */
             }
-            const digits = phoneDigits(row.telefone);
-            const corretorId =
-              resolveIdByName(corretorOptions, row.corretorNome) ??
-              (user?.role === "corretor" ? user.id : undefined);
+          }
+          if (row.status1 && !catalogHasLabel(localStatus1, row.status1)) {
+            try {
+              await addItem({
+                type: "documentacao_status1",
+                label: row.status1,
+              });
+              localStatus1.push(row.status1);
+              createdExtras += 1;
+            } catch {
+              /* já existe */
+            }
+          }
+          if (row.status2 && !catalogHasLabel(localStatus2, row.status2)) {
+            try {
+              await addItem({
+                type: "documentacao_status2",
+                label: row.status2,
+              });
+              localStatus2.push(row.status2);
+              createdExtras += 1;
+            } catch {
+              /* já existe */
+            }
+          }
+
+          // Gerente
+          let gerenteId = resolveIdByName(localGerentes, row.gerenteNome);
+          if (!gerenteId && row.gerenteNome.trim() && isAdmin) {
+            try {
+              const created = await createUser({
+                name: row.gerenteNome.trim(),
+                email: importEmailFromName(row.gerenteNome, "gerente"),
+                password: importTempPassword(),
+                role: "gerente",
+              });
+              localGerentes.push({
+                id: created.id,
+                name: created.name,
+                email: created.email,
+                status: created.status,
+              });
+              gerenteId = created.id;
+              createdExtras += 1;
+            } catch {
+              /* cota / permissão */
+            }
+          }
+
+          // Corretor
+          let corretorId = resolveIdByName(localCorretores, row.corretorNome);
+          if (!corretorId && row.corretorNome.trim() && isAdmin) {
+            try {
+              const created = await createUser({
+                name: row.corretorNome.trim(),
+                email: importEmailFromName(row.corretorNome, "corretor"),
+                password: importTempPassword(),
+                role: "corretor",
+              });
+              localCorretores.push({
+                id: created.id,
+                name: created.name,
+                role: created.role,
+                gerenteId: gerenteId,
+              });
+              corretorId = created.id;
+              createdExtras += 1;
+            } catch {
+              /* cota / permissão */
+            }
+          }
+          if (!corretorId && user?.role === "corretor") {
+            corretorId = user.id;
+          }
+
+          // Cliente / lead
+          let lead = findLeadForImport(row, localLeads);
+          if (!lead) {
+            const telefone =
+              row.telefone && isValidPhone(row.telefone)
+                ? row.telefone
+                : placeholderClientPhone();
+            const digits = phoneDigits(telefone);
             lead = await addLead({
               tipo: "cliente",
               nome: row.nome,
-              telefone: row.telefone,
+              telefone,
               email: `cliente.${digits}@pendente.local`,
               origem: origens[0] ?? "Documentação",
               interesse: "Comprar",
@@ -1164,23 +1296,78 @@ function DocumentacaoPage() {
               stage: defaultStageId,
               corretorId: corretorId || undefined,
             });
+            localLeads.push(lead);
+            createdExtras += 1;
           }
 
-          const construtoraId = resolveIdByName(
-            construtoras,
+          // Construtora
+          let construtoraId = resolveIdByName(
+            localConstrutoras,
             row.construtoraNome,
           );
+          if (!construtoraId && row.construtoraNome.trim() && isAdmin) {
+            try {
+              const created = await createConstrutora({
+                nome: row.construtoraNome.trim(),
+              });
+              localConstrutoras.push(created);
+              construtoraId = created.id;
+              createdExtras += 1;
+            } catch {
+              /* sem permissão */
+            }
+          }
+          if (
+            !construtoraId &&
+            row.empreendimentoNome.trim() &&
+            isAdmin
+          ) {
+            const fallbackName = "Não informada";
+            construtoraId = resolveIdByName(localConstrutoras, fallbackName);
+            if (!construtoraId) {
+              try {
+                const created = await createConstrutora({ nome: fallbackName });
+                localConstrutoras.push(created);
+                construtoraId = created.id;
+                createdExtras += 1;
+              } catch {
+                /* sem permissão */
+              }
+            }
+          }
+
+          // Empreendimento (precisa de construtora)
           let empreendimentoId = resolveIdByName(
-            empreendimentos,
+            localEmpreendimentos,
             row.empreendimentoNome,
           );
           if (empreendimentoId && construtoraId) {
-            const emp = empreendimentos.find((e) => e.id === empreendimentoId);
+            const emp = localEmpreendimentos.find(
+              (e) => e.id === empreendimentoId,
+            );
             if (
               emp?.construtoraId &&
               emp.construtoraId !== construtoraId
             ) {
               empreendimentoId = null;
+            }
+          }
+          if (
+            !empreendimentoId &&
+            row.empreendimentoNome.trim() &&
+            construtoraId &&
+            canQuickCreateEmpreendimento
+          ) {
+            try {
+              const created = await createEmpreendimento({
+                nome: row.empreendimentoNome.trim(),
+                construtoraId,
+              });
+              localEmpreendimentos.push(created);
+              empreendimentoId = created.id;
+              createdExtras += 1;
+            } catch {
+              /* sem permissão */
             }
           }
 
@@ -1192,11 +1379,11 @@ function DocumentacaoPage() {
             fonte: row.fonte,
             status1: row.status1,
             status2: row.status2,
-            corretorId:
-              resolveIdByName(corretorOptions, row.corretorNome) ??
-              lead.corretorId ??
+            corretorId: corretorId ?? lead.corretorId ?? null,
+            gerenteId:
+              gerenteId ??
+              resolveIdByName(localGerentes, row.gerenteNome) ??
               null,
-            gerenteId: resolveIdByName(gerenteOptions, row.gerenteNome),
             dataAnalise: row.dataAnalise || null,
             dataVenda: row.dataVenda || null,
             vgv: row.vgv,
@@ -1210,12 +1397,16 @@ function DocumentacaoPage() {
 
       setImportOpen(false);
       setImportRows([]);
-      await loadItems();
+      await Promise.all([loadItems(), loadLookups(), refreshLeads({ silent: true })]);
       if (ok > 0) {
+        const extras =
+          createdExtras > 0
+            ? ` ${createdExtras} cadastro(s) novo(s) criado(s).`
+            : "";
         toast.success(
           fail > 0
-            ? `${ok} importada(s), ${fail} com erro.`
-            : `${ok} documentação(ões) importada(s).`,
+            ? `${ok} importada(s), ${fail} com erro.${extras}`
+            : `${ok} documentação(ões) importada(s).${extras}`,
         );
       } else {
         toast.error("Não foi possível importar as fichas.");
@@ -2497,13 +2688,19 @@ function DocumentacaoPage() {
                   <span className="text-foreground">Nome</span> é obrigatório
                 </li>
                 <li>
-                  Se o contato não existir, o{" "}
-                  <span className="text-foreground">Telefone</span> é
-                  obrigatório para criar o cliente
+                  Se o contato não existir, o sistema cria o{" "}
+                  <span className="text-foreground">cliente</span> (telefone
+                  ajuda a evitar duplicados)
                 </li>
                 <li>
-                  Construtora, empreendimento, corretor e gerente são
-                  vinculados pelo nome (precisam existir no sistema)
+                  Construtora, empreendimento, fonte, status 1/2, corretor e
+                  gerente são vinculados pelo nome — se não existirem, o
+                  sistema cadastra automaticamente
+                </li>
+                <li>
+                  Corretor/gerente novos só são criados por{" "}
+                  <span className="text-foreground">admin</span> (e-mail
+                  temporário @example.com)
                 </li>
                 <li>Uma linha = uma ficha de documentação</li>
               </ul>
