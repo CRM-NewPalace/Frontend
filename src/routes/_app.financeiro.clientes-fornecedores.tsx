@@ -8,6 +8,16 @@ import {
   FormDialogShell,
   FormSection,
 } from "@/components/form-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,14 +39,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
-import { createParceiro, fetchParceiros } from "@/lib/financeiro-api";
+import {
+  createParceiro,
+  deleteParceiro,
+  fetchParceiros,
+  updateParceiro,
+} from "@/lib/financeiro-api";
 import {
   brl,
   type ParceiroFinanceiro,
   type TipoParceiro,
 } from "@/lib/financeiro-mock";
 import { formatPhone, PHONE_PLACEHOLDER } from "@/lib/phone";
-import { Building2, Loader2, Plus } from "lucide-react";
+import { Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/financeiro/clientes-fornecedores")({
@@ -98,6 +113,19 @@ function parseSaldo(raw: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function toForm(p: ParceiroFinanceiro): FormState {
+  return {
+    nome: p.nome,
+    documento: p.documento,
+    tipo: p.tipo,
+    email: p.email || "",
+    telefone: p.telefone || "",
+    cidade: p.cidade || "",
+    saldoAberto: String(p.saldoAberto ?? 0),
+    ativo: p.ativo,
+  };
+}
+
 function Page() {
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,8 +133,14 @@ function Page() {
   const [tipo, setTipo] = useState("todos");
   const [ativo, setAtivo] = useState("todos");
   const [open, setOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ParceiroFinanceiro | null>(
+    null,
+  );
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,8 +184,25 @@ function Page() {
   }
 
   function openCreate() {
+    setFormMode("create");
+    setEditingId(null);
     setForm(EMPTY_FORM);
     setOpen(true);
+  }
+
+  function openEdit(p: ParceiroFinanceiro) {
+    setFormMode("edit");
+    setEditingId(p.id);
+    setForm(toForm(p));
+    setOpen(true);
+  }
+
+  function upsertLocal(updated: ParceiroFinanceiro) {
+    setParceiros((prev) =>
+      [updated, ...prev.filter((p) => p.id !== updated.id)].sort((a, b) =>
+        a.nome.localeCompare(b.nome, "pt-BR"),
+      ),
+    );
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -172,26 +223,32 @@ function Page() {
       return;
     }
 
+    const payload = {
+      nome,
+      documento,
+      tipo: form.tipo,
+      email: form.email.trim() || undefined,
+      telefone: form.telefone.trim() || undefined,
+      cidade: form.cidade.trim() || undefined,
+      saldoAberto: saldo,
+      ativo: form.ativo,
+    };
+
     setSaving(true);
     try {
-      const created = await createParceiro({
-        nome,
-        documento,
-        tipo: form.tipo,
-        email: form.email.trim() || undefined,
-        telefone: form.telefone.trim() || undefined,
-        cidade: form.cidade.trim() || undefined,
-        saldoAberto: saldo,
-        ativo: form.ativo,
-      });
-      setParceiros((prev) =>
-        [created, ...prev.filter((p) => p.id !== created.id)].sort((a, b) =>
-          a.nome.localeCompare(b.nome, "pt-BR"),
-        ),
-      );
+      if (formMode === "edit" && editingId) {
+        const updated = await updateParceiro(editingId, payload);
+        upsertLocal(updated);
+        toast.success(`${updated.nome} atualizado.`);
+      } else {
+        const created = await createParceiro(payload);
+        upsertLocal(created);
+        toast.success(`${created.nome} cadastrado.`);
+      }
       setOpen(false);
       setForm(EMPTY_FORM);
-      toast.success(`${created.nome} cadastrado.`);
+      setEditingId(null);
+      setFormMode("create");
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -200,6 +257,25 @@ function Page() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteParceiro(deleteTarget.id);
+      setParceiros((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      toast.success(`${deleteTarget.nome} excluído.`);
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível excluir o parceiro.",
+      );
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -262,13 +338,14 @@ function Page() {
                 <TableHead>Contato</TableHead>
                 <TableHead className="text-right">Saldo aberto</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-[88px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center text-muted-foreground py-10"
                   >
                     Nenhum parceiro encontrado para os filtros.
@@ -286,7 +363,7 @@ function Page() {
                         {p.tipo}
                       </Badge>
                     </TableCell>
-                    <TableCell>{p.cidade}</TableCell>
+                    <TableCell>{p.cidade || "—"}</TableCell>
                     <TableCell className="text-sm">
                       <div>{p.email || "—"}</div>
                       <div className="text-muted-foreground">
@@ -316,6 +393,28 @@ function Page() {
                         {p.ativo ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title="Editar"
+                          onClick={() => openEdit(p)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title="Excluir"
+                          onClick={() => setDeleteTarget(p)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -329,10 +428,21 @@ function Page() {
 
       <FormDialogShell
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setFormMode("create");
+            setEditingId(null);
+            setForm(EMPTY_FORM);
+          }
+        }}
         icon={<Building2 className="w-5 h-5" />}
-        title="Novo parceiro"
-        description="Cadastre um cliente, fornecedor ou ambos."
+        title={formMode === "edit" ? "Editar parceiro" : "Novo parceiro"}
+        description={
+          formMode === "edit"
+            ? "Atualize os dados do cliente ou fornecedor."
+            : "Cadastre um cliente, fornecedor ou ambos."
+        }
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
@@ -444,11 +554,45 @@ function Page() {
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Salvando…" : "Salvar parceiro"}
+              {saving
+                ? "Salvando…"
+                : formMode === "edit"
+                  ? "Salvar alterações"
+                  : "Salvar parceiro"}
             </Button>
           </FormDialogActions>
         </form>
       </FormDialogShell>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(next) => {
+          if (!next && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir parceiro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `Isso removerá permanentemente "${deleteTarget.nome}" do cadastro financeiro.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDelete();
+              }}
+            >
+              {deleting ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
