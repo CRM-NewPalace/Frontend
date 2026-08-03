@@ -14,6 +14,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signIn } from "@/lib/auth";
+import { getWhatsAppUrl } from "@/lib/env";
 import { defaultRouteForRole } from "@/lib/permissions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -458,7 +459,11 @@ function LoginPage() {
             <p className="mt-6 text-center text-sm text-text-muted">
               Ainda não tem conta?{" "}
               <a
-                href="#contato"
+                href={getWhatsAppUrl(
+                  "Olá! Vim pela tela de login da Zone Connection e gostaria de saber mais.",
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="font-medium text-brand-accent transition-colors hover:text-brand-dark"
               >
                 Fale conosco
