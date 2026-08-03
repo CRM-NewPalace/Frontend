@@ -2,6 +2,8 @@ import { apiFetch } from "@/lib/api";
 
 export type CatalogType = "funil_etapa" | "origem" | "motivo_perda" | "tag";
 
+export type FunilEtapaPapel = "inicial" | "analise" | "venda" | "perdido";
+
 export interface CatalogItem {
   id: string;
   type: CatalogType;
@@ -10,6 +12,8 @@ export interface CatalogItem {
   color: string | null;
   sortOrder: number;
   active: boolean;
+  /** Presente em etapas do funil (via funil ativo). */
+  papel?: FunilEtapaPapel | null;
   createdAt: string;
   updatedAt: string;
 }

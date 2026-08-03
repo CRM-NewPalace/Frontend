@@ -103,10 +103,9 @@ function analiseBadgeClass(status: AnaliseStatus) {
   return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
 }
 
-/** Slug da etapa que dispara o fluxo de "lead perdido". */
-const LOST_STAGE_SLUG = "perdido";
-/** Slug da etapa que exige construtora/empreendimento. */
-const ANALISE_STAGE_SLUG = "em-analise";
+/** Slug legado (fallback se o funil não tiver papel configurado). */
+const LOST_STAGE_SLUG_FALLBACK = "perdido";
+const ANALISE_STAGE_SLUG_FALLBACK = "em-analise";
 
 /** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
 const COLUMN_STEP_PX = 288 + 12;
@@ -140,7 +139,11 @@ function ComercialFunilBoard() {
     motivos: motivoOptions,
     loading: catalogLoading,
     colorByLabel,
+    stageByPapel,
   } = useCatalog();
+  const analiseStageSlug =
+    stageByPapel("analise") ?? ANALISE_STAGE_SLUG_FALLBACK;
+  const lostStageSlug = stageByPapel("perdido") ?? LOST_STAGE_SLUG_FALLBACK;
   const leads =
     isCorretor && user
       ? allLeads.filter(
@@ -275,17 +278,17 @@ function ComercialFunilBoard() {
     }
     const lead = analiseTarget;
     const stageName =
-      funnelStages.find((s) => s.id === ANALISE_STAGE_SLUG)?.name ??
+      funnelStages.find((s) => s.id === analiseStageSlug)?.name ??
       "Em análise";
     setAnaliseSaving(true);
     try {
-      await updateLeadStage(lead.id, ANALISE_STAGE_SLUG, {
+      await updateLeadStage(lead.id, analiseStageSlug, {
         construtoraId: analiseConstrutoraId,
         empreendimentoId: analiseEmpreendimentoId,
       });
       setAnaliseTarget(null);
       toast.success(`${lead.nome} enviado para ${stageName}`);
-      offerTriagemHistory(lead, ANALISE_STAGE_SLUG);
+      offerTriagemHistory(lead, analiseStageSlug);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -338,14 +341,14 @@ function ComercialFunilBoard() {
     if (!lead || lead.stage === stage) return;
 
     // Perdido não é uma etapa comum: pede o motivo e faz soft-delete.
-    if (stage === LOST_STAGE_SLUG) {
+    if (stage === lostStageSlug) {
       setLostMotivo("");
       setLostMotivoOutro("");
       setLostTarget(lead);
       return;
     }
 
-    if (stage === ANALISE_STAGE_SLUG) {
+    if (stage === analiseStageSlug) {
       openAnaliseDialog(lead);
       return;
     }
@@ -402,7 +405,7 @@ function ComercialFunilBoard() {
     if (!detailLead || stage === detailLead.stage) return;
 
     // Perdido: fecha o detalhe e abre o modal de motivo (soft-delete).
-    if (stage === LOST_STAGE_SLUG) {
+    if (stage === lostStageSlug) {
       const target = detailLead;
       setDetailLead(null);
       setLostMotivo("");
@@ -411,7 +414,7 @@ function ComercialFunilBoard() {
       return;
     }
 
-    if (stage === ANALISE_STAGE_SLUG) {
+    if (stage === analiseStageSlug) {
       const target = detailLead;
       setDetailLead(null);
       openAnaliseDialog(target);

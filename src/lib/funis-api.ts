@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api";
 
+export type FunilEtapaPapel = "inicial" | "analise" | "venda" | "perdido";
+
 export type FunilEtapa = {
   id: string;
   funilId: string;
@@ -8,6 +10,7 @@ export type FunilEtapa = {
   color: string;
   sortOrder: number;
   active: boolean;
+  papel: FunilEtapaPapel | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -25,7 +28,12 @@ export type Funil = {
 export type CreateFunilInput = {
   name: string;
   usarPadrao?: boolean;
-  etapas?: Array<{ label: string; color?: string; sortOrder?: number }>;
+  etapas?: Array<{
+    label: string;
+    color?: string;
+    sortOrder?: number;
+    papel?: FunilEtapaPapel | null;
+  }>;
   ativar?: boolean;
 };
 
@@ -33,12 +41,14 @@ export type CreateFunilEtapaInput = {
   label: string;
   color?: string;
   sortOrder?: number;
+  papel?: FunilEtapaPapel | null;
 };
 
 export type UpdateFunilEtapaInput = {
   label?: string;
   color?: string;
   active?: boolean;
+  papel?: FunilEtapaPapel | null;
 };
 
 export async function fetchFunis(): Promise<Funil[]> {

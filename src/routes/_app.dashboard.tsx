@@ -671,7 +671,7 @@ function DashboardAdminView() {
 }
 
 function DashboardCorretorView() {
-  const { funnelStages } = useCatalog();
+  const { funnelStages, stageByPapel } = useCatalog();
   const [summary, setSummary] = useState<DashboardCorretor | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -757,8 +757,9 @@ function DashboardCorretorView() {
     );
   }
 
+  const analiseSlug = stageByPapel("analise") ?? "em-analise";
   const emAnalise =
-    summary.funil.find((item) => item.etapa === "em-analise")?.total ?? 0;
+    summary.funil.find((item) => item.etapa === analiseSlug)?.total ?? 0;
   const mesLabel = new Date(summary.periodo.inicio).toLocaleDateString(
     "pt-BR",
     { month: "long", year: "numeric" },

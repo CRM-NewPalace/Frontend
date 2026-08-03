@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ApiError } from "@/lib/api";
-import { useCatalog, INITIAL_STAGE_SLUG } from "@/lib/catalog-store";
+import { useCatalog } from "@/lib/catalog-store";
 import {
   CATALOG_COLORS,
   DEFAULT_CATALOG_COLOR,
@@ -48,6 +48,7 @@ import {
   updateFunilEtapa,
   type Funil,
   type FunilEtapa,
+  type FunilEtapaPapel,
 } from "@/lib/funis-api";
 import {
   Check,
@@ -59,6 +60,33 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const PAPEL_OPTIONS: Array<{
+  value: FunilEtapaPapel | "";
+  label: string;
+}> = [
+  { value: "", label: "Nenhum (intermediária)" },
+  { value: "inicial", label: "Inicial" },
+  { value: "analise", label: "Análise" },
+  { value: "venda", label: "Venda" },
+  { value: "perdido", label: "Perdido" },
+];
+
+const PAPEL_BADGE_LABEL: Record<FunilEtapaPapel, string> = {
+  inicial: "Inicial",
+  analise: "Análise",
+  venda: "Venda",
+  perdido: "Perdido",
+};
+
+function resolveEtapaPapel(etapa: FunilEtapa): FunilEtapaPapel | null {
+  if (etapa.papel) return etapa.papel;
+  if (etapa.slug === "novo") return "inicial";
+  if (etapa.slug === "em-analise") return "analise";
+  if (etapa.slug === "ganho-venda") return "venda";
+  if (etapa.slug === "perdido") return "perdido";
+  return null;
+}
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -126,7 +154,8 @@ export function ConfigFunisPanel() {
   const [etapaOpen, setEtapaOpen] = useState(false);
   const [etapaEdit, setEtapaEdit] = useState<FunilEtapa | null>(null);
   const [etapaLabel, setEtapaLabel] = useState("");
-  const [etapaColor, setEtapaColor] = useState(DEFAULT_CATALOG_COLOR);
+  const [etapaColor, setEtapaColor] = useState<string>(DEFAULT_CATALOG_COLOR);
+  const [etapaPapel, setEtapaPapel] = useState<FunilEtapaPapel | "">("");
 
   const [deleteFunilId, setDeleteFunilId] = useState<string | null>(null);
 
@@ -262,6 +291,7 @@ export function ConfigFunisPanel() {
     setEtapaEdit(null);
     setEtapaLabel("");
     setEtapaColor(nextCatalogColor(activeEtapas.length));
+    setEtapaPapel("");
     setEtapaOpen(true);
   }
 
@@ -269,6 +299,7 @@ export function ConfigFunisPanel() {
     setEtapaEdit(etapa);
     setEtapaLabel(etapa.label);
     setEtapaColor(etapa.color || DEFAULT_CATALOG_COLOR);
+    setEtapaPapel(resolveEtapaPapel(etapa) ?? "");
     setEtapaOpen(true);
   }
 
@@ -280,14 +311,20 @@ export function ConfigFunisPanel() {
       toast.error("Informe o nome da etapa.");
       return;
     }
+    const papel = etapaPapel === "" ? null : etapaPapel;
     setSaving(true);
     try {
       const updated = etapaEdit
         ? await updateFunilEtapa(selected.id, etapaEdit.id, {
             label,
             color: etapaColor,
+            papel,
           })
-        : await addFunilEtapa(selected.id, { label, color: etapaColor });
+        : await addFunilEtapa(selected.id, {
+            label,
+            color: etapaColor,
+            papel,
+          });
       toast.success(etapaEdit ? "Etapa atualizada." : "Etapa adicionada.");
       setEtapaOpen(false);
       await afterMutation(updated);
@@ -495,7 +532,8 @@ export function ConfigFunisPanel() {
               </p>
             )}
             {activeEtapas.map((s) => {
-              const isInitial = s.slug === INITIAL_STAGE_SLUG;
+              const papel = resolveEtapaPapel(s);
+              const isInitial = papel === "inicial";
               return (
                 <div
                   key={s.id}
@@ -504,9 +542,9 @@ export function ConfigFunisPanel() {
                   <Badge className={s.color || DEFAULT_CATALOG_COLOR}>
                     {s.label}
                   </Badge>
-                  {isInitial && (
+                  {papel && (
                     <Badge variant="secondary" className="text-[10px]">
-                      Inicial
+                      {PAPEL_BADGE_LABEL[papel]}
                     </Badge>
                   )}
                   <span className="text-xs text-muted-foreground ml-auto">
@@ -652,6 +690,27 @@ export function ConfigFunisPanel() {
                   onChange={(e) => setEtapaLabel(e.target.value)}
                   autoFocus
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="etapa-papel">Papel no fluxo</Label>
+                <select
+                  id="etapa-papel"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={etapaPapel}
+                  onChange={(e) =>
+                    setEtapaPapel(e.target.value as FunilEtapaPapel | "")
+                  }
+                >
+                  {PAPEL_OPTIONS.map((opt) => (
+                    <option key={opt.value || "none"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Análise envia à fila do analista; Venda conta na conversão;
+                  Perdido dispara exclusão operacional.
+                </p>
               </div>
               <ColorSwatchPicker
                 value={etapaColor}

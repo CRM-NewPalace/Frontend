@@ -19,16 +19,37 @@ import {
   type CatalogItem,
   type CatalogType,
   type CreateCatalogInput,
+  type FunilEtapaPapel,
   type GroupedCatalog,
   type UpdateCatalogInput,
 } from "@/lib/catalog-api";
 import { DEFAULT_CATALOG_COLOR } from "@/lib/catalog-colors";
 
 /** Etapa do funil normalizada para as telas (id = slug). */
-export type FunnelStage = { id: string; name: string; color: string };
+export type FunnelStage = {
+  id: string;
+  name: string;
+  color: string;
+  papel: FunilEtapaPapel | null;
+};
 
-/** Slug da etapa inicial dos leads (espelha o backend). */
+/** Slug legado da etapa inicial (fallback). */
 export const INITIAL_STAGE_SLUG = "novo";
+
+const LEGACY_PAPEL_BY_SLUG: Record<string, FunilEtapaPapel> = {
+  novo: "inicial",
+  "em-analise": "analise",
+  "ganho-venda": "venda",
+  perdido: "perdido",
+};
+
+function resolvePapel(
+  item: CatalogItem,
+): FunilEtapaPapel | null {
+  if (item.papel) return item.papel;
+  const slug = item.slug ?? "";
+  return LEGACY_PAPEL_BY_SLUG[slug] ?? null;
+}
 
 type CatalogContextValue = {
   catalog: GroupedCatalog;
@@ -37,8 +58,10 @@ type CatalogContextValue = {
   refresh: () => Promise<void>;
   /** Etapas do funil ativas, ordenadas (id = slug). */
   funnelStages: FunnelStage[];
-  /** Slug da etapa usada ao criar lead (novo, se existir). */
+  /** Slug da etapa usada ao criar lead (papel inicial). */
   defaultStageId: string;
+  /** Slug da etapa com o papel dado, ou null. */
+  stageByPapel: (papel: FunilEtapaPapel) => string | null;
   /** Labels ativos por tipo (para dropdowns). */
   origens: string[];
   motivos: string[];
@@ -100,14 +123,24 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         id: item.slug ?? item.id,
         name: item.label,
         color: item.color ?? DEFAULT_CATALOG_COLOR,
+        papel: resolvePapel(item),
       })),
     [catalog.funil_etapa],
   );
 
+  const stageByPapel = useCallback(
+    (papel: FunilEtapaPapel) =>
+      funnelStages.find((s) => s.papel === papel)?.id ?? null,
+    [funnelStages],
+  );
+
   const defaultStageId = useMemo(() => {
-    const novo = funnelStages.find((s) => s.id === INITIAL_STAGE_SLUG);
-    return novo?.id ?? funnelStages[0]?.id ?? INITIAL_STAGE_SLUG;
-  }, [funnelStages]);
+    return (
+      stageByPapel("inicial") ??
+      funnelStages[0]?.id ??
+      INITIAL_STAGE_SLUG
+    );
+  }, [funnelStages, stageByPapel]);
 
   const origens = useMemo(
     () => catalog.origem.map((i) => i.label),
@@ -192,6 +225,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       refresh,
       funnelStages,
       defaultStageId,
+      stageByPapel,
       origens,
       motivos,
       tags,
@@ -209,6 +243,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       refresh,
       funnelStages,
       defaultStageId,
+      stageByPapel,
       origens,
       motivos,
       tags,

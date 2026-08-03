@@ -469,7 +469,7 @@ function CorretorTriagem() {
             <SelectContent>
               <SelectItem value="__all__">Todas as etapas</SelectItem>
               {funnelStages
-                .filter((s) => s.id !== "perdido")
+                .filter((s) => s.papel !== "perdido")
                 .map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
@@ -674,7 +674,7 @@ function CorretorTriagem() {
                 <SelectContent>
                   <SelectItem value="__none__">Manter etapa atual</SelectItem>
                   {funnelStages
-                    .filter((s) => s.id !== "perdido")
+                    .filter((s) => s.papel !== "perdido")
                     .map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -898,7 +898,7 @@ function ManagerTriagem() {
                 <SelectContent>
                   <SelectItem value="__all__">Todas as etapas</SelectItem>
                   {funnelStages
-                    .filter((s) => s.id !== "perdido")
+                    .filter((s) => s.papel !== "perdido")
                     .map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
