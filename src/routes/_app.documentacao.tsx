@@ -1765,7 +1765,12 @@ function DocumentacaoPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="emailNovo">E-mail</Label>
+                      <Label htmlFor="emailNovo">
+                        E-mail{" "}
+                        <span className="font-normal text-muted-foreground">
+                          (opcional)
+                        </span>
+                      </Label>
                       <Input
                         id="emailNovo"
                         type="email"

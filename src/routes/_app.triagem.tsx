@@ -311,7 +311,7 @@ function CorretorTriagem() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const user = getSession();
-  const { leads: allLeads, loading: leadsLoading, refresh } = useLeads();
+  const { leads: allLeads, refresh } = useLeads();
   const { funnelStages } = useCatalog();
   const stageName = useStageLabel();
 
@@ -347,6 +347,22 @@ function CorretorTriagem() {
   );
   const [createTexto, setCreateTexto] = useState("");
   const [saving, setSaving] = useState(false);
+  const [stageFilter, setStageFilter] = useState<string>("__all__");
+
+  const filteredLeads = useMemo(
+    () =>
+      stageFilter === "__all__"
+        ? leads
+        : leads.filter((c) => c.stage === stageFilter),
+    [leads, stageFilter],
+  );
+  const filteredClientes = useMemo(
+    () =>
+      stageFilter === "__all__"
+        ? clientes
+        : clientes.filter((c) => c.stage === stageFilter),
+    [clientes, stageFilter],
+  );
 
   // Prefill vindo do funil (?leadId=&stage=) — listas já vêm do store em memória.
   useEffect(() => {
@@ -431,9 +447,6 @@ function CorretorTriagem() {
     }
   }
 
-  const emptyLists =
-    !leadsLoading && leads.length === 0 && clientes.length === 0;
-
   return (
     <div>
       <PageHeader
@@ -447,6 +460,36 @@ function CorretorTriagem() {
         }
       />
 
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+        <div className="w-full sm:w-[220px]">
+          <Select value={stageFilter} onValueChange={setStageFilter}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Etapa do funil" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as etapas</SelectItem>
+              {funnelStages
+                .filter((s) => s.id !== "perdido")
+                .map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {stageFilter !== "__all__" && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setStageFilter("__all__")}
+          >
+            Limpar filtro
+          </Button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-5 space-y-4">
           <Card className="p-4 space-y-3">
@@ -454,14 +497,19 @@ function CorretorTriagem() {
               <Users className="w-4 h-4 text-primary" />
               Leads
               <span className="text-xs text-muted-foreground font-normal">
-                ({leads.length})
+                ({filteredLeads.length}
+                {stageFilter !== "__all__" ? ` de ${leads.length}` : ""})
               </span>
             </div>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {emptyLists && (
-                <p className="text-xs text-muted-foreground">Nenhum lead.</p>
+              {filteredLeads.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {stageFilter !== "__all__"
+                    ? "Nenhum lead nesta etapa."
+                    : "Nenhum lead."}
+                </p>
               )}
-              {leads.map((c) => (
+              {filteredLeads.map((c) => (
                 <ContactButton
                   key={c.id}
                   contact={c}
@@ -478,14 +526,19 @@ function CorretorTriagem() {
               <User className="w-4 h-4 text-violet-600" />
               Clientes
               <span className="text-xs text-muted-foreground font-normal">
-                ({clientes.length})
+                ({filteredClientes.length}
+                {stageFilter !== "__all__" ? ` de ${clientes.length}` : ""})
               </span>
             </div>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {emptyLists && (
-                <p className="text-xs text-muted-foreground">Nenhum cliente.</p>
+              {filteredClientes.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {stageFilter !== "__all__"
+                    ? "Nenhum cliente nesta etapa."
+                    : "Nenhum cliente."}
+                </p>
               )}
-              {clientes.map((c) => (
+              {filteredClientes.map((c) => (
                 <ContactButton
                   key={c.id}
                   contact={c}
@@ -668,6 +721,7 @@ function ManagerTriagem() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const { leads: allLeads, assignees, loading } = useLeads();
+  const { funnelStages } = useCatalog();
   const stageName = useStageLabel();
 
   const [equipes, setEquipes] = useState<Equipe[]>([]);
@@ -677,6 +731,7 @@ function ManagerTriagem() {
     null,
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [stageFilter, setStageFilter] = useState<string>("__all__");
   const { events, loading: historyLoading } = useHistory(selectedLeadId);
 
   useEffect(() => {
@@ -725,18 +780,30 @@ function ManagerTriagem() {
       .map(leadToContact);
   }, [allLeads, selectedCorretorId]);
 
-  const selectedLead = leads.find((l) => l.id === selectedLeadId) ?? null;
+  const filteredLeads = useMemo(
+    () =>
+      stageFilter === "__all__"
+        ? leads
+        : leads.filter((l) => l.stage === stageFilter),
+    [leads, stageFilter],
+  );
+
+  const selectedLead = filteredLeads.find((l) => l.id === selectedLeadId) ??
+    leads.find((l) => l.id === selectedLeadId) ??
+    null;
   const selectedCorretor = corretores.find((c) => c.id === selectedCorretorId);
 
   function selectEquipe(id: string) {
     setSelectedEquipeId(id);
     setSelectedCorretorId(null);
     setSelectedLeadId(null);
+    setStageFilter("__all__");
   }
 
   function selectCorretor(id: string) {
     setSelectedCorretorId(id);
     setSelectedLeadId(null);
+    setStageFilter("__all__");
   }
 
   return (
@@ -815,19 +882,39 @@ function ManagerTriagem() {
             </div>
           ) : (
             <>
-              <div className="text-sm font-medium">
-                Leads de {selectedCorretor?.name ?? "—"}
-                <span className="text-xs text-muted-foreground font-normal ml-1">
-                  ({leads.length})
-                </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-sm font-medium">
+                  Leads de {selectedCorretor?.name ?? "—"}
+                  <span className="text-xs text-muted-foreground font-normal ml-1">
+                    ({filteredLeads.length}
+                    {stageFilter !== "__all__" ? ` de ${leads.length}` : ""})
+                  </span>
+                </div>
               </div>
+              <Select value={stageFilter} onValueChange={setStageFilter}>
+                <SelectTrigger className="h-9 bg-background">
+                  <SelectValue placeholder="Etapa do funil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas as etapas</SelectItem>
+                  {funnelStages
+                    .filter((s) => s.id !== "perdido")
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
               <div className="space-y-2 max-h-[28rem] overflow-y-auto">
-                {leads.length === 0 && (
+                {filteredLeads.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Nenhum lead deste corretor.
+                    {stageFilter !== "__all__"
+                      ? "Nenhum lead nesta etapa."
+                      : "Nenhum lead deste corretor."}
                   </p>
                 )}
-                {leads.map((l) => (
+                {filteredLeads.map((l) => (
                   <ContactButton
                     key={l.id}
                     contact={l}

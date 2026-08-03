@@ -54,6 +54,7 @@ import { brl, type Lead } from "@/lib/crm-types";
 import {
   formatPhone,
   isValidPhone,
+  phoneDigits,
   PHONE_INVALID_MESSAGE,
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
@@ -194,7 +195,6 @@ function Clientes() {
     setForm(
       emptyForm(
         isCorretor ? defaultCorretor : (corretorOptions[0] ?? defaultCorretor),
-        origemOptions[0] ?? "",
       ),
     );
     setFormOpen(true);
@@ -226,20 +226,20 @@ function Clientes() {
     const bairro = form.bairro.trim() || "—";
     const corretorNome = isCorretor ? defaultCorretor : form.corretor;
 
-    if (!nome || !telefone || !email) {
-      toast.error("Preencha nome, telefone e e-mail.");
+    if (!nome || !telefone) {
+      toast.error("Preencha nome e telefone.");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Informe um e-mail válido ou deixe em branco.");
       return;
     }
     if (!isValidPhone(telefone)) {
       toast.error(PHONE_INVALID_MESSAGE);
       return;
     }
-    if (!form.origem || !origemOptions.includes(form.origem)) {
-      toast.error(
-        origemOptions.length === 0
-          ? "Cadastre ao menos uma origem em Configurações."
-          : "Selecione uma origem válida.",
-      );
+    if (form.origem && !origemOptions.includes(form.origem)) {
+      toast.error("Selecione uma origem válida ou deixe em branco.");
       return;
     }
     if (!corretorNome) {
@@ -250,6 +250,9 @@ function Clientes() {
     const corretorId = isCorretor ? undefined : resolveCorretorId(corretorNome);
     const rendaDigits = String(form.renda).replace(/\D/g, "");
     const rendaNum = rendaDigits ? Number(rendaDigits) : null;
+    const emailFinal =
+      email || `contato.${phoneDigits(telefone)}@sem-email.local`;
+    const origemFinal = form.origem.trim() || "Não informado";
 
     try {
       if (formMode === "create") {
@@ -259,8 +262,8 @@ function Clientes() {
           tipo: "cliente",
           nome,
           telefone,
-          email,
-          origem: form.origem,
+          email: emailFinal,
+          origem: origemFinal,
           interesse: form.interesse,
           cidade,
           bairro,
@@ -275,8 +278,8 @@ function Clientes() {
         await updateLead(editingId, {
           nome,
           telefone,
-          email,
-          origem: form.origem,
+          email: emailFinal,
+          origem: origemFinal,
           interesse: form.interesse,
           cidade,
           bairro,
@@ -519,7 +522,8 @@ function Clientes() {
                     htmlFor="cli-email"
                     className="text-xs text-muted-foreground"
                   >
-                    E-mail
+                    E-mail{" "}
+                    <span className="font-normal">(opcional)</span>
                   </Label>
                   <Input
                     id="cli-email"
@@ -530,34 +534,33 @@ function Clientes() {
                     }
                     placeholder="email@exemplo.com"
                     className="h-10 bg-background"
-                    required
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">
-                    Origem
+                    Origem <span className="font-normal">(opcional)</span>
                   </Label>
                   <Select
-                    value={form.origem || undefined}
-                    onValueChange={(v) => setForm((f) => ({ ...f, origem: v }))}
+                    value={form.origem || "__none__"}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        origem: v === "__none__" ? "" : v,
+                      }))
+                    }
                   >
                     <SelectTrigger className="h-10 bg-background">
                       <SelectValue placeholder="Selecione a origem" />
                     </SelectTrigger>
                     <SelectContent>
-                      {origemOptions.length === 0 ? (
-                        <SelectItem value="__empty" disabled>
-                          Nenhuma origem cadastrada
+                      <SelectItem value="__none__">Sem origem</SelectItem>
+                      {origemOptions.map((o) => (
+                        <SelectItem key={o} value={o}>
+                          {o}
                         </SelectItem>
-                      ) : (
-                        origemOptions.map((o) => (
-                          <SelectItem key={o} value={o}>
-                            {o}
-                          </SelectItem>
-                        ))
-                      )}
+                      ))}
                       {formMode === "edit" &&
                         form.origem &&
                         !origemOptions.includes(form.origem) && (
