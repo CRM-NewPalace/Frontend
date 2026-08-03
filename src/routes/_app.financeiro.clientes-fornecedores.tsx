@@ -56,7 +56,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/financeiro/clientes-fornecedores")({
   head: () => ({
-    meta: [{ title: "Clientes e fornecedores — Zone Connection" }],
+    meta: [{ title: "Clientes e fornecedores ? Zone Connection" }],
   }),
   component: Page,
 });
@@ -102,17 +102,6 @@ const EMPTY_FORM: FormState = {
   ativo: true,
 };
 
-function parseSaldo(raw: string): number {
-  const normalized = raw
-    .trim()
-    .replace(/\s/g, "")
-    .replace(/R\$/gi, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : NaN;
-}
-
 function toForm(p: ParceiroFinanceiro): FormState {
   return {
     nome: p.nome,
@@ -150,7 +139,7 @@ function Page() {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Não foi possível carregar os parceiros.",
+          : "N?o foi poss?vel carregar os parceiros.",
       );
     } finally {
       setLoading(false);
@@ -217,11 +206,6 @@ function Page() {
       toast.error("Informe o documento (CPF ou CNPJ).");
       return;
     }
-    const saldo = parseSaldo(form.saldoAberto);
-    if (!Number.isFinite(saldo)) {
-      toast.error("Saldo aberto inválido.");
-      return;
-    }
 
     const payload = {
       nome,
@@ -230,7 +214,6 @@ function Page() {
       email: form.email.trim() || undefined,
       telefone: form.telefone.trim() || undefined,
       cidade: form.cidade.trim() || undefined,
-      saldoAberto: saldo,
       ativo: form.ativo,
     };
 
@@ -253,7 +236,7 @@ function Page() {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Não foi possível salvar o parceiro.",
+          : "N?o foi poss?vel salvar o parceiro.",
       );
     } finally {
       setSaving(false);
@@ -266,13 +249,13 @@ function Page() {
     try {
       await deleteParceiro(deleteTarget.id);
       setParceiros((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-      toast.success(`${deleteTarget.nome} excluído.`);
+      toast.success(`${deleteTarget.nome} exclu?do.`);
       setDeleteTarget(null);
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Não foi possível excluir o parceiro.",
+          : "N?o foi poss?vel excluir o parceiro.",
       );
     } finally {
       setDeleting(false);
@@ -295,7 +278,7 @@ function Page() {
       <FinanceiroFiltrosBar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar nome, CNPJ, cidade…"
+        searchPlaceholder="Buscar nome, CNPJ, cidade?"
         tipo={tipo}
         onTipoChange={setTipo}
         tipoOptions={TIPO_OPTIONS}
@@ -325,7 +308,7 @@ function Page() {
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Carregando parceiros…
+            Carregando parceiros?
           </div>
         ) : (
           <Table>
@@ -338,7 +321,7 @@ function Page() {
                 <TableHead>Contato</TableHead>
                 <TableHead className="text-right">Saldo aberto</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[88px] text-right">Ações</TableHead>
+                <TableHead className="w-[88px] text-right">A??es</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -363,11 +346,11 @@ function Page() {
                         {p.tipo}
                       </Badge>
                     </TableCell>
-                    <TableCell>{p.cidade || "—"}</TableCell>
+                    <TableCell>{p.cidade || "?"}</TableCell>
                     <TableCell className="text-sm">
-                      <div>{p.email || "—"}</div>
+                      <div>{p.email || "?"}</div>
                       <div className="text-muted-foreground">
-                        {p.telefone || "—"}
+                        {p.telefone || "?"}
                       </div>
                     </TableCell>
                     <TableCell
@@ -516,24 +499,28 @@ function Page() {
                     id="parceiro-cidade"
                     value={form.cidade}
                     onChange={(e) => setField("cidade", e.target.value)}
-                    placeholder="São Paulo"
+                    placeholder="S?o Paulo"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="parceiro-saldo">Saldo aberto</Label>
-                  <Input
-                    id="parceiro-saldo"
-                    inputMode="decimal"
-                    value={form.saldoAberto}
-                    onChange={(e) => setField("saldoAberto", e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
+                {formMode === "edit" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="parceiro-saldo">Saldo aberto</Label>
+                    <Input
+                      id="parceiro-saldo"
+                      value={brl(Number(form.saldoAberto) || 0)}
+                      readOnly
+                      disabled
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Calculado pelos lançamentos em aberto ou atrasados.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:col-span-2">
                   <div>
                     <div className="text-sm font-medium">Ativo</div>
                     <p className="text-xs text-muted-foreground">
-                      Parceiros inativos ficam ocultos no filtro padrão.
+                      Parceiros inativos ficam ocultos no filtro padr?o.
                     </p>
                   </div>
                   <Switch
@@ -555,9 +542,9 @@ function Page() {
             </Button>
             <Button type="submit" disabled={saving}>
               {saving
-                ? "Salvando…"
+                ? "Salvando?"
                 : formMode === "edit"
-                  ? "Salvar alterações"
+                  ? "Salvar altera??es"
                   : "Salvar parceiro"}
             </Button>
           </FormDialogActions>
@@ -575,7 +562,7 @@ function Page() {
             <AlertDialogTitle>Excluir parceiro?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `Isso removerá permanentemente "${deleteTarget.nome}" do cadastro financeiro.`
+                ? `Isso remover? permanentemente "${deleteTarget.nome}" do cadastro financeiro.`
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -588,7 +575,7 @@ function Page() {
                 void handleDelete();
               }}
             >
-              {deleting ? "Excluindo…" : "Excluir"}
+              {deleting ? "Excluindo?" : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
