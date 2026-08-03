@@ -47,6 +47,59 @@ import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 
+const chartConfig = {
+  total: { label: "Processos", color: "hsl(var(--primary))" },
+} satisfies ChartConfig;
+
+function FunnelBarChart({
+  data,
+}: {
+  data: { etapa: string; total: number }[];
+}) {
+  return (
+    <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
+      <ChartContainer
+        config={chartConfig}
+        className="aspect-auto! h-72 w-full min-w-120"
+      >
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ left: 4, right: 40, top: 4, bottom: 0 }}
+        >
+          <CartesianGrid horizontal={false} />
+          <XAxis
+            type="number"
+            allowDecimals={false}
+            domain={[
+              0,
+              (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1),
+            ]}
+          />
+          <YAxis
+            dataKey="etapa"
+            type="category"
+            width={136}
+            tickLine={false}
+            axisLine={false}
+            interval={0}
+            tick={{ fontSize: 11 }}
+          />
+          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+          <Bar dataKey="total" fill="var(--color-total)" radius={4}>
+            <LabelList
+              dataKey="total"
+              position="right"
+              className="fill-foreground"
+              offset={8}
+            />
+          </Bar>
+        </BarChart>
+      </ChartContainer>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Zone Connection" }] }),
   component: Page,
@@ -58,10 +111,6 @@ const ANALISE_LABELS = {
   aprovado: "Aprovada",
   reprovado: "Reprovada",
 } as const;
-
-const chartConfig = {
-  total: { label: "Processos", color: "hsl(var(--primary))" },
-} satisfies ChartConfig;
 
 const META_TIPO_LABEL: Record<string, string> = {
   vendas: "Vendas",
@@ -174,7 +223,7 @@ function DashboardAdminView() {
         description={`Visão gerencial · ${mes} · comparação com o mês anterior.`}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <FinanceKpiCard
           label="Novos leads (mês)"
           value={summary.entradas.mes.valor}
@@ -210,7 +259,7 @@ function DashboardAdminView() {
         />
       </section>
 
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-5 grid gap-3 grid-cols-2 xl:grid-cols-4">
         <FinanceKpiCard
           label="Sem corretor"
           value={summary.atencao.semDono}
@@ -249,8 +298,8 @@ function DashboardAdminView() {
         />
       </section>
 
-      <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
-        <Card>
+      <section className="mt-5 grid gap-4 min-w-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Funil geral</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -258,55 +307,23 @@ function DashboardAdminView() {
             </p>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-72 w-full">
-              <BarChart
-                data={funnelData}
-                layout="vertical"
-                margin={{ left: 12, right: 48 }}
-              >
-                <CartesianGrid horizontal={false} />
-                <XAxis
-                  type="number"
-                  allowDecimals={false}
-                  domain={[
-                    0,
-                    (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1),
-                  ]}
-                />
-                <YAxis
-                  dataKey="etapa"
-                  type="category"
-                  width={120}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                <Bar dataKey="total" fill="var(--color-total)" radius={4}>
-                  <LabelList
-                    dataKey="total"
-                    position="right"
-                    className="fill-foreground"
-                    offset={8}
-                  />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+            <FunnelBarChart data={funnelData} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="px-4 sm:px-6">
             <CardTitle className="text-base">Conversão do mês</CardTitle>
             <p className="text-sm text-muted-foreground">
               % dos leads que entraram e viraram venda (vs mês anterior).
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-xl border bg-secondary/40 p-4 text-center">
+          <CardContent className="space-y-4 px-4 sm:px-6">
+            <div className="rounded-xl border bg-secondary/40 p-3 sm:p-4 text-center">
               <div className="text-xs font-semibold uppercase tracking-wider text-brand-accent">
                 Taxa de conversão
               </div>
-              <div className="mt-1 text-4xl font-bold tabular-nums text-foreground">
+              <div className="mt-1 text-3xl sm:text-4xl font-bold tabular-nums text-foreground">
                 {summary.conversao.taxa.valor.toLocaleString("pt-BR", {
                   maximumFractionDigits: 1,
                 })}
@@ -317,7 +334,7 @@ function DashboardAdminView() {
                 previous={summary.conversao.taxa.valorMesAnterior}
                 className="mt-2 justify-center"
               />
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed px-1">
                 {summary.conversao.vendas.valor} venda
                 {summary.conversao.vendas.valor === 1 ? "" : "s"} de{" "}
                 {summary.conversao.entradas.valor} lead
@@ -325,7 +342,7 @@ function DashboardAdminView() {
                 no mês calendário
               </p>
               {summary.entradas.semana > summary.entradas.mes.valor ? (
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300 leading-relaxed px-1">
                   Nesta semana há {summary.entradas.semana} novos — parte pode
                   ser de dias do mês passado (a semana começa na segunda).
                 </p>
@@ -333,39 +350,42 @@ function DashboardAdminView() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                <div>
+              <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">Leads que entraram</div>
                   <EvolucaoBadge
                     value={summary.conversao.entradas.evolucaoPct}
                     previous={summary.conversao.entradas.valorMesAnterior}
+                    className="mt-0.5"
                   />
                 </div>
-                <span className="font-semibold tabular-nums">
+                <span className="shrink-0 font-semibold tabular-nums pt-0.5">
                   {summary.conversao.entradas.valor}
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                <div>
+              <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">Viraram venda</div>
                   <EvolucaoBadge
                     value={summary.conversao.vendas.evolucaoPct}
                     previous={summary.conversao.vendas.valorMesAnterior}
+                    className="mt-0.5"
                   />
                 </div>
-                <span className="font-semibold tabular-nums">
+                <span className="shrink-0 font-semibold tabular-nums pt-0.5">
                   {summary.conversao.vendas.valor}
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                <div>
+              <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">VGV do mês</div>
                   <EvolucaoBadge
                     value={summary.conversao.vgv.evolucaoPct}
                     previous={summary.conversao.vgv.valorMesAnterior}
+                    className="mt-0.5"
                   />
                 </div>
-                <span className="font-semibold tabular-nums text-sm">
+                <span className="shrink-0 max-w-[45%] text-right font-semibold tabular-nums text-sm pt-0.5 break-all">
                   {money(summary.conversao.vgv.valor)}
                 </span>
               </div>
@@ -772,7 +792,7 @@ function DashboardCorretorView() {
         description={`Visão da sua carteira em ${mesLabel}.`}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <FinanceKpiCard
           label="Leads ativos"
           value={summary.carteira.leads}
@@ -815,39 +835,7 @@ function DashboardCorretorView() {
             </p>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-72 w-full">
-              <BarChart
-                data={funnelData}
-                layout="vertical"
-                margin={{ left: 12, right: 48 }}
-              >
-                <CartesianGrid horizontal={false} />
-                <XAxis
-                  type="number"
-                  allowDecimals={false}
-                  domain={[
-                    0,
-                    (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1),
-                  ]}
-                />
-                <YAxis
-                  dataKey="etapa"
-                  type="category"
-                  width={112}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                <Bar dataKey="total" fill="var(--color-total)" radius={4}>
-                  <LabelList
-                    dataKey="total"
-                    position="right"
-                    className="fill-foreground"
-                    offset={8}
-                  />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+            <FunnelBarChart data={funnelData} />
           </CardContent>
         </Card>
         <Card>
@@ -870,7 +858,7 @@ function DashboardCorretorView() {
         </Card>
       </section>
 
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-5 grid gap-3 grid-cols-2 xl:grid-cols-4">
         <FinanceKpiCard
           label="Documentações registradas"
           value={summary.documentacao.registrados}

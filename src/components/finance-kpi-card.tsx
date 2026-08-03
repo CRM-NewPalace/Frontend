@@ -35,7 +35,12 @@ export function EvolucaoBadge({
 }) {
   if (value == null) {
     return (
-      <span className={cn("text-[11px] text-muted-foreground", className)}>
+      <span
+        className={cn(
+          "inline-flex max-w-full flex-wrap items-center gap-0.5 text-[11px] text-muted-foreground leading-snug",
+          className,
+        )}
+      >
         vs mês ant. —
       </span>
     );
@@ -50,7 +55,7 @@ export function EvolucaoBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums",
+        "inline-flex max-w-full flex-wrap items-center gap-0.5 text-[11px] font-semibold tabular-nums leading-snug",
         good && "text-emerald-600 dark:text-emerald-400",
         bad && "text-rose-600 dark:text-rose-400",
         value === 0 && "text-muted-foreground",
@@ -58,8 +63,8 @@ export function EvolucaoBadge({
       )}
       title="Variação em relação ao mês calendário anterior (não é perda dos leads atuais)"
     >
-      <Icon className="h-3 w-3" />
-      <span>
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="min-w-0 wrap-break-word">
         vs mês ant. {value > 0 ? "+" : ""}
         {value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
         {prevLabel}
@@ -112,29 +117,29 @@ export function FinanceKpiCard({
   const card = (
     <div
       className={cn(
-        "rounded-xl bg-card text-card-foreground shadow-sm border border-border/60 overflow-hidden min-w-0",
+        "h-full rounded-xl bg-card text-card-foreground shadow-sm border border-border/60 overflow-hidden min-w-0 flex flex-col",
         href && "transition-shadow hover:shadow-md",
         className,
       )}
       title={display}
     >
-      <div className={cn("h-2 w-full", t.bar)} />
-      <div className="p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <div className={cn("h-1.5 w-full shrink-0", t.bar)} />
+      <div className="p-3 sm:p-4 flex flex-1 items-center gap-2.5 sm:gap-3 min-w-0 min-h-21 sm:min-h-23">
         <div
           className={cn(
-            "w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0 text-white shadow-sm",
+            "w-8 h-8 sm:w-12 sm:h-12 rounded-md sm:rounded-lg flex items-center justify-center shrink-0 text-white shadow-sm",
             t.icon,
           )}
         >
           <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
-        <div className="min-w-0 flex-1 overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-hidden flex flex-col justify-center">
           <div className="text-[11px] sm:text-xs text-muted-foreground leading-snug truncate">
             {label}
           </div>
           <div
             className={cn(
-              "font-bold tracking-tight tabular-nums mt-0.5 text-foreground break-all sm:break-words",
+              "font-bold tracking-tight tabular-nums mt-0.5 text-foreground break-all sm:wrap-break-word",
               valueSize,
             )}
           >
@@ -153,7 +158,9 @@ export function FinanceKpiCard({
               invert={invertEvolucao}
               className="mt-1"
             />
-          ) : null}
+          ) : (
+            <span className="mt-1 block h-4.5" aria-hidden />
+          )}
         </div>
       </div>
     </div>
@@ -161,7 +168,7 @@ export function FinanceKpiCard({
 
   if (href) {
     return (
-      <Link to={href} className="block min-w-0">
+      <Link to={href} className="block h-full min-w-0">
         {card}
       </Link>
     );
