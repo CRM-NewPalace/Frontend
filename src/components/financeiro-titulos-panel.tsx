@@ -40,6 +40,7 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   baixarTitulo,
+  createParceiro,
   createTitulo,
   deleteTitulo,
   fetchParceiros,
@@ -57,22 +58,46 @@ import {
   type ParceiroFinanceiro,
   type PeriodoFiltro,
   type StatusTitulo,
+  type TipoParceiro,
   type TituloFinanceiro,
 } from "@/lib/financeiro-mock";
 import {
   AlertTriangle,
   Banknote,
+  Building2,
   CheckCircle2,
   Clock3,
   Loader2,
   Pencil,
   Plus,
+  Tags,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const NONE = "__none__";
 const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const;
+const EXTRA_CAT_KEY = "financeiro.extraCategorias";
+const EXTRA_CENTRO_KEY = "financeiro.extraCentros";
+
+function loadExtras(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveExtras(key: string, values: string[]) {
+  localStorage.setItem(key, JSON.stringify(values));
+}
+
+type QuickKind = "parceiro" | "categoria" | "centro" | null;
 
 type FormState = {
   descricao: string;
@@ -125,10 +150,16 @@ export function FinanceiroTitulosPanel({
   title: string;
   description: string;
 }) {
-  const categorias =
+  const baseCategorias =
     tipo === "receber" ? CATEGORIAS_ENTRADA : CATEGORIAS_SAIDA;
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
+  const [extraCategorias, setExtraCategorias] = useState<string[]>(() =>
+    loadExtras(EXTRA_CAT_KEY),
+  );
+  const [extraCentros, setExtraCentros] = useState<string[]>(() =>
+    loadExtras(EXTRA_CENTRO_KEY),
+  );
   const [search, setSearch] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("tudo");
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
@@ -147,6 +178,26 @@ export function FinanceiroTitulosPanel({
   const [baixarData, setBaixarData] = useState(todayIso());
   const [baixarForma, setBaixarForma] = useState<string>(FORMAS[0]);
   const [busy, setBusy] = useState(false);
+  const [quickKind, setQuickKind] = useState<QuickKind>(null);
+  const [quickNome, setQuickNome] = useState("");
+  const [quickDocumento, setQuickDocumento] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
+
+  const categorias = useMemo(() => {
+    const fromItems = items
+      .map((t) => t.categoria)
+      .filter((c) => c && c.trim());
+    return Array.from(
+      new Set([...baseCategorias, ...extraCategorias, ...fromItems]),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [baseCategorias, extraCategorias, items]);
+
+  const centros = useMemo(() => {
+    const fromItems = items.map((t) => t.centro).filter((c) => c && c.trim());
+    return Array.from(
+      new Set([...CENTROS_DESPESA, ...extraCentros, ...fromItems]),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [extraCentros, items]);
 
   const load = useCallback(async () => {
     try {
@@ -172,10 +223,89 @@ export function FinanceiroTitulosPanel({
   const centroOptions = useMemo(
     () => [
       { value: "todos", label: "Todos os centros" },
-      ...CENTROS_DESPESA.map((c) => ({ value: c, label: c })),
+      ...centros.map((c) => ({ value: c, label: c })),
     ],
-    [],
+    [centros],
   );
+
+  function openQuick(kind: Exclude<QuickKind, null>) {
+    setQuickKind(kind);
+    setQuickNome("");
+    setQuickDocumento("");
+  }
+
+  async function handleQuickCreate(e: FormEvent) {
+    e.preventDefault();
+    const nome = quickNome.trim();
+    if (nome.length < 2) {
+      toast.error("Informe um nome com ao menos 2 caracteres.");
+      return;
+    }
+
+    if (quickKind === "parceiro") {
+      const documento = quickDocumento.trim();
+      if (documento.length < 5) {
+        toast.error("Informe um CPF ou CNPJ válido.");
+        return;
+      }
+      setQuickSaving(true);
+      try {
+        const parceiroTipo: TipoParceiro =
+          tipo === "receber" ? "cliente" : "fornecedor";
+        const created = await createParceiro({
+          nome,
+          documento,
+          tipo: parceiroTipo,
+        });
+        setParceiros((prev) =>
+          [...prev, created].sort((a, b) =>
+            a.nome.localeCompare(b.nome, "pt-BR"),
+          ),
+        );
+        setForm((f) => ({ ...f, parceiroId: created.id }));
+        setQuickKind(null);
+        toast.success("Parceiro cadastrado.");
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível criar o parceiro.",
+        );
+      } finally {
+        setQuickSaving(false);
+      }
+      return;
+    }
+
+    if (quickKind === "categoria") {
+      if (categorias.some((c) => c.toLowerCase() === nome.toLowerCase())) {
+        setForm((f) => ({ ...f, categoria: nome }));
+        setQuickKind(null);
+        return;
+      }
+      const next = [...extraCategorias, nome];
+      setExtraCategorias(next);
+      saveExtras(EXTRA_CAT_KEY, next);
+      setForm((f) => ({ ...f, categoria: nome }));
+      setQuickKind(null);
+      toast.success("Categoria adicionada.");
+      return;
+    }
+
+    if (quickKind === "centro") {
+      if (centros.some((c) => c.toLowerCase() === nome.toLowerCase())) {
+        setForm((f) => ({ ...f, centro: nome }));
+        setQuickKind(null);
+        return;
+      }
+      const next = [...extraCentros, nome];
+      setExtraCentros(next);
+      saveExtras(EXTRA_CENTRO_KEY, next);
+      setForm((f) => ({ ...f, centro: nome }));
+      setQuickKind(null);
+      toast.success("Centro adicionado.");
+    }
+  }
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -539,7 +669,17 @@ export function FinanceiroTitulosPanel({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Parceiro</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Parceiro</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => openQuick("parceiro")}
+                    >
+                      + Novo parceiro
+                    </Button>
+                  </div>
                   <Select
                     value={form.parceiroId}
                     onValueChange={(v) =>
@@ -592,7 +732,17 @@ export function FinanceiroTitulosPanel({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Categoria</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Categoria</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => openQuick("categoria")}
+                    >
+                      + Nova categoria
+                    </Button>
+                  </div>
                   <Select
                     value={form.categoria}
                     onValueChange={(v) =>
@@ -612,7 +762,17 @@ export function FinanceiroTitulosPanel({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Centro</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Centro</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => openQuick("centro")}
+                    >
+                      + Novo centro
+                    </Button>
+                  </div>
                   <Select
                     value={form.centro}
                     onValueChange={(v) =>
@@ -623,7 +783,7 @@ export function FinanceiroTitulosPanel({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CENTROS_DESPESA.map((c) => (
+                      {centros.map((c) => (
                         <SelectItem key={c} value={c}>
                           {c}
                         </SelectItem>
@@ -654,6 +814,85 @@ export function FinanceiroTitulosPanel({
                 </div>
               </div>
             </FormSection>
+          </form>
+        </FormDialogBody>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={quickKind !== null}
+        onOpenChange={(o) => !o && setQuickKind(null)}
+        icon={
+          quickKind === "parceiro" ? (
+            <Building2 className="w-5 h-5" />
+          ) : (
+            <Tags className="w-5 h-5" />
+          )
+        }
+        title={
+          quickKind === "parceiro"
+            ? "Novo parceiro"
+            : quickKind === "categoria"
+              ? "Nova categoria"
+              : "Novo centro"
+        }
+        description="Criação rápida para usar neste título."
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQuickKind(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="quick-financeiro-form"
+              disabled={quickSaving}
+            >
+              {quickSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Criar
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          <form
+            id="quick-financeiro-form"
+            className="space-y-3"
+            onSubmit={handleQuickCreate}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-fin-nome">Nome *</Label>
+              <Input
+                id="quick-fin-nome"
+                value={quickNome}
+                onChange={(e) => setQuickNome(e.target.value)}
+                placeholder={
+                  quickKind === "parceiro"
+                    ? "Ex.: RedBull"
+                    : quickKind === "categoria"
+                      ? "Ex.: Aluguel"
+                      : "Ex.: Comercial"
+                }
+                autoFocus
+                required
+              />
+            </div>
+            {quickKind === "parceiro" ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="quick-fin-doc">CPF / CNPJ *</Label>
+                <Input
+                  id="quick-fin-doc"
+                  value={quickDocumento}
+                  onChange={(e) => setQuickDocumento(e.target.value)}
+                  placeholder="Somente números ou formatado"
+                  required
+                />
+              </div>
+            ) : null}
           </form>
         </FormDialogBody>
       </FormDialogShell>
