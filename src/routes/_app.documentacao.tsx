@@ -1877,29 +1877,34 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table>
+            <Table className="text-xs [&_th]:h-8 [&_th]:px-1.5 [&_th]:py-1 [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Construtora</TableHead>
-                  <TableHead>Empreendimento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Corretor</TableHead>
-                  <TableHead>Gerente</TableHead>
-                  <TableHead>VGV</TableHead>
-                  <TableHead className="w-[120px]" />
+                  <TableHead className="min-w-[120px] max-w-[160px]">Nome</TableHead>
+                  <TableHead className="min-w-[72px]">Construtora</TableHead>
+                  <TableHead className="min-w-[88px] max-w-[120px]">Empreend.</TableHead>
+                  <TableHead className="min-w-[100px]">Status</TableHead>
+                  <TableHead className="min-w-[72px] max-w-[96px]">Corretor</TableHead>
+                  <TableHead className="min-w-[72px] max-w-[96px]">Gerente</TableHead>
+                  <TableHead className="min-w-[72px]">VGV</TableHead>
+                  <TableHead className="w-[84px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredItems.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell>
-                      <div className="font-medium">{doc.nome}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"} ·{" "}
+                    <TableCell className="max-w-[160px]">
+                      <div className="font-medium truncate" title={doc.nome}>
+                        {doc.nome}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-0.5 mt-0.5">
+                        <span>{doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}</span>
                         <Badge
                           variant="secondary"
-                          className={stageBadgeClass(doc.stageSituacao)}
+                          className={cn(
+                            "text-[10px] px-1 py-0 h-4 font-normal",
+                            stageBadgeClass(doc.stageSituacao),
+                          )}
                         >
                           {stageLabel(doc.stageSituacao)}
                         </Badge>
@@ -1909,8 +1914,9 @@ function DocumentacaoPage() {
                       {doc.construtora?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="border-transparent font-medium"
+                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-[88px] truncate"
                           style={construtoraBadgeStyle(doc.construtora.cor)}
+                          title={doc.construtora.nome}
                         >
                           {doc.construtora.nome}
                         </Badge>
@@ -1918,44 +1924,72 @@ function DocumentacaoPage() {
                         "—"
                       )}
                     </TableCell>
-                    <TableCell>{doc.empreendimento?.nome ?? "—"}</TableCell>
+                    <TableCell
+                      className="max-w-[120px] truncate"
+                      title={doc.empreendimento?.nome ?? undefined}
+                    >
+                      {doc.empreendimento?.nome ?? "—"}
+                    </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        <Badge variant="outline">{doc.status1}</Badge>
-                        <div>
-                          <Badge variant="secondary">{doc.status2}</Badge>
-                        </div>
+                      <div className="flex flex-wrap gap-0.5">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-[88px] truncate"
+                          title={doc.status1}
+                        >
+                          {doc.status1}
+                        </Badge>
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-[88px] truncate"
+                          title={doc.status2}
+                        >
+                          {doc.status2}
+                        </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      className="max-w-[96px] truncate"
+                      title={
+                        doc.corretor?.name ?? doc.lead.corretor?.name ?? undefined
+                      }
+                    >
                       {doc.corretor?.name ?? doc.lead.corretor?.name ?? "—"}
                     </TableCell>
-                    <TableCell>{doc.gerente?.name ?? "—"}</TableCell>
-                    <TableCell>
+                    <TableCell
+                      className="max-w-[96px] truncate"
+                      title={doc.gerente?.name ?? undefined}
+                    >
+                      {doc.gerente?.name ?? "—"}
+                    </TableCell>
+                    <TableCell className="tabular-nums whitespace-nowrap">
                       {doc.vgv != null ? brl(doc.vgv) : "—"}
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-0.5">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7"
                           onClick={() => openView(doc)}
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7"
                           onClick={() => openEdit(doc)}
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7"
                           onClick={() => setDeleteId(doc.id)}
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
