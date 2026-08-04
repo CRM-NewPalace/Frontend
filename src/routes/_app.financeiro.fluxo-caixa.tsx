@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ApiError } from "@/lib/api";
 import {
-  fetchFluxoCaixa,
-  fetchFluxoCaixaItens,
-} from "@/lib/financeiro-api";
+  addDays,
+  formatRangeLabel,
+  getVisibleRange,
+  startOfDay,
+  toDateInput,
+  type AgendaViewMode,
+} from "@/components/agenda-board";
+import { FluxoCaixaBoard } from "@/components/fluxo-caixa-board";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import {
@@ -20,15 +24,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -37,9 +32,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ApiError } from "@/lib/api";
+import {
+  fetchFluxoCaixa,
+  fetchFluxoCaixaItens,
+} from "@/lib/financeiro-api";
 import {
   brl,
-  FLUXO_GRANULARIDADE_OPTIONS,
   formatDate,
   type FluxoBucket,
   type FluxoGranularidade,
@@ -49,11 +48,11 @@ import { cn } from "@/lib/utils";
 import {
   ArrowDownRight,
   ArrowUpRight,
-  CalendarDays,
+  CalendarRange,
   ChevronLeft,
   ChevronRight,
+  LayoutList,
   Loader2,
-  Table2,
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -74,101 +73,32 @@ export const Route = createFileRoute("/_app/financeiro/fluxo-caixa")({
 });
 
 const fluxoConfig = {
-  entradasRealizadas: { label: "Entradas realizadas", color: "hsl(160 84% 39%)" },
-  entradasPrevistas: { label: "Entradas previstas", color: "hsl(160 60% 55%)" },
+  entradasRealizadas: {
+    label: "Entradas realizadas",
+    color: "hsl(160 84% 39%)",
+  },
+  entradasPrevistas: {
+    label: "Entradas previstas",
+    color: "hsl(160 60% 55%)",
+  },
   saidasRealizadas: { label: "Saídas realizadas", color: "hsl(0 72% 51%)" },
   saidasPrevistas: { label: "Saídas previstas", color: "hsl(0 55% 65%)" },
   saldoProjetado: { label: "Saldo projetado", color: "hsl(199 89% 48%)" },
   saldoRealizado: { label: "Saldo realizado", color: "hsl(215 70% 50%)" },
 } satisfies ChartConfig;
 
-type Visao = "tabela" | "calendario";
+type LayoutMode = "tabela" | "calendario";
 
-function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+const VIEW_OPTIONS: { id: AgendaViewMode; label: string }[] = [
+  { id: "dia", label: "Dia" },
+  { id: "semana", label: "Semana" },
+  { id: "mes", label: "Mês" },
+];
 
-function startOfMonth(iso: string) {
-  return `${iso.slice(0, 7)}-01`;
-}
-
-function endOfMonth(iso: string) {
-  const [y, m] = iso.split("-").map(Number);
-  const last = new Date(y, m, 0).getDate();
-  return `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
-}
-
-function startOfQuarter(iso: string) {
-  const [y, m] = iso.split("-").map(Number);
-  const qStart = Math.floor((m - 1) / 3) * 3 + 1;
-  return `${y}-${String(qStart).padStart(2, "0")}-01`;
-}
-
-function endOfQuarter(iso: string) {
-  const [y, m] = iso.split("-").map(Number);
-  const qEnd = Math.floor((m - 1) / 3) * 3 + 3;
-  return endOfMonth(`${y}-${String(qEnd).padStart(2, "0")}-01`);
-}
-
-function addMonths(iso: string, delta: number) {
-  const [y, m] = iso.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
-function addDays(iso: string, days: number) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
-}
-
-function startOfWeek(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, m - 1, d);
-  const day = dt.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  dt.setDate(dt.getDate() + diff);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
-}
-
-function rangeForGranularidade(
-  anchor: string,
-  g: FluxoGranularidade,
-): { from: string; to: string; label: string } {
-  if (g === "dia") {
-    return { from: anchor, to: anchor, label: formatDate(anchor) };
-  }
-  if (g === "semana") {
-    const from = startOfWeek(anchor);
-    const to = addDays(from, 6);
-    return {
-      from,
-      to,
-      label: `${formatDate(from)} – ${formatDate(to)}`,
-    };
-  }
-  if (g === "mes") {
-    const from = startOfMonth(anchor);
-    const to = endOfMonth(anchor);
-    const [y, m] = from.split("-").map(Number);
-    const label = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
-      month: "long",
-      year: "numeric",
-    });
-    return { from, to, label };
-  }
-  const from = startOfQuarter(anchor);
-  const to = endOfQuarter(anchor);
-  const q = Math.floor((Number(from.slice(5, 7)) - 1) / 3) + 1;
-  return { from, to, label: `${from.slice(0, 4)} · T${q}` };
-}
-
-function shiftAnchor(anchor: string, g: FluxoGranularidade, dir: -1 | 1) {
-  if (g === "dia") return addDays(anchor, dir);
-  if (g === "semana") return addDays(anchor, dir * 7);
-  if (g === "mes") return addMonths(startOfMonth(anchor), dir);
-  return addMonths(startOfQuarter(anchor), dir * 3);
+function viewToGranularidade(view: AgendaViewMode): FluxoGranularidade {
+  if (view === "dia") return "dia";
+  if (view === "semana") return "semana";
+  return "mes";
 }
 
 function ResponsiveChartShell({ children }: { children: ReactNode }) {
@@ -180,43 +110,41 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 }
 
 function Page() {
-  const [granularidade, setGranularidade] =
-    useState<FluxoGranularidade>("mes");
-  const [visao, setVisao] = useState<Visao>("tabela");
-  const [anchor, setAnchor] = useState(todayIso());
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const [items, setItems] = useState<FluxoBucket[]>([]);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("calendario");
+  const [view, setView] = useState<AgendaViewMode>("semana");
+  const [selectedDay, setSelectedDay] = useState<Date>(() =>
+    startOfDay(new Date()),
+  );
+  const [buckets, setBuckets] = useState<FluxoBucket[]>([]);
+  const [items, setItems] = useState<FluxoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [detail, setDetail] = useState<{
-    from: string;
-    to: string;
-    label: string;
-  } | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLabel, setDetailLabel] = useState("");
   const [detailItems, setDetailItems] = useState<FluxoItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const range = useMemo(() => {
-    if (customFrom && customTo && customFrom <= customTo) {
-      return {
-        from: customFrom,
-        to: customTo,
-        label: `${formatDate(customFrom)} – ${formatDate(customTo)}`,
-      };
-    }
-    return rangeForGranularidade(anchor, granularidade);
-  }, [anchor, granularidade, customFrom, customTo]);
+  const visibleRange = useMemo(
+    () => getVisibleRange(view, selectedDay),
+    [view, selectedDay],
+  );
+
+  const fromIso = toDateInput(visibleRange.from);
+  const toIso = toDateInput(visibleRange.to);
+  const granularidade = viewToGranularidade(view);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(
-        await fetchFluxoCaixa({
-          from: range.from,
-          to: range.to,
+      const [b, i] = await Promise.all([
+        fetchFluxoCaixa({
+          from: fromIso,
+          to: toIso,
           granularidade,
         }),
-      );
+        fetchFluxoCaixaItens({ from: fromIso, to: toIso }),
+      ]);
+      setBuckets(b);
+      setItems(i);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -226,75 +154,82 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [range.from, range.to, granularidade]);
+  }, [fromIso, toIso, granularidade]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const totais = useMemo(() => {
-    const entradasRealizadas = items.reduce(
+    const entradasRealizadas = buckets.reduce(
       (s, d) => s + d.entradasRealizadas,
       0,
     );
-    const saidasRealizadas = items.reduce((s, d) => s + d.saidasRealizadas, 0);
-    const entradasPrevistas = items.reduce(
+    const saidasRealizadas = buckets.reduce(
+      (s, d) => s + d.saidasRealizadas,
+      0,
+    );
+    const entradasPrevistas = buckets.reduce(
       (s, d) => s + d.entradasPrevistas,
       0,
     );
-    const saidasPrevistas = items.reduce((s, d) => s + d.saidasPrevistas, 0);
-    const saldoProjetado = items.at(-1)?.saldoProjetado ?? 0;
-    const saldoRealizado = items.at(-1)?.saldoRealizado ?? 0;
+    const saidasPrevistas = buckets.reduce((s, d) => s + d.saidasPrevistas, 0);
     return {
       entradasRealizadas,
       saidasRealizadas,
       entradasPrevistas,
       saidasPrevistas,
-      liquido:
-        entradasRealizadas +
-        entradasPrevistas -
-        (saidasRealizadas + saidasPrevistas),
-      saldoProjetado,
-      saldoRealizado,
+      saldoProjetado: buckets.at(-1)?.saldoProjetado ?? 0,
     };
-  }, [items]);
+  }, [buckets]);
 
   const chartData = useMemo(
-    () =>
-      items.map((d) => ({
-        ...d,
-        eixo: d.label,
-      })),
-    [items],
+    () => buckets.map((d) => ({ ...d, eixo: d.label })),
+    [buckets],
   );
 
-  const [calDays, setCalDays] = useState<FluxoBucket[]>([]);
+  const rangeTitle =
+    layoutMode === "tabela" && view === "dia"
+      ? selectedDay.toLocaleDateString("pt-BR", {
+          weekday: "long",
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : formatRangeLabel(view, selectedDay);
 
-  useEffect(() => {
-    if (visao !== "calendario") return;
-    const from = startOfMonth(range.from);
-    const to = endOfMonth(range.to.length >= 7 ? range.to : range.from);
-    // For trimestral calendar show whole quarter months; for others show month of anchor
-    const calFrom =
-      granularidade === "trimestre" ? startOfQuarter(anchor) : startOfMonth(anchor);
-    const calTo =
-      granularidade === "trimestre" ? endOfQuarter(anchor) : endOfMonth(anchor);
-    void fetchFluxoCaixa({
-      from: calFrom,
-      to: calTo,
-      granularidade: "dia",
-    })
-      .then(setCalDays)
-      .catch(() => setCalDays([]));
-    void from;
-    void to;
-  }, [visao, granularidade, anchor, range.from, range.to]);
+  function goToday() {
+    setSelectedDay(startOfDay(new Date()));
+  }
 
-  async function openDetail(from: string, to: string, label: string) {
-    setDetail({ from, to, label });
+  function navigate(direction: -1 | 1) {
+    if (layoutMode === "tabela" || view === "dia") {
+      setSelectedDay((d) => addDays(d, direction));
+      return;
+    }
+    if (view === "semana") {
+      setSelectedDay((d) => addDays(d, direction * 7));
+      return;
+    }
+    setSelectedDay((d) => {
+      const next = new Date(d.getFullYear(), d.getMonth() + direction, 1);
+      return startOfDay(next);
+    });
+  }
+
+  async function openDayDetail(day: Date) {
+    const iso = toDateInput(day);
+    setDetailLabel(
+      day.toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+      }),
+    );
+    setDetailOpen(true);
     setDetailLoading(true);
     try {
-      setDetailItems(await fetchFluxoCaixaItens({ from, to }));
+      setDetailItems(await fetchFluxoCaixaItens({ from: iso, to: iso }));
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -307,129 +242,115 @@ function Page() {
     }
   }
 
-  const calendarMonths = useMemo(() => {
-    if (granularidade === "trimestre") {
-      const start = startOfQuarter(anchor);
-      return [0, 1, 2].map((i) => addMonths(start, i));
+  async function openBucketDetail(b: FluxoBucket) {
+    setDetailLabel(b.label);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      setDetailItems(
+        await fetchFluxoCaixaItens({ from: b.inicio, to: b.fim }),
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar os itens.",
+      );
+      setDetailItems([]);
+    } finally {
+      setDetailLoading(false);
     }
-    return [startOfMonth(anchor)];
-  }, [anchor, granularidade]);
+  }
 
-  const calByDay = useMemo(() => {
-    const map = new Map<string, FluxoBucket>();
-    for (const d of calDays) map.set(d.chave, d);
-    return map;
-  }, [calDays]);
+  function onSelectItem(item: FluxoItem) {
+    setDetailLabel(item.descricao);
+    setDetailItems([item]);
+    setDetailOpen(true);
+    setDetailLoading(false);
+  }
+
+  const tableDayItems = useMemo(() => {
+    const key = toDateInput(selectedDay);
+    return items.filter((i) => i.data === key);
+  }, [items, selectedDay]);
 
   return (
     <div>
       <PageHeader
         title="Fluxo de caixa"
-        description="Entradas e saídas realizadas e previstas (títulos + movimentação)"
+        description="Entradas e saídas realizadas e previstas — visão calendário como a Agenda"
       />
 
-      <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Granularidade</Label>
-          <Select
-            value={granularidade}
-            onValueChange={(v) => {
-              setGranularidade(v as FluxoGranularidade);
-              setCustomFrom("");
-              setCustomTo("");
-            }}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FLUXO_GRANULARIDADE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => setAnchor((a) => shiftAnchor(a, granularidade, -1))}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <div className="min-w-[160px] text-center text-sm font-medium px-2 capitalize">
-            {range.label}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => setAnchor((a) => shiftAnchor(a, granularidade, 1))}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setAnchor(todayIso());
-              setCustomFrom("");
-              setCustomTo("");
-            }}
-          >
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={goToday}>
             Hoje
           </Button>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate(-1)}
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate(1)}
+              aria-label="Próximo"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          <h2 className="text-base font-semibold capitalize min-w-0">
+            {rangeTitle}
+          </h2>
         </div>
 
-        <div className="flex items-end gap-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">De</Label>
-            <Input
-              type="date"
-              className="h-9 w-[150px]"
-              value={customFrom || range.from}
-              onChange={(e) => setCustomFrom(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Até</Label>
-            <Input
-              type="date"
-              className="h-9 w-[150px]"
-              value={customTo || range.to}
-              onChange={(e) => setCustomTo(e.target.value)}
-            />
-          </div>
-        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={layoutMode === "calendario" ? "default" : "outline"}
+            size="sm"
+            onClick={() =>
+              setLayoutMode((m) =>
+                m === "tabela" ? "calendario" : "tabela",
+              )
+            }
+          >
+            {layoutMode === "tabela" ? (
+              <>
+                <CalendarRange className="w-4 h-4 mr-1.5" />
+                Ver calendário
+              </>
+            ) : (
+              <>
+                <LayoutList className="w-4 h-4 mr-1.5" />
+                Ver tabela
+              </>
+            )}
+          </Button>
 
-        <div className="flex rounded-lg border p-0.5 bg-muted/40">
-          <Button
-            type="button"
-            size="sm"
-            variant={visao === "tabela" ? "default" : "ghost"}
-            className="h-8"
-            onClick={() => setVisao("tabela")}
-          >
-            <Table2 className="w-3.5 h-3.5 mr-1" />
-            Tabela
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={visao === "calendario" ? "default" : "ghost"}
-            className="h-8"
-            onClick={() => setVisao("calendario")}
-          >
-            <CalendarDays className="w-3.5 h-3.5 mr-1" />
-            Calendário
-          </Button>
+          <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
+            {VIEW_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setView(opt.id)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  view === opt.id
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -460,251 +381,301 @@ function Page() {
         />
       </section>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-          Carregando…
+      <div className="grid gap-4 min-w-0 lg:grid-cols-2 mb-4">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Realizado × previsto</CardTitle>
+          </CardHeader>
+          <CardContent className="min-w-0">
+            {loading ? (
+              <div className="flex h-70 items-center justify-center text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+              </div>
+            ) : chartData.length === 0 ? (
+              <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
+                Sem dados no período.
+              </p>
+            ) : (
+              <ResponsiveChartShell>
+                <ChartContainer
+                  config={fluxoConfig}
+                  className="aspect-auto! h-70 w-full min-w-120"
+                >
+                  <BarChart
+                    data={chartData}
+                    margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="eixo"
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                      tick={{ fontSize: 11 }}
+                      minTickGap={16}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={48}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) =>
+                        `${(Number(v) / 1000).toFixed(0)}k`
+                      }
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => brl(Number(value))}
+                        />
+                      }
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="entradasRealizadas"
+                      stackId="e"
+                      fill="var(--color-entradasRealizadas)"
+                    />
+                    <Bar
+                      dataKey="entradasPrevistas"
+                      stackId="e"
+                      fill="var(--color-entradasPrevistas)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="saidasRealizadas"
+                      stackId="s"
+                      fill="var(--color-saidasRealizadas)"
+                    />
+                    <Bar
+                      dataKey="saidasPrevistas"
+                      stackId="s"
+                      fill="var(--color-saidasPrevistas)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </ResponsiveChartShell>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Saldo acumulado</CardTitle>
+          </CardHeader>
+          <CardContent className="min-w-0">
+            {loading || chartData.length === 0 ? (
+              <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "Sem dados no período."
+                )}
+              </p>
+            ) : (
+              <ResponsiveChartShell>
+                <ChartContainer
+                  config={fluxoConfig}
+                  className="aspect-auto! h-70 w-full min-w-120"
+                >
+                  <AreaChart
+                    data={chartData}
+                    margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="eixo"
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                      tick={{ fontSize: 11 }}
+                      minTickGap={16}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={48}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) =>
+                        `${(Number(v) / 1000).toFixed(0)}k`
+                      }
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => brl(Number(value))}
+                        />
+                      }
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="saldoRealizado"
+                      stroke="var(--color-saldoRealizado)"
+                      fill="var(--color-saldoRealizado)"
+                      fillOpacity={0.15}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="saldoProjetado"
+                      stroke="var(--color-saldoProjetado)"
+                      fill="var(--color-saldoProjetado)"
+                      fillOpacity={0.2}
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </ResponsiveChartShell>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {layoutMode === "calendario" ? (
+        <FluxoCaixaBoard
+          view={view}
+          anchor={selectedDay}
+          items={items}
+          loading={loading}
+          onSelectDay={(day) => {
+            setSelectedDay(startOfDay(day));
+            setView("dia");
+            void openDayDetail(day);
+          }}
+          onSelectItem={onSelectItem}
+        />
+      ) : view === "dia" ? (
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Parceiro</TableHead>
+                <TableHead>Natureza</TableHead>
+                <TableHead>Origem</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-10 text-muted-foreground"
+                  >
+                    <Loader2 className="w-5 h-5 animate-spin inline mr-2" />
+                    Carregando…
+                  </TableCell>
+                </TableRow>
+              ) : tableDayItems.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-10 text-muted-foreground"
+                  >
+                    Nenhum lançamento neste dia.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tableDayItems.map((it) => (
+                  <TableRow
+                    key={`${it.origem}-${it.id}`}
+                    className="cursor-pointer"
+                    onClick={() => onSelectItem(it)}
+                  >
+                    <TableCell className="font-medium">{it.descricao}</TableCell>
+                    <TableCell>{it.parceiro || "—"}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[10px]",
+                          it.natureza === "previsto" && "opacity-70",
+                        )}
+                      >
+                        {it.natureza}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px]">
+                        {it.origem}
+                      </Badge>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right tabular-nums font-semibold",
+                        it.tipo === "entrada"
+                          ? "text-emerald-600"
+                          : "text-destructive",
+                      )}
+                    >
+                      {it.tipo === "entrada" ? "+" : "−"}
+                      {brl(it.valor)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       ) : (
-        <>
-          <div className="grid gap-4 min-w-0 lg:grid-cols-2 mb-4">
-            <Card className="min-w-0 overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  Realizado × previsto
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="min-w-0">
-                {chartData.length === 0 ? (
-                  <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
+        <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Período</TableHead>
+                <TableHead className="text-right">Ent. real.</TableHead>
+                <TableHead className="text-right">Ent. prev.</TableHead>
+                <TableHead className="text-right">Saí. real.</TableHead>
+                <TableHead className="text-right">Saí. prev.</TableHead>
+                <TableHead className="text-right">Saldo proj.</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {buckets.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="text-center text-muted-foreground py-10"
+                  >
                     Sem dados no período.
-                  </p>
-                ) : (
-                  <ResponsiveChartShell>
-                    <ChartContainer
-                      config={fluxoConfig}
-                      className="aspect-auto! h-70 w-full min-w-120"
-                    >
-                      <BarChart
-                        data={chartData}
-                        margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
-                      >
-                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="eixo"
-                          tickLine={false}
-                          axisLine={false}
-                          interval="preserveStartEnd"
-                          tick={{ fontSize: 11 }}
-                          minTickGap={16}
-                        />
-                        <YAxis
-                          tickLine={false}
-                          axisLine={false}
-                          width={48}
-                          tick={{ fontSize: 11 }}
-                          tickFormatter={(v) =>
-                            `${(Number(v) / 1000).toFixed(0)}k`
-                          }
-                        />
-                        <ChartTooltip
-                          content={
-                            <ChartTooltipContent
-                              formatter={(value) => brl(Number(value))}
-                            />
-                          }
-                        />
-                        <Legend />
-                        <Bar
-                          dataKey="entradasRealizadas"
-                          stackId="e"
-                          fill="var(--color-entradasRealizadas)"
-                          radius={[0, 0, 0, 0]}
-                        />
-                        <Bar
-                          dataKey="entradasPrevistas"
-                          stackId="e"
-                          fill="var(--color-entradasPrevistas)"
-                          radius={[3, 3, 0, 0]}
-                        />
-                        <Bar
-                          dataKey="saidasRealizadas"
-                          stackId="s"
-                          fill="var(--color-saidasRealizadas)"
-                        />
-                        <Bar
-                          dataKey="saidasPrevistas"
-                          stackId="s"
-                          fill="var(--color-saidasPrevistas)"
-                          radius={[3, 3, 0, 0]}
-                        />
-                      </BarChart>
-                    </ChartContainer>
-                  </ResponsiveChartShell>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="min-w-0 overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Saldo acumulado</CardTitle>
-              </CardHeader>
-              <CardContent className="min-w-0">
-                {chartData.length === 0 ? (
-                  <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
-                    Sem dados no período.
-                  </p>
-                ) : (
-                  <ResponsiveChartShell>
-                    <ChartContainer
-                      config={fluxoConfig}
-                      className="aspect-auto! h-70 w-full min-w-120"
-                    >
-                      <AreaChart
-                        data={chartData}
-                        margin={{ left: 4, right: 8, top: 8, bottom: 4 }}
-                      >
-                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="eixo"
-                          tickLine={false}
-                          axisLine={false}
-                          interval="preserveStartEnd"
-                          tick={{ fontSize: 11 }}
-                          minTickGap={16}
-                        />
-                        <YAxis
-                          tickLine={false}
-                          axisLine={false}
-                          width={48}
-                          tick={{ fontSize: 11 }}
-                          tickFormatter={(v) =>
-                            `${(Number(v) / 1000).toFixed(0)}k`
-                          }
-                        />
-                        <ChartTooltip
-                          content={
-                            <ChartTooltipContent
-                              formatter={(value) => brl(Number(value))}
-                            />
-                          }
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="saldoRealizado"
-                          stroke="var(--color-saldoRealizado)"
-                          fill="var(--color-saldoRealizado)"
-                          fillOpacity={0.15}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="saldoProjetado"
-                          stroke="var(--color-saldoProjetado)"
-                          fill="var(--color-saldoProjetado)"
-                          fillOpacity={0.2}
-                        />
-                      </AreaChart>
-                    </ChartContainer>
-                  </ResponsiveChartShell>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {visao === "tabela" ? (
-            <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Período</TableHead>
-                    <TableHead className="text-right">Ent. real.</TableHead>
-                    <TableHead className="text-right">Ent. prev.</TableHead>
-                    <TableHead className="text-right">Saí. real.</TableHead>
-                    <TableHead className="text-right">Saí. prev.</TableHead>
-                    <TableHead className="text-right">Saldo real.</TableHead>
-                    <TableHead className="text-right">Saldo proj.</TableHead>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                buckets.map((d) => (
+                  <TableRow
+                    key={d.chave}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => void openBucketDetail(d)}
+                  >
+                    <TableCell className="font-medium">{d.label}</TableCell>
+                    <TableCell className="text-right tabular-nums text-emerald-600">
+                      {d.entradasRealizadas ? brl(d.entradasRealizadas) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-emerald-600/70">
+                      {d.entradasPrevistas ? brl(d.entradasPrevistas) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-destructive">
+                      {d.saidasRealizadas ? brl(d.saidasRealizadas) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-destructive/70">
+                      {d.saidasPrevistas ? brl(d.saidasPrevistas) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold">
+                      {brl(d.saldoProjetado)}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className="text-center text-muted-foreground py-10"
-                      >
-                        Sem dados no período. Cadastre títulos ou movimentações.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    items.map((d) => (
-                      <TableRow
-                        key={d.chave}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() =>
-                          void openDetail(d.inicio, d.fim, d.label)
-                        }
-                      >
-                        <TableCell className="font-medium">{d.label}</TableCell>
-                        <TableCell className="text-right tabular-nums text-emerald-600">
-                          {d.entradasRealizadas
-                            ? brl(d.entradasRealizadas)
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-emerald-600/70">
-                          {d.entradasPrevistas
-                            ? brl(d.entradasPrevistas)
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-destructive">
-                          {d.saidasRealizadas ? brl(d.saidasRealizadas) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-destructive/70">
-                          {d.saidasPrevistas ? brl(d.saidasPrevistas) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {brl(d.saldoRealizado)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold">
-                          {brl(d.saldoProjetado)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "grid gap-4",
-                calendarMonths.length > 1 ? "lg:grid-cols-3" : "grid-cols-1",
+                ))
               )}
-            >
-              {calendarMonths.map((monthStart) => (
-                <MonthCalendar
-                  key={monthStart}
-                  monthStart={monthStart}
-                  byDay={calByDay}
-                  highlightWeek={
-                    granularidade === "semana"
-                      ? startOfWeek(anchor)
-                      : undefined
-                  }
-                  onDayClick={(iso) =>
-                    void openDetail(iso, iso, formatDate(iso))
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </>
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <FormDialogShell
-        open={!!detail}
-        onOpenChange={(o) => !o && setDetail(null)}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
         icon={<Wallet className="w-5 h-5" />}
-        title={detail?.label ?? "Detalhe"}
+        title={detailLabel || "Detalhe"}
         description="Lançamentos e títulos do período"
       >
         <FormDialogBody>
@@ -760,98 +731,5 @@ function Page() {
         </FormDialogBody>
       </FormDialogShell>
     </div>
-  );
-}
-
-function MonthCalendar({
-  monthStart,
-  byDay,
-  highlightWeek,
-  onDayClick,
-}: {
-  monthStart: string;
-  byDay: Map<string, FluxoBucket>;
-  highlightWeek?: string;
-  onDayClick: (iso: string) => void;
-}) {
-  const [y, m] = monthStart.split("-").map(Number);
-  const first = new Date(y, m - 1, 1);
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const startPad = (first.getDay() + 6) % 7; // monday=0
-  const title = first.toLocaleDateString("pt-BR", {
-    month: "long",
-    year: "numeric",
-  });
-  const cells: (string | null)[] = [];
-  for (let i = 0; i < startPad; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(
-      `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
-    );
-  }
-
-  const weekEnd = highlightWeek ? addDays(highlightWeek, 6) : null;
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base capitalize">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-[10px] text-muted-foreground mb-1">
-          {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
-            <div key={d} className="text-center py-1">
-              {d}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {cells.map((iso, idx) => {
-            if (!iso) return <div key={`e-${idx}`} />;
-            const bucket = byDay.get(iso);
-            const ent =
-              (bucket?.entradasRealizadas ?? 0) +
-              (bucket?.entradasPrevistas ?? 0);
-            const sai =
-              (bucket?.saidasRealizadas ?? 0) + (bucket?.saidasPrevistas ?? 0);
-            const inWeek =
-              highlightWeek &&
-              weekEnd &&
-              iso >= highlightWeek &&
-              iso <= weekEnd;
-            const dayNum = Number(iso.slice(8));
-            return (
-              <button
-                key={iso}
-                type="button"
-                onClick={() => onDayClick(iso)}
-                className={cn(
-                  "min-h-[64px] rounded-md border p-1 text-left transition-colors hover:bg-muted/60",
-                  inWeek && "ring-1 ring-primary/50 bg-primary/5",
-                  !bucket && "opacity-70",
-                )}
-              >
-                <div className="text-[11px] font-medium">{dayNum}</div>
-                {ent > 0 ? (
-                  <div className="text-[9px] text-emerald-600 truncate">
-                    +{brl(ent)}
-                  </div>
-                ) : null}
-                {sai > 0 ? (
-                  <div className="text-[9px] text-destructive truncate">
-                    −{brl(sai)}
-                  </div>
-                ) : null}
-                {bucket &&
-                (bucket.entradasPrevistas > 0 ||
-                  bucket.saidasPrevistas > 0) ? (
-                  <div className="text-[8px] text-muted-foreground">prev.</div>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
