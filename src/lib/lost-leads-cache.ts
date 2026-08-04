@@ -92,8 +92,21 @@ export async function loadLostLeads(options?: {
     const cached = getLostLeadsCache();
     if (cached) return cached;
   }
-  const page = await fetchLostLeads({ page: 1, limit: 100 });
-  const mapped = page.data.map(mapLostLead);
+
+  const pageSize = 200;
+  const first = await fetchLostLeads({ page: 1, limit: pageSize });
+  const all = [...first.data];
+  const totalPages = Math.max(1, first.meta.totalPages);
+  if (totalPages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) =>
+        fetchLostLeads({ page: i + 2, limit: pageSize }),
+      ),
+    );
+    for (const page of rest) all.push(...page.data);
+  }
+
+  const mapped = all.map(mapLostLead);
   setLostLeadsCache(mapped);
   return mapped;
 }

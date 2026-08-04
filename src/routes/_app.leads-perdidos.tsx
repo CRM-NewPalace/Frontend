@@ -31,8 +31,25 @@ import {
   FormSection,
   DetailField,
 } from "@/components/form-dialog";
-import { Search, Eye, Trash2, UserX, Sparkles, Wallet } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Search,
+  Eye,
+  Trash2,
+  UserX,
+  Sparkles,
+  Wallet,
+  Download,
+  FileSpreadsheet,
+  FileText,
+} from "lucide-react";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import { deleteLeadApi } from "@/lib/leads-api";
 import {
   getLostLeadsCache,
@@ -40,6 +57,10 @@ import {
   removeLostLeadFromCache,
   type LostLead,
 } from "@/lib/lost-leads-cache";
+import {
+  exportLostLeadsToExcel,
+  exportLostLeadsToPdf,
+} from "@/lib/lost-leads-io";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
 import { useCatalog } from "@/lib/catalog-store";
 import { displayEmail } from "@/lib/email";
@@ -61,6 +82,7 @@ function initials(nome: string) {
 }
 
 function LeadsPerdidos() {
+  const user = getSession();
   const { funnelStages } = useCatalog();
   const cached = getLostLeadsCache();
   const [leads, setLeads] = useState<LostLead[]>(cached ?? []);
@@ -70,6 +92,17 @@ function LeadsPerdidos() {
   const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<LostLead | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<LostLead | null>(null);
+
+  const stageNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of funnelStages) map.set(s.id, s.name);
+    return map;
+  }, [funnelStages]);
+
+  const resolveStage = useCallback(
+    (stageId: string) => stageNameById.get(stageId) ?? stageId,
+    [stageNameById],
+  );
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? Boolean(getLostLeadsCache()?.length);
@@ -141,6 +174,47 @@ function LeadsPerdidos() {
             : `${filtered.length} lead(s) removidos da operação — só admin vê esta lista.${
                 refreshing ? " Atualizando…" : ""
               }`
+        }
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading || filtered.length === 0}
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() =>
+                  exportLostLeadsToExcel(
+                    filtered,
+                    `leads-perdidos-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                    resolveStage,
+                  )
+                }
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  exportLostLeadsToPdf(
+                    filtered,
+                    `leads-perdidos-${new Date().toISOString().slice(0, 10)}.pdf`,
+                    user?.tenant?.name?.trim() || "Imobiliária",
+                    resolveStage,
+                  )
+                }
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
 

@@ -62,8 +62,10 @@ export type CreateLeadInput = {
   prioridade?: Lead["prioridade"];
   renda?: number | null;
   tags?: string[];
-  /** UUID do corretor dono. Omitido = backend atribui ao usuário logado. */
-  corretorId?: string;
+  /** UUID do corretor dono. null = pool da equipe. */
+  corretorId?: string | null;
+  /** UUID da equipe/gerente (pool). */
+  equipeId?: string | null;
 };
 
 export type UpdateLeadInput = Partial<CreateLeadInput>;

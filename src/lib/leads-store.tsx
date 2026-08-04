@@ -180,24 +180,30 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   const updateLead = useCallback(
     async (id: string, patch: UpdateLeadInput & { corretor?: string }) => {
-      const { corretor, corretorId, ...rest } = patch;
+      const { corretor, corretorId, equipeId, ...rest } = patch;
       const body: UpdateLeadInput = { ...rest };
 
-      if (corretorId) {
+      if (corretorId !== undefined) {
         body.corretorId = corretorId;
       } else if (corretor) {
         const resolved = resolveCorretorId(corretor);
         if (resolved) body.corretorId = resolved;
       }
+      if (equipeId !== undefined) {
+        body.equipeId = equipeId;
+      }
 
       const previous = leads.find((l) => l.id === id);
       if (previous) {
-        const assigneeName = body.corretorId
-          ? (assignees.find((a) => a.id === body.corretorId)?.name ??
-            previous.corretor)
-          : corretor
-            ? corretor
-            : previous.corretor;
+        const assigneeName =
+          body.corretorId != null
+            ? (assignees.find((a) => a.id === body.corretorId)?.name ??
+              previous.corretor)
+            : body.corretorId === null
+              ? "—"
+              : corretor
+                ? corretor
+                : previous.corretor;
 
         setLeads((prev) =>
           prev.map((l) =>
@@ -208,7 +214,12 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
                   ...(body.corretorId !== undefined
                     ? { corretorId: body.corretorId, corretor: assigneeName }
                     : {}),
-                  ...(corretor && !body.corretorId ? { corretor } : {}),
+                  ...(body.equipeId !== undefined
+                    ? { equipeId: body.equipeId }
+                    : {}),
+                  ...(corretor && body.corretorId === undefined
+                    ? { corretor }
+                    : {}),
                   updatedAt: todayLabel(),
                 }
               : l,

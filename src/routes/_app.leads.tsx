@@ -122,10 +122,13 @@ type FormState = {
   temperatura: "Quente" | "Morno" | "Frio";
   /** Renda mensal do cliente (opcional); só dígitos no input. */
   renda: string;
-  corretor: string;
+  /** UUID da equipe (gerente). Vazio = sem seleção. */
+  equipeId: string;
+  /** UUID do corretor. "__pool__" = pool da equipe. Vazio = sem seleção. */
+  corretorId: string;
 };
 
-const emptyForm = (corretorDefault: string, origemDefault = ""): FormState => ({
+const emptyForm = (origemDefault = ""): FormState => ({
   nome: "",
   telefone: "",
   email: "",
@@ -136,7 +139,8 @@ const emptyForm = (corretorDefault: string, origemDefault = ""): FormState => ({
   prioridade: "Média",
   temperatura: "Morno",
   renda: "",
-  corretor: corretorDefault,
+  equipeId: "",
+  corretorId: "",
 });
 
 type FormMode = "create" | "edit";
@@ -156,7 +160,8 @@ function leadToForm(lead: Lead): FormState {
     prioridade: lead.prioridade,
     temperatura: temp,
     renda: lead.renda != null ? String(lead.renda) : "",
-    corretor: lead.corretor,
+    equipeId: lead.equipeId ?? "",
+    corretorId: lead.corretorId ?? (lead.equipeId ? "__pool__" : ""),
   };
 }
 
@@ -165,10 +170,11 @@ function LeadsPage() {
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
   const canDistribuir = user?.role === "admin" || user?.role === "gerente";
+  const isAdmin = user?.role === "admin";
+  const isGerente = user?.role === "gerente";
   /** Só admin/analista filtram entre várias equipes; gerente já vê só a própria. */
   const canFilterEquipe =
     user?.role === "admin" || user?.role === "analista";
-  const isGerente = user?.role === "gerente";
 
   const {
     leads: allLeads,
@@ -176,7 +182,6 @@ function LeadsPage() {
     updateLead,
     markLeadLost,
     loading,
-    resolveCorretorId,
     assignees,
     refresh,
   } = useLeads();
@@ -216,15 +221,6 @@ function LeadsPage() {
     [assignees],
   );
 
-  const defaultCorretor =
-    isCorretor && user ? user.name : (corretorAssignees[0]?.name ?? "");
-
-  /** Opções do formulário (por nome). */
-  const corretorSelectOptions = useMemo(
-    () => corretorAssignees.map((a) => a.name),
-    [corretorAssignees],
-  );
-
   /** Opções do filtro (por id UUID — o que a API espera). */
   const corretorFilterOptions = useMemo(
     () => corretorAssignees,
@@ -234,7 +230,7 @@ function LeadsPage() {
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(() => emptyForm(""));
+  const [form, setForm] = useState<FormState>(() => emptyForm());
   const [deleteLead, setDeleteLead] = useState<Lead | null>(null);
   const [deleteMotivo, setDeleteMotivo] = useState("");
   const [deleteMotivoOutro, setDeleteMotivoOutro] = useState("");
@@ -254,7 +250,7 @@ function LeadsPage() {
   const [showExtraFilters, setShowExtraFilters] = useState(false);
 
   useEffect(() => {
-    if (!canFilterEquipe) return;
+    if (!canDistribuir && !canFilterEquipe) return;
     let cancelled = false;
     void fetchEquipes()
       .then((list) => {
@@ -266,7 +262,37 @@ function LeadsPage() {
     return () => {
       cancelled = true;
     };
-  }, [canFilterEquipe]);
+  }, [canDistribuir, canFilterEquipe]);
+
+  /** Equipes ativas para o select de gerente (admin) / corretores (gerente). */
+  const equipesAtivas = useMemo(
+    () => equipes.filter((e) => e.status === "ativo"),
+    [equipes],
+  );
+
+  const formEquipe = useMemo(
+    () => equipesAtivas.find((e) => e.id === form.equipeId) ?? null,
+    [equipesAtivas, form.equipeId],
+  );
+
+  /** Corretores disponíveis no form conforme gerente/equipe selecionado. */
+  const formCorretorOptions = useMemo(() => {
+    if (isAdmin) {
+      const membros = formEquipe?.membros ?? [];
+      return membros.filter((m) => m.role === "corretor" && m.status === "ativo");
+    }
+    if (isGerente) {
+      const equipe =
+        formEquipe ??
+        equipesAtivas.find((e) => e.gerenteId === user?.id) ??
+        equipesAtivas[0] ??
+        null;
+      return (equipe?.membros ?? []).filter(
+        (m) => m.role === "corretor" && m.status === "ativo",
+      );
+    }
+    return [];
+  }, [isAdmin, isGerente, formEquipe, equipesAtivas, user?.id]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -480,14 +506,35 @@ function LeadsPage() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    setForm(emptyForm(defaultCorretor));
+    const gerenteEquipe =
+      isGerente
+        ? (equipesAtivas.find((e) => e.gerenteId === user?.id) ??
+          equipesAtivas[0])
+        : null;
+    setForm({
+      ...emptyForm(),
+      equipeId: gerenteEquipe?.id ?? "",
+      corretorId: "",
+    });
     setOpen(true);
   }
 
   function openEdit(lead: Lead) {
     setFormMode("edit");
     setEditingId(lead.id);
-    setForm(leadToForm(lead));
+    const next = leadToForm(lead);
+    if (!next.equipeId && lead.corretorId) {
+      const eq = equipesAtivas.find((e) =>
+        e.membros.some((m) => m.id === lead.corretorId),
+      );
+      if (eq) next.equipeId = eq.id;
+    } else if (!next.equipeId && isGerente) {
+      next.equipeId =
+        equipesAtivas.find((e) => e.gerenteId === user?.id)?.id ??
+        equipesAtivas[0]?.id ??
+        "";
+    }
+    setForm(next);
     setOpen(true);
   }
 
@@ -520,7 +567,6 @@ function LeadsPage() {
 
     const rendaDigits = String(form.renda).replace(/\D/g, "");
     const rendaNum = rendaDigits ? Number(rendaDigits) : null;
-    const corretorNome = isCorretor ? defaultCorretor : form.corretor;
     const otherTags =
       formMode === "edit" && editingId
         ? (leads
@@ -529,10 +575,42 @@ function LeadsPage() {
           [])
         : [];
     const tags = [form.temperatura, ...otherTags];
-    const corretorId = isCorretor ? undefined : resolveCorretorId(corretorNome);
     const emailFinal =
       email || `contato.${phoneDigits(telefone)}@sem-email.local`;
     const origemFinal = form.origem.trim() || "Não informado";
+
+    let equipeId: string | null | undefined;
+    let corretorId: string | null | undefined;
+    if (isCorretor) {
+      equipeId = undefined;
+      corretorId = undefined;
+    } else if (isAdmin) {
+      if (!form.equipeId) {
+        toast.error("Selecione o gerente que receberá o lead.");
+        return;
+      }
+      equipeId = form.equipeId;
+      corretorId =
+        !form.corretorId || form.corretorId === "__pool__"
+          ? null
+          : form.corretorId;
+    } else if (isGerente) {
+      const equipe =
+        form.equipeId ||
+        equipesAtivas.find((e) => e.gerenteId === user?.id)?.id ||
+        equipesAtivas[0]?.id ||
+        "";
+      if (!equipe) {
+        toast.error("Nenhuma equipe encontrada para atribuir o lead.");
+        return;
+      }
+      if (!form.corretorId) {
+        toast.error("Selecione o corretor que receberá o lead.");
+        return;
+      }
+      equipeId = equipe;
+      corretorId = form.corretorId === "__pool__" ? null : form.corretorId;
+    }
 
     try {
       if (formMode === "edit" && editingId) {
@@ -549,7 +627,8 @@ function LeadsPage() {
           prioridade: form.prioridade,
           renda: rendaNum,
           tags,
-          ...(corretorId ? { corretorId } : {}),
+          ...(equipeId !== undefined ? { equipeId } : {}),
+          ...(corretorId !== undefined ? { corretorId } : {}),
         });
         return;
       }
@@ -568,7 +647,8 @@ function LeadsPage() {
         prioridade: form.prioridade,
         ...(rendaNum != null ? { renda: rendaNum } : {}),
         tags,
-        ...(corretorId ? { corretorId } : {}),
+        ...(equipeId !== undefined ? { equipeId } : {}),
+        ...(corretorId !== undefined ? { corretorId } : {}),
       });
     } catch (err) {
       toast.error(
@@ -882,30 +962,72 @@ function LeadsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {isAdmin && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Gerente
+                    </Label>
+                    <Select
+                      value={form.equipeId || "__none__"}
+                      onValueChange={(v) => {
+                        const equipeId = v === "__none__" ? "" : v;
+                        setForm((prev) => ({
+                          ...prev,
+                          equipeId,
+                          corretorId: "",
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue placeholder="Selecione o gerente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          Selecione o gerente
+                        </SelectItem>
+                        {equipesAtivas.map((eq) => (
+                          <SelectItem key={eq.id} value={eq.id}>
+                            {eq.gerente.name}
+                            {eq.name ? ` · ${eq.name}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {!isCorretor ? (
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
                       Corretor
                     </Label>
                     <Select
-                      value={form.corretor}
-                      onValueChange={(v) => setField("corretor", v)}
+                      value={form.corretorId || "__none__"}
+                      onValueChange={(v) =>
+                        setField("corretorId", v === "__none__" ? "" : v)
+                      }
+                      disabled={isAdmin && !form.equipeId}
                     >
                       <SelectTrigger className="h-10 bg-background">
-                        <SelectValue />
+                        <SelectValue
+                          placeholder={
+                            isAdmin && !form.equipeId
+                              ? "Selecione o gerente antes"
+                              : "Selecione o corretor"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {corretorSelectOptions.map((nome) => (
-                          <SelectItem key={nome} value={nome}>
-                            {nome}
+                        <SelectItem value="__none__">
+                          Selecione o corretor
+                        </SelectItem>
+                        <SelectItem value="__pool__">
+                          Pool da equipe (sem corretor)
+                        </SelectItem>
+                        {formCorretorOptions.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
                           </SelectItem>
                         ))}
-                        {form.corretor &&
-                          !corretorSelectOptions.includes(form.corretor) && (
-                            <SelectItem value={form.corretor}>
-                              {form.corretor}
-                            </SelectItem>
-                          )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -915,11 +1037,23 @@ function LeadsPage() {
                       Responsável
                     </Label>
                     <div className="h-10 px-3 rounded-md border bg-muted/40 text-sm flex items-center text-muted-foreground">
-                      {defaultCorretor}
+                      {user?.name ?? "—"}
                     </div>
                   </div>
                 )}
               </div>
+              {isAdmin && (
+                <p className="text-[11px] text-muted-foreground">
+                  O lead vai para o gerente selecionado. Você pode deixar no
+                  pool da equipe ou escolher um corretor.
+                </p>
+              )}
+              {isGerente && (
+                <p className="text-[11px] text-muted-foreground">
+                  Escolha o corretor da sua equipe ou deixe no pool para
+                  distribuir depois.
+                </p>
+              )}
             </FormSection>
 
             <FormSection
