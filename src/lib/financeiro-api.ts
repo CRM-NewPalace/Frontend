@@ -2,7 +2,9 @@ import { apiFetch } from "@/lib/api";
 import type {
   CentroDespesaResumo,
   ComissaoItem,
-  FluxoDia,
+  FluxoBucket,
+  FluxoGranularidade,
+  FluxoItem,
   LinhaDemonstrativo,
   MesResumo,
   MovimentoFinanceiro,
@@ -92,7 +94,10 @@ export type CreateMovimentoInput = {
   formaPagamento?: string;
 };
 
-export type UpdateMovimentoInput = Partial<CreateMovimentoInput> & {
+export type UpdateMovimentoInput = Omit<
+  Partial<CreateMovimentoInput>,
+  "parceiroId" | "parceiroNome"
+> & {
   parceiroId?: string | null;
   parceiroNome?: string | null;
 };
@@ -129,6 +134,62 @@ export async function fetchTitulos(
   return apiFetch<TituloFinanceiro[]>(`/financeiro/titulos${qs}`);
 }
 
+export type CreateTituloInput = {
+  tipo: "receber" | "pagar";
+  descricao: string;
+  parceiroId?: string;
+  parceiroNome?: string;
+  categoria?: string;
+  centro?: string;
+  vencimento: string;
+  valor: number;
+  status?: "aberto" | "pago" | "atrasado" | "cancelado";
+  parcela?: string;
+};
+
+export type UpdateTituloInput = Omit<
+  Partial<CreateTituloInput>,
+  "parceiroId" | "parceiroNome"
+> & {
+  parceiroId?: string | null;
+  parceiroNome?: string | null;
+};
+
+export async function createTitulo(
+  input: CreateTituloInput,
+): Promise<TituloFinanceiro> {
+  return apiFetch<TituloFinanceiro>("/financeiro/titulos", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateTitulo(
+  id: string,
+  input: UpdateTituloInput,
+): Promise<TituloFinanceiro> {
+  return apiFetch<TituloFinanceiro>(`/financeiro/titulos/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function baixarTitulo(
+  id: string,
+  input: { dataPagamento: string; formaPagamento?: string },
+): Promise<TituloFinanceiro> {
+  return apiFetch<TituloFinanceiro>(`/financeiro/titulos/${id}/baixar`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function deleteTitulo(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/titulos/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchComissoes(): Promise<ComissaoItem[]> {
   return apiFetch<ComissaoItem[]>("/financeiro/comissoes");
 }
@@ -137,8 +198,28 @@ export async function fetchVisaoGeral(): Promise<VisaoGeralResponse> {
   return apiFetch<VisaoGeralResponse>("/financeiro/visao-geral");
 }
 
-export async function fetchFluxoCaixa(): Promise<FluxoDia[]> {
-  return apiFetch<FluxoDia[]>("/financeiro/fluxo-caixa");
+export async function fetchFluxoCaixa(params?: {
+  from?: string;
+  to?: string;
+  granularidade?: FluxoGranularidade;
+}): Promise<FluxoBucket[]> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  if (params?.granularidade) qs.set("granularidade", params.granularidade);
+  const query = qs.toString();
+  return apiFetch<FluxoBucket[]>(
+    `/financeiro/fluxo-caixa${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function fetchFluxoCaixaItens(params: {
+  from: string;
+  to?: string;
+}): Promise<FluxoItem[]> {
+  const qs = new URLSearchParams({ from: params.from });
+  if (params.to) qs.set("to", params.to);
+  return apiFetch<FluxoItem[]>(`/financeiro/fluxo-caixa/itens?${qs}`);
 }
 
 export async function fetchCentrosDespesa(): Promise<CentroDespesaResumo[]> {

@@ -191,7 +191,7 @@ function Page() {
     void load();
   }, [load]);
 
-  const categorias = useMemo(
+  const categorias: string[] = useMemo(
     () =>
       form.tipo === "entrada"
         ? [...CATEGORIAS_ENTRADA]
@@ -200,7 +200,7 @@ function Page() {
   );
 
   useEffect(() => {
-    if (!categorias.includes(form.categoria as (typeof categorias)[number])) {
+    if (!categorias.includes(form.categoria)) {
       setForm((prev) => ({ ...prev, categoria: categorias[0] ?? "" }));
     }
   }, [categorias, form.categoria]);

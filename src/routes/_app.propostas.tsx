@@ -871,7 +871,11 @@ function Page() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2 space-y-1.5">
                   <Label>Lead / cliente aprovado (opcional)</Label>
-                  <Popover open={leadPickerOpen} onOpenChange={setLeadPickerOpen}>
+                  <Popover
+                    modal
+                    open={leadPickerOpen}
+                    onOpenChange={setLeadPickerOpen}
+                  >
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
@@ -891,6 +895,7 @@ function Page() {
                     <PopoverContent
                       className="w-[var(--radix-popover-trigger-width)] p-0"
                       align="start"
+                      onWheel={(e) => e.stopPropagation()}
                     >
                       <Command>
                         <CommandInput placeholder="Nome ou telefone..." />

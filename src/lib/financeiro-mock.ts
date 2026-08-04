@@ -95,11 +95,14 @@ export interface MovimentoFinanceiro {
 
 export interface TituloFinanceiro {
   id: string;
+  tipo: "receber" | "pagar";
   descricao: string;
+  parceiroId: string | null;
   parceiro: string;
   categoria: string;
   centro: string;
   vencimento: string;
+  dataPagamento: string | null;
   valor: number;
   status: StatusTitulo;
   parcela: string;
@@ -118,12 +121,52 @@ export interface ComissaoItem {
   status: "pendente" | "liberada" | "paga";
 }
 
-export interface FluxoDia {
+export type FluxoGranularidade = "dia" | "semana" | "mes" | "trimestre";
+
+export interface FluxoBucket {
+  chave: string;
+  label: string;
+  inicio: string;
+  fim: string;
+  entradasRealizadas: number;
+  saidasRealizadas: number;
+  entradasPrevistas: number;
+  saidasPrevistas: number;
+  saldoRealizado: number;
+  saldoProjetado: number;
+  /** Compat / totais consolidados */
   dia: string;
   entradas: number;
   saidas: number;
   saldo: number;
 }
+
+/** @deprecated Use FluxoBucket */
+export type FluxoDia = FluxoBucket;
+
+export interface FluxoItem {
+  data: string;
+  tipo: "entrada" | "saida";
+  valor: number;
+  natureza: "realizado" | "previsto";
+  origem: "titulo" | "movimento";
+  id: string;
+  descricao: string;
+  parceiro: string;
+  categoria: string;
+  centro: string;
+  status: string;
+}
+
+export const FLUXO_GRANULARIDADE_OPTIONS: {
+  value: FluxoGranularidade;
+  label: string;
+}[] = [
+  { value: "dia", label: "Diário" },
+  { value: "semana", label: "Semanal" },
+  { value: "mes", label: "Mensal" },
+  { value: "trimestre", label: "Trimestral" },
+];
 
 export interface MesResumo {
   mes: string;
