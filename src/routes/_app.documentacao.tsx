@@ -141,8 +141,6 @@ export const Route = createFileRoute("/_app/documentacao")({
 type FormState = {
   contatoId: string;
   novoCliente: boolean;
-
-  emailNovo: string;
   nome: string;
   construtoraId: string;
   empreendimentoId: string;
@@ -160,8 +158,6 @@ type FormState = {
 const emptyForm = (): FormState => ({
   contatoId: "",
   novoCliente: false,
-
-  emailNovo: "",
   nome: "",
   construtoraId: "",
   empreendimentoId: "",
@@ -341,6 +337,10 @@ function DocumentacaoPage() {
   const [extraStatus1, setExtraStatus1] = useState<string[]>([]);
   const [extraStatus2, setExtraStatus2] = useState<string[]>([]);
 
+  const [fonteOpen, setFonteOpen] = useState(false);
+  const [fonteLabel, setFonteLabel] = useState("");
+  const [extraFontes, setExtraFontes] = useState<string[]>([]);
+
   const stageLabel = useCallback(
     (slug: string) => funnelStages.find((s) => s.id === slug)?.name ?? slug,
     [funnelStages],
@@ -445,11 +445,12 @@ function DocumentacaoPage() {
   const fonteOptions = useMemo(() => {
     const set = new Set<string>([
       ...fonteCatalog,
+      ...extraFontes,
       ...items.map((i) => displayFonte(i.fonte)).filter(Boolean),
       displayFonte(form.fonte),
     ]);
     return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [fonteCatalog, items, form.fonte]);
+  }, [fonteCatalog, extraFontes, items, form.fonte]);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -784,10 +785,6 @@ function DocumentacaoPage() {
       return {
         ...prev,
         nome: contact.nome,
-
-        emailNovo: contact.email?.includes("@pendente.local")
-          ? ""
-          : (contact.email ?? ""),
         corretorId,
         gerenteId,
         construtoraId: contact.construtoraId ?? prev.construtoraId,
@@ -822,14 +819,9 @@ function DocumentacaoPage() {
   }
 
   function fillFromDoc(doc: Documentacao) {
-    const lead = leads.find((l) => l.id === doc.leadId);
     setForm({
       contatoId: doc.leadId,
       novoCliente: false,
-
-      emailNovo: lead?.email?.includes("@pendente.local")
-        ? ""
-        : (lead?.email ?? ""),
       nome: doc.nome,
       construtoraId: doc.construtoraId ?? "",
       empreendimentoId: doc.empreendimentoId ?? "",
@@ -915,9 +907,7 @@ function DocumentacaoPage() {
             tipo: "cliente",
             nome: form.nome.trim(),
             telefone,
-            email:
-              form.emailNovo.trim() ||
-              `cliente.${Date.now().toString(36)}@pendente.local`,
+            email: `cliente.${Date.now().toString(36)}@pendente.local`,
             origem: origens[0] ?? "Documentação",
             interesse: "Comprar",
             cidade: "",
@@ -1081,6 +1071,26 @@ function DocumentacaoPage() {
     setStatusOpen(null);
     setStatusLabel("");
     toast.success("Status adicionado e selecionado.");
+  }
+
+  async function handleQuickCreateFonte(e: FormEvent) {
+    e.preventDefault();
+    const label = fonteLabel.trim();
+    if (label.length < 2) {
+      toast.error("Informe o nome da fonte.");
+      return;
+    }
+    try {
+      await addItem({ type: "documentacao_fonte", label });
+    } catch {
+      setExtraFontes((prev) =>
+        prev.includes(label) ? prev : [...prev, label],
+      );
+    }
+    setField("fonte", label);
+    setFonteOpen(false);
+    setFonteLabel("");
+    toast.success("Fonte adicionada e selecionada.");
   }
 
 
@@ -2028,7 +2038,6 @@ function DocumentacaoPage() {
                           ...prev,
                           novoCliente: on,
                           contatoId: on ? "" : prev.contatoId,
-                          emailNovo: on ? prev.emailNovo : "",
                         }));
                       }}
                       disabled={readOnly}
@@ -2054,7 +2063,6 @@ function DocumentacaoPage() {
                           setForm((prev) => ({
                             ...prev,
                             contatoId: "",
-                            emailNovo: "",
                           }));
                           return;
                         }
@@ -2089,29 +2097,6 @@ function DocumentacaoPage() {
                     onChange={(e) => setField("nome", e.target.value)}
                     disabled={readOnly}
                     required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emailNovo">
-                    E-mail{" "}
-                    <span className="font-normal text-muted-foreground">
-                      (opcional)
-                    </span>
-                  </Label>
-                  <Input
-                    id="emailNovo"
-                    type="email"
-                    value={form.emailNovo}
-                    onChange={(e) => setField("emailNovo", e.target.value)}
-                    placeholder="Opcional"
-                    disabled={
-                      readOnly ||
-                      formMode === "edit" ||
-                      (formMode === "create" &&
-                        !form.novoCliente &&
-                        Boolean(form.contatoId))
-                    }
                   />
                 </div>
 
@@ -2205,7 +2190,22 @@ function DocumentacaoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Fonte</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Fonte</Label>
+                    {canCreateStatus && !readOnly && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => {
+                          setFonteLabel("");
+                          setFonteOpen(true);
+                        }}
+                      >
+                        + Nova fonte
+                      </Button>
+                    )}
+                  </div>
                   <Select
                     value={form.fonte}
                     onValueChange={(v) => setField("fonte", v)}
@@ -2594,6 +2594,41 @@ function DocumentacaoPage() {
             <Button type="submit">
               Criar
             </Button>
+          </FormDialogActions>
+        </form>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={fonteOpen}
+        onOpenChange={setFonteOpen}
+        icon={<FolderOpen className="w-5 h-5" />}
+        title="Nova fonte"
+      >
+        <form
+          onSubmit={handleQuickCreateFonte}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          <FormDialogBody>
+            <div className="space-y-2">
+              <Label htmlFor="fonteLabel">Nome da fonte *</Label>
+              <Input
+                id="fonteLabel"
+                value={fonteLabel}
+                onChange={(e) => setFonteLabel(e.target.value)}
+                placeholder="Ex.: Indicação"
+                required
+              />
+            </div>
+          </FormDialogBody>
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFonteOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit">Criar</Button>
           </FormDialogActions>
         </form>
       </FormDialogShell>
