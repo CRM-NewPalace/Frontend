@@ -131,6 +131,7 @@ import {
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import { createUser } from "@/lib/users-api";
+import { CorPicker } from "@/components/cor-picker";
 import { fetchEquipeGerentes, type EquipeOptionUser } from "@/lib/equipes-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -349,6 +350,7 @@ function DocumentacaoPage() {
   const [empOpen, setEmpOpen] = useState(false);
   const [empNome, setEmpNome] = useState("");
   const [empCidade, setEmpCidade] = useState("");
+  const [empCor, setEmpCor] = useState("");
   const [empSaving, setEmpSaving] = useState(false);
 
   const [statusOpen, setStatusOpen] = useState<"status1" | "status2" | null>(
@@ -1124,6 +1126,7 @@ function DocumentacaoPage() {
     }
     setEmpNome("");
     setEmpCidade("");
+    setEmpCor("");
     setEmpOpen(true);
   }
 
@@ -1140,6 +1143,7 @@ function DocumentacaoPage() {
         nome: empNome.trim(),
         construtoraId: form.construtoraId,
         cidade: empCidade.trim() || undefined,
+        cor: empCor.trim() || undefined,
       });
       await loadLookups();
       setField("empreendimentoId", created.id);
@@ -2082,11 +2086,19 @@ function DocumentacaoPage() {
                         "—"
                       )}
                     </TableCell>
-                    <TableCell
-                      className="max-w-[120px] truncate"
-                      title={doc.empreendimento?.nome ?? undefined}
-                    >
-                      {doc.empreendimento?.nome ?? "—"}
+                    <TableCell>
+                      {doc.empreendimento?.nome ? (
+                        <Badge
+                          variant="secondary"
+                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-[120px] truncate"
+                          style={construtoraBadgeStyle(doc.empreendimento.cor)}
+                          title={doc.empreendimento.nome}
+                        >
+                          {doc.empreendimento.nome}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-0.5">
@@ -2106,13 +2118,22 @@ function DocumentacaoPage() {
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell
-                      className="max-w-[96px] truncate"
-                      title={
-                        doc.corretor?.name ?? doc.lead.corretor?.name ?? undefined
-                      }
-                    >
-                      {doc.corretor?.name ?? doc.lead.corretor?.name ?? "—"}
+                    <TableCell>
+                      {(() => {
+                        const corretor =
+                          doc.corretor ?? doc.lead.corretor ?? null;
+                        if (!corretor?.name) return "—";
+                        return (
+                          <Badge
+                            variant="secondary"
+                            className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-[96px] truncate"
+                            style={construtoraBadgeStyle(corretor.cor)}
+                            title={corretor.name}
+                          >
+                            {corretor.name}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell
                       className="max-w-[96px] truncate"
@@ -2692,6 +2713,12 @@ function DocumentacaoPage() {
                   onChange={(e) => setEmpCidade(e.target.value)}
                 />
               </div>
+              <CorPicker
+                id="empCor"
+                value={empCor}
+                onChange={setEmpCor}
+                previewLabel={empNome}
+              />
             </div>
           </FormDialogBody>
           <FormDialogActions>

@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/api";
 export type Empreendimento = {
   id: string;
   nome: string;
+  cor: string | null;
   construtoraId: string | null;
   cidade: string | null;
   endereco: string | null;
@@ -31,6 +32,7 @@ export type CreateEmpreendimentoInput = {
   nome: string;
   construtoraId: string;
   cidade?: string;
+  cor?: string | null;
 };
 
 export async function fetchEmpreendimentos(params?: {
@@ -63,6 +65,7 @@ export async function syncEmpreendimentosFromSite(): Promise<SyncEmpreendimentos
 
 export type UpdateEmpreendimentoInput = {
   nome?: string;
+  cor?: string | null;
   construtoraId?: string | null;
   cidade?: string | null;
   endereco?: string | null;

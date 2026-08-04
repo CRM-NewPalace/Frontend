@@ -46,6 +46,7 @@ import {
   fetchConstrutoras,
   type Construtora,
 } from "@/lib/construtoras-api";
+import { CorPicker } from "@/components/cor-picker";
 import {
   Building2,
   ExternalLink,
@@ -88,6 +89,7 @@ function ImoveisPage() {
   const [quickNovaConstrutora, setQuickNovaConstrutora] = useState(false);
   const [quickConstrutoraNome, setQuickConstrutoraNome] = useState("");
   const [quickCidade, setQuickCidade] = useState("");
+  const [quickCor, setQuickCor] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -152,6 +154,7 @@ function ImoveisPage() {
     setQuickNovaConstrutora(false);
     setQuickConstrutoraNome("");
     setQuickCidade("");
+    setQuickCor("");
     setQuickOpen(true);
     await loadConstrutoras();
   }
@@ -164,6 +167,7 @@ function ImoveisPage() {
     setQuickNovaConstrutora(false);
     setQuickConstrutoraNome("");
     setQuickCidade(item.cidade ?? "");
+    setQuickCor(item.cor ?? "");
     setQuickOpen(true);
     await loadConstrutoras();
   }
@@ -204,6 +208,7 @@ function ImoveisPage() {
           nome: quickNome.trim(),
           construtoraId,
           cidade: quickCidade.trim() || null,
+          cor: quickCor.trim() || null,
         });
         toast.success("Empreendimento atualizado.");
       } else {
@@ -211,6 +216,7 @@ function ImoveisPage() {
           nome: quickNome.trim(),
           construtoraId,
           cidade: quickCidade.trim() || undefined,
+          cor: quickCor.trim() || undefined,
         });
         toast.success(
           quickNovaConstrutora
@@ -673,6 +679,12 @@ function ImoveisPage() {
                 placeholder="Ex.: Recife"
               />
             </div>
+            <CorPicker
+              id="quick-imovel-cor"
+              value={quickCor}
+              onChange={setQuickCor}
+              previewLabel={quickNome}
+            />
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button

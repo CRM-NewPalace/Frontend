@@ -55,8 +55,13 @@ export interface Documentacao {
   updatedAt: string;
   autor: { id: string; name: string };
   construtora: { id: string; nome: string; cor: string | null } | null;
-  empreendimento: { id: string; nome: string; cidade: string | null } | null;
-  corretor: { id: string; name: string } | null;
+  empreendimento: {
+    id: string;
+    nome: string;
+    cidade: string | null;
+    cor: string | null;
+  } | null;
+  corretor: { id: string; name: string; cor: string | null } | null;
   gerente: { id: string; name: string } | null;
   lead: {
     id: string;
@@ -65,7 +70,7 @@ export interface Documentacao {
     stage: StageId;
     origem: string;
     corretorId: string | null;
-    corretor: { id: string; name: string } | null;
+    corretor: { id: string; name: string; cor: string | null } | null;
   };
 }
 

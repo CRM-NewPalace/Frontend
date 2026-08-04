@@ -46,6 +46,7 @@ import {
   FormSection,
   DetailField,
 } from "@/components/form-dialog";
+import { CorPicker } from "@/components/cor-picker";
 import {
   Plus,
   MoreHorizontal,
@@ -144,6 +145,7 @@ type FormState = {
   phone: string;
   whatsapp: string;
   cargo: string;
+  cor: string;
   role: Role;
   status: UserStatus;
   password: string;
@@ -155,6 +157,7 @@ const emptyForm = (): FormState => ({
   phone: "",
   whatsapp: "",
   cargo: "",
+  cor: "",
   role: "corretor",
   status: "ativo",
   password: "",
@@ -167,6 +170,7 @@ function userToForm(u: ApiUser): FormState {
     phone: u.phone ? formatPhone(u.phone) : "",
     whatsapp: u.whatsapp ? formatPhone(u.whatsapp) : "",
     cargo: u.cargo ?? "",
+    cor: u.cor ?? "",
     role: u.role,
     status: u.status,
     password: "",
@@ -353,6 +357,7 @@ function Usuarios() {
     const phone = form.phone.trim();
     const whatsapp = form.whatsapp.trim();
     const cargo = form.cargo.trim();
+    const cor = form.cor.trim();
 
     if (!name || !email) {
       toast.error("Preencha nome e e-mail.");
@@ -381,6 +386,7 @@ function Usuarios() {
           phone: phone || undefined,
           whatsapp: whatsapp || undefined,
           cargo: cargo || undefined,
+          cor: cor || undefined,
           role: form.role,
           status: form.status,
         });
@@ -405,6 +411,7 @@ function Usuarios() {
           phone: phone || null,
           whatsapp: whatsapp || null,
           cargo: cargo || null,
+          cor: cor || null,
           role: form.role,
           status: form.status,
         });
@@ -810,6 +817,12 @@ function Usuarios() {
                   className="h-10 bg-background"
                 />
               </div>
+              <CorPicker
+                id="usr-cor"
+                value={form.cor}
+                onChange={(hex) => setField("cor", hex)}
+                previewLabel={form.name}
+              />
             </FormSection>
             <FormSection
               icon={<Shield className="w-3.5 h-3.5 text-primary" />}

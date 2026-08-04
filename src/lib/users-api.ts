@@ -8,6 +8,7 @@ export type ApiUser = {
   phone: string | null;
   whatsapp: string | null;
   cargo: string | null;
+  cor: string | null;
   role: Role;
   status: UserStatus;
   avatar: string | null;
@@ -28,6 +29,7 @@ export type CreateUserInput = {
   phone?: string;
   whatsapp?: string;
   cargo?: string;
+  cor?: string | null;
   role: Role;
   status?: UserStatus;
 };
@@ -38,6 +40,7 @@ export type UpdateUserInput = {
   phone?: string | null;
   whatsapp?: string | null;
   cargo?: string | null;
+  cor?: string | null;
   role?: Role;
   status?: UserStatus;
 };

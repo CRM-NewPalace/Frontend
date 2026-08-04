@@ -109,6 +109,7 @@ export type LeadAssignee = {
   id: string;
   name: string;
   role?: string;
+  cor?: string | null;
   /** Gerente da equipe do corretor (quando vinculado). */
   gerenteId?: string | null;
   gerente?: { id: string; name: string } | null;
