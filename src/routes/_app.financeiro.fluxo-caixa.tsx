@@ -12,6 +12,7 @@ import { FluxoCaixaBoard } from "@/components/fluxo-caixa-board";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import {
+  FormDialogActions,
   FormDialogBody,
   FormDialogShell,
 } from "@/components/form-dialog";
@@ -24,6 +25,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -34,8 +37,10 @@ import {
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api";
 import {
+  baixarTitulo,
   fetchFluxoCaixa,
   fetchFluxoCaixaItens,
+  updateMovimento,
 } from "@/lib/financeiro-api";
 import {
   brl,
@@ -49,6 +54,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarRange,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   LayoutList,
@@ -122,6 +128,8 @@ function Page() {
   const [detailLabel, setDetailLabel] = useState("");
   const [detailItems, setDetailItems] = useState<FluxoItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [confirmDate, setConfirmDate] = useState(() => toDateInput(new Date()));
+  const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
 
   const visibleRange = useMemo(
     () => getVisibleRange(view, selectedDay),
@@ -226,6 +234,7 @@ function Page() {
         month: "long",
       }),
     );
+    setConfirmDate(iso);
     setDetailOpen(true);
     setDetailLoading(true);
     try {
@@ -265,8 +274,48 @@ function Page() {
   function onSelectItem(item: FluxoItem) {
     setDetailLabel(item.descricao);
     setDetailItems([item]);
+    setConfirmDate(item.data || toDateInput(new Date()));
     setDetailOpen(true);
     setDetailLoading(false);
+  }
+
+  async function confirmarPrevisao(item: FluxoItem) {
+    if (item.natureza !== "previsto") return;
+    const key = `${item.origem}-${item.id}`;
+    setConfirmingKey(key);
+    try {
+      if (item.origem === "titulo") {
+        await baixarTitulo(item.id, {
+          dataPagamento: confirmDate,
+          formaPagamento: "Confirmação no fluxo",
+        });
+        toast.success(
+          item.tipo === "entrada"
+            ? "Recebimento confirmado."
+            : "Pagamento confirmado.",
+        );
+      } else {
+        await updateMovimento(item.id, {
+          status: "pago",
+          data: confirmDate,
+        });
+        toast.success("Movimento marcado como realizado.");
+      }
+      const remaining = detailItems.filter(
+        (p) => !(p.origem === item.origem && p.id === item.id),
+      );
+      setDetailItems(remaining);
+      await load();
+      if (remaining.length === 0) setDetailOpen(false);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível confirmar a previsão.",
+      );
+    } finally {
+      setConfirmingKey(null);
+    }
   }
 
   const tableDayItems = useMemo(() => {
@@ -677,6 +726,36 @@ function Page() {
         icon={<Wallet className="w-5 h-5" />}
         title={detailLabel || "Detalhe"}
         description="Lançamentos e títulos do período"
+        footer={
+          <FormDialogActions>
+            {detailItems.some((i) => i.natureza === "previsto") ? (
+              <div className="flex items-center gap-2 mr-auto">
+                <Label
+                  htmlFor="confirm-date"
+                  className="text-xs text-muted-foreground whitespace-nowrap"
+                >
+                  Data da confirmação
+                </Label>
+                <Input
+                  id="confirm-date"
+                  type="date"
+                  className="h-9 w-[150px]"
+                  value={confirmDate}
+                  onChange={(e) => setConfirmDate(e.target.value)}
+                />
+              </div>
+            ) : (
+              <span />
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDetailOpen(false)}
+            >
+              Fechar
+            </Button>
+          </FormDialogActions>
+        }
       >
         <FormDialogBody>
           {detailLoading ? (
@@ -689,43 +768,64 @@ function Page() {
             </p>
           ) : (
             <div className="space-y-2">
-              {detailItems.map((it) => (
-                <div
-                  key={`${it.origem}-${it.id}`}
-                  className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{it.descricao}</div>
-                    <div className="text-xs text-muted-foreground flex flex-wrap gap-1.5 mt-0.5">
-                      <span>{formatDate(it.data)}</span>
-                      {it.parceiro ? <span>· {it.parceiro}</span> : null}
-                      <Badge variant="outline" className="text-[10px] h-4">
-                        {it.origem}
-                      </Badge>
-                      <Badge
-                        variant="secondary"
+              {detailItems.map((it) => {
+                const key = `${it.origem}-${it.id}`;
+                const busy = confirmingKey === key;
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-col gap-2 rounded-lg border px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{it.descricao}</div>
+                      <div className="text-xs text-muted-foreground flex flex-wrap gap-1.5 mt-0.5">
+                        <span>{formatDate(it.data)}</span>
+                        {it.parceiro ? <span>· {it.parceiro}</span> : null}
+                        <Badge variant="outline" className="text-[10px] h-4">
+                          {it.origem}
+                        </Badge>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "text-[10px] h-4",
+                            it.natureza === "previsto" && "opacity-70",
+                          )}
+                        >
+                          {it.natureza}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 justify-between sm:justify-end">
+                      <div
                         className={cn(
-                          "text-[10px] h-4",
-                          it.natureza === "previsto" && "opacity-70",
+                          "tabular-nums font-semibold",
+                          it.tipo === "entrada"
+                            ? "text-emerald-600"
+                            : "text-destructive",
                         )}
                       >
-                        {it.natureza}
-                      </Badge>
+                        {it.tipo === "entrada" ? "+" : "−"}
+                        {brl(it.valor)}
+                      </div>
+                      {it.natureza === "previsto" ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busy || !!confirmingKey}
+                          onClick={() => void confirmarPrevisao(it)}
+                        >
+                          {busy ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                          )}
+                          Confirmar
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
-                  <div
-                    className={cn(
-                      "tabular-nums font-semibold shrink-0",
-                      it.tipo === "entrada"
-                        ? "text-emerald-600"
-                        : "text-destructive",
-                    )}
-                  >
-                    {it.tipo === "entrada" ? "+" : "−"}
-                    {brl(it.valor)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </FormDialogBody>
