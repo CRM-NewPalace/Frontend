@@ -63,6 +63,7 @@ export interface Documentacao {
     tipo: ContatoTipo;
     nome: string;
     stage: StageId;
+    origem: string;
     corretorId: string | null;
     corretor: { id: string; name: string } | null;
   };

@@ -12,6 +12,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
   super_admin: ["/perfil", "/tenants"],
   admin: [
     "/dashboard",
+    "/vendas",
     "/leads",
     "/funil",
     "/agenda",
@@ -33,6 +34,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
   ],
   gerente: [
     "/dashboard",
+    "/vendas",
     "/leads",
     "/funil",
     "/agenda",

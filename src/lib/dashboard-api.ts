@@ -59,6 +59,12 @@ export type DashboardAdmin = {
     taxa: DashboardMetric;
     vgv: DashboardMetric;
   };
+  documentacaoPipeline: {
+    aprovadas: DashboardMetric;
+    reprovadas: DashboardMetric;
+    emAnalise: DashboardMetric;
+    vgv: DashboardMetric;
+  };
   atencao: {
     semDono: number;
     parados: number;

@@ -172,6 +172,7 @@ const NAV_SECTIONS: {
     icon: Briefcase,
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/vendas", label: "Vendas", icon: DollarSign },
       { to: "/leads", label: "Leads", icon: Users },
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/triagem", label: "Triagem", icon: ClipboardList },

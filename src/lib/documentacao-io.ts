@@ -249,9 +249,78 @@ function buildDocSheet(rows: string[][]) {
       cell.w = value;
     }
   }
-  sheet["!cols"] = DOC_IO_COLUMNS.map((h) => ({
-    wch: Math.min(Math.max(h.length + 2, 14), 36),
+  sheet["!cols"] = DOC_IO_COLUMNS.map((header, columnIndex) => ({
+    wch: Math.min(
+      Math.max(
+        header.length + 2,
+        ...rows.map((row) => String(row[columnIndex] ?? "").length + 2),
+        14,
+      ),
+      38,
+    ),
   }));
+  sheet["!autofilter"] = {
+    ref: `A1:${XLSX.utils.encode_col(DOC_IO_COLUMNS.length - 1)}1`,
+  };
+  return sheet;
+}
+
+function buildImportInstructionsSheet() {
+  const rows = [
+    ["COMO PREENCHER O MODELO", "", "", ""],
+    [
+      "1",
+      "Use a aba Modelo e mantenha os cabeçalhos na mesma ordem.",
+      "",
+      "",
+    ],
+    ["2", "Preencha uma ficha de documentação por linha.", "", ""],
+    [
+      "3",
+      "Para atribuir a ficha, informe o nome completo do corretor e do gerente como aparecem no cadastro.",
+      "",
+      "",
+    ],
+    [
+      "4",
+      "Deixe uma célula vazia quando não houver informação para aquela coluna.",
+      "",
+      "",
+    ],
+    ["", "", "", ""],
+    ["COLUNA", "OBRIGATÓRIA", "COMO PREENCHER", "EXEMPLO"],
+    ["Nome", "Sim", "Nome do lead ou cliente", "Maria Silva"],
+    ["Construtora", "Não", "Nome da construtora", "Cyrela"],
+    ["Empreendimento", "Não", "Nome do empreendimento", "Torre Aurora"],
+    ["Fonte", "Não", "Origem do contato", "Indicação"],
+    ["Status 1", "Não", "Status principal da ficha", "Análise"],
+    ["Status 2", "Não", "Andamento atual da ficha", "Andamento"],
+    [
+      "Corretor",
+      "Não",
+      "Nome completo do corretor cadastrado",
+      "Rafael Souza",
+    ],
+    [
+      "Gerente",
+      "Não",
+      "Nome completo do gerente cadastrado",
+      "Juliana Costa",
+    ],
+    ["Data Análise", "Não", "Data no formato dd/mm/aaaa", "01/08/2026"],
+    ["Data Venda", "Não", "Data no formato dd/mm/aaaa", "15/08/2026"],
+    ["VGV", "Não", "Somente números, sem R$", "850000"],
+    ["Observação", "Não", "Texto livre", "Cliente pediu retorno"],
+    ["", "", "", ""],
+    [
+      "IMPORTANTE",
+      "Se o corretor ou gerente informado não existir, somente um administrador poderá criá-lo automaticamente. Nos demais perfis, a ficha será importada sem essa atribuição.",
+      "",
+      "",
+    ],
+  ];
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  sheet["!cols"] = [{ wch: 20 }, { wch: 90 }, { wch: 42 }, { wch: 30 }];
   return sheet;
 }
 
@@ -343,6 +412,11 @@ export function downloadDocumentacaoImportTemplate() {
     ],
   ]);
   XLSX.utils.book_append_sheet(workbook, sheet, "Modelo");
+  XLSX.utils.book_append_sheet(
+    workbook,
+    buildImportInstructionsSheet(),
+    "Instruções",
+  );
   const data = XLSX.write(workbook, {
     bookType: "xlsx",
     type: "array",

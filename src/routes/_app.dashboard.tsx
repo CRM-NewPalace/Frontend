@@ -50,6 +50,7 @@ import {
   UserX,
   UsersRound,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
@@ -370,6 +371,7 @@ function DashboardAdminView() {
           valorMesAnterior={summary.conversao.vgv.valorMesAnterior}
           icon={Wallet}
           tone="emerald"
+          href="/vendas"
         />
       </section>
 
@@ -409,6 +411,57 @@ function DashboardAdminView() {
           icon={Goal}
           tone="teal"
           format="percent"
+        />
+      </section>
+
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Pipeline de documentação</h2>
+          <p className="text-xs text-muted-foreground">
+            Processos cadastrados em {mesLabel}.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/documentacao">Ver documentação</Link>
+        </Button>
+      </div>
+      <section className="mt-3 grid gap-3 grid-cols-1 sm:grid-cols-3">
+        <FinanceKpiCard
+          label="Aprovadas"
+          value={summary.documentacaoPipeline.aprovadas.valor}
+          evolucaoPct={summary.documentacaoPipeline.aprovadas.evolucaoPct}
+          valorMesAnterior={
+            summary.documentacaoPipeline.aprovadas.valorMesAnterior
+          }
+          icon={CheckCircle2}
+          tone="emerald"
+          format="number"
+          href="/documentacao"
+        />
+        <FinanceKpiCard
+          label="Reprovadas"
+          value={summary.documentacaoPipeline.reprovadas.valor}
+          evolucaoPct={summary.documentacaoPipeline.reprovadas.evolucaoPct}
+          valorMesAnterior={
+            summary.documentacaoPipeline.reprovadas.valorMesAnterior
+          }
+          invertEvolucao
+          icon={XCircle}
+          tone="red"
+          format="number"
+          href="/documentacao"
+        />
+        <FinanceKpiCard
+          label="Em análise"
+          value={summary.documentacaoPipeline.emAnalise.valor}
+          evolucaoPct={summary.documentacaoPipeline.emAnalise.evolucaoPct}
+          valorMesAnterior={
+            summary.documentacaoPipeline.emAnalise.valorMesAnterior
+          }
+          icon={Clock3}
+          tone="orange"
+          format="number"
+          href="/documentacao"
         />
       </section>
 

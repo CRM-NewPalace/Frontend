@@ -33,6 +33,7 @@ import { Route as AppTaxaConversaoRouteImport } from './routes/_app.taxa-convers
 import { Route as AppTenantsRouteImport } from './routes/_app.tenants'
 import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
+import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
 import { Route as AppFinanceiroClientesFornecedoresRouteImport } from './routes/_app.financeiro.clientes-fornecedores'
 import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.financeiro.comissao'
@@ -162,6 +163,11 @@ const AppUsuariosRoute = AppUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVendasRoute = AppVendasRouteImport.update({
+  id: '/vendas',
+  path: '/vendas',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFinanceiroCentroDespesasRoute =
   AppFinanceiroCentroDespesasRouteImport.update({
     id: '/centro-despesas',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/tenants': typeof AppTenantsRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
+  '/vendas': typeof AppVendasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByTo {
   '/tenants': typeof AppTenantsRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
+  '/vendas': typeof AppVendasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/_app/tenants': typeof AppTenantsRoute
   '/_app/triagem': typeof AppTriagemRoute
   '/_app/usuarios': typeof AppUsuariosRoute
+  '/_app/vendas': typeof AppVendasRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/_app/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/_app/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/tenants'
     | '/triagem'
     | '/usuarios'
+    | '/vendas'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/tenants'
     | '/triagem'
     | '/usuarios'
+    | '/vendas'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -413,6 +424,7 @@ export interface FileRouteTypes {
     | '/_app/tenants'
     | '/_app/triagem'
     | '/_app/usuarios'
+    | '/_app/vendas'
     | '/_app/financeiro/centro-despesas'
     | '/_app/financeiro/clientes-fornecedores'
     | '/_app/financeiro/comissao'
@@ -600,6 +612,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsuariosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/vendas': {
+      id: '/_app/vendas'
+      path: '/vendas'
+      fullPath: '/vendas'
+      preLoaderRoute: typeof AppVendasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/financeiro/centro-despesas': {
       id: '/_app/financeiro/centro-despesas'
       path: '/centro-despesas'
@@ -717,6 +736,7 @@ interface AppRouteChildren {
   AppTenantsRoute: typeof AppTenantsRoute
   AppTriagemRoute: typeof AppTriagemRoute
   AppUsuariosRoute: typeof AppUsuariosRoute
+  AppVendasRoute: typeof AppVendasRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -741,6 +761,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTenantsRoute: AppTenantsRoute,
   AppTriagemRoute: AppTriagemRoute,
   AppUsuariosRoute: AppUsuariosRoute,
+  AppVendasRoute: AppVendasRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

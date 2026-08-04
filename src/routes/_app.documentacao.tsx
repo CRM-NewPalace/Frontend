@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -124,6 +125,10 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  CheckCircle2,
+  XCircle,
+  Clock3,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -183,6 +188,14 @@ function isStatusAnaliseLabel(status: string): boolean {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .startsWith("analise");
+}
+
+function normalizedStatus(status: string): string {
+  return status
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function toDateInput(value: string | null | undefined): string {
@@ -571,6 +584,24 @@ function DocumentacaoPage() {
     periodRange,
     filterCampoData,
   ]);
+
+  const pipelineSummary = useMemo(
+    () =>
+      filteredItems.reduce(
+        (summary, doc) => {
+          const status = normalizedStatus(doc.status1);
+          if (status.startsWith("reprov")) summary.reprovadas += 1;
+          else if (status.startsWith("aprov")) summary.aprovadas += 1;
+          else if (status.includes("analise")) summary.emAnalise += 1;
+          if (normalizedStatus(doc.status2) === "vendido") {
+            summary.vgv += doc.vgv ?? 0;
+          }
+          return summary;
+        },
+        { aprovadas: 0, reprovadas: 0, emAnalise: 0, vgv: 0 },
+      ),
+    [filteredItems],
+  );
 
   const filterEmpreendimentoOptions = useMemo(() => {
     if (filterConstrutoraId === "__all__") return empreendimentos;
@@ -1866,6 +1897,37 @@ function DocumentacaoPage() {
         ) : null}
       </div>
 
+      <section className="mb-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <FinanceKpiCard
+          label="Aprovadas"
+          value={pipelineSummary.aprovadas}
+          icon={CheckCircle2}
+          tone="emerald"
+          format="number"
+        />
+        <FinanceKpiCard
+          label="Reprovadas"
+          value={pipelineSummary.reprovadas}
+          icon={XCircle}
+          tone="red"
+          format="number"
+        />
+        <FinanceKpiCard
+          label="Em análise"
+          value={pipelineSummary.emAnalise}
+          icon={Clock3}
+          tone="orange"
+          format="number"
+        />
+        <FinanceKpiCard
+          label="VGV vendido"
+          value={pipelineSummary.vgv}
+          icon={Wallet}
+          tone="teal"
+          href="/vendas"
+        />
+      </section>
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -2657,12 +2719,12 @@ function DocumentacaoPage() {
       </AlertDialog>
 
       <Dialog open={importHelpOpen} onOpenChange={setImportHelpOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Importar documentação</DialogTitle>
             <DialogDescription>
-              Use o padrão abaixo para o arquivo ser lido corretamente.
-              Preferível Excel (.xlsx).
+              Baixe o modelo Excel, preencha uma ficha por linha e mantenha os
+              nomes das colunas sem alterações.
             </DialogDescription>
           </DialogHeader>
 
@@ -2679,6 +2741,8 @@ function DocumentacaoPage() {
                       <th className="p-2 font-medium">Fonte</th>
                       <th className="p-2 font-medium">Status 1</th>
                       <th className="p-2 font-medium">Status 2</th>
+                      <th className="p-2 font-medium">Corretor</th>
+                      <th className="p-2 font-medium">Gerente</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2689,37 +2753,61 @@ function DocumentacaoPage() {
                       <td className="p-2">Indicação</td>
                       <td className="p-2">Análise</td>
                       <td className="p-2">Andamento</td>
+                      <td className="p-2">Rafael Souza</td>
+                      <td className="p-2">Juliana Costa</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                Também: Corretor, Gerente, Data Análise, Data Venda, VGV e
+                O modelo também contém Data Análise, Data Venda, VGV e
                 Observação.
               </p>
             </div>
 
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+              <p className="font-medium text-foreground">
+                Atribuição de corretor e gerente
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Preencha as colunas <strong>Corretor</strong> e{" "}
+                <strong>Gerente</strong> com o nome completo usado no cadastro.
+                O sistema procura cada profissional pelo nome e vincula a ficha
+                automaticamente. Deixe a célula vazia quando não quiser fazer
+                uma atribuição.
+              </p>
+            </div>
+
             <div>
-              <p className="font-medium mb-1.5">Regras</p>
+              <p className="font-medium mb-1.5">Antes de importar</p>
               <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                 <li>
-                  <span className="text-foreground">Nome</span> é obrigatório
+                  <span className="text-foreground">Nome</span> é a única coluna
+                  obrigatória
                 </li>
                 <li>
                   Se o contato não existir, o sistema cria o{" "}
                   <span className="text-foreground">cliente</span> pelo nome
                 </li>
                 <li>
-                  Construtora, empreendimento, fonte, status 1/2, corretor e
-                  gerente são vinculados pelo nome — se não existirem, o
-                  sistema cadastra automaticamente
+                  Construtora, empreendimento, fonte e status são vinculados
+                  pelo nome e podem ser cadastrados automaticamente, conforme
+                  a permissão do usuário
                 </li>
                 <li>
-                  Corretor/gerente novos só são criados por{" "}
-                  <span className="text-foreground">admin</span> (e-mail
-                  temporário @example.com)
+                  Se um corretor ou gerente ainda não existir, somente um{" "}
+                  <span className="text-foreground">administrador</span> poderá
+                  criá-lo automaticamente; outros usuários importarão a ficha
+                  sem essa atribuição
                 </li>
-                <li>Uma linha = uma ficha de documentação</li>
+                <li>
+                  Use datas no formato{" "}
+                  <span className="text-foreground">dd/mm/aaaa</span> e informe
+                  o VGV somente com números
+                </li>
+                <li>
+                  Não renomeie, remova ou reorganize os cabeçalhos do modelo
+                </li>
               </ul>
             </div>
           </div>

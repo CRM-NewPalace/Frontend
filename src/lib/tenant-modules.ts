@@ -104,6 +104,7 @@ export const ROUTE_MODULE_KEY: Record<string, TenantModuleKey> = {
   "/equipes": "equipes",
   "/corretores": "corretores",
   "/documentacao": "documentacao",
+  "/vendas": "documentacao",
   "/resultado": "analise",
   "/metas": "metas",
   "/propostas": "propostas",
