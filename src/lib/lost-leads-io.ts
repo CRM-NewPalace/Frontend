@@ -84,8 +84,25 @@ export function exportLostLeadsToPdf(
     startY: 64,
     head: [Array.from(LOST_LEAD_IO_COLUMNS)],
     body: leads.map((l) => lostLeadToRow(l)),
-    styles: { fontSize: 10, cellPadding: 6 },
-    headStyles: { fillColor: [220, 38, 38] },
+    theme: "grid",
+    styles: {
+      fontSize: 10,
+      cellPadding: 6,
+      textColor: [0, 0, 0],
+      fillColor: [255, 255, 255],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5,
+    },
+    headStyles: {
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5,
+    },
+    alternateRowStyles: {
+      fillColor: [255, 255, 255],
+    },
   });
 
   doc.save(filename);
