@@ -90,6 +90,24 @@ import {
   isStatusVendido,
   statusesMatch,
 } from "@/lib/documentacao-status";
+
+function docInVendaPeriod(
+  doc: { dataVenda: string | null; createdAt: string },
+  de?: string | null,
+  ate?: string | null,
+): boolean {
+  if (!de && !ate) return true;
+  const vendaDay = doc.dataVenda?.slice(0, 10) ?? "";
+  const cadastroDay = doc.createdAt.slice(0, 10);
+  const inRange = (day: string) => {
+    if (!day) return false;
+    if (de && day < de) return false;
+    if (ate && day > ate) return false;
+    return true;
+  };
+  // Mesmo critério do backend: data de venda ou cadastro no período
+  return inRange(vendaDay) || inRange(cadastroDay);
+}
 import {
   dedupeImportDocs,
   downloadDocumentacaoImportTemplate,
@@ -238,7 +256,8 @@ function resolveDocPeriodRange(
     return { de: toIsoDay(from), ate: toIsoDay(today) };
   }
   const from = new Date(today.getFullYear(), today.getMonth(), 1);
-  return { de: toIsoDay(from), ate: toIsoDay(today) };
+  const to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  return { de: toIsoDay(from), ate: toIsoDay(to) };
 }
 
 function docDateDay(doc: Documentacao, campo: DocCampoData): string | null {
@@ -297,7 +316,7 @@ function DocumentacaoPage() {
     useState("__all__");
   const [filterTipo, setFilterTipo] = useState("__all__");
   const [filterGerenteId, setFilterGerenteId] = useState("__all__");
-  const [filterPeriodo, setFilterPeriodo] = useState<DocPeriodo>("todos");
+  const [filterPeriodo, setFilterPeriodo] = useState<DocPeriodo>("mes");
   const [filterCampoData, setFilterCampoData] =
     useState<DocCampoData>("createdAt");
   const [filterDataDe, setFilterDataDe] = useState("");
@@ -584,27 +603,91 @@ function DocumentacaoPage() {
     filterCampoData,
   ]);
 
-  const pipelineSummary = useMemo(
-    () =>
-      filteredItems.reduce(
-        (summary, doc) => {
-          const raw = doc.status1
-            .trim()
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-          if (raw.startsWith("reprov")) summary.reprovadas += 1;
-          else if (raw.startsWith("aprov")) summary.aprovadas += 1;
-          else if (raw.includes("analise")) summary.emAnalise += 1;
-          if (isStatusVendido(doc.status2)) {
-            summary.vgv += doc.vgv ?? 0;
-          }
-          return summary;
-        },
-        { aprovadas: 0, reprovadas: 0, emAnalise: 0, vgv: 0 },
-      ),
-    [filteredItems],
-  );
+  const pipelineSummary = useMemo(() => {
+    const base = filteredItems.reduce(
+      (summary, doc) => {
+        const raw = doc.status1
+          .trim()
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+        if (raw.startsWith("reprov")) summary.reprovadas += 1;
+        else if (raw.startsWith("aprov")) summary.aprovadas += 1;
+        else if (raw.includes("analise")) summary.emAnalise += 1;
+        return summary;
+      },
+      { aprovadas: 0, reprovadas: 0, emAnalise: 0, vgv: 0 },
+    );
+
+    // VGV: mesmo critério do dashboard (status vendido + data venda ou cadastro no período)
+    const vgvItems = items.filter((doc) => {
+      if (!isStatusVendido(doc.status2)) return false;
+      if (filterStatus1 !== "__all__" && !statusesMatch(doc.status1, filterStatus1)) {
+        return false;
+      }
+      if (filterStatus2 !== "__all__" && !statusesMatch(doc.status2, filterStatus2)) {
+        return false;
+      }
+      if (filterFonte !== "__all__" && displayFonte(doc.fonte) !== filterFonte) {
+        return false;
+      }
+      if (
+        filterConstrutoraId !== "__all__" &&
+        doc.construtoraId !== filterConstrutoraId
+      ) {
+        return false;
+      }
+      if (
+        filterEmpreendimentoId !== "__all__" &&
+        doc.empreendimentoId !== filterEmpreendimentoId
+      ) {
+        return false;
+      }
+      if (filterTipo !== "__all__" && doc.tipoContato !== filterTipo) {
+        return false;
+      }
+      if (filterCorretorId !== "__all__" && doc.corretorId !== filterCorretorId) {
+        return false;
+      }
+      if (filterGerenteId !== "__all__" && doc.gerenteId !== filterGerenteId) {
+        return false;
+      }
+      const q = filterSearch.trim().toLowerCase();
+      if (q) {
+        const hay = [
+          doc.nome,
+          doc.construtora?.nome,
+          doc.empreendimento?.nome,
+          doc.status1,
+          doc.status2,
+          doc.corretor?.name,
+          doc.gerente?.name,
+          displayFonte(doc.fonte),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return docInVendaPeriod(doc, periodRange.de, periodRange.ate);
+    });
+
+    base.vgv = vgvItems.reduce((sum, doc) => sum + (doc.vgv ?? 0), 0);
+    return base;
+  }, [
+    filteredItems,
+    items,
+    filterStatus1,
+    filterStatus2,
+    filterFonte,
+    filterConstrutoraId,
+    filterEmpreendimentoId,
+    filterTipo,
+    filterCorretorId,
+    filterGerenteId,
+    filterSearch,
+    periodRange,
+  ]);
 
   const filterEmpreendimentoOptions = useMemo(() => {
     if (filterConstrutoraId === "__all__") return empreendimentos;
