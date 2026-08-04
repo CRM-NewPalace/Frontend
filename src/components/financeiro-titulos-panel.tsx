@@ -537,9 +537,8 @@ export function FinanceiroTitulosPanel({
             <TableRow>
               <TableHead>Descrição</TableHead>
               <TableHead>Parceiro</TableHead>
-              <TableHead>
-                {tipo === "pagar" ? "Centro" : "Categoria"}
-              </TableHead>
+              <TableHead>Categoria</TableHead>
+              <TableHead>Centro</TableHead>
               <TableHead>Vencimento</TableHead>
               <TableHead>Parcela</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -551,7 +550,7 @@ export function FinanceiroTitulosPanel({
             {rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="text-center text-muted-foreground py-10"
                 >
                   Nenhum título no filtro.
@@ -566,8 +565,11 @@ export function FinanceiroTitulosPanel({
                   <TableCell className="truncate max-w-[140px]">
                     {t.parceiro || "—"}
                   </TableCell>
-                  <TableCell>
-                    {tipo === "pagar" ? t.centro || "—" : t.categoria || "—"}
+                  <TableCell className="truncate max-w-[120px]">
+                    {t.categoria || "—"}
+                  </TableCell>
+                  <TableCell className="truncate max-w-[120px]">
+                    {t.centro || "—"}
                   </TableCell>
                   <TableCell>{formatDate(t.vencimento)}</TableCell>
                   <TableCell>{t.parcela || "—"}</TableCell>
@@ -677,7 +679,9 @@ export function FinanceiroTitulosPanel({
                       className="h-auto p-0 text-xs"
                       onClick={() => openQuick("parceiro")}
                     >
-                      + Novo parceiro
+                      {tipo === "pagar"
+                        ? "+ Novo fornecedor"
+                        : "+ Novo parceiro"}
                     </Button>
                   </div>
                   <Select
@@ -830,7 +834,9 @@ export function FinanceiroTitulosPanel({
         }
         title={
           quickKind === "parceiro"
-            ? "Novo parceiro"
+            ? tipo === "pagar"
+              ? "Novo fornecedor"
+              : "Novo parceiro"
             : quickKind === "categoria"
               ? "Nova categoria"
               : "Novo centro"

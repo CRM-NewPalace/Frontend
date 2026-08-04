@@ -41,6 +41,7 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   createMovimento,
+  createParceiro,
   deleteMovimento,
   fetchMovimentos,
   fetchParceiros,
@@ -60,8 +61,18 @@ import {
   type PeriodoFiltro,
   type StatusTitulo,
   type TipoMovimento,
+  type TipoParceiro,
 } from "@/lib/financeiro-mock";
-import { ArrowDownRight, ArrowUpRight, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Building2,
+  Loader2,
+  Pencil,
+  Plus,
+  Tags,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/financeiro/movimentacao")({
@@ -89,6 +100,29 @@ const FORMAS_PAGAMENTO = [
 ] as const;
 
 const NONE = "__none__";
+const EXTRA_CAT_KEY = "financeiro.extraCategorias";
+const EXTRA_CENTRO_KEY = "financeiro.extraCentros";
+
+type QuickKind = "parceiro" | "categoria" | "centro" | null;
+
+function loadExtras(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (x): x is string => typeof x === "string" && x.trim().length > 0,
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveExtras(key: string, values: string[]) {
+  localStorage.setItem(key, JSON.stringify(values));
+}
 
 type FormState = {
   data: string;
@@ -166,6 +200,16 @@ function Page() {
     null,
   );
   const [deleting, setDeleting] = useState(false);
+  const [extraCategorias, setExtraCategorias] = useState<string[]>(() =>
+    loadExtras(EXTRA_CAT_KEY),
+  );
+  const [extraCentros, setExtraCentros] = useState<string[]>(() =>
+    loadExtras(EXTRA_CENTRO_KEY),
+  );
+  const [quickKind, setQuickKind] = useState<QuickKind>(null);
+  const [quickNome, setQuickNome] = useState("");
+  const [quickDocumento, setQuickDocumento] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -191,19 +235,110 @@ function Page() {
     void load();
   }, [load]);
 
-  const categorias: string[] = useMemo(
-    () =>
+  const categorias: string[] = useMemo(() => {
+    const base =
       form.tipo === "entrada"
         ? [...CATEGORIAS_ENTRADA]
-        : [...CATEGORIAS_SAIDA],
-    [form.tipo],
-  );
+        : [...CATEGORIAS_SAIDA];
+    const fromItems = items
+      .map((m) => m.categoria)
+      .filter((c) => c && c.trim());
+    return Array.from(
+      new Set([...base, ...extraCategorias, ...fromItems]),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [form.tipo, extraCategorias, items]);
+
+  const centros: string[] = useMemo(() => {
+    const fromItems = items.map((m) => m.centro).filter((c) => c && c.trim());
+    return Array.from(
+      new Set([...CENTROS_DESPESA, ...extraCentros, ...fromItems]),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [extraCentros, items]);
 
   useEffect(() => {
     if (!categorias.includes(form.categoria)) {
       setForm((prev) => ({ ...prev, categoria: categorias[0] ?? "" }));
     }
   }, [categorias, form.categoria]);
+
+  function openQuick(kind: Exclude<QuickKind, null>) {
+    setQuickKind(kind);
+    setQuickNome("");
+    setQuickDocumento("");
+  }
+
+  async function handleQuickCreate(e: FormEvent) {
+    e.preventDefault();
+    const nome = quickNome.trim();
+    if (nome.length < 2) {
+      toast.error("Informe um nome com ao menos 2 caracteres.");
+      return;
+    }
+
+    if (quickKind === "parceiro") {
+      const documento = quickDocumento.trim();
+      if (documento.length < 5) {
+        toast.error("Informe um CPF ou CNPJ válido.");
+        return;
+      }
+      setQuickSaving(true);
+      try {
+        const parceiroTipo: TipoParceiro =
+          form.tipo === "entrada" ? "cliente" : "fornecedor";
+        const created = await createParceiro({
+          nome,
+          documento,
+          tipo: parceiroTipo,
+        });
+        setParceiros((prev) =>
+          [...prev, created].sort((a, b) =>
+            a.nome.localeCompare(b.nome, "pt-BR"),
+          ),
+        );
+        setField("parceiroId", created.id);
+        setQuickKind(null);
+        toast.success("Parceiro cadastrado.");
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível criar o parceiro.",
+        );
+      } finally {
+        setQuickSaving(false);
+      }
+      return;
+    }
+
+    if (quickKind === "categoria") {
+      if (categorias.some((c) => c.toLowerCase() === nome.toLowerCase())) {
+        setField("categoria", nome);
+        setQuickKind(null);
+        return;
+      }
+      const next = [...extraCategorias, nome];
+      setExtraCategorias(next);
+      saveExtras(EXTRA_CAT_KEY, next);
+      setField("categoria", nome);
+      setQuickKind(null);
+      toast.success("Categoria adicionada.");
+      return;
+    }
+
+    if (quickKind === "centro") {
+      if (centros.some((c) => c.toLowerCase() === nome.toLowerCase())) {
+        setField("centro", nome);
+        setQuickKind(null);
+        return;
+      }
+      const next = [...extraCentros, nome];
+      setExtraCentros(next);
+      saveExtras(EXTRA_CENTRO_KEY, next);
+      setField("centro", nome);
+      setQuickKind(null);
+      toast.success("Centro adicionado.");
+    }
+  }
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -556,7 +691,17 @@ function Page() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Parceiro</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Parceiro</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => openQuick("parceiro")}
+                    >
+                      + Novo parceiro
+                    </Button>
+                  </div>
                   <Select
                     value={form.parceiroId}
                     onValueChange={(v) => setField("parceiroId", v)}
@@ -575,7 +720,17 @@ function Page() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Categoria *</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Categoria *</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => openQuick("categoria")}
+                    >
+                      + Nova categoria
+                    </Button>
+                  </div>
                   <Select
                     value={form.categoria}
                     onValueChange={(v) => setField("categoria", v)}
@@ -593,7 +748,17 @@ function Page() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Centro</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Centro</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => openQuick("centro")}
+                    >
+                      + Novo centro
+                    </Button>
+                  </div>
                   <Select
                     value={form.centro}
                     onValueChange={(v) => setField("centro", v)}
@@ -602,7 +767,7 @@ function Page() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CENTROS_DESPESA.map((centro) => (
+                      {centros.map((centro) => (
                         <SelectItem key={centro} value={centro}>
                           {centro}
                         </SelectItem>
@@ -677,6 +842,77 @@ function Page() {
             </Button>
           </FormDialogActions>
         </form>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={quickKind !== null}
+        onOpenChange={(o) => !o && setQuickKind(null)}
+        icon={
+          quickKind === "parceiro" ? (
+            <Building2 className="w-5 h-5" />
+          ) : (
+            <Tags className="w-5 h-5" />
+          )
+        }
+        title={
+          quickKind === "parceiro"
+            ? "Novo parceiro"
+            : quickKind === "categoria"
+              ? "Nova categoria"
+              : "Novo centro"
+        }
+        description="Criação rápida para usar neste lançamento."
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQuickKind(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="quick-mov-form"
+              disabled={quickSaving}
+            >
+              {quickSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Criar
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          <form
+            id="quick-mov-form"
+            className="space-y-3"
+            onSubmit={handleQuickCreate}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-mov-nome">Nome *</Label>
+              <Input
+                id="quick-mov-nome"
+                value={quickNome}
+                onChange={(e) => setQuickNome(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
+            {quickKind === "parceiro" ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="quick-mov-doc">CPF / CNPJ *</Label>
+                <Input
+                  id="quick-mov-doc"
+                  value={quickDocumento}
+                  onChange={(e) => setQuickDocumento(e.target.value)}
+                  required
+                />
+              </div>
+            ) : null}
+          </form>
+        </FormDialogBody>
       </FormDialogShell>
 
       <AlertDialog
