@@ -31,6 +31,7 @@ import { getSession } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
+  META_ESCOPO_LABEL,
   META_PERIODOS,
   META_PERIODO_LABEL,
   META_TIPOS,
@@ -40,11 +41,13 @@ import {
   fetchMetas,
   updateMeta,
   type Meta,
+  type MetaEscopo,
   type MetaPeriodo,
   type MetaTipo,
 } from "@/lib/metas-api";
 import {
   BarChart3,
+  Building2,
   CalendarDays,
   CheckCircle2,
   FileText,
@@ -53,6 +56,7 @@ import {
   Target,
   Trash2,
   Users,
+  UserRound,
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -73,7 +77,9 @@ function Page() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<Meta | null>(null);
   const [form, setForm] = useState({
+    escopo: "corretor" as MetaEscopo,
     corretorId: "",
+    gerenteId: "",
     tipo: "vendas" as MetaTipo,
     periodo: "mensal" as MetaPeriodo,
     valor: "",
@@ -113,14 +119,40 @@ function Page() {
     [equipes],
   );
 
-  const grupos = useMemo(() => {
+  const gerentes = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; equipeNome: string }>();
+    for (const equipe of equipes) {
+      map.set(equipe.gerente.id, {
+        id: equipe.gerente.id,
+        name: equipe.gerente.name,
+        equipeNome: equipe.name,
+      });
+    }
+    return [...map.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [equipes]);
+
+  const metasImobiliaria = useMemo(
+    () => metas.filter((meta) => meta.escopo === "imobiliaria"),
+    [metas],
+  );
+
+  const metasGerentes = useMemo(
+    () => metas.filter((meta) => meta.escopo === "gerente"),
+    [metas],
+  );
+
+  const gruposCorretores = useMemo(() => {
     if (!isAdmin && !isGerente) return [];
     const metasPorCorretor = new Map<string, Meta[]>();
-    metas.forEach((meta) => {
-      const itens = metasPorCorretor.get(meta.corretorId) ?? [];
-      itens.push(meta);
-      metasPorCorretor.set(meta.corretorId, itens);
-    });
+    metas
+      .filter((meta) => meta.escopo === "corretor" && meta.corretorId)
+      .forEach((meta) => {
+        const itens = metasPorCorretor.get(meta.corretorId!) ?? [];
+        itens.push(meta);
+        metasPorCorretor.set(meta.corretorId!, itens);
+      });
     return corretores.map((corretor) => {
       const metasDoCorretor = metasPorCorretor.get(corretor.id) ?? [];
       return {
@@ -138,7 +170,9 @@ function Page() {
   function openCreate() {
     setEditing(null);
     setForm({
+      escopo: isAdmin ? "imobiliaria" : "corretor",
       corretorId: "",
+      gerenteId: "",
       tipo: "vendas",
       periodo: "mensal",
       valor: "",
@@ -149,7 +183,9 @@ function Page() {
   function openEdit(meta: Meta) {
     setEditing(meta);
     setForm({
-      corretorId: meta.corretorId,
+      escopo: meta.escopo,
+      corretorId: meta.corretorId ?? "",
+      gerenteId: meta.gerenteId ?? "",
       tipo: meta.tipo,
       periodo: meta.periodo,
       valor: String(meta.valor),
@@ -164,9 +200,18 @@ function Page() {
       toast.error("Informe uma meta inteira maior que zero.");
       return;
     }
-    if (isGerente && !editing && !form.corretorId) {
-      toast.error("Selecione o corretor que receberá a meta.");
-      return;
+    if (!editing) {
+      if (
+        (isGerente || (isAdmin && form.escopo === "corretor")) &&
+        !form.corretorId
+      ) {
+        toast.error("Selecione o corretor que receberá a meta.");
+        return;
+      }
+      if (isAdmin && form.escopo === "gerente" && !form.gerenteId) {
+        toast.error("Selecione o gerente que receberá a meta.");
+        return;
+      }
     }
 
     setSaving(true);
@@ -176,7 +221,13 @@ function Page() {
         toast.success("Meta atualizada.");
       } else {
         await createMeta({
-          ...(isGerente ? { corretorId: form.corretorId } : {}),
+          ...(isAdmin ? { escopo: form.escopo } : {}),
+          ...(form.escopo === "corretor" && (isAdmin || isGerente)
+            ? { corretorId: form.corretorId }
+            : {}),
+          ...(isAdmin && form.escopo === "gerente"
+            ? { gerenteId: form.gerenteId }
+            : {}),
           tipo: form.tipo,
           periodo: form.periodo,
           valor,
@@ -216,7 +267,19 @@ function Page() {
     }
   }
 
-  const canCreate = user?.role === "corretor" || isGerente;
+  const canCreate =
+    user?.role === "corretor" || isGerente || isAdmin;
+
+  const canEditMeta = (meta: Meta) => {
+    if (isAdmin) return meta.origem === "admin";
+    if (isGerente)
+      return (
+        meta.origem === "gerente" &&
+        meta.escopo === "corretor" &&
+        meta.criadorId === user?.id
+      );
+    return meta.origem === "pessoal" && meta.escopo === "corretor";
+  };
 
   return (
     <div>
@@ -224,7 +287,7 @@ function Page() {
         title="Metas"
         description={
           isAdmin
-            ? "Acompanhe as metas ativas de todas as equipes."
+            ? "Defina metas da imobiliária, por gerente ou por corretor."
             : isGerente
               ? "Defina e acompanhe as metas da sua equipe."
               : "Acompanhe suas metas pessoais e as definidas pela gerência."
@@ -233,7 +296,11 @@ function Page() {
           canCreate ? (
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
-              {isGerente ? "Definir meta" : "Minha meta"}
+              {isAdmin
+                ? "Nova meta"
+                : isGerente
+                  ? "Definir meta"
+                  : "Minha meta"}
             </Button>
           ) : undefined
         }
@@ -244,36 +311,107 @@ function Page() {
         </div>
       ) : !isAdmin && !isGerente ? (
         <MetasPorOrigem
-          metas={metas}
-          canEdit={(meta) => meta.origem === "pessoal"}
+          metas={metas.filter((m) => m.escopo === "corretor")}
+          canEdit={canEditMeta}
           onEdit={openEdit}
           onRemove={remove}
         />
-      ) : grupos.length === 0 ? (
-        <EmptyState admin={isAdmin} />
       ) : (
-        <div className="space-y-5">
-          {grupos.map(({ corretor, metas: metasDoCorretor }) => (
-            <section key={corretor.id} className="space-y-3">
+        <div className="space-y-8">
+          {(isAdmin || metasImobiliaria.length > 0) && (
+            <section className="space-y-3">
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-semibold">{corretor.name}</h2>
-                <span className="text-sm text-muted-foreground">
-                  {corretor.equipe?.name ?? "Sem equipe"}
-                </span>
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold">Imobiliária</h2>
               </div>
-              <MetasPorOrigem
-                metas={metasDoCorretor}
-                canEdit={(meta) =>
-                  isGerente &&
-                  meta.origem === "gerente" &&
-                  meta.criadorId === user?.id
-                }
-                onEdit={openEdit}
-                onRemove={remove}
-              />
+              {metasImobiliaria.length > 0 ? (
+                <MetaList
+                  metas={metasImobiliaria}
+                  canEdit={canEditMeta}
+                  onEdit={openEdit}
+                  onRemove={remove}
+                />
+              ) : (
+                <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
+                  Nenhuma meta da imobiliária neste período.
+                </p>
+              )}
             </section>
-          ))}
+          )}
+
+          {(isAdmin || metasGerentes.length > 0) && (
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <UserRound className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold">Gerentes / equipes</h2>
+              </div>
+              {metasGerentes.length > 0 ? (
+                <div className="space-y-4">
+                  {Object.entries(
+                    metasGerentes.reduce<Record<string, Meta[]>>((acc, meta) => {
+                      const key = meta.gerenteId ?? "sem-gerente";
+                      acc[key] = [...(acc[key] ?? []), meta];
+                      return acc;
+                    }, {}),
+                  ).map(([gerenteId, metasDoGerente]) => {
+                    const fromMeta = metasDoGerente[0]?.gerente;
+                    const fromEquipe = gerentes.find((g) => g.id === gerenteId);
+                    const nome =
+                      fromMeta?.name ?? fromEquipe?.name ?? "Gerente";
+                    const equipeNome =
+                      fromMeta?.equipeGerenciada?.name ??
+                      fromEquipe?.equipeNome ??
+                      null;
+                    return (
+                      <div key={gerenteId} className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {nome}
+                          {equipeNome ? ` · ${equipeNome}` : ""}
+                        </p>
+                        <MetaList
+                          metas={metasDoGerente}
+                          canEdit={canEditMeta}
+                          onEdit={openEdit}
+                          onRemove={remove}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
+                  Nenhuma meta de gerente neste período.
+                </p>
+              )}
+            </section>
+          )}
+
+          <section className="space-y-5">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Corretores</h2>
+            </div>
+            {gruposCorretores.length === 0 ? (
+              <EmptyState admin={isAdmin} />
+            ) : (
+              gruposCorretores.map(({ corretor, metas: metasDoCorretor }) => (
+                <section key={corretor.id} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium">{corretor.name}</h3>
+                    <span className="text-sm text-muted-foreground">
+                      {corretor.equipe?.name ?? "Sem equipe"}
+                    </span>
+                  </div>
+                  <MetasPorOrigem
+                    metas={metasDoCorretor}
+                    canEdit={canEditMeta}
+                    onEdit={openEdit}
+                    onRemove={remove}
+                  />
+                </section>
+              ))
+            )}
+          </section>
         </div>
       )}
 
@@ -283,16 +421,50 @@ function Page() {
             <DialogTitle>
               {editing
                 ? "Editar meta"
-                : isGerente
-                  ? "Definir meta para a equipe"
-                  : "Criar minha meta"}
+                : isAdmin
+                  ? "Nova meta administrativa"
+                  : isGerente
+                    ? "Definir meta para a equipe"
+                    : "Criar minha meta"}
             </DialogTitle>
             <DialogDescription>
               Metas diárias, semanais e mensais são acompanhadas separadamente.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">
-            {isGerente && !editing && (
+            {isAdmin && !editing && (
+              <div className="space-y-2">
+                <Label>Alvo da meta</Label>
+                <Select
+                  value={form.escopo}
+                  onValueChange={(escopo: MetaEscopo) =>
+                    setForm((atual) => ({
+                      ...atual,
+                      escopo,
+                      corretorId: "",
+                      gerenteId: "",
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="imobiliaria">
+                      {META_ESCOPO_LABEL.imobiliaria}
+                    </SelectItem>
+                    <SelectItem value="gerente">
+                      {META_ESCOPO_LABEL.gerente}
+                    </SelectItem>
+                    <SelectItem value="corretor">
+                      {META_ESCOPO_LABEL.corretor}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {((isGerente && !editing) ||
+              (isAdmin && !editing && form.escopo === "corretor")) && (
               <div className="space-y-2">
                 <Label>Corretor</Label>
                 <Select
@@ -308,6 +480,28 @@ function Page() {
                     {corretores.map((corretor) => (
                       <SelectItem key={corretor.id} value={corretor.id}>
                         {corretor.name} — {corretor.equipeNome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {isAdmin && !editing && form.escopo === "gerente" && (
+              <div className="space-y-2">
+                <Label>Gerente</Label>
+                <Select
+                  value={form.gerenteId}
+                  onValueChange={(gerenteId) =>
+                    setForm((atual) => ({ ...atual, gerenteId }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um gerente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gerentes.map((gerente) => (
+                      <SelectItem key={gerente.id} value={gerente.id}>
+                        {gerente.name} — {gerente.equipeNome}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -396,7 +590,9 @@ function MetasPorOrigem({
   onEdit: (meta: Meta) => void;
   onRemove: (meta: Meta) => void;
 }) {
-  const metasGerencia = metas.filter((meta) => meta.origem === "gerente");
+  const metasGerencia = metas.filter(
+    (meta) => meta.origem === "gerente" || meta.origem === "admin",
+  );
   const metasPessoais = metas.filter((meta) => meta.origem === "pessoal");
 
   if (metas.length === 0) return <EmptyState />;
@@ -405,9 +601,9 @@ function MetasPorOrigem({
     <div className="space-y-6">
       <section className="space-y-3">
         <div>
-          <h3 className="font-medium">Metas da gerência</h3>
+          <h3 className="font-medium">Metas atribuídas</h3>
           <p className="text-sm text-muted-foreground">
-            Metas definidas pelo gerente para este corretor.
+            Metas definidas pela gerência ou administração.
           </p>
         </div>
         {metasGerencia.length > 0 ? (
@@ -419,7 +615,7 @@ function MetasPorOrigem({
           />
         ) : (
           <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
-            Nenhuma meta da gerência para este período.
+            Nenhuma meta atribuída para este período.
           </p>
         )}
       </section>
@@ -465,6 +661,12 @@ function MetaList({
         const visual = getMetaVisual(meta.tipo);
         const Icon = visual.icon;
         const concluida = meta.percentual >= 100;
+        const origemLabel =
+          meta.origem === "admin"
+            ? "Administração"
+            : meta.origem === "gerente"
+              ? "Gerência"
+              : "Pessoal";
         return (
           <Card
             key={meta.id}
@@ -486,18 +688,23 @@ function MetaList({
                     <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                       <CalendarDays className="h-3 w-3" />
                       {META_PERIODO_LABEL[meta.periodo]}
+                      {meta.escopo !== "corretor" ? (
+                        <> · {META_ESCOPO_LABEL[meta.escopo]}</>
+                      ) : null}
                     </div>
                   </div>
                 </div>
                 <Badge
                   className={
-                    meta.origem === "gerente"
-                      ? "border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                      : "border-sky-500/25 bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                    meta.origem === "admin"
+                      ? "border-violet-500/25 bg-violet-500/15 text-violet-700 dark:text-violet-300"
+                      : meta.origem === "gerente"
+                        ? "border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                        : "border-sky-500/25 bg-sky-500/15 text-sky-700 dark:text-sky-300"
                   }
                   variant="outline"
                 >
-                  {meta.origem === "gerente" ? "Gerência" : "Pessoal"}
+                  {origemLabel}
                 </Badge>
               </div>
             </CardHeader>
@@ -543,9 +750,9 @@ function MetaList({
               </div>
               <div className="flex items-center justify-between gap-2 border-t pt-3">
                 <p className="truncate text-xs text-muted-foreground">
-                  {meta.origem === "gerente"
-                    ? `Definida por ${meta.criador.name}`
-                    : "Definida por você"}
+                  {meta.origem === "pessoal"
+                    ? "Definida por você"
+                    : `Definida por ${meta.criador.name}`}
                 </p>
                 {editavel && (
                   <div className="flex shrink-0 gap-1 opacity-70 transition-opacity group-hover:opacity-100">
@@ -610,7 +817,7 @@ function EmptyState({ admin = false }: { admin?: boolean }) {
       <p className="font-medium">Nenhuma meta ativa</p>
       <p className="mt-1 text-sm text-muted-foreground">
         {admin
-          ? "As metas das equipes aparecerão aqui."
+          ? "Crie metas da imobiliária, por gerente ou por corretor."
           : "Defina uma meta para começar o acompanhamento."}
       </p>
     </div>

@@ -6,6 +6,9 @@ export type MetaTipo = (typeof META_TIPOS)[number];
 export const META_PERIODOS = ["diaria", "semanal", "mensal"] as const;
 export type MetaPeriodo = (typeof META_PERIODOS)[number];
 
+export const META_ESCOPOS = ["corretor", "gerente", "imobiliaria"] as const;
+export type MetaEscopo = (typeof META_ESCOPOS)[number];
+
 export const META_TIPO_LABEL: Record<MetaTipo, string> = {
   vendas: "Vendas",
   documentacoes: "Documentações",
@@ -18,9 +21,16 @@ export const META_PERIODO_LABEL: Record<MetaPeriodo, string> = {
   mensal: "Mensal",
 };
 
+export const META_ESCOPO_LABEL: Record<MetaEscopo, string> = {
+  corretor: "Corretor",
+  gerente: "Gerente / equipe",
+  imobiliaria: "Imobiliária",
+};
+
 export type Meta = {
   id: string;
-  origem: "pessoal" | "gerente";
+  escopo: MetaEscopo;
+  origem: "pessoal" | "gerente" | "admin";
   tipo: MetaTipo;
   periodo: MetaPeriodo;
   valor: number;
@@ -28,19 +38,27 @@ export type Meta = {
   fim: string;
   atual: number;
   percentual: number;
-  corretorId: string;
+  corretorId: string | null;
+  gerenteId: string | null;
   criadorId: string;
   corretor: {
     id: string;
     name: string;
     equipeId: string | null;
     equipe: { id: string; name: string } | null;
-  };
+  } | null;
+  gerente: {
+    id: string;
+    name: string;
+    equipeGerenciada: { id: string; name: string } | null;
+  } | null;
   criador: { id: string; name: string };
 };
 
 export type CreateMetaInput = {
+  escopo?: MetaEscopo;
   corretorId?: string;
+  gerenteId?: string;
   tipo: MetaTipo;
   periodo: MetaPeriodo;
   valor: number;

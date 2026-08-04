@@ -85,6 +85,12 @@ import {
   type Documentacao,
 } from "@/lib/documentacao-api";
 import {
+  dedupeStatusOptions,
+  isStatusAnalise,
+  isStatusVendido,
+  statusesMatch,
+} from "@/lib/documentacao-status";
+import {
   dedupeImportDocs,
   downloadDocumentacaoImportTemplate,
   exportDocumentacoesToExcel,
@@ -179,23 +185,6 @@ const emptyForm = (): FormState => ({
 
 function todayDateInput(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-function isStatusAnaliseLabel(status: string): boolean {
-  return status
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .startsWith("analise");
-}
-
-function normalizedStatus(status: string): string {
-  return status
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function toDateInput(value: string | null | undefined): string {
@@ -436,23 +425,27 @@ function DocumentacaoPage() {
   }, [visibleLeads]);
 
   const status1Options = useMemo(() => {
-    const set = new Set<string>([
-      ...status1Catalog,
-      ...extraStatus1,
-      ...items.map((i) => i.status1).filter(Boolean),
-      form.status1,
-    ]);
-    return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return dedupeStatusOptions(
+      [
+        ...status1Catalog,
+        ...extraStatus1,
+        ...items.map((i) => i.status1),
+        form.status1,
+      ],
+      "status1",
+    );
   }, [status1Catalog, extraStatus1, items, form.status1]);
 
   const status2Options = useMemo(() => {
-    const set = new Set<string>([
-      ...status2Catalog,
-      ...extraStatus2,
-      ...items.map((i) => i.status2).filter(Boolean),
-      form.status2,
-    ]);
-    return [...set].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return dedupeStatusOptions(
+      [
+        ...status2Catalog,
+        ...extraStatus2,
+        ...items.map((i) => i.status2),
+        form.status2,
+      ],
+      "status2",
+    );
   }, [status2Catalog, extraStatus2, items, form.status2]);
 
   const fonteOptions = useMemo(() => {
@@ -512,10 +505,16 @@ function DocumentacaoPage() {
   const filteredItems = useMemo(() => {
     const q = filterSearch.trim().toLowerCase();
     return items.filter((doc) => {
-      if (filterStatus1 !== "__all__" && doc.status1 !== filterStatus1) {
+      if (
+        filterStatus1 !== "__all__" &&
+        !statusesMatch(doc.status1, filterStatus1)
+      ) {
         return false;
       }
-      if (filterStatus2 !== "__all__" && doc.status2 !== filterStatus2) {
+      if (
+        filterStatus2 !== "__all__" &&
+        !statusesMatch(doc.status2, filterStatus2)
+      ) {
         return false;
       }
       if (filterFonte !== "__all__" && displayFonte(doc.fonte) !== filterFonte) {
@@ -589,11 +588,15 @@ function DocumentacaoPage() {
     () =>
       filteredItems.reduce(
         (summary, doc) => {
-          const status = normalizedStatus(doc.status1);
-          if (status.startsWith("reprov")) summary.reprovadas += 1;
-          else if (status.startsWith("aprov")) summary.aprovadas += 1;
-          else if (status.includes("analise")) summary.emAnalise += 1;
-          if (normalizedStatus(doc.status2) === "vendido") {
+          const raw = doc.status1
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+          if (raw.startsWith("reprov")) summary.reprovadas += 1;
+          else if (raw.startsWith("aprov")) summary.aprovadas += 1;
+          else if (raw.includes("analise")) summary.emAnalise += 1;
+          if (isStatusVendido(doc.status2)) {
             summary.vgv += doc.vgv ?? 0;
           }
           return summary;
@@ -812,7 +815,7 @@ function DocumentacaoPage() {
         gerenteIdOfCorretor(corretorId) || prev.gerenteId;
       const dataAnalise =
         prev.dataAnalise ||
-        (isStatusAnaliseLabel(prev.status1) ? todayDateInput() : "");
+        (isStatusAnalise(prev.status1) ? todayDateInput() : "");
       return {
         ...prev,
         nome: contact.nome,
@@ -2313,7 +2316,7 @@ function DocumentacaoPage() {
                         ...prev,
                         status1: v,
                         dataAnalise:
-                          isStatusAnaliseLabel(v) && !prev.dataAnalise
+                          isStatusAnalise(v) && !prev.dataAnalise
                             ? todayDateInput()
                             : prev.dataAnalise,
                       }));

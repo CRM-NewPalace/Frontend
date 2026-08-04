@@ -39,6 +39,7 @@ import {
   fetchDocumentacoes,
   type Documentacao,
 } from "@/lib/documentacao-api";
+import { isStatusVendido } from "@/lib/documentacao-status";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { toast } from "sonner";
 
@@ -47,19 +48,19 @@ export const Route = createFileRoute("/_app/vendas")({
   component: VendasPage,
 });
 
+function brl(value: number) {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 function normalize(value: string | null | undefined) {
   return (value ?? "")
     .trim()
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "");
-}
-
-function brl(value: number) {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 function dateDay(value: string | null | undefined) {
@@ -96,11 +97,7 @@ function VendasPage() {
     Promise.all([fetchDocumentacoes(), fetchEquipes()])
       .then(([documentacoes, equipesData]) => {
         if (!active) return;
-        setDocs(
-          documentacoes.filter(
-            (doc) => normalize(doc.status2) === "vendido",
-          ),
-        );
+        setDocs(documentacoes.filter((doc) => isStatusVendido(doc.status2)));
         setEquipes(equipesData);
       })
       .catch((error) => {
