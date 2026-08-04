@@ -1896,7 +1896,7 @@ function DocumentacaoPage() {
                   <TableHead className="min-w-[100px]">Status</TableHead>
                   <TableHead className="min-w-[72px] max-w-[96px]">Corretor</TableHead>
                   <TableHead className="min-w-[72px] max-w-[96px]">Gerente</TableHead>
-                  <TableHead className="min-w-[72px]">VGV</TableHead>
+                  <TableHead className="min-w-[72px]">Fonte</TableHead>
                   <TableHead className="w-[84px]" />
                 </TableRow>
               </TableHeader>
@@ -1972,8 +1972,11 @@ function DocumentacaoPage() {
                     >
                       {doc.gerente?.name ?? "—"}
                     </TableCell>
-                    <TableCell className="tabular-nums whitespace-nowrap">
-                      {doc.vgv != null ? brl(doc.vgv) : "—"}
+                    <TableCell
+                      className="max-w-[96px] truncate"
+                      title={displayFonte(doc.fonte)}
+                    >
+                      {displayFonte(doc.fonte) || "—"}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-0.5">
