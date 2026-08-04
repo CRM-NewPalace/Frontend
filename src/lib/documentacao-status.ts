@@ -64,6 +64,19 @@ export function isStatusAnalise(
   return status1Group(status) === "analise";
 }
 
+/** Status 1 de documentação aprovado (inclui "Aprovado c/ restrição"). */
+export function isStatusAprovadoDoc(
+  status: string | null | undefined,
+): boolean {
+  if (!status) return false;
+  const raw = status
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return raw.startsWith("aprov");
+}
+
 /** Compara status considerando variantes semânticas (VENDIDO/venda, etc.). */
 export function statusesMatch(a: string, b: string): boolean {
   const na = normalizeDocStatus(a);

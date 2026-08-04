@@ -3,14 +3,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { LostLead } from "@/lib/lost-leads-cache";
 
-export const LOST_LEAD_IO_COLUMNS = [
-  "Nome",
-  "Telefone",
-  "Motivo",
-  "Corretor",
-  "Excluído por",
-  "Data exclusão",
-] as const;
+export const LOST_LEAD_IO_COLUMNS = ["Nome", "Telefone"] as const;
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -22,14 +15,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function lostLeadToRow(lead: LostLead): string[] {
-  return [
-    lead.nome || "",
-    lead.telefone || "",
-    lead.motivoPerda || "",
-    lead.corretor || "",
-    lead.perdidoPor || "",
-    lead.perdidoAt || "",
-  ];
+  return [lead.nome || "", lead.telefone || ""];
 }
 
 function buildSheet(rows: string[][]) {
@@ -83,7 +69,7 @@ export function exportLostLeadsToPdf(
   filename = "leads-perdidos.pdf",
   imobiliariaNome = "Imobiliária",
 ) {
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   doc.setFontSize(14);
   doc.text(`Leads Perdidos — ${imobiliariaNome}`, 40, 36);
   doc.setFontSize(9);
@@ -98,7 +84,7 @@ export function exportLostLeadsToPdf(
     startY: 64,
     head: [Array.from(LOST_LEAD_IO_COLUMNS)],
     body: leads.map((l) => lostLeadToRow(l)),
-    styles: { fontSize: 8, cellPadding: 4 },
+    styles: { fontSize: 10, cellPadding: 6 },
     headStyles: { fillColor: [220, 38, 38] },
   });
 

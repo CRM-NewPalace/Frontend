@@ -51,9 +51,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { getSession } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
-import { brl } from "@/lib/crm-types";
+import { brl, type Lead } from "@/lib/crm-types";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { fetchConstrutoras, type Construtora } from "@/lib/construtoras-api";
@@ -62,6 +75,8 @@ import {
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
+import { fetchDocumentacoes } from "@/lib/documentacao-api";
+import { isStatusAprovadoDoc } from "@/lib/documentacao-status";
 import {
   createProposta,
   deleteProposta,
@@ -75,8 +90,11 @@ import {
   type PropostaStatus,
 } from "@/lib/propostas-api";
 import { formatPhone, phoneDigits, PHONE_PLACEHOLDER } from "@/lib/phone";
+import { cn } from "@/lib/utils";
 import {
+  Check,
   CheckCircle2,
+  ChevronsUpDown,
   Clock3,
   Eye,
   FileText,
@@ -154,6 +172,19 @@ function equipeName(p: Proposta): string {
   return p.lead?.equipe?.name ?? "—";
 }
 
+function isLeadAprovado(
+  lead: Lead,
+  aprovadosPorDoc: Set<string>,
+): boolean {
+  if (lead.analise?.status === "aprovado") return true;
+  return aprovadosPorDoc.has(lead.id);
+}
+
+function leadPickerLabel(lead: Lead): string {
+  const phone = lead.telefone ? formatPhone(lead.telefone) : "";
+  return phone ? `${lead.nome} · ${phone}` : lead.nome;
+}
+
 function Page() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
@@ -164,6 +195,9 @@ function Page() {
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [aprovadosPorDoc, setAprovadosPorDoc] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -173,6 +207,7 @@ function Page() {
 
   const [selected, setSelected] = useState<Proposta | null>(null);
   const [open, setOpen] = useState(false);
+  const [leadPickerOpen, setLeadPickerOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -188,15 +223,23 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [propostas, cons, emps, eqs] = await Promise.all([
+      const [propostas, cons, emps, eqs, docs] = await Promise.all([
         fetchPropostas(),
         fetchConstrutoras().catch(() => [] as Construtora[]),
         fetchEmpreendimentos().catch(() => [] as Empreendimento[]),
         isManager && !isGerente
           ? fetchEquipes().catch(() => [] as Equipe[])
           : Promise.resolve([] as Equipe[]),
+        fetchDocumentacoes().catch(() => []),
       ]);
       setItems(propostas);
+      setAprovadosPorDoc(
+        new Set(
+          docs
+            .filter((d) => isStatusAprovadoDoc(d.status1))
+            .map((d) => d.leadId),
+        ),
+      );
       setConstrutoras(cons);
       setEmpreendimentos(emps);
       setEquipes(eqs);
@@ -222,13 +265,24 @@ function Page() {
 
   const visibleLeads = useMemo(() => {
     if (!user) return [];
-    if (!isManager) {
-      return leads.filter(
-        (l) => l.corretorId === user.id || l.corretor === user.name,
-      );
-    }
-    return leads;
-  }, [leads, user, isManager]);
+    const scoped = !isManager
+      ? leads.filter(
+          (l) => l.corretorId === user.id || l.corretor === user.name,
+        )
+      : leads;
+    return scoped
+      .filter((l) => isLeadAprovado(l, aprovadosPorDoc))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [leads, user, isManager, aprovadosPorDoc]);
+
+  const selectedLead = useMemo(() => {
+    if (!form.leadId) return null;
+    return (
+      visibleLeads.find((l) => l.id === form.leadId) ??
+      leads.find((l) => l.id === form.leadId) ??
+      null
+    );
+  }, [form.leadId, visibleLeads, leads]);
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -816,26 +870,90 @@ function Page() {
             <FormSection title="Cliente">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2 space-y-1.5">
-                  <Label>Lead / cliente (opcional)</Label>
-                  <Select
-                    value={form.leadId || "__none__"}
-                    onValueChange={(v) =>
-                      onLeadSelect(v === "__none__" ? "" : v)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar lead" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sem vínculo</SelectItem>
-                      {visibleLeads.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.nome}
-                          {l.telefone ? ` · ${formatPhone(l.telefone)}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Lead / cliente aprovado (opcional)</Label>
+                  <Popover open={leadPickerOpen} onOpenChange={setLeadPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={leadPickerOpen}
+                        className="h-10 w-full justify-between font-normal"
+                      >
+                        <span className="truncate">
+                          {selectedLead
+                            ? leadPickerLabel(selectedLead)
+                            : "Buscar por nome ou telefone..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      align="start"
+                    >
+                      <Command>
+                        <CommandInput placeholder="Nome ou telefone..." />
+                        <CommandList>
+                          <CommandEmpty>
+                            Nenhum lead/cliente aprovado encontrado.
+                          </CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="sem vinculo"
+                              onSelect={() => {
+                                onLeadSelect("");
+                                setLeadPickerOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  !form.leadId ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              Sem vínculo
+                            </CommandItem>
+                            {visibleLeads.map((l) => {
+                              const label = leadPickerLabel(l);
+                              const searchValue = [
+                                l.nome,
+                                l.telefone,
+                                phoneDigits(l.telefone),
+                                l.tipo,
+                              ]
+                                .filter(Boolean)
+                                .join(" ");
+                              return (
+                                <CommandItem
+                                  key={l.id}
+                                  value={searchValue}
+                                  onSelect={() => {
+                                    onLeadSelect(l.id);
+                                    setLeadPickerOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      form.leadId === l.id
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  <span className="truncate">{label}</span>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-[11px] text-muted-foreground">
+                    Lista apenas leads e clientes com análise ou documentação
+                    aprovada.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="clienteNome">Nome *</Label>
