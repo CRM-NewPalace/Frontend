@@ -93,17 +93,6 @@ function LeadsPerdidos() {
   const [detail, setDetail] = useState<LostLead | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<LostLead | null>(null);
 
-  const stageNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const s of funnelStages) map.set(s.id, s.name);
-    return map;
-  }, [funnelStages]);
-
-  const resolveStage = useCallback(
-    (stageId: string) => stageNameById.get(stageId) ?? stageId,
-    [stageNameById],
-  );
-
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? Boolean(getLostLeadsCache()?.length);
     if (silent) setRefreshing(true);
@@ -193,7 +182,6 @@ function LeadsPerdidos() {
                   exportLostLeadsToExcel(
                     filtered,
                     `leads-perdidos-${new Date().toISOString().slice(0, 10)}.xlsx`,
-                    resolveStage,
                   )
                 }
               >
@@ -206,7 +194,6 @@ function LeadsPerdidos() {
                     filtered,
                     `leads-perdidos-${new Date().toISOString().slice(0, 10)}.pdf`,
                     user?.tenant?.name?.trim() || "Imobiliária",
-                    resolveStage,
                   )
                 }
               >

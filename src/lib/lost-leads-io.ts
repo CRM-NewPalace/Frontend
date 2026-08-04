@@ -1,21 +1,15 @@
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { displayEmail } from "@/lib/email";
 import type { LostLead } from "@/lib/lost-leads-cache";
 
 export const LOST_LEAD_IO_COLUMNS = [
   "Nome",
   "Telefone",
-  "E-mail",
-  "Origem",
   "Motivo",
   "Corretor",
   "Excluído por",
   "Data exclusão",
-  "Interesse",
-  "Prioridade",
-  "Última etapa",
 ] as const;
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -27,30 +21,14 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function stageLabel(
-  stageId: string,
-  resolveStage?: (stageId: string) => string,
-): string {
-  if (resolveStage) return resolveStage(stageId) || stageId || "—";
-  return stageId || "—";
-}
-
-function lostLeadToRow(
-  lead: LostLead,
-  resolveStage?: (stageId: string) => string,
-): string[] {
+function lostLeadToRow(lead: LostLead): string[] {
   return [
     lead.nome || "",
     lead.telefone || "",
-    displayEmail(lead.email) || "",
-    lead.origem || "",
     lead.motivoPerda || "",
     lead.corretor || "",
     lead.perdidoPor || "",
     lead.perdidoAt || "",
-    lead.interesse || "",
-    lead.prioridade || "",
-    stageLabel(lead.stage, resolveStage),
   ];
 }
 
@@ -83,10 +61,9 @@ function buildSheet(rows: string[][]) {
 export function exportLostLeadsToExcel(
   leads: LostLead[],
   filename = "leads-perdidos.xlsx",
-  resolveStage?: (stageId: string) => string,
 ) {
   const workbook = XLSX.utils.book_new();
-  const sheet = buildSheet(leads.map((l) => lostLeadToRow(l, resolveStage)));
+  const sheet = buildSheet(leads.map((l) => lostLeadToRow(l)));
   XLSX.utils.book_append_sheet(workbook, sheet, "Leads perdidos");
   const data = XLSX.write(workbook, {
     bookType: "xlsx",
@@ -105,7 +82,6 @@ export function exportLostLeadsToPdf(
   leads: LostLead[],
   filename = "leads-perdidos.pdf",
   imobiliariaNome = "Imobiliária",
-  resolveStage?: (stageId: string) => string,
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(14);
@@ -121,8 +97,8 @@ export function exportLostLeadsToPdf(
   autoTable(doc, {
     startY: 64,
     head: [Array.from(LOST_LEAD_IO_COLUMNS)],
-    body: leads.map((l) => lostLeadToRow(l, resolveStage)),
-    styles: { fontSize: 7, cellPadding: 3 },
+    body: leads.map((l) => lostLeadToRow(l)),
+    styles: { fontSize: 8, cellPadding: 4 },
     headStyles: { fillColor: [220, 38, 38] },
   });
 

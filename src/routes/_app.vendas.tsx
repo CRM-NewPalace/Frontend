@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  BadgeDollarSign,
   CalendarDays,
   Loader2,
   ReceiptText,
@@ -203,7 +202,6 @@ function VendasPage() {
   ]);
 
   const totalVgv = filtered.reduce((sum, doc) => sum + (doc.vgv ?? 0), 0);
-  const ticketMedio = filtered.length > 0 ? totalVgv / filtered.length : 0;
   const comVgv = filtered.filter((doc) => (doc.vgv ?? 0) > 0).length;
 
   const clearFilters = () => {
@@ -238,7 +236,7 @@ function VendasPage() {
         description="Todos os processos finalizados com venda e seus responsáveis."
       />
 
-      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 grid-cols-2 xl:grid-cols-3">
         <FinanceKpiCard
           label="Vendas filtradas"
           value={filtered.length}
@@ -251,12 +249,6 @@ function VendasPage() {
           value={totalVgv}
           icon={Wallet}
           tone="teal"
-        />
-        <FinanceKpiCard
-          label="Ticket médio"
-          value={ticketMedio}
-          icon={BadgeDollarSign}
-          tone="blue"
         />
         <FinanceKpiCard
           label="Vendas com VGV"
