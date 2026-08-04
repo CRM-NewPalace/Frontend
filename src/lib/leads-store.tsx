@@ -118,11 +118,22 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     if (!opts?.silent) setLoading(true);
     setError(null);
     try {
-      const [page, team] = await Promise.all([
-        fetchLeads({ page: 1, limit: 100 }),
+      const pageSize = 200;
+      const [first, team] = await Promise.all([
+        fetchLeads({ page: 1, limit: pageSize }),
         fetchLeadAssignees(),
       ]);
-      setLeads(page.data.map(mapApiLead));
+      const all = [...first.data];
+      const totalPages = Math.max(1, first.meta.totalPages);
+      if (totalPages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, i) =>
+            fetchLeads({ page: i + 2, limit: pageSize }),
+          ),
+        );
+        for (const page of rest) all.push(...page.data);
+      }
+      setLeads(all.map(mapApiLead));
       setAssignees(
         [...team].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       );
