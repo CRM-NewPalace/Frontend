@@ -23,6 +23,7 @@ export type CreateParceiroInput = {
   email?: string;
   telefone?: string;
   cidade?: string;
+  imobiliaria?: string;
   saldoAberto?: number;
   ativo?: boolean;
 };

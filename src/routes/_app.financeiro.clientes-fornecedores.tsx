@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import {
   createParceiro,
   deleteParceiro,
@@ -50,9 +51,12 @@ import {
   type ParceiroFinanceiro,
   type TipoParceiro,
 } from "@/lib/financeiro-mock";
+import { fetchTenants, type Tenant } from "@/lib/tenants-api";
 import { formatPhone, PHONE_PLACEHOLDER } from "@/lib/phone";
 import { Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+const NONE_IMOB = "__none__";
 
 export const Route = createFileRoute("/_app/financeiro/clientes-fornecedores")({
   head: () => ({
@@ -87,6 +91,7 @@ type FormState = {
   email: string;
   telefone: string;
   cidade: string;
+  imobiliaria: string;
   ativo: boolean;
 };
 
@@ -97,6 +102,7 @@ const EMPTY_FORM: FormState = {
   email: "",
   telefone: "",
   cidade: "",
+  imobiliaria: "",
   ativo: true,
 };
 
@@ -108,12 +114,15 @@ function toForm(p: ParceiroFinanceiro): FormState {
     email: p.email || "",
     telefone: p.telefone || "",
     cidade: p.cidade || "",
+    imobiliaria: p.imobiliaria || "",
     ativo: p.ativo,
   };
 }
 
 function Page() {
+  const isSuperAdmin = getSession()?.role === "super_admin";
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tipo, setTipo] = useState("todos");
@@ -131,17 +140,27 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setParceiros(await fetchParceiros());
+      const list = await fetchParceiros();
+      setParceiros(list);
+      if (isSuperAdmin) {
+        try {
+          setTenants(
+            (await fetchTenants()).filter((t) => t.status === "ativo"),
+          );
+        } catch {
+          setTenants([]);
+        }
+      }
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "N?o foi poss?vel carregar os parceiros.",
+          : "Não foi possível carregar os parceiros.",
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     void load();
@@ -158,7 +177,8 @@ function Page() {
         p.nome.toLowerCase().includes(q) ||
         p.documento.includes(q) ||
         p.cidade.toLowerCase().includes(q) ||
-        p.email.toLowerCase().includes(q)
+        p.email.toLowerCase().includes(q) ||
+        (p.imobiliaria || "").toLowerCase().includes(q)
       );
     });
   }, [parceiros, search, tipo, ativo]);
@@ -211,6 +231,7 @@ function Page() {
       email: form.email.trim() || undefined,
       telefone: form.telefone.trim() || undefined,
       cidade: form.cidade.trim() || undefined,
+      imobiliaria: form.imobiliaria.trim(),
       ativo: form.ativo,
     };
 
@@ -314,17 +335,18 @@ function Page() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Documento</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Imobiliária</TableHead>
                 <TableHead>Cidade</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[88px] text-right">A??es</TableHead>
+                <TableHead className="w-[88px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center text-muted-foreground py-10"
                   >
                     Nenhum parceiro encontrado para os filtros.
@@ -342,11 +364,12 @@ function Page() {
                         {p.tipo}
                       </Badge>
                     </TableCell>
-                    <TableCell>{p.cidade || "?"}</TableCell>
+                    <TableCell>{p.imobiliaria || "—"}</TableCell>
+                    <TableCell>{p.cidade || "—"}</TableCell>
                     <TableCell className="text-sm">
-                      <div>{p.email || "?"}</div>
+                      <div>{p.email || "—"}</div>
                       <div className="text-muted-foreground">
-                        {p.telefone || "?"}
+                        {p.telefone || "—"}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -489,8 +512,51 @@ function Page() {
                     id="parceiro-cidade"
                     value={form.cidade}
                     onChange={(e) => setField("cidade", e.target.value)}
-                    placeholder="S?o Paulo"
+                    placeholder="São Paulo"
                   />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="parceiro-imobiliaria">Imobiliária</Label>
+                  {isSuperAdmin && tenants.length > 0 ? (
+                    <Select
+                      value={
+                        form.imobiliaria &&
+                        tenants.some((t) => t.name === form.imobiliaria)
+                          ? form.imobiliaria
+                          : form.imobiliaria
+                            ? form.imobiliaria
+                            : NONE_IMOB
+                      }
+                      onValueChange={(v) =>
+                        setField("imobiliaria", v === NONE_IMOB ? "" : v)
+                      }
+                    >
+                      <SelectTrigger id="parceiro-imobiliaria">
+                        <SelectValue placeholder="Opcional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE_IMOB}>Nenhuma</SelectItem>
+                        {form.imobiliaria &&
+                        !tenants.some((t) => t.name === form.imobiliaria) ? (
+                          <SelectItem value={form.imobiliaria}>
+                            {form.imobiliaria}
+                          </SelectItem>
+                        ) : null}
+                        {tenants.map((t) => (
+                          <SelectItem key={t.id} value={t.name}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="parceiro-imobiliaria"
+                      value={form.imobiliaria}
+                      onChange={(e) => setField("imobiliaria", e.target.value)}
+                      placeholder="Opcional"
+                    />
+                  )}
                 </div>
                 <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:col-span-2">
                   <div>
