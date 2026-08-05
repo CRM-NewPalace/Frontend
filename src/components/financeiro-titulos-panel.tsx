@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -48,6 +55,11 @@ import {
   fetchTitulos,
   updateTitulo,
 } from "@/lib/financeiro-api";
+import {
+  getVistaParcelas,
+  VISTA_PARCELAS_EVENT,
+  type VistaParcelas,
+} from "@/lib/financeiro-prefs";
 import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
   brl,
@@ -69,6 +81,8 @@ import {
   Banknote,
   Building2,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Clock3,
   ListOrdered,
   Loader2,
@@ -178,6 +192,60 @@ function emptyForm(tipo: "receber" | "pagar"): FormState {
   };
 }
 
+type DisplayRow =
+  | { kind: "single"; titulo: TituloFinanceiro }
+  | { kind: "group"; grupoId: string; titulos: TituloFinanceiro[] };
+
+function buildDisplayRows(
+  filtered: TituloFinanceiro[],
+  vista: VistaParcelas,
+): DisplayRow[] {
+  if (vista === "lista") {
+    return filtered.map((titulo) => ({ kind: "single" as const, titulo }));
+  }
+  const seen = new Set<string>();
+  const out: DisplayRow[] = [];
+  for (const t of filtered) {
+    if (!t.grupoParcelasId) {
+      out.push({ kind: "single", titulo: t });
+      continue;
+    }
+    if (seen.has(t.grupoParcelasId)) continue;
+    seen.add(t.grupoParcelasId);
+    const titulos = filtered
+      .filter((x) => x.grupoParcelasId === t.grupoParcelasId)
+      .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+    out.push({ kind: "group", grupoId: t.grupoParcelasId, titulos });
+  }
+  return out;
+}
+
+function groupSummary(titulos: TituloFinanceiro[]) {
+  const first = titulos[0];
+  const total = titulos.reduce((s, t) => s + t.valor, 0);
+  const pagas = titulos.filter((t) => t.status === "pago").length;
+  const abertas = titulos.filter(
+    (t) => t.status === "aberto" || t.status === "atrasado",
+  );
+  const proxima = abertas[0] ?? first;
+  let statusResumo: StatusTitulo = "aberto";
+  if (pagas === titulos.length) statusResumo = "pago";
+  else if (titulos.some((t) => t.status === "atrasado")) statusResumo = "atrasado";
+  else if (titulos.some((t) => t.status === "cancelado") && pagas === 0)
+    statusResumo = "cancelado";
+  return {
+    descricao: first?.descricao ?? "",
+    parceiro: first?.parceiro ?? "",
+    categoria: first?.categoria ?? "",
+    centro: first?.centro ?? "",
+    vencimento: proxima?.vencimento ?? first?.vencimento ?? "",
+    total,
+    n: titulos.length,
+    pagas,
+    statusResumo,
+  };
+}
+
 export function FinanceiroTitulosPanel({
   tipo,
   title,
@@ -228,6 +296,12 @@ export function FinanceiroTitulosPanel({
     descricao: string;
     parceiro: string;
   } | null>(null);
+  const [vistaParcelas, setVistaParcelasState] = useState<VistaParcelas>(() =>
+    getVistaParcelas(),
+  );
+  const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const categorias = useMemo(() => {
     const fromItems = items
@@ -265,6 +339,18 @@ export function FinanceiroTitulosPanel({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const sync = () => setVistaParcelasState(getVistaParcelas());
+    window.addEventListener("focus", sync);
+    window.addEventListener("storage", sync);
+    window.addEventListener(VISTA_PARCELAS_EVENT, sync);
+    return () => {
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(VISTA_PARCELAS_EVENT, sync);
+    };
+  }, []);
 
   const centroOptions = useMemo(
     () => [
@@ -398,6 +484,80 @@ export function FinanceiroTitulosPanel({
       .reduce((s, r) => s + r.valor, 0);
     return { aberto, atrasado, pago };
   }, [rows]);
+
+  const displayRows = useMemo(
+    () => buildDisplayRows(rows, vistaParcelas),
+    [rows, vistaParcelas],
+  );
+
+  function toggleGrupo(grupoId: string) {
+    setExpandedGrupos((prev) => {
+      const next = new Set(prev);
+      if (next.has(grupoId)) next.delete(grupoId);
+      else next.add(grupoId);
+      return next;
+    });
+  }
+
+  function openBaixar(t: TituloFinanceiro) {
+    setBaixarTarget(t);
+    setBaixarData(todayIso());
+    setBaixarForma(FORMAS[0]);
+  }
+
+  function renderTituloActions(
+    t: TituloFinanceiro,
+    opts?: { hideGrupo?: boolean; hideBaixar?: boolean },
+  ) {
+    return (
+      <div className="flex justify-end gap-0.5">
+        {!opts?.hideGrupo && t.grupoParcelasId ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Ver parcelas"
+            onClick={() => void openGrupo(t)}
+          >
+            <ListOrdered className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
+        {!opts?.hideBaixar &&
+        t.status !== "pago" &&
+        t.status !== "cancelado" ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Baixar"
+            onClick={() => openBaixar(t)}
+          >
+            <Banknote className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
+        {t.status !== "pago" ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => openEdit(t)}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
+        {t.status !== "pago" ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive"
+            onClick={() => setDeleteTarget(t)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
 
   function regenerateParcelas(
     totalRaw: string,
@@ -688,7 +848,7 @@ export function FinanceiroTitulosPanel({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
+            {displayRows.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={9}
@@ -698,85 +858,173 @@ export function FinanceiroTitulosPanel({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="font-medium max-w-[200px] truncate">
-                    {t.descricao}
-                  </TableCell>
-                  <TableCell className="truncate max-w-[140px]">
-                    {t.parceiro || "—"}
-                  </TableCell>
-                  <TableCell className="truncate max-w-[120px]">
-                    {t.categoria || "—"}
-                  </TableCell>
-                  <TableCell className="truncate max-w-[120px]">
-                    {t.centro || "—"}
-                  </TableCell>
-                  <TableCell>{formatDate(t.vencimento)}</TableCell>
-                  <TableCell>{t.parcela || "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {brl(t.valor)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={statusBadgeClass(t.status)}
-                    >
-                      {statusLabel(t.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-0.5">
-                      {t.grupoParcelasId ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="Ver parcelas"
-                          onClick={() => void openGrupo(t)}
+              displayRows.map((row) => {
+                if (row.kind === "single") {
+                  const t = row.titulo;
+                  return (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-medium max-w-[200px] truncate">
+                        {t.descricao}
+                      </TableCell>
+                      <TableCell className="truncate max-w-[140px]">
+                        {t.parceiro || "—"}
+                      </TableCell>
+                      <TableCell className="truncate max-w-[120px]">
+                        {t.categoria || "—"}
+                      </TableCell>
+                      <TableCell className="truncate max-w-[120px]">
+                        {t.centro || "—"}
+                      </TableCell>
+                      <TableCell>{formatDate(t.vencimento)}</TableCell>
+                      <TableCell>{t.parcela || "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {brl(t.valor)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={statusBadgeClass(t.status)}
                         >
-                          <ListOrdered className="w-3.5 h-3.5" />
-                        </Button>
-                      ) : null}
-                      {t.status !== "pago" && t.status !== "cancelado" ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="Baixar"
-                          onClick={() => {
-                            setBaixarTarget(t);
-                            setBaixarData(todayIso());
-                            setBaixarForma(FORMAS[0]);
-                          }}
+                          {statusLabel(t.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{renderTituloActions(t)}</TableCell>
+                    </TableRow>
+                  );
+                }
+
+                const summary = groupSummary(row.titulos);
+                const expanded = expandedGrupos.has(row.grupoId);
+                return (
+                  <Fragment key={row.grupoId}>
+                    <TableRow>
+                      <TableCell className="font-medium max-w-[220px]">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 text-left w-full min-w-0"
+                          onClick={() => toggleGrupo(row.grupoId)}
                         >
-                          <Banknote className="w-3.5 h-3.5" />
-                        </Button>
-                      ) : null}
-                      {t.status !== "pago" ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => openEdit(t)}
+                          {expanded ? (
+                            <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="truncate">{summary.descricao}</span>
+                        </button>
+                      </TableCell>
+                      <TableCell className="truncate max-w-[140px]">
+                        {summary.parceiro || "—"}
+                      </TableCell>
+                      <TableCell className="truncate max-w-[120px]">
+                        {summary.categoria || "—"}
+                      </TableCell>
+                      <TableCell className="truncate max-w-[120px]">
+                        {summary.centro || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {summary.vencimento
+                          ? formatDate(summary.vencimento)
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {summary.n} parcela{summary.n === 1 ? "" : "s"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {brl(summary.total)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={statusBadgeClass(summary.statusResumo)}
                         >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                      ) : null}
-                      {t.status !== "pago" ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
-                          onClick={() => setDeleteTarget(t)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                          {summary.pagas === summary.n
+                            ? statusLabel("pago")
+                            : `${summary.pagas}/${summary.n} pagas`}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={expanded ? "Recolher" : "Expandir"}
+                            onClick={() => toggleGrupo(row.grupoId)}
+                          >
+                            {expanded ? (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Ver parcelas"
+                            onClick={() => void openGrupo(row.titulos[0])}
+                          >
+                            <ListOrdered className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {expanded
+                      ? row.titulos.map((t) => (
+                          <TableRow
+                            key={`${row.grupoId}-${t.id}`}
+                            className="bg-muted/20"
+                          >
+                            <TableCell className="pl-9 text-sm text-muted-foreground">
+                              Parcela {t.parcela || "—"}
+                            </TableCell>
+                            <TableCell className="truncate max-w-[140px]">
+                              {t.parceiro || "—"}
+                            </TableCell>
+                            <TableCell className="truncate max-w-[120px]">
+                              {t.categoria || "—"}
+                            </TableCell>
+                            <TableCell className="truncate max-w-[120px]">
+                              {t.centro || "—"}
+                            </TableCell>
+                            <TableCell>{formatDate(t.vencimento)}</TableCell>
+                            <TableCell>{t.parcela || "—"}</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {brl(t.valor)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="secondary"
+                                className={statusBadgeClass(t.status)}
+                              >
+                                {statusLabel(t.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex justify-end gap-1 items-center">
+                                {t.status !== "pago" &&
+                                t.status !== "cancelado" ? (
+                                  <Button
+                                    size="sm"
+                                    className="h-7"
+                                    onClick={() => openBaixar(t)}
+                                  >
+                                    <Banknote className="w-3.5 h-3.5 mr-1" />
+                                    Pagar
+                                  </Button>
+                                ) : null}
+                                {renderTituloActions(t, {
+                                  hideGrupo: true,
+                                  hideBaixar: true,
+                                })}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      : null}
+                  </Fragment>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -822,7 +1070,7 @@ export function FinanceiroTitulosPanel({
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="sm:col-span-2 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <Label>Parceiro</Label>
                     <Button
@@ -920,7 +1168,7 @@ export function FinanceiroTitulosPanel({
                   />
                 </div>
                 {parcelado && formMode === "create" ? (
-                  <div className="space-y-1.5">
+                  <div className="sm:col-span-2 space-y-1.5">
                     <Label>Quantidade de parcelas *</Label>
                     <Input
                       type="number"

@@ -6,6 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui/radio-group";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -23,6 +27,11 @@ import {
   catalogColorSwatch,
   nextCatalogColor,
 } from "@/lib/catalog-colors";
+import {
+  getVistaParcelas,
+  setVistaParcelas,
+  type VistaParcelas,
+} from "@/lib/financeiro-prefs";
 import { ApiError } from "@/lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -138,6 +147,9 @@ function Config() {
     useCatalog();
 
   const [saving, setSaving] = useState(false);
+  const [vistaParcelas, setVistaParcelasState] = useState<VistaParcelas>(() =>
+    getVistaParcelas(),
+  );
 
   const [listOpen, setListOpen] = useState(false);
   const [listKind, setListKind] = useState<ListKind>("origens");
@@ -255,6 +267,7 @@ function Config() {
         <TabsList className="flex h-auto flex-wrap gap-1">
           <TabsTrigger value="funil">Funil</TabsTrigger>
           <TabsTrigger value="documentacao">Documentação</TabsTrigger>
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           <TabsTrigger value="origens">Origens</TabsTrigger>
           <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
@@ -262,6 +275,70 @@ function Config() {
 
         <TabsContent value="funil">
           <ConfigFunisPanel />
+        </TabsContent>
+
+        <TabsContent value="financeiro" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Visualização de parcelas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Define como Contas a pagar e Contas a receber exibem títulos
+                parcelados.
+              </p>
+              <RadioGroup
+                value={vistaParcelas}
+                onValueChange={(v) => {
+                  const next = v as VistaParcelas;
+                  setVistaParcelasState(next);
+                  setVistaParcelas(next);
+                  toast.success(
+                    next === "agrupado"
+                      ? "Vista agrupada ativada."
+                      : "Lista completa ativada.",
+                  );
+                }}
+                className="space-y-3"
+              >
+                <label
+                  htmlFor="vista-agrupado"
+                  className="flex items-start gap-3 rounded-lg border border-border/60 p-3 cursor-pointer hover:bg-muted/40"
+                >
+                  <RadioGroupItem
+                    id="vista-agrupado"
+                    value="agrupado"
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm font-medium">Conta agrupada</p>
+                    <p className="text-xs text-muted-foreground">
+                      Uma linha por contrato; use a seta para expandir as
+                      parcelas e pagar cada uma.
+                    </p>
+                  </div>
+                </label>
+                <label
+                  htmlFor="vista-lista"
+                  className="flex items-start gap-3 rounded-lg border border-border/60 p-3 cursor-pointer hover:bg-muted/40"
+                >
+                  <RadioGroupItem
+                    id="vista-lista"
+                    value="lista"
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm font-medium">Lista completa</p>
+                    <p className="text-xs text-muted-foreground">
+                      Exibe todas as parcelas como linhas separadas na tabela.
+                    </p>
+                  </div>
+                </label>
+              </RadioGroup>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="documentacao" className="space-y-4">
