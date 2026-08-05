@@ -20,6 +20,7 @@ export interface ApiLead {
   stage: StageId;
   prioridade: Lead["prioridade"];
   renda: number | null;
+  estadoCivil: string | null;
   tags: string[];
   corretorId: string | null;
   corretor: { id: string; name: string } | null;
@@ -61,6 +62,7 @@ export type CreateLeadInput = {
   stage?: StageId;
   prioridade?: Lead["prioridade"];
   renda?: number | null;
+  estadoCivil?: string | null;
   tags?: string[];
   /** UUID do corretor dono. null = pool da equipe. */
   corretorId?: string | null;
@@ -99,6 +101,7 @@ export function mapApiLead(api: ApiLead): Lead {
     stage: api.stage,
     prioridade: api.prioridade,
     renda: api.renda ?? null,
+    estadoCivil: api.estadoCivil ?? null,
     updatedAt: formatUpdatedAt(api.updatedAt),
     tags: api.tags ?? [],
     analise: api.analise ?? null,

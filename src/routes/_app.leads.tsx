@@ -122,6 +122,8 @@ type FormState = {
   temperatura: "Quente" | "Morno" | "Frio";
   /** Renda mensal do cliente (opcional); só dígitos no input. */
   renda: string;
+  /** Estado civil do cliente (opcional). */
+  estadoCivil: string;
   /** UUID da equipe (gerente). Vazio = sem seleção. */
   equipeId: string;
   /** UUID do corretor. "__pool__" = pool da equipe. Vazio = sem seleção. */
@@ -139,6 +141,7 @@ const emptyForm = (origemDefault = ""): FormState => ({
   prioridade: "Média",
   temperatura: "Morno",
   renda: "",
+  estadoCivil: "",
   equipeId: "",
   corretorId: "",
 });
@@ -160,6 +163,7 @@ function leadToForm(lead: Lead): FormState {
     prioridade: lead.prioridade,
     temperatura: temp,
     renda: lead.renda != null ? String(lead.renda) : "",
+    estadoCivil: lead.estadoCivil ?? "",
     equipeId: lead.equipeId ?? "",
     corretorId: lead.corretorId ?? (lead.equipeId ? "__pool__" : ""),
   };
@@ -626,6 +630,7 @@ function LeadsPage() {
           bairro: form.bairro.trim(),
           prioridade: form.prioridade,
           renda: rendaNum,
+          estadoCivil: form.estadoCivil.trim() || null,
           tags,
           ...(equipeId !== undefined ? { equipeId } : {}),
           ...(corretorId !== undefined ? { corretorId } : {}),
@@ -646,6 +651,9 @@ function LeadsPage() {
         bairro: form.bairro.trim(),
         prioridade: form.prioridade,
         ...(rendaNum != null ? { renda: rendaNum } : {}),
+        ...(form.estadoCivil.trim()
+          ? { estadoCivil: form.estadoCivil.trim() }
+          : {}),
         tags,
         ...(equipeId !== undefined ? { equipeId } : {}),
         ...(corretorId !== undefined ? { corretorId } : {}),
@@ -1084,6 +1092,33 @@ function LeadsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label
+                  htmlFor="lead-estado-civil"
+                  className="text-xs text-muted-foreground"
+                >
+                  Estado civil{" "}
+                  <span className="font-normal">(opcional)</span>
+                </Label>
+                <Select
+                  value={form.estadoCivil || "__none__"}
+                  onValueChange={(v) =>
+                    setField("estadoCivil", v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger id="lead-estado-civil" className="h-10">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">—</SelectItem>
+                    <SelectItem value="Solteiro">Solteiro</SelectItem>
+                    <SelectItem value="Casado">Casado</SelectItem>
+                    <SelectItem value="Divorciado">Divorciado</SelectItem>
+                    <SelectItem value="Viúvo">Viúvo</SelectItem>
+                    <SelectItem value="União estável">União estável</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
                   Prioridade
                 </Label>
@@ -1284,6 +1319,10 @@ function LeadsPage() {
                     value={
                       detailLead.renda != null ? brl(detailLead.renda) : "—"
                     }
+                  />
+                  <DetailField
+                    label="Estado civil"
+                    value={detailLead.estadoCivil || "—"}
                   />
                   <DetailField
                     label="Prioridade"
@@ -1622,6 +1661,7 @@ function LeadsPage() {
               {!isCorretor && <TableHead>Equipe</TableHead>}
               {!isCorretor && <TableHead>Corretor</TableHead>}
               <TableHead>Renda</TableHead>
+              <TableHead>Estado civil</TableHead>
               <TableHead>Prioridade</TableHead>
               <TableHead>Atualizado</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -1631,7 +1671,7 @@ function LeadsPage() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={isCorretor ? 8 : 10}
+                  colSpan={isCorretor ? 9 : 11}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Carregando leads...
@@ -1640,7 +1680,7 @@ function LeadsPage() {
             ) : filteredLeads.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={isCorretor ? 8 : 10}
+                  colSpan={isCorretor ? 9 : 11}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum lead encontrado com esses filtros.
@@ -1691,6 +1731,9 @@ function LeadsPage() {
                     )}
                     <TableCell className="text-sm font-medium">
                       {l.renda != null ? brl(l.renda) : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {l.estadoCivil || "—"}
                     </TableCell>
                     <TableCell>
                       <Badge className={prioridadeBadgeClass(l.prioridade)}>

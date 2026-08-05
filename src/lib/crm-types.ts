@@ -37,6 +37,8 @@ export interface Lead {
   prioridade: "Alta" | "Média" | "Baixa";
   /** Renda mensal do cliente (opcional). */
   renda: number | null;
+  /** Estado civil do cliente (opcional). */
+  estadoCivil: string | null;
   updatedAt: string;
   tags: string[];
   /** Ficha de análise, se existir. */
