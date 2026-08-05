@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://backend-wbxw.onrender.com/api/:path*"
+      "destination": "http://api-zoneconnection-backendzoneconnection-0163c0-179-198-111-97.sslip.io/api/:path*"
     }
   ]
 }
