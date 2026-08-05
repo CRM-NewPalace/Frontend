@@ -11,7 +11,7 @@ function Page() {
     <FinanceiroTitulosPanel
       tipo="pagar"
       title="Contas a pagar"
-      description="Obrigações com fornecedores e repasses — entram no fluxo de caixa"
+      description="Obrigações com fornecedores e parceiros — cadastro, parcelamento e baixa"
     />
   );
 }

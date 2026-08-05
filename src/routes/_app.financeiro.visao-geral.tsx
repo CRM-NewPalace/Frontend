@@ -137,7 +137,7 @@ function Page() {
     <div>
       <PageHeader
         title="Visao geral"
-        description="Resumo financeiro da imobiliaria"
+        description="Resumo financeiro — KPIs, evolução e atalhos"
         actions={
           <Button
             onClick={() =>

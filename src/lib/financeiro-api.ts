@@ -2,12 +2,15 @@ import { apiFetch } from "@/lib/api";
 import type {
   CentroDespesaResumo,
   ComissaoItem,
+  DespesaLancamento,
+  DespesaTipo,
   FluxoBucket,
   FluxoGranularidade,
   FluxoItem,
   LinhaDemonstrativo,
   MesResumo,
   MovimentoFinanceiro,
+  NaturezaDespesa,
   ParceiroFinanceiro,
   TipoParceiro,
   TituloFinanceiro,
@@ -253,4 +256,88 @@ export async function fetchCentrosDespesa(): Promise<CentroDespesaResumo[]> {
 
 export async function fetchDemonstrativo(): Promise<DemonstrativoResponse> {
   return apiFetch<DemonstrativoResponse>("/financeiro/demonstrativo");
+}
+
+export type CreateDespesaTipoInput = {
+  nome: string;
+  natureza: NaturezaDespesa;
+  orcadoMensal?: number;
+  ativo?: boolean;
+};
+
+export type UpdateDespesaTipoInput = Partial<CreateDespesaTipoInput>;
+
+export type CreateDespesaInput = {
+  tipoId: string;
+  descricao: string;
+  valor: number;
+  data: string;
+  observacao?: string;
+  ativo?: boolean;
+};
+
+export type UpdateDespesaInput = Partial<CreateDespesaInput>;
+
+export async function fetchDespesaTipos(
+  natureza?: NaturezaDespesa,
+): Promise<DespesaTipo[]> {
+  const qs = natureza ? `?natureza=${natureza}` : "";
+  return apiFetch<DespesaTipo[]>(`/financeiro/despesa-tipos${qs}`);
+}
+
+export async function createDespesaTipo(
+  input: CreateDespesaTipoInput,
+): Promise<DespesaTipo> {
+  return apiFetch<DespesaTipo>("/financeiro/despesa-tipos", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateDespesaTipo(
+  id: string,
+  input: UpdateDespesaTipoInput,
+): Promise<DespesaTipo> {
+  return apiFetch<DespesaTipo>(`/financeiro/despesa-tipos/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteDespesaTipo(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/despesa-tipos/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function fetchDespesas(
+  natureza?: NaturezaDespesa,
+): Promise<DespesaLancamento[]> {
+  const qs = natureza ? `?natureza=${natureza}` : "";
+  return apiFetch<DespesaLancamento[]>(`/financeiro/despesas${qs}`);
+}
+
+export async function createDespesa(
+  input: CreateDespesaInput,
+): Promise<DespesaLancamento> {
+  return apiFetch<DespesaLancamento>("/financeiro/despesas", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateDespesa(
+  id: string,
+  input: UpdateDespesaInput,
+): Promise<DespesaLancamento> {
+  return apiFetch<DespesaLancamento>(`/financeiro/despesas/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteDespesa(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/despesas/${id}`, {
+    method: "DELETE",
+  });
 }

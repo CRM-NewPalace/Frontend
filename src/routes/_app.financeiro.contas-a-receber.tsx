@@ -11,7 +11,7 @@ function Page() {
     <FinanceiroTitulosPanel
       tipo="receber"
       title="Contas a receber"
-      description="Títulos a receber de construtoras e clientes — entram no fluxo de caixa"
+      description="Títulos a receber de clientes e parceiros — cadastro, parcelamento e baixa"
     />
   );
 }

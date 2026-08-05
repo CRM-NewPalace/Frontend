@@ -72,6 +72,7 @@ import {
   type TenantModuleKey,
   type TenantPlano,
 } from "@/lib/tenant-modules";
+import { formatCpfCnpj } from "@/lib/utils";
 import {
   Building2,
   Check,
@@ -90,13 +91,14 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/tenants")({
-  head: () => ({ meta: [{ title: "Tenants — Zone Connection" }] }),
+  head: () => ({ meta: [{ title: "Clientes — Zone Connection" }] }),
   component: TenantsPage,
 });
 
 type TenantForm = {
   name: string;
   slug: string;
+  documento: string;
   status: UserStatus;
   logoUrl: string;
   plano: TenantPlano;
@@ -108,6 +110,7 @@ type TenantForm = {
 const emptyTenantForm = (): TenantForm => ({
   name: "",
   slug: "",
+  documento: "",
   status: "ativo",
   logoUrl: "",
   plano: "bronze",
@@ -115,6 +118,13 @@ const emptyTenantForm = (): TenantForm => ({
   iaBotEnabled: false,
   modules: modulesPresetForPlano("bronze"),
 });
+
+function connectionLabels(item: Tenant): string[] {
+  const labels: string[] = [];
+  if (item.iaBotEnabled || item.hasOzapConnection) labels.push("IA");
+  if (item.hasMetaConnection) labels.push("Meta");
+  return labels;
+}
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LOGO_URL_REGEX = /^https?:\/\/.+/i;
@@ -210,6 +220,7 @@ function TenantsPage() {
     setForm({
       name: item.name,
       slug: item.slug,
+      documento: formatCpfCnpj(item.documento ?? ""),
       status: item.status,
       logoUrl: item.logoUrl ?? "",
       plano: item.plano ?? "bronze",
@@ -226,6 +237,7 @@ function TenantsPage() {
       setForm({
         name: detail.name,
         slug: detail.slug,
+        documento: formatCpfCnpj(detail.documento ?? ""),
         status: detail.status,
         logoUrl: detail.logoUrl ?? "",
         plano: detail.plano ?? "bronze",
@@ -335,6 +347,7 @@ function TenantsPage() {
         const created = await createTenant({
           name,
           slug,
+          documento: form.documento,
           status: form.status,
           logoUrl: logoUrl || null,
           plano: form.plano,
@@ -367,6 +380,7 @@ function TenantsPage() {
     try {
       await updateTenant(editingId, {
         name,
+        documento: form.documento,
         status: form.status,
         logoUrl: logoUrl || null,
         plano: form.plano,
@@ -561,12 +575,12 @@ function TenantsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Tenants"
-        description="Cadastre imobiliárias e vincule páginas Meta e instâncias OZap."
+        title="Clientes"
+        description="Clientes (tenants) cadastrados na plataforma — plano, documento e conexões."
         actions={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            Novo tenant
+            Novo cliente
           </Button>
         }
       />
@@ -581,54 +595,62 @@ function TenantsPage() {
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
               <Building2 className="h-10 w-10 opacity-40" />
-              <p>Nenhum tenant cadastrado.</p>
+              <p>Nenhum cliente cadastrado.</p>
               <Button variant="outline" size="sm" onClick={openCreate}>
                 <Plus className="h-4 w-4" />
-                Criar primeiro tenant
+                Criar primeiro cliente
               </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Imobiliária</TableHead>
-                  <TableHead>Slug</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Documento</TableHead>
                   <TableHead>Plano</TableHead>
-                  <TableHead>Admin (e-mail)</TableHead>
+                  <TableHead>Conexão</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Criado em</TableHead>
                   <TableHead className="w-[200px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
+                {items.map((item) => {
+                  const conexoes = connectionLabels(item);
+                  return (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                        {item.slug}
-                      </code>
+                      <div className="min-w-0">
+                        <div className="font-medium">{item.name}</div>
+                        <code className="text-[11px] text-muted-foreground">
+                          {item.slug}
+                        </code>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm tabular-nums">
+                      {item.documento
+                        ? formatCpfCnpj(item.documento)
+                        : "—"}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize text-[10px]">
-                        {item.plano ?? "—"}
-                        {item.iaBotEnabled ? " · IA" : ""}
+                        {PLANO_LABELS[item.plano] ?? item.plano ?? "—"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {item.admin ? (
-                        <div className="min-w-0">
-                          <div className="truncate text-sm">
-                            {item.admin.name}
-                          </div>
-                          <code className="text-xs text-muted-foreground break-all">
-                            {item.admin.email}
-                          </code>
-                        </div>
+                      {conexoes.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Sem admin
-                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {conexoes.map((c) => (
+                            <Badge
+                              key={c}
+                              variant="secondary"
+                              className="text-[10px]"
+                            >
+                              {c}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>
@@ -639,9 +661,6 @@ function TenantsPage() {
                       >
                         {item.status === "ativo" ? "Ativo" : "Inativo"}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(item.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -676,7 +695,8 @@ function TenantsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -687,11 +707,11 @@ function TenantsPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         icon={<Building2 className="w-5 h-5" />}
-        title={formMode === "create" ? "Novo tenant" : "Editar tenant"}
+        title={formMode === "create" ? "Novo cliente" : "Editar cliente"}
         description={
           formMode === "create"
-            ? "Cadastre a imobiliária, o plano, a logo e os módulos. O admin é gerado automaticamente."
-            : "Atualize plano, cota, logo e módulos do tenant."
+            ? "Cadastre o cliente (imobiliária), documento, plano e módulos. O admin é gerado automaticamente."
+            : "Atualize documento, plano, cota, logo e módulos do cliente."
         }
         className={
           formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined
@@ -704,7 +724,7 @@ function TenantsPage() {
           <FormDialogBody>
             <FormSection title="Dados">
               <div className="space-y-2">
-                <Label htmlFor="tenant-name">Nome</Label>
+                <Label htmlFor="tenant-name">Cliente (nome)</Label>
                 <Input
                   id="tenant-name"
                   value={form.name}
@@ -721,6 +741,23 @@ function TenantsPage() {
                   }}
                   placeholder="New Palace"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tenant-documento">Documento (CPF/CNPJ)</Label>
+                <Input
+                  id="tenant-documento"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={form.documento}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      documento: formatCpfCnpj(e.target.value),
+                    }))
+                  }
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                  maxLength={18}
                 />
               </div>
               <div className="space-y-2">

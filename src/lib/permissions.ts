@@ -9,7 +9,17 @@ import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
  * - analista: funil de análise, documentação e resultado (visão global)
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
-  super_admin: ["/perfil", "/tenants"],
+  super_admin: [
+    "/perfil",
+    "/tenants",
+    "/financeiro/visao-geral",
+    "/financeiro/clientes-fornecedores",
+    "/financeiro/contas-a-receber",
+    "/financeiro/contas-a-pagar",
+    "/financeiro/fluxo-caixa",
+    "/financeiro/movimentacao",
+    "/financeiro/contratos",
+  ],
   admin: [
     "/dashboard",
     "/vendas",

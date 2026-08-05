@@ -158,11 +158,52 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
   },
 ];
 
+/** Financeiro da plataforma (super_admin) — mesmo design das imobiliárias. */
+const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
+  {
+    to: "/financeiro/visao-geral",
+    label: "Visão geral",
+    icon: LayoutDashboard,
+  },
+  {
+    to: "/financeiro/clientes-fornecedores",
+    label: "Clientes e fornecedores",
+    icon: Users,
+  },
+  {
+    to: "/financeiro/movimentacao",
+    label: "Movimentação financeira",
+    icon: ArrowLeftRight,
+  },
+  {
+    to: "/financeiro/contas-a-receber",
+    label: "Contas a receber",
+    icon: ArrowUpRight,
+  },
+  {
+    to: "/financeiro/contas-a-pagar",
+    label: "Contas a pagar",
+    icon: ArrowDownRight,
+  },
+  {
+    to: "/financeiro/fluxo-caixa",
+    label: "Fluxo de caixa",
+    icon: Banknote,
+  },
+  {
+    to: "/financeiro/contratos",
+    label: "Contratos",
+    icon: FileText,
+  },
+];
+
 const NAV_SECTIONS: {
   id: string;
   label: string;
   icon: LucideIcon;
   adminOnly?: boolean;
+  /** Admin da imobiliária ou super_admin da plataforma. */
+  adminOrPlatform?: boolean;
   gerenteOnly?: boolean;
   items: NavItem[];
 }[] = [
@@ -189,7 +230,7 @@ const NAV_SECTIONS: {
     label: "Administração",
     icon: Shield,
     items: [
-      { to: "/tenants", label: "Tenants", icon: Building2 },
+      { to: "/tenants", label: "Clientes", icon: Building2 },
       { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/corretores", label: "Corretores", icon: UsersRound },
       { to: "/documentacao", label: "Documentação", icon: FolderOpen },
@@ -204,7 +245,7 @@ const NAV_SECTIONS: {
     id: "financeiro",
     label: "Financeiro",
     icon: DollarSign,
-    adminOnly: true,
+    adminOrPlatform: true,
     items: FINANCEIRO_MODULES,
   },
   {
@@ -373,25 +414,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!user) return [];
     return NAV_SECTIONS.filter((section) => {
       if (section.adminOnly) return user.role === "admin";
+      if (section.adminOrPlatform) {
+        return user.role === "admin" || user.role === "super_admin";
+      }
       if (section.gerenteOnly) return user.role === "gerente";
       return true;
     })
-      .map((section) => ({
-        ...section,
-        items: section.items
-          .map((item) => {
-            if (isNavGroup(item)) {
-              const children = item.children.filter((c) =>
-                canAccessRoute(user.role, c.to, modules, plano),
-              );
-              return children.length ? { ...item, children } : null;
-            }
-            return canAccessRoute(user.role, item.to, modules, plano)
-              ? item
-              : null;
-          })
-          .filter((item): item is NavItem => item !== null),
-      }))
+      .map((section) => {
+        const sectionItems =
+          section.id === "financeiro" && user.role === "super_admin"
+            ? PLATFORM_FINANCEIRO_MODULES
+            : section.items;
+        return {
+          ...section,
+          items: sectionItems
+            .map((item) => {
+              if (isNavGroup(item)) {
+                const children = item.children.filter((c) =>
+                  canAccessRoute(user.role, c.to, modules, plano),
+                );
+                return children.length ? { ...item, children } : null;
+              }
+              return canAccessRoute(user.role, item.to, modules, plano)
+                ? item
+                : null;
+            })
+            .filter((item): item is NavItem => item !== null),
+        };
+      })
       .filter((section) => section.items.length > 0);
   }, [user, modules, plano]);
 

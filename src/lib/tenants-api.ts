@@ -14,6 +14,7 @@ export type Tenant = {
   id: string;
   name: string;
   slug: string;
+  documento: string;
   status: UserStatus;
   logoUrl: string | null;
   primaryColor: string | null;
@@ -25,6 +26,8 @@ export type Tenant = {
   maxUsuarios: number;
   usuariosExtras: number;
   iaBotEnabled: boolean;
+  hasMetaConnection?: boolean;
+  hasOzapConnection?: boolean;
   admin: TenantAdminUser | null;
   createdAt: string;
   updatedAt: string;
@@ -58,6 +61,7 @@ export type TenantOzapConnection = {
 export type CreateTenantInput = {
   name: string;
   slug: string;
+  documento?: string;
   status?: UserStatus;
   logoUrl?: string | null;
   modules?: Record<string, boolean> | null;
@@ -85,6 +89,7 @@ export type CreateTenantAdminResult = {
 
 export type UpdateTenantInput = {
   name?: string;
+  documento?: string;
   status?: UserStatus;
   logoUrl?: string | null;
   modules?: Record<string, boolean> | null;

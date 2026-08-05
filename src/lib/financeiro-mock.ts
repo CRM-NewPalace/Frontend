@@ -176,11 +176,38 @@ export interface MesResumo {
   despesas: number;
 }
 
+export type NaturezaDespesa = "fixa" | "variavel";
+
 export interface CentroDespesaResumo {
   centro: string;
+  natureza?: NaturezaDespesa | null;
   orcado: number;
   realizado: number;
   percentual: number;
+}
+
+export interface DespesaTipo {
+  id: string;
+  nome: string;
+  natureza: NaturezaDespesa;
+  orcadoMensal: number;
+  realizado: number;
+  qtdDespesas: number;
+  ativo: boolean;
+  createdAt: string;
+}
+
+export interface DespesaLancamento {
+  id: string;
+  tipoId: string;
+  tipoNome: string;
+  natureza: NaturezaDespesa;
+  descricao: string;
+  valor: number;
+  data: string;
+  observacao: string;
+  ativo: boolean;
+  createdAt: string;
 }
 
 export interface LinhaDemonstrativo {
