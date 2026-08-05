@@ -39,7 +39,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
-import { getSession } from "@/lib/auth";
 import {
   createParceiro,
   deleteParceiro,
@@ -51,12 +50,9 @@ import {
   type ParceiroFinanceiro,
   type TipoParceiro,
 } from "@/lib/financeiro-mock";
-import { fetchTenants, type Tenant } from "@/lib/tenants-api";
 import { formatPhone, PHONE_PLACEHOLDER } from "@/lib/phone";
 import { Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-
-const NONE_IMOB = "__none__";
 
 export const Route = createFileRoute("/_app/financeiro/clientes-fornecedores")({
   head: () => ({
@@ -120,9 +116,7 @@ function toForm(p: ParceiroFinanceiro): FormState {
 }
 
 function Page() {
-  const isSuperAdmin = getSession()?.role === "super_admin";
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tipo, setTipo] = useState("todos");
@@ -140,17 +134,7 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await fetchParceiros();
-      setParceiros(list);
-      if (isSuperAdmin) {
-        try {
-          setTenants(
-            (await fetchTenants()).filter((t) => t.status === "ativo"),
-          );
-        } catch {
-          setTenants([]);
-        }
-      }
+      setParceiros(await fetchParceiros());
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -160,7 +144,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -517,46 +501,12 @@ function Page() {
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="parceiro-imobiliaria">Imobiliária</Label>
-                  {isSuperAdmin && tenants.length > 0 ? (
-                    <Select
-                      value={
-                        form.imobiliaria &&
-                        tenants.some((t) => t.name === form.imobiliaria)
-                          ? form.imobiliaria
-                          : form.imobiliaria
-                            ? form.imobiliaria
-                            : NONE_IMOB
-                      }
-                      onValueChange={(v) =>
-                        setField("imobiliaria", v === NONE_IMOB ? "" : v)
-                      }
-                    >
-                      <SelectTrigger id="parceiro-imobiliaria">
-                        <SelectValue placeholder="Opcional" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE_IMOB}>Nenhuma</SelectItem>
-                        {form.imobiliaria &&
-                        !tenants.some((t) => t.name === form.imobiliaria) ? (
-                          <SelectItem value={form.imobiliaria}>
-                            {form.imobiliaria}
-                          </SelectItem>
-                        ) : null}
-                        {tenants.map((t) => (
-                          <SelectItem key={t.id} value={t.name}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      id="parceiro-imobiliaria"
-                      value={form.imobiliaria}
-                      onChange={(e) => setField("imobiliaria", e.target.value)}
-                      placeholder="Opcional"
-                    />
-                  )}
+                  <Input
+                    id="parceiro-imobiliaria"
+                    value={form.imobiliaria}
+                    onChange={(e) => setField("imobiliaria", e.target.value)}
+                    placeholder="Ex.: New Palace Imóveis"
+                  />
                 </div>
                 <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:col-span-2">
                   <div>
