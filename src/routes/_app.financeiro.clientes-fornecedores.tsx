@@ -45,6 +45,7 @@ import {
   fetchParceiros,
   updateParceiro,
 } from "@/lib/financeiro-api";
+import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
   type ParceiroFinanceiro,
   type TipoParceiro,
@@ -102,7 +103,7 @@ const EMPTY_FORM: FormState = {
 function toForm(p: ParceiroFinanceiro): FormState {
   return {
     nome: p.nome,
-    documento: p.documento,
+    documento: formatCpfCnpj(p.documento),
     tipo: p.tipo,
     email: p.email || "",
     telefone: p.telefone || "",
@@ -193,13 +194,13 @@ function Page() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const nome = form.nome.trim();
-    const documento = form.documento.trim();
+    const documento = digitsOnly(form.documento);
     if (!nome) {
       toast.error("Informe o nome do parceiro.");
       return;
     }
-    if (!documento) {
-      toast.error("Informe o documento (CPF ou CNPJ).");
+    if (documento.length !== 11 && documento.length !== 14) {
+      toast.error("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
       return;
     }
 
@@ -426,12 +427,17 @@ function Page() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="parceiro-documento">Documento *</Label>
+                  <Label htmlFor="parceiro-documento">CPF / CNPJ *</Label>
                   <Input
                     id="parceiro-documento"
+                    inputMode="numeric"
+                    autoComplete="off"
                     value={form.documento}
-                    onChange={(e) => setField("documento", e.target.value)}
-                    placeholder="CPF ou CNPJ"
+                    onChange={(e) =>
+                      setField("documento", formatCpfCnpj(e.target.value))
+                    }
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    maxLength={18}
                     required
                   />
                 </div>

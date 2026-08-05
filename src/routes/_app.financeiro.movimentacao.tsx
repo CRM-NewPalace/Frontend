@@ -47,6 +47,7 @@ import {
   fetchParceiros,
   updateMovimento,
 } from "@/lib/financeiro-api";
+import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
   brl,
   CATEGORIAS_ENTRADA,
@@ -276,9 +277,9 @@ function Page() {
     }
 
     if (quickKind === "parceiro") {
-      const documento = quickDocumento.trim();
-      if (documento.length < 5) {
-        toast.error("Informe um CPF ou CNPJ válido.");
+      const documento = digitsOnly(quickDocumento);
+      if (documento.length !== 11 && documento.length !== 14) {
+        toast.error("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
         return;
       }
       setQuickSaving(true);
@@ -905,8 +906,14 @@ function Page() {
                 <Label htmlFor="quick-mov-doc">CPF / CNPJ *</Label>
                 <Input
                   id="quick-mov-doc"
+                  inputMode="numeric"
+                  autoComplete="off"
                   value={quickDocumento}
-                  onChange={(e) => setQuickDocumento(e.target.value)}
+                  onChange={(e) =>
+                    setQuickDocumento(formatCpfCnpj(e.target.value))
+                  }
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                  maxLength={18}
                   required
                 />
               </div>

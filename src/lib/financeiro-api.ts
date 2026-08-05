@@ -129,9 +129,15 @@ export async function deleteMovimento(id: string): Promise<void> {
 
 export async function fetchTitulos(
   tipo?: "receber" | "pagar",
+  grupoParcelasId?: string,
 ): Promise<TituloFinanceiro[]> {
-  const qs = tipo ? `?tipo=${tipo}` : "";
-  return apiFetch<TituloFinanceiro[]>(`/financeiro/titulos${qs}`);
+  const params = new URLSearchParams();
+  if (tipo) params.set("tipo", tipo);
+  if (grupoParcelasId) params.set("grupoParcelasId", grupoParcelasId);
+  const qs = params.toString();
+  return apiFetch<TituloFinanceiro[]>(
+    `/financeiro/titulos${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export type CreateTituloInput = {
@@ -147,6 +153,16 @@ export type CreateTituloInput = {
   parcela?: string;
 };
 
+export type CreateTitulosParceladoInput = {
+  tipo: "receber" | "pagar";
+  descricao: string;
+  parceiroId?: string;
+  parceiroNome?: string;
+  categoria?: string;
+  centro?: string;
+  parcelas: { vencimento: string; valor: number }[];
+};
+
 export type UpdateTituloInput = Omit<
   Partial<CreateTituloInput>,
   "parceiroId" | "parceiroNome"
@@ -159,6 +175,15 @@ export async function createTitulo(
   input: CreateTituloInput,
 ): Promise<TituloFinanceiro> {
   return apiFetch<TituloFinanceiro>("/financeiro/titulos", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function createTitulosParcelado(
+  input: CreateTitulosParceladoInput,
+): Promise<TituloFinanceiro[]> {
+  return apiFetch<TituloFinanceiro[]>("/financeiro/titulos/parcelado", {
     method: "POST",
     body: input,
   });

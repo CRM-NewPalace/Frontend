@@ -106,6 +106,8 @@ export interface TituloFinanceiro {
   valor: number;
   status: StatusTitulo;
   parcela: string;
+  grupoParcelasId?: string | null;
+  formaPagamento?: string;
 }
 
 export interface ComissaoItem {

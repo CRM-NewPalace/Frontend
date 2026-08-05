@@ -42,11 +42,13 @@ import {
   baixarTitulo,
   createParceiro,
   createTitulo,
+  createTitulosParcelado,
   deleteTitulo,
   fetchParceiros,
   fetchTitulos,
   updateTitulo,
 } from "@/lib/financeiro-api";
+import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
   brl,
   CATEGORIAS_ENTRADA,
@@ -61,12 +63,14 @@ import {
   type TipoParceiro,
   type TituloFinanceiro,
 } from "@/lib/financeiro-mock";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertTriangle,
   Banknote,
   Building2,
   CheckCircle2,
   Clock3,
+  ListOrdered,
   Loader2,
   Pencil,
   Plus,
@@ -127,6 +131,39 @@ function parseValor(raw: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function formatValorInput(n: number): string {
+  return n.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function addMonthsIso(iso: string, months: number): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + months, d));
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+type ParcelaDraft = { vencimento: string; valor: string };
+
+function buildParcelasDraft(
+  total: number,
+  quantidade: number,
+  primeiroVencimento: string,
+): ParcelaDraft[] {
+  const n = Math.max(2, Math.floor(quantidade));
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / n);
+  const remainder = cents - base * n;
+  return Array.from({ length: n }, (_, i) => ({
+    vencimento: addMonthsIso(primeiroVencimento, i),
+    valor: formatValorInput((i === n - 1 ? base + remainder : base) / 100),
+  }));
+}
+
 function emptyForm(tipo: "receber" | "pagar"): FormState {
   const cats = tipo === "receber" ? CATEGORIAS_ENTRADA : CATEGORIAS_SAIDA;
   return {
@@ -182,6 +219,15 @@ export function FinanceiroTitulosPanel({
   const [quickNome, setQuickNome] = useState("");
   const [quickDocumento, setQuickDocumento] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
+  const [parcelado, setParcelado] = useState(false);
+  const [qtdParcelas, setQtdParcelas] = useState("2");
+  const [parcelasDraft, setParcelasDraft] = useState<ParcelaDraft[]>([]);
+  const [grupoOpen, setGrupoOpen] = useState(false);
+  const [grupoTitulos, setGrupoTitulos] = useState<TituloFinanceiro[]>([]);
+  const [grupoMeta, setGrupoMeta] = useState<{
+    descricao: string;
+    parceiro: string;
+  } | null>(null);
 
   const categorias = useMemo(() => {
     const fromItems = items
@@ -243,9 +289,9 @@ export function FinanceiroTitulosPanel({
     }
 
     if (quickKind === "parceiro") {
-      const documento = quickDocumento.trim();
-      if (documento.length < 5) {
-        toast.error("Informe um CPF ou CNPJ válido.");
+      const documento = digitsOnly(quickDocumento);
+      if (documento.length !== 11 && documento.length !== 14) {
+        toast.error("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
         return;
       }
       setQuickSaving(true);
@@ -353,10 +399,30 @@ export function FinanceiroTitulosPanel({
     return { aberto, atrasado, pago };
   }, [rows]);
 
+  function regenerateParcelas(
+    totalRaw: string,
+    qtdRaw: string,
+    primeiroVenc: string,
+  ) {
+    const total = parseValor(totalRaw);
+    const qtd = Number(qtdRaw);
+    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(qtd) || qtd < 2) {
+      setParcelasDraft([]);
+      return;
+    }
+    setParcelasDraft(
+      buildParcelasDraft(total, qtd, primeiroVenc || todayIso()),
+    );
+  }
+
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    setForm(emptyForm(tipo));
+    const next = emptyForm(tipo);
+    setForm(next);
+    setParcelado(false);
+    setQtdParcelas("2");
+    setParcelasDraft([]);
     setOpen(true);
   }
 
@@ -367,27 +433,98 @@ export function FinanceiroTitulosPanel({
     }
     setFormMode("edit");
     setEditingId(t.id);
+    setParcelado(false);
+    setParcelasDraft([]);
     setForm({
       descricao: t.descricao,
       parceiroId: t.parceiroId || NONE,
       categoria: t.categoria || categorias[0],
       centro: t.centro || CENTROS_DESPESA[0],
       vencimento: t.vencimento.slice(0, 10),
-      valor: String(t.valor),
+      valor: formatValorInput(t.valor),
       status: t.status,
       parcela: t.parcela || "",
     });
     setOpen(true);
   }
 
+  async function openGrupo(t: TituloFinanceiro) {
+    if (!t.grupoParcelasId) return;
+    setGrupoMeta({ descricao: t.descricao, parceiro: t.parceiro });
+    setGrupoOpen(true);
+    try {
+      const rows = await fetchTitulos(tipo, t.grupoParcelasId);
+      setGrupoTitulos(
+        [...rows].sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar as parcelas.",
+      );
+      setGrupoOpen(false);
+    }
+  }
+
+  async function refreshGrupo(grupoId: string) {
+    const rows = await fetchTitulos(tipo, grupoId);
+    setGrupoTitulos(
+      [...rows].sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
+    );
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     const descricao = form.descricao.trim();
-    const valor = parseValor(form.valor);
     if (descricao.length < 2) {
       toast.error("Informe a descrição.");
       return;
     }
+
+    if (formMode === "create" && parcelado) {
+      if (parcelasDraft.length < 2) {
+        toast.error("Gere ao menos 2 parcelas.");
+        return;
+      }
+      const parcelas: { vencimento: string; valor: number }[] = [];
+      for (const p of parcelasDraft) {
+        const v = parseValor(p.valor);
+        if (!Number.isFinite(v) || v <= 0) {
+          toast.error("Informe um valor válido em todas as parcelas.");
+          return;
+        }
+        if (!p.vencimento) {
+          toast.error("Informe o vencimento de todas as parcelas.");
+          return;
+        }
+        parcelas.push({ vencimento: p.vencimento, valor: v });
+      }
+      setSaving(true);
+      try {
+        await createTitulosParcelado({
+          tipo,
+          descricao,
+          parceiroId:
+            form.parceiroId === NONE ? undefined : form.parceiroId,
+          categoria: form.categoria,
+          centro: form.centro,
+          parcelas,
+        });
+        toast.success(`${parcelas.length} parcelas criadas.`);
+        setOpen(false);
+        await load();
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError ? err.message : "Não foi possível salvar.",
+        );
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    const valor = parseValor(form.valor);
     if (!Number.isFinite(valor) || valor <= 0) {
       toast.error("Informe um valor válido.");
       return;
@@ -429,6 +566,7 @@ export function FinanceiroTitulosPanel({
 
   async function onBaixar() {
     if (!baixarTarget) return;
+    const grupoId = baixarTarget.grupoParcelasId;
     setBusy(true);
     try {
       await baixarTitulo(baixarTarget.id, {
@@ -440,6 +578,9 @@ export function FinanceiroTitulosPanel({
       );
       setBaixarTarget(null);
       await load();
+      if (grupoOpen && grupoId) {
+        await refreshGrupo(grupoId);
+      }
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível baixar.",
@@ -586,6 +727,17 @@ export function FinanceiroTitulosPanel({
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-0.5">
+                      {t.grupoParcelasId ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Ver parcelas"
+                          onClick={() => void openGrupo(t)}
+                        >
+                          <ListOrdered className="w-3.5 h-3.5" />
+                        </Button>
+                      ) : null}
                       {t.status !== "pago" && t.status !== "cancelado" ? (
                         <Button
                           variant="ghost"
@@ -703,38 +855,147 @@ export function FinanceiroTitulosPanel({
                     </SelectContent>
                   </Select>
                 </div>
+                {formMode === "create" ? (
+                  <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                    <div>
+                      <Label htmlFor="titulo-parcelado">Parcelado</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Gera várias parcelas com valor e vencimento próprios.
+                      </p>
+                    </div>
+                    <Switch
+                      id="titulo-parcelado"
+                      checked={parcelado}
+                      onCheckedChange={(checked) => {
+                        setParcelado(checked);
+                        if (checked) {
+                          regenerateParcelas(
+                            form.valor,
+                            qtdParcelas,
+                            form.vencimento,
+                          );
+                        } else {
+                          setParcelasDraft([]);
+                        }
+                      }}
+                    />
+                  </div>
+                ) : null}
                 <div className="space-y-1.5">
-                  <Label>Vencimento *</Label>
+                  <Label>
+                    {parcelado && formMode === "create"
+                      ? "1º vencimento *"
+                      : "Vencimento *"}
+                  </Label>
                   <Input
                     type="date"
                     value={form.vencimento}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, vencimento: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      const vencimento = e.target.value;
+                      setForm((f) => ({ ...f, vencimento }));
+                      if (parcelado && formMode === "create") {
+                        regenerateParcelas(form.valor, qtdParcelas, vencimento);
+                      }
+                    }}
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Valor (R$) *</Label>
+                  <Label>
+                    {parcelado && formMode === "create"
+                      ? "Valor total (R$) *"
+                      : "Valor (R$) *"}
+                  </Label>
                   <Input
                     inputMode="decimal"
                     value={form.valor}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, valor: e.target.value }))
-                    }
-                    required
+                    onChange={(e) => {
+                      const valor = e.target.value;
+                      setForm((f) => ({ ...f, valor }));
+                      if (parcelado && formMode === "create") {
+                        regenerateParcelas(valor, qtdParcelas, form.vencimento);
+                      }
+                    }}
+                    required={!parcelado || formMode === "edit"}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Parcela</Label>
-                  <Input
-                    value={form.parcela}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, parcela: e.target.value }))
-                    }
-                    placeholder="Ex.: 1/3"
-                  />
-                </div>
+                {parcelado && formMode === "create" ? (
+                  <div className="space-y-1.5">
+                    <Label>Quantidade de parcelas *</Label>
+                    <Input
+                      type="number"
+                      min={2}
+                      max={120}
+                      value={qtdParcelas}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setQtdParcelas(next);
+                        regenerateParcelas(form.valor, next, form.vencimento);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label>Parcela</Label>
+                    <Input
+                      value={form.parcela}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, parcela: e.target.value }))
+                      }
+                      placeholder="Ex.: 1/3"
+                    />
+                  </div>
+                )}
+                {parcelado && formMode === "create" && parcelasDraft.length > 0 ? (
+                  <div className="sm:col-span-2 space-y-2">
+                    <Label>Parcelas</Label>
+                    <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/50">
+                      {parcelasDraft.map((p, idx) => (
+                        <div
+                          key={`parcela-${idx}`}
+                          className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center p-2"
+                        >
+                          <span className="text-xs text-muted-foreground w-10">
+                            {idx + 1}/{parcelasDraft.length}
+                          </span>
+                          <Input
+                            type="date"
+                            value={p.vencimento}
+                            onChange={(e) => {
+                              const vencimento = e.target.value;
+                              setParcelasDraft((prev) =>
+                                prev.map((row, i) =>
+                                  i === idx ? { ...row, vencimento } : row,
+                                ),
+                              );
+                            }}
+                          />
+                          <Input
+                            inputMode="decimal"
+                            value={p.valor}
+                            onChange={(e) => {
+                              const valor = e.target.value;
+                              setParcelasDraft((prev) =>
+                                prev.map((row, i) =>
+                                  i === idx ? { ...row, valor } : row,
+                                ),
+                              );
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Total:{" "}
+                      {brl(
+                        parcelasDraft.reduce(
+                          (s, p) => s + (parseValor(p.valor) || 0),
+                          0,
+                        ),
+                      )}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <Label>Categoria</Label>
@@ -892,9 +1153,14 @@ export function FinanceiroTitulosPanel({
                 <Label htmlFor="quick-fin-doc">CPF / CNPJ *</Label>
                 <Input
                   id="quick-fin-doc"
+                  inputMode="numeric"
+                  autoComplete="off"
                   value={quickDocumento}
-                  onChange={(e) => setQuickDocumento(e.target.value)}
-                  placeholder="Somente números ou formatado"
+                  onChange={(e) =>
+                    setQuickDocumento(formatCpfCnpj(e.target.value))
+                  }
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                  maxLength={18}
                   required
                 />
               </div>
@@ -908,7 +1174,13 @@ export function FinanceiroTitulosPanel({
         onOpenChange={(o) => !o && setBaixarTarget(null)}
         icon={<Banknote className="w-5 h-5" />}
         title={tipo === "receber" ? "Registrar recebimento" : "Registrar pagamento"}
-        description={baixarTarget?.descricao}
+        description={
+          baixarTarget
+            ? `${baixarTarget.descricao}${
+                baixarTarget.parcela ? ` · Parcela ${baixarTarget.parcela}` : ""
+              }`
+            : undefined
+        }
         footer={
           <FormDialogActions>
             <Button
@@ -936,7 +1208,7 @@ export function FinanceiroTitulosPanel({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Forma</Label>
+              <Label>Forma de pagamento</Label>
               <Select value={baixarForma} onValueChange={setBaixarForma}>
                 <SelectTrigger>
                   <SelectValue />
@@ -951,15 +1223,142 @@ export function FinanceiroTitulosPanel({
               </Select>
             </div>
             {baixarTarget ? (
-              <p className="sm:col-span-2 text-sm text-muted-foreground">
-                Valor:{" "}
-                <span className="font-semibold text-foreground">
-                  {brl(baixarTarget.valor)}
-                </span>
-                . O lançamento entra no fluxo de caixa como realizado.
-              </p>
+              <div className="sm:col-span-2 space-y-1 text-sm text-muted-foreground">
+                <p>
+                  Valor:{" "}
+                  <span className="font-semibold text-foreground">
+                    {brl(baixarTarget.valor)}
+                  </span>
+                </p>
+                <p>
+                  Vencimento:{" "}
+                  <span className="text-foreground">
+                    {formatDate(baixarTarget.vencimento)}
+                  </span>
+                </p>
+                <p>O lançamento entra no fluxo de caixa como realizado.</p>
+              </div>
             ) : null}
           </div>
+        </FormDialogBody>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={grupoOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setGrupoOpen(false);
+            setGrupoTitulos([]);
+            setGrupoMeta(null);
+          }
+        }}
+        icon={<ListOrdered className="w-5 h-5" />}
+        title="Parcelas"
+        description={
+          grupoMeta
+            ? `${grupoMeta.descricao}${
+                grupoMeta.parceiro ? ` · ${grupoMeta.parceiro}` : ""
+              }`
+            : undefined
+        }
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setGrupoOpen(false);
+                setGrupoTitulos([]);
+                setGrupoMeta(null);
+              }}
+            >
+              Fechar
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          {(() => {
+            const abertas = grupoTitulos.filter(
+              (t) => t.status === "aberto" || t.status === "atrasado",
+            );
+            const pagas = grupoTitulos.filter((t) => t.status === "pago");
+            const total = grupoTitulos.reduce((s, t) => s + t.valor, 0);
+            const totalPago = pagas.reduce((s, t) => s + t.valor, 0);
+            return (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Total {brl(total)} · Pago {brl(totalPago)} · Em aberto{" "}
+                  {brl(total - totalPago)}
+                </p>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Em aberto</h4>
+                  {abertas.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma parcela em aberto.
+                    </p>
+                  ) : (
+                    <div className="rounded-lg border border-border/60 divide-y divide-border/50">
+                      {abertas.map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex flex-wrap items-center justify-between gap-2 p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">
+                              Parcela {t.parcela || "—"} · {brl(t.valor)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Venc. {formatDate(t.vencimento)} ·{" "}
+                              {statusLabel(t.status)}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setBaixarTarget(t);
+                              setBaixarData(todayIso());
+                              setBaixarForma(FORMAS[0]);
+                            }}
+                          >
+                            <Banknote className="w-3.5 h-3.5 mr-1" />
+                            Pagar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Pagas</h4>
+                  {pagas.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma parcela paga ainda.
+                    </p>
+                  ) : (
+                    <div className="rounded-lg border border-border/60 divide-y divide-border/50">
+                      {pagas.map((t) => (
+                        <div key={t.id} className="p-3">
+                          <p className="text-sm font-medium">
+                            Parcela {t.parcela || "—"} · {brl(t.valor)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Pago em{" "}
+                            {t.dataPagamento
+                              ? formatDate(t.dataPagamento)
+                              : "—"}
+                            {t.formaPagamento
+                              ? ` · ${t.formaPagamento}`
+                              : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </FormDialogBody>
       </FormDialogShell>
 
