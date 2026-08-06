@@ -142,6 +142,7 @@ import {
   Trash2,
   Pencil,
   Eye,
+  EyeOff,
   Building,
   Building2,
   Filter,
@@ -286,6 +287,7 @@ function DocumentacaoPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
+  const isAnalista = user?.role === "analista";
 
   function canMutateDoc(doc: Documentacao): boolean {
     if (!user) return false;
@@ -350,6 +352,26 @@ function DocumentacaoPage() {
   const [filterDataDe, setFilterDataDe] = useState("");
   const [filterDataAte, setFilterDataAte] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showCondicoesCliente, setShowCondicoesCliente] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return window.localStorage.getItem("doc-show-condicoes") !== "0";
+    } catch {
+      return true;
+    }
+  });
+
+  function toggleCondicoesCliente() {
+    setShowCondicoesCliente((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("doc-show-condicoes", next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importHelpOpen, setImportHelpOpen] = useState(false);
@@ -2068,6 +2090,31 @@ function DocumentacaoPage() {
 
       <Card>
         <CardContent className="p-0">
+          {isAnalista && !loading && items.length > 0 && (
+            <div className="flex items-center justify-end gap-2 border-b border-border/60 px-3 py-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={toggleCondicoesCliente}
+                title={
+                  showCondicoesCliente
+                    ? "Ocultar Entrada, FGTS e Dependente na tabela"
+                    : "Mostrar Entrada, FGTS e Dependente na tabela"
+                }
+              >
+                {showCondicoesCliente ? (
+                  <EyeOff className="w-3.5 h-3.5 mr-1.5" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {showCondicoesCliente
+                  ? "Ocultar condições"
+                  : "Mostrar condições"}
+              </Button>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -2097,9 +2144,13 @@ function DocumentacaoPage() {
                   <TableHead className="min-w-[72px] max-w-[96px]">Corretor</TableHead>
                   <TableHead className="min-w-[72px] max-w-[96px]">Gerente</TableHead>
                   <TableHead className="min-w-[72px]">Fonte</TableHead>
-                  <TableHead className="min-w-[72px]">Entrada</TableHead>
-                  <TableHead className="min-w-[72px]">FGTS</TableHead>
-                  <TableHead className="min-w-[56px]">Dep.</TableHead>
+                  {(!isAnalista || showCondicoesCliente) && (
+                    <>
+                      <TableHead className="min-w-[72px]">Entrada</TableHead>
+                      <TableHead className="min-w-[72px]">FGTS</TableHead>
+                      <TableHead className="min-w-[56px]">Dep.</TableHead>
+                    </>
+                  )}
                   <TableHead className="w-[84px]" />
                 </TableRow>
               </TableHeader>
@@ -2198,23 +2249,27 @@ function DocumentacaoPage() {
                     >
                       {displayFonte(doc.fonte) || "—"}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-[11px]">
-                      {doc.temEntrada
-                        ? doc.valorEntrada != null
-                          ? brl(doc.valorEntrada)
-                          : "Sim"
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-[11px]">
-                      {doc.temFgts
-                        ? doc.valorFgts != null
-                          ? brl(doc.valorFgts)
-                          : "Sim"
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-[11px]">
-                      {doc.temDependente ? "Sim" : "—"}
-                    </TableCell>
+                    {(!isAnalista || showCondicoesCliente) && (
+                      <>
+                        <TableCell className="whitespace-nowrap text-[11px]">
+                          {doc.temEntrada
+                            ? doc.valorEntrada != null
+                              ? brl(doc.valorEntrada)
+                              : "Sim"
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-[11px]">
+                          {doc.temFgts
+                            ? doc.valorFgts != null
+                              ? brl(doc.valorFgts)
+                              : "Sim"
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-[11px]">
+                          {doc.temDependente ? "Sim" : "—"}
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell>
                       <div className="flex justify-end gap-0.5">
                         <Button
