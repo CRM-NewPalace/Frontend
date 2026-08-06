@@ -3,7 +3,14 @@ import { apiFetch } from "@/lib/api";
 export const META_TIPOS = ["vendas", "documentacoes", "vgv"] as const;
 export type MetaTipo = (typeof META_TIPOS)[number];
 
-export const META_PERIODOS = ["diaria", "semanal", "mensal"] as const;
+export const META_PERIODOS = [
+  "diaria",
+  "semanal",
+  "mensal",
+  "trimestral",
+  "semestral",
+  "anual",
+] as const;
 export type MetaPeriodo = (typeof META_PERIODOS)[number];
 
 export const META_ESCOPOS = ["corretor", "gerente", "imobiliaria"] as const;
@@ -19,6 +26,9 @@ export const META_PERIODO_LABEL: Record<MetaPeriodo, string> = {
   diaria: "Diária",
   semanal: "Semanal",
   mensal: "Mensal",
+  trimestral: "Trimestral",
+  semestral: "Semestral",
+  anual: "Anual",
 };
 
 export const META_ESCOPO_LABEL: Record<MetaEscopo, string> = {
