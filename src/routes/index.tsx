@@ -1,43 +1,34 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { defaultRouteForRole } from "@/lib/permissions";
-import LeadingPage from "@/marketing/pages/LeadingPage";
-
-const siteSearchSchema = z.object({
-  site: z.literal("1").optional(),
-});
+import Home from "@/marketing/pages/Home";
 
 export const Route = createFileRoute("/")({
   ssr: false,
-  validateSearch: siteSearchSchema,
-  beforeLoad: ({ search }) => {
+  beforeLoad: () => {
     const user = getSession();
     if (user) {
       throw redirect({ to: defaultRouteForRole(user.role, user) });
     }
-
-    if (search.site !== "1") {
-      throw redirect({ to: "/login" });
-    }
   },
   head: () => ({
     meta: [
-      { title: "Zone Connection | Tudo em uma só conexão" },
+      { title: "Zone Connection | Tecnologia para o Mercado Imobiliário" },
       {
         name: "description",
         content:
-          "CRM, financeiro, imóveis, atendimento e funil comercial conectados para imobiliárias.",
+          "A Zone Connection é uma empresa de tecnologia que desenvolve um ecossistema de soluções para o mercado imobiliário — conectando pessoas, processos e inovação.",
       },
       {
         property: "og:title",
-        content: "Zone Connection | Tudo em uma só conexão",
+        content: "Zone Connection | Tecnologia para o Mercado Imobiliário",
       },
       {
         property: "og:description",
-        content: "Toda a gestão da sua imobiliária em um único lugar.",
+        content:
+          "A Zone Connection é uma empresa de tecnologia que desenvolve um ecossistema de soluções para o mercado imobiliário — conectando pessoas, processos e inovação.",
       },
     ],
   }),
-  component: LeadingPage,
+  component: Home,
 });

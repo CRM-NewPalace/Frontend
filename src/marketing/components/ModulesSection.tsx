@@ -6,35 +6,34 @@ import {
   HiBuildingOffice2,
   HiCalendarDays,
   HiChartBar,
+  HiClipboardDocumentList,
   HiCursorArrowRays,
   HiDocumentText,
+  HiFolderOpen,
   HiFunnel,
-  HiSparkles,
+  HiHomeModern,
+  HiPresentationChartLine,
   HiSquares2X2,
+  HiUserCircle,
   HiUserGroup,
+  HiUsers,
   HiWallet,
 } from "react-icons/hi2";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+/** Alinhado aos módulos reais do sistema (`tenant-modules` + menu do app). */
 const MODULES = [
   {
-    title: "CRM",
-    description:
-      "Histórico completo de cada cliente, interações e negociações em um só lugar.",
-    icon: HiUserGroup,
+    title: "Dashboard",
+    description: "Visão executiva da operação inteira em uma única tela.",
+    icon: HiSquares2X2,
   },
   {
-    title: "Gestão Financeira",
+    title: "Vendas",
     description:
-      "Recebimentos, repasses, comissões e inadimplência sob controle.",
-    icon: HiWallet,
-  },
-  {
-    title: "Gestão de Imóveis",
-    description:
-      "Carteira organizada, fotos, documentos e disponibilidade em tempo real.",
-    icon: HiBuildingOffice2,
+      "Acompanhe negociações e resultados comerciais com clareza e foco em fechamento.",
+    icon: HiPresentationChartLine,
   },
   {
     title: "Leads",
@@ -43,10 +42,16 @@ const MODULES = [
     icon: HiCursorArrowRays,
   },
   {
-    title: "Funil Comercial",
+    title: "Funil",
     description:
       "Etapas claras, previsibilidade de vendas e acompanhamento por corretor.",
     icon: HiFunnel,
+  },
+  {
+    title: "Triagem",
+    description:
+      "Organize e qualifique leads antes de entrar no funil comercial.",
+    icon: HiClipboardDocumentList,
   },
   {
     title: "Agenda",
@@ -55,25 +60,76 @@ const MODULES = [
     icon: HiCalendarDays,
   },
   {
-    title: "Contratos",
-    description: "Geração, assinatura e arquivamento sem sair da plataforma.",
-    icon: HiDocumentText,
+    title: "Imóveis",
+    description:
+      "Carteira organizada, fotos, documentos e disponibilidade em tempo real.",
+    icon: HiHomeModern,
   },
   {
-    title: "Relatórios",
-    description: "Indicadores de desempenho por equipe, canal e período.",
+    title: "Clientes",
+    description:
+      "Histórico completo de cada cliente, interações e negociações em um só lugar.",
+    icon: HiUserCircle,
+  },
+  {
+    title: "Construtoras",
+    description:
+      "Cadastro e gestão de construtoras e empreendimentos parceiros.",
+    icon: HiBuildingOffice2,
+  },
+  {
+    title: "Leads Perdidos",
+    description:
+      "Analise perdas, motivos e oportunidades de recuperação de contatos.",
+    icon: HiCursorArrowRays,
+  },
+  {
+    title: "Equipes",
+    description:
+      "Estruture times, responsabilidades e performance por grupo de trabalho.",
+    icon: HiUsers,
+  },
+  {
+    title: "Corretores",
+    description:
+      "Gestão de corretores, acesso e acompanhamento da atuação comercial.",
+    icon: HiUserGroup,
+  },
+  {
+    title: "Documentação",
+    description:
+      "Centralize documentos do processo comercial com organização e rastreio.",
+    icon: HiFolderOpen,
+  },
+  {
+    title: "Análise",
+    description:
+      "Indicadores e leituras de desempenho para decisões mais rápidas.",
     icon: HiChartBar,
   },
   {
-    title: "Dashboard",
-    description: "Visão executiva da operação inteira em uma única tela.",
-    icon: HiSquares2X2,
+    title: "Metas",
+    description:
+      "Defina, acompanhe e cobre metas comerciais por equipe e corretor.",
+    icon: HiPresentationChartLine,
   },
   {
-    title: "Automação Inteligente",
+    title: "Propostas",
     description:
-      "Fluxos automáticos que eliminam tarefas repetitivas do dia a dia.",
-    icon: HiSparkles,
+      "Monte e acompanhe propostas comerciais com composição financeira clara.",
+    icon: HiDocumentText,
+  },
+  {
+    title: "Taxa de conversão",
+    description:
+      "Meça a eficiência do funil e identifique gargalos na jornada de vendas.",
+    icon: HiChartBar,
+  },
+  {
+    title: "Financeiro",
+    description:
+      "Recebimentos, repasses, comissões, fluxo de caixa e inadimplência sob controle.",
+    icon: HiWallet,
   },
 ] as const;
 

@@ -1,4 +1,6 @@
+import { ArrowRight } from "lucide-react";
 import { HiCpuChip } from "react-icons/hi2";
+import { PRODUCT_ROUTES } from "@/marketing/home/routes";
 
 const MESSAGES = [
   {
@@ -78,6 +80,13 @@ export function WhatsAppAiSection() {
             ele procura, captura os dados e entrega tudo pronto dentro do
             sistema — sem intervenção manual.
           </p>
+          <a
+            href={PRODUCT_ROUTES.whatsappAi}
+            className="mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-brand-dark transition-all hover:gap-2.5 hover:text-brand-accent sm:text-base"
+          >
+            Saiba mais
+            <ArrowRight size={16} strokeWidth={1.75} />
+          </a>
         </div>
 
         {/* Card — direita no desktop */}

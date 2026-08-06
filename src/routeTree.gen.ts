@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as DemonstracaoRouteImport } from './routes/demonstracao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
@@ -34,6 +35,7 @@ import { Route as AppTenantsRouteImport } from './routes/_app.tenants'
 import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
+import { Route as ProdutosCrmImobiliarioRouteImport } from './routes/produtos.crm-imobiliario'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
 import { Route as AppFinanceiroClientesFornecedoresRouteImport } from './routes/_app.financeiro.clientes-fornecedores'
 import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.financeiro.comissao'
@@ -52,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemonstracaoRoute = DemonstracaoRouteImport.update({
+  id: '/demonstracao',
+  path: '/demonstracao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -169,6 +176,11 @@ const AppVendasRoute = AppVendasRouteImport.update({
   path: '/vendas',
   getParentRoute: () => AppRoute,
 } as any)
+const ProdutosCrmImobiliarioRoute = ProdutosCrmImobiliarioRouteImport.update({
+  id: '/produtos/crm-imobiliario',
+  path: '/produtos/crm-imobiliario',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppFinanceiroCentroDespesasRoute =
   AppFinanceiroCentroDespesasRouteImport.update({
     id: '/centro-despesas',
@@ -228,6 +240,7 @@ const AppFinanceiroVisaoGeralRoute = AppFinanceiroVisaoGeralRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
@@ -251,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
+  '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -264,6 +278,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
@@ -287,6 +302,7 @@ export interface FileRoutesByTo {
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
+  '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -302,6 +318,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/clientes': typeof AppClientesRoute
@@ -325,6 +342,7 @@ export interface FileRoutesById {
   '/_app/triagem': typeof AppTriagemRoute
   '/_app/usuarios': typeof AppUsuariosRoute
   '/_app/vendas': typeof AppVendasRoute
+  '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/_app/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/_app/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -340,6 +358,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/demonstracao'
     | '/login'
     | '/agenda'
     | '/clientes'
@@ -363,6 +382,7 @@ export interface FileRouteTypes {
     | '/triagem'
     | '/usuarios'
     | '/vendas'
+    | '/produtos/crm-imobiliario'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -376,6 +396,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/demonstracao'
     | '/login'
     | '/agenda'
     | '/clientes'
@@ -399,6 +420,7 @@ export interface FileRouteTypes {
     | '/triagem'
     | '/usuarios'
     | '/vendas'
+    | '/produtos/crm-imobiliario'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -413,6 +435,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/demonstracao'
     | '/login'
     | '/_app/agenda'
     | '/_app/clientes'
@@ -436,6 +459,7 @@ export interface FileRouteTypes {
     | '/_app/triagem'
     | '/_app/usuarios'
     | '/_app/vendas'
+    | '/produtos/crm-imobiliario'
     | '/_app/financeiro/centro-despesas'
     | '/_app/financeiro/clientes-fornecedores'
     | '/_app/financeiro/comissao'
@@ -451,7 +475,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  DemonstracaoRoute: typeof DemonstracaoRoute
   LoginRoute: typeof LoginRoute
+  ProdutosCrmImobiliarioRoute: typeof ProdutosCrmImobiliarioRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -468,6 +494,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demonstracao': {
+      id: '/demonstracao'
+      path: '/demonstracao'
+      fullPath: '/demonstracao'
+      preLoaderRoute: typeof DemonstracaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -631,6 +664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVendasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/produtos/crm-imobiliario': {
+      id: '/produtos/crm-imobiliario'
+      path: '/produtos/crm-imobiliario'
+      fullPath: '/produtos/crm-imobiliario'
+      preLoaderRoute: typeof ProdutosCrmImobiliarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/financeiro/centro-despesas': {
       id: '/_app/financeiro/centro-despesas'
       path: '/centro-despesas'
@@ -790,7 +830,9 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  DemonstracaoRoute: DemonstracaoRoute,
   LoginRoute: LoginRoute,
+  ProdutosCrmImobiliarioRoute: ProdutosCrmImobiliarioRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

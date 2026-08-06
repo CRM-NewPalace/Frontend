@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { HiCheck, HiStar, HiUsers } from "react-icons/hi2";
 import { getWhatsAppUrl } from "@/lib/env";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,11 @@ interface PlanTheme {
   contractBest: string;
 }
 
+interface PlanOption {
+  title: string;
+  items: string[];
+}
+
 interface Plan {
   id: string;
   medal: string;
@@ -30,6 +36,8 @@ interface Plan {
   featured?: boolean;
   highlights?: boolean;
   features: string[];
+  /** Opções exclusivas (ex.: Prata Adm / Financeiro). */
+  options?: PlanOption[];
 }
 
 const PLANS: Plan[] = [
@@ -40,7 +48,7 @@ const PLANS: Plan[] = [
     audience: "Ideal para pequenas imobiliárias",
     users: "Até 5 usuários",
     setupFee: "R$ 790,00",
-    monthlyFee: "R$ 397,00/mensal",
+    monthlyFee: "R$ 497,00/mensal",
     theme: {
       header: "from-amber-50 via-orange-50/80 to-white",
       medal: "bg-amber-100 ring-amber-200/80",
@@ -49,31 +57,31 @@ const PLANS: Plan[] = [
       contractBest: "border-amber-300 bg-amber-50 ring-amber-200/60",
     },
     contractTerms: [
-      { duration: "3 meses", discount: "Sem desconto", price: "R$ 397,00/mês" },
+      { duration: "3 meses", discount: "Sem desconto", price: "R$ 497,00/mês" },
       {
         duration: "6 meses",
         discount: "10% de desconto",
-        price: "R$ 357,30/mês",
+        price: "R$ 447,30/mês",
       },
       {
         duration: "12 meses",
         discount: "25% de desconto",
-        price: "R$ 297,75/mês",
+        price: "R$ 372,75/mês",
         bestValue: true,
       },
     ],
     features: [
-      "CRM com os módulos: imóveis, funil de vendas",
+      "CRM básico",
+      "Cadastro de imóveis",
       "Agenda personalizada",
-      "Cadastros de imóveis",
-      "Relatórios básicos",
+      "Usuário adicional: R$ 15,00 por usuário/mês",
     ],
   },
   {
     id: "prata",
     medal: "🥈",
     name: "Prata",
-    audience: "Ideal para imobiliárias em crescimento",
+    audience: "Escolha entre Financeiro ou Administrativo",
     users: "Até 15 usuários",
     setupFee: "R$ 1.490,00",
     monthlyFee: "R$ 997,00/mensal",
@@ -100,19 +108,40 @@ const PLANS: Plan[] = [
     ],
     features: [
       "Tudo do plano Bronze",
-      "Financeiro com: contas a pagar, contas a receber, relatório financeiro",
-      "Fluxo de caixa",
-      "Comissões",
+      "Usuário adicional: R$ 25,00 por usuário/mês",
+      "Escolha uma das opções abaixo",
+    ],
+    options: [
+      {
+        title: "Opção Adm",
+        items: [
+          "Gerenciamento de equipes",
+          "Ranking de corretores",
+          "Métricas de desempenho",
+          "Análise de documentações",
+          "Gestão de metas",
+        ],
+      },
+      {
+        title: "Opção Financeira",
+        items: [
+          "Contas a pagar",
+          "Contas a receber",
+          "Fluxo de caixa",
+          "Comissões",
+          "Relatório financeiro",
+        ],
+      },
     ],
   },
   {
     id: "ouro",
     medal: "🥇",
     name: "Ouro",
-    audience: "Gestão completa e máxima performance",
+    audience: "Gestão completa: Financeiro e Administrativo juntos",
     users: "Até 30 usuários",
     setupFee: "R$ 1.490,00",
-    monthlyFee: "R$ 1.497,00/mensal",
+    monthlyFee: "R$ 1.649,00/mensal",
     theme: {
       header: "from-brand-accent/15 via-cyan-50/80 to-white",
       medal: "bg-brand-accent/15 ring-brand-accent/30",
@@ -125,29 +154,28 @@ const PLANS: Plan[] = [
       {
         duration: "3 meses",
         discount: "Sem desconto",
-        price: "R$ 1.497,00/mês",
+        price: "R$ 1.649,00/mês",
       },
       {
         duration: "6 meses",
-        discount: "10% de desconto",
-        price: "R$ 1.347,30/mês",
+        discount: "20% de desconto",
+        price: "R$ 1.319,20/mês",
       },
       {
         duration: "12 meses",
-        discount: "30% de desconto",
-        price: "R$ 1.047,90/mês",
+        discount: "40% de desconto",
+        price: "R$ 989,40/mês",
         bestValue: true,
       },
     ],
     featured: true,
     highlights: true,
     features: [
-      "Tudo do plano Prata",
-      "Alertas de documentações",
-      "Gestão de documentações",
-      "Landing pages com Google Analytics",
+      "Tudo do plano Bronze",
+      "Sistema Financeiro e Administrativo juntos",
+      "Gerenciamento e alertas de documentações",
       "Relatórios avançados",
-      "IA no WhatsApp (em desenvolvimento)",
+      "Usuário adicional: R$ 35,00 por usuário/mês",
     ],
   },
 ];
@@ -243,6 +271,65 @@ function PlanContractTermCard({
   );
 }
 
+function PlanOptionsToggle({
+  options,
+  theme,
+}: {
+  options: PlanOption[];
+  theme: PlanTheme;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const active = options[activeIndex];
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((option, index) => {
+          const isActive = index === activeIndex;
+          return (
+            <button
+              key={option.title}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              aria-pressed={isActive}
+              className={cn(
+                "cursor-pointer rounded-xl border px-3 py-2.5 text-center text-xs font-bold tracking-wide uppercase transition-all",
+                isActive
+                  ? cn(
+                      "border-brand-dark bg-brand-dark text-white shadow-sm",
+                      "ring-1 ring-brand-dark/20",
+                    )
+                  : "border-border bg-surface-muted/60 text-brand-dark/70 hover:border-brand-dark/30 hover:text-brand-dark",
+              )}
+            >
+              {option.title}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface-muted/60 p-3.5">
+        <p className="mb-2.5 text-xs font-bold tracking-wide text-brand-dark uppercase">
+          {active.title}
+        </p>
+        <ul className="flex flex-col gap-1.5">
+          {active.items.map((item) => (
+            <li
+              key={item}
+              className="flex items-start gap-2 text-xs leading-snug text-text-muted"
+            >
+              <HiCheck
+                className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", theme.accent)}
+              />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function PlanCard({ plan }: { plan: Plan }) {
   return (
     <article
@@ -317,6 +404,10 @@ function PlanCard({ plan }: { plan: Plan }) {
             className={plan.theme.priceCard}
           />
         </div>
+
+        {plan.options && plan.options.length > 0 && (
+          <PlanOptionsToggle options={plan.options} theme={plan.theme} />
+        )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <p className="text-sm font-bold text-brand-dark">Recursos inclusos</p>

@@ -11,7 +11,7 @@ export function HeroSection() {
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-brand-accent" />
             <span className="text-sm font-medium text-brand-dark">
-              Zone Connection - Imobiliárias
+              Zone Connection - CRM
             </span>
           </div>
 
@@ -22,10 +22,10 @@ export function HeroSection() {
             </h1>
 
             <p className="max-w-xl text-base leading-relaxed text-text-muted sm:text-lg">
-              A Zone Connection conecta CRM, financeiro, imóveis, atendimento,
-              contratos, funil comercial e inteligência artificial em uma só
-              plataforma — sem retrabalho, sem informação perdida, sem dez
-              sistemas diferentes.
+              Nosso sistema é mais que um CRM comum, aqui unimos financeiro,
+              imóveis, agendas, contratos, funil comercial, metas e inteligência
+              artificial em uma só plataforma — sem retrabalho, sem informação
+              perdida, sem dez sistemas diferentes.
             </p>
           </div>
 
@@ -39,7 +39,7 @@ export function HeroSection() {
               Entrar em contato
             </a>
             <Link
-              to="/login"
+              to="/demonstracao"
               className="flex-1 whitespace-nowrap rounded-full border border-brand-dark px-3 py-2.5 text-center text-xs font-medium text-brand-dark transition-colors hover:bg-brand-dark/5 sm:flex-none sm:px-7 sm:py-2 sm:text-base"
             >
               Conhecer a plataforma
