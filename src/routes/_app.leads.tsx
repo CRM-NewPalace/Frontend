@@ -588,32 +588,35 @@ function LeadsPage() {
     if (isCorretor) {
       equipeId = undefined;
       corretorId = undefined;
-    } else if (isAdmin) {
-      if (!form.equipeId) {
-        toast.error("Selecione o gerente que receberá o lead.");
-        return;
+    } else if (isAdmin || isGerente) {
+      const wantsPool = form.corretorId === "__pool__";
+      const hasCorretor =
+        Boolean(form.corretorId) &&
+        form.corretorId !== "__pool__" &&
+        form.corretorId !== "__none__";
+
+      if (!form.equipeId && !hasCorretor && !wantsPool) {
+        // Cadastro sem gerente e sem corretor.
+        equipeId = null;
+        corretorId = null;
+      } else if (wantsPool) {
+        const poolEquipe =
+          form.equipeId ||
+          (isGerente
+            ? (equipesAtivas.find((e) => e.gerenteId === user?.id)?.id ?? "")
+            : "");
+        if (!poolEquipe) {
+          toast.error(
+            "Para deixar no pool, selecione o gerente/equipe responsável.",
+          );
+          return;
+        }
+        equipeId = poolEquipe;
+        corretorId = null;
+      } else {
+        equipeId = form.equipeId || null;
+        corretorId = hasCorretor ? form.corretorId : null;
       }
-      equipeId = form.equipeId;
-      corretorId =
-        !form.corretorId || form.corretorId === "__pool__"
-          ? null
-          : form.corretorId;
-    } else if (isGerente) {
-      const equipe =
-        form.equipeId ||
-        equipesAtivas.find((e) => e.gerenteId === user?.id)?.id ||
-        equipesAtivas[0]?.id ||
-        "";
-      if (!equipe) {
-        toast.error("Nenhuma equipe encontrada para atribuir o lead.");
-        return;
-      }
-      if (!form.corretorId) {
-        toast.error("Selecione o corretor que receberá o lead.");
-        return;
-      }
-      equipeId = equipe;
-      corretorId = form.corretorId === "__pool__" ? null : form.corretorId;
     }
 
     try {
@@ -886,7 +889,10 @@ function LeadsPage() {
                   htmlFor="lead-nome"
                   className="text-xs text-muted-foreground"
                 >
-                  Nome completo
+                  Nome completo{" "}
+                  <span className="text-destructive" aria-hidden="true">
+                    *
+                  </span>
                 </Label>
                 <Input
                   id="lead-nome"
@@ -904,7 +910,10 @@ function LeadsPage() {
                     htmlFor="lead-telefone"
                     className="text-xs text-muted-foreground"
                   >
-                    Telefone
+                    Telefone{" "}
+                    <span className="text-destructive" aria-hidden="true">
+                      *
+                    </span>
                   </Label>
                   <Input
                     id="lead-telefone"
@@ -973,7 +982,8 @@ function LeadsPage() {
                 {isAdmin && (
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Gerente
+                      Gerente{" "}
+                      <span className="font-normal">(opcional)</span>
                     </Label>
                     <Select
                       value={form.equipeId || "__none__"}
@@ -987,12 +997,10 @@ function LeadsPage() {
                       }}
                     >
                       <SelectTrigger className="h-10 bg-background">
-                        <SelectValue placeholder="Selecione o gerente" />
+                        <SelectValue placeholder="Sem gerente" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">
-                          Selecione o gerente
-                        </SelectItem>
+                        <SelectItem value="__none__">Sem gerente</SelectItem>
                         {equipesAtivas.map((eq) => (
                           <SelectItem key={eq.id} value={eq.id}>
                             {eq.gerente.name}
@@ -1006,7 +1014,8 @@ function LeadsPage() {
                 {!isCorretor ? (
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Corretor
+                      Corretor{" "}
+                      <span className="font-normal">(opcional)</span>
                     </Label>
                     <Select
                       value={form.corretorId || "__none__"}
@@ -1019,18 +1028,18 @@ function LeadsPage() {
                         <SelectValue
                           placeholder={
                             isAdmin && !form.equipeId
-                              ? "Selecione o gerente antes"
-                              : "Selecione o corretor"
+                              ? "Sem corretor"
+                              : "Sem corretor"
                           }
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">
-                          Selecione o corretor
-                        </SelectItem>
-                        <SelectItem value="__pool__">
-                          Pool da equipe (sem corretor)
-                        </SelectItem>
+                        <SelectItem value="__none__">Sem corretor</SelectItem>
+                        {(isGerente || form.equipeId) && (
+                          <SelectItem value="__pool__">
+                            Pool da equipe (sem corretor)
+                          </SelectItem>
+                        )}
                         {formCorretorOptions.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.name}
@@ -1050,16 +1059,11 @@ function LeadsPage() {
                   </div>
                 )}
               </div>
-              {isAdmin && (
+              {(isAdmin || isGerente) && (
                 <p className="text-[11px] text-muted-foreground">
-                  O lead vai para o gerente selecionado. Você pode deixar no
-                  pool da equipe ou escolher um corretor.
-                </p>
-              )}
-              {isGerente && (
-                <p className="text-[11px] text-muted-foreground">
-                  Escolha o corretor da sua equipe ou deixe no pool para
-                  distribuir depois.
+                  Gerente e corretor são opcionais. Você pode salvar sem vínculo
+                  e distribuir depois, deixar no pool da equipe ou escolher um
+                  corretor.
                 </p>
               )}
             </FormSection>
