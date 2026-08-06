@@ -62,6 +62,11 @@ import {
 } from "@/lib/financeiro-prefs";
 import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseMoneyInput,
+} from "@/lib/money-input";
+import {
   brl,
   CATEGORIAS_ENTRADA,
   CATEGORIAS_SAIDA,
@@ -134,22 +139,11 @@ function todayIso() {
 }
 
 function parseValor(raw: string): number {
-  const n = Number(
-    raw
-      .trim()
-      .replace(/\s/g, "")
-      .replace(/R\$/gi, "")
-      .replace(/\./g, "")
-      .replace(",", "."),
-  );
-  return Number.isFinite(n) ? n : NaN;
+  return parseMoneyInput(raw);
 }
 
 function formatValorInput(n: number): string {
-  return n.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return formatMoneyInput(n);
 }
 
 function addMonthsIso(iso: string, months: number): string {
@@ -1155,10 +1149,10 @@ export function FinanceiroTitulosPanel({
                       : "Valor (R$) *"}
                   </Label>
                   <Input
-                    inputMode="decimal"
+                    inputMode="numeric"
                     value={form.valor}
                     onChange={(e) => {
-                      const valor = e.target.value;
+                      const valor = maskMoneyInput(e.target.value);
                       setForm((f) => ({ ...f, valor }));
                       if (parcelado && formMode === "create") {
                         regenerateParcelas(valor, qtdParcelas, form.vencimento);

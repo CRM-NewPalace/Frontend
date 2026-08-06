@@ -42,6 +42,11 @@ import {
 import { ApiError } from "@/lib/api";
 import { brl, formatDate } from "@/lib/financeiro-mock";
 import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseMoneyInput,
+} from "@/lib/money-input";
+import {
   baixarPlatformParcela,
   createPlatformContrato,
   deletePlatformContrato,
@@ -125,14 +130,7 @@ const emptyForm = (): FormState => ({
 });
 
 function parseMoney(value: string): number {
-  const n = Number(
-    value
-      .replace(/\s/g, "")
-      .replace(/R\$/i, "")
-      .replace(/\./g, "")
-      .replace(",", "."),
-  );
-  return Number.isFinite(n) ? n : NaN;
+  return parseMoneyInput(value);
 }
 
 function addMonthsIso(iso: string, months: number): string {
@@ -738,12 +736,12 @@ function Page() {
                     id="c-valor"
                     value={form.valor}
                     onChange={(e) => {
-                      const valor = e.target.value;
+                      const valor = maskMoneyInput(e.target.value);
                       setForm((f) => ({ ...f, valor }));
                       if (parcelado) syncParcelasDraft(valor);
                     }}
                     placeholder="0,00"
-                    inputMode="decimal"
+                    inputMode="numeric"
                   />
                 </div>
                 <div className="space-y-2">

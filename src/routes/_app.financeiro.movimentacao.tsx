@@ -49,6 +49,11 @@ import {
 } from "@/lib/financeiro-api";
 import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseMoneyInput,
+} from "@/lib/money-input";
+import {
   brl,
   CATEGORIAS_ENTRADA,
   CATEGORIAS_SAIDA,
@@ -160,14 +165,7 @@ function emptyForm(): FormState {
 }
 
 function parseValor(raw: string): number {
-  const normalized = raw
-    .trim()
-    .replace(/\s/g, "")
-    .replace(/R\$/gi, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : NaN;
+  return parseMoneyInput(raw);
 }
 
 function toForm(m: MovimentoFinanceiro): FormState {
@@ -178,7 +176,7 @@ function toForm(m: MovimentoFinanceiro): FormState {
     categoria: m.categoria,
     centro: m.centro || CENTROS_DESPESA[0],
     tipo: m.tipo,
-    valor: String(m.valor),
+    valor: formatMoneyInput(m.valor),
     status: m.status,
     formaPagamento: m.formaPagamento || FORMAS_PAGAMENTO[0],
   };
@@ -780,9 +778,11 @@ function Page() {
                   <Label htmlFor="mov-valor">Valor *</Label>
                   <Input
                     id="mov-valor"
-                    inputMode="decimal"
+                    inputMode="numeric"
                     value={form.valor}
-                    onChange={(e) => setField("valor", e.target.value)}
+                    onChange={(e) =>
+                      setField("valor", maskMoneyInput(e.target.value))
+                    }
                     placeholder="0,00"
                     required
                   />

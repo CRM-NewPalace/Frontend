@@ -69,6 +69,11 @@ import {
   type PeriodoFiltro,
 } from "@/lib/financeiro-mock";
 import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseMoneyInput,
+} from "@/lib/money-input";
+import {
   FolderKanban,
   Loader2,
   Pencil,
@@ -127,14 +132,7 @@ const emptyDespesaForm = (tipoId = ""): DespesaForm => ({
 });
 
 function parseMoney(value: string): number {
-  const n = Number(
-    value
-      .replace(/\s/g, "")
-      .replace(/R\$/i, "")
-      .replace(/\./g, "")
-      .replace(",", "."),
-  );
-  return Number.isFinite(n) ? n : NaN;
+  return parseMoneyInput(value);
 }
 
 function formatDateBr(iso: string): string {
@@ -290,7 +288,7 @@ function Page() {
     setDespesaForm({
       tipoId: d.tipoId,
       descricao: d.descricao,
-      valor: String(d.valor),
+      valor: formatMoneyInput(d.valor),
       data: d.data.slice(0, 10),
       observacao: d.observacao || "",
       ativo: d.ativo,
@@ -853,11 +851,11 @@ function Page() {
                   onChange={(e) =>
                     setTipoForm((f) => ({
                       ...f,
-                      orcadoMensal: e.target.value,
+                      orcadoMensal: maskMoneyInput(e.target.value),
                     }))
                   }
                   placeholder="0,00"
-                  inputMode="decimal"
+                  inputMode="numeric"
                 />
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
@@ -946,9 +944,13 @@ function Page() {
                     id="desp-valor"
                     value={despesaForm.valor}
                     onChange={(e) =>
-                      setDespesaForm((f) => ({ ...f, valor: e.target.value }))
+                      setDespesaForm((f) => ({
+                        ...f,
+                        valor: maskMoneyInput(e.target.value),
+                      }))
                     }
                     placeholder="0,00"
+                    inputMode="numeric"
                     inputMode="decimal"
                   />
                 </div>
