@@ -49,6 +49,11 @@ type LeadsContextValue = {
       construtoraId?: string;
       empreendimentoId?: string;
       omitTriagem?: boolean;
+      temEntrada?: boolean;
+      valorEntrada?: number | null;
+      temFgts?: boolean;
+      valorFgts?: number | null;
+      temDependente?: boolean;
     },
   ) => Promise<Lead>;
   /** Marca como perdido (sai das listas operacionais). */

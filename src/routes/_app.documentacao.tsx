@@ -289,12 +289,16 @@ function DocumentacaoPage() {
 
   function canMutateDoc(doc: Documentacao): boolean {
     if (!user) return false;
-    if (user.role === "admin") return true;
-    if (user.role === "corretor" || user.role === "gerente") {
-      return doc.autor.id === user.id;
+    // Admin edita só fichas de análise (autor analista/admin).
+    if (user.role === "admin") {
+      return doc.autor.role === "analista" || doc.autor.role === "admin";
     }
     if (user.role === "analista") {
       return doc.autor.id === user.id || doc.autor.role === "admin";
+    }
+    // Corretor/gerente: só as próprias (gerente só visualiza as da equipe).
+    if (user.role === "corretor" || user.role === "gerente") {
+      return doc.autor.id === user.id;
     }
     return false;
   }

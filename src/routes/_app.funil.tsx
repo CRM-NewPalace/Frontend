@@ -209,6 +209,20 @@ function ComercialFunilBoard() {
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
   const [analiseSaving, setAnaliseSaving] = useState(false);
+  /** Após enviar para análise: pergunta se registra ficha comercial. */
+  const [comercialDocPrompt, setComercialDocPrompt] = useState<{
+    lead: Lead;
+    targetStage: StageId;
+    construtoraId: string;
+    empreendimentoId: string;
+    temEntrada: boolean;
+    valorEntrada: number | null;
+    temFgts: boolean;
+    valorFgts: number | null;
+    temDependente: boolean;
+  } | null>(null);
+  const [comercialDocSaving, setComercialDocSaving] = useState(false);
+  const skipComercialDocRef = useRef(false);
   const [quickEmpreendimentoOpen, setQuickEmpreendimentoOpen] = useState(false);
   const [quickEmpreendimentoNome, setQuickEmpreendimentoNome] = useState("");
   const [quickEmpreendimentoCidade, setQuickEmpreendimentoCidade] =
@@ -396,46 +410,32 @@ function ComercialFunilBoard() {
     const targetStage = analiseTargetStage;
     const stageName =
       funnelStages.find((s) => s.id === targetStage)?.name ?? "Em análise";
-    const fonte = docFonteOptions.includes("Outro")
-      ? "Outro"
-      : (docFonteOptions[0] ?? "Outro");
-    const status1 = docStatus1Options.includes("Análise")
-      ? "Análise"
-      : (docStatus1Options[0] ?? "Análise");
-    const status2 = docStatus2Options.includes("Andamento")
-      ? "Andamento"
-      : (docStatus2Options[0] ?? "Andamento");
+    const finance = {
+      temEntrada: analiseTemEntrada,
+      valorEntrada: analiseTemEntrada
+        ? parseMoneyInput(analiseValorEntrada)
+        : null,
+      temFgts: analiseTemFgts,
+      valorFgts: analiseTemFgts ? parseMoneyInput(analiseValorFgts) : null,
+      temDependente: analiseTemDependente,
+    };
     setAnaliseSaving(true);
     try {
-      // Cria documentação antes da análise para o ensureForLead herdar entrada/FGTS/dependente.
-      await createDocumentacao({
-        leadId: lead.id,
-        nome: lead.nome,
-        construtoraId: analiseConstrutoraId,
-        empreendimentoId: analiseEmpreendimentoId,
-        fonte,
-        status1,
-        status2,
-        corretorId: lead.corretorId ?? undefined,
-        dataAnalise: new Date().toISOString().slice(0, 10),
-        temEntrada: analiseTemEntrada,
-        valorEntrada: analiseTemEntrada
-          ? parseMoneyInput(analiseValorEntrada)
-          : null,
-        temFgts: analiseTemFgts,
-        valorFgts: analiseTemFgts ? parseMoneyInput(analiseValorFgts) : null,
-        temDependente: analiseTemDependente,
-      });
       await updateLeadStage(lead.id, targetStage, {
         construtoraId: analiseConstrutoraId,
         empreendimentoId: analiseEmpreendimentoId,
         ...(isCorretor ? { omitTriagem: true } : {}),
+        ...finance,
       });
       setAnaliseTarget(null);
-      toast.success(
-        `${lead.nome} enviado para ${stageName} — documentação criada`,
-      );
-      offerTriagemHistory(lead, targetStage);
+      toast.success(`${lead.nome} enviado para ${stageName}`);
+      setComercialDocPrompt({
+        lead,
+        targetStage,
+        construtoraId: analiseConstrutoraId,
+        empreendimentoId: analiseEmpreendimentoId,
+        ...finance,
+      });
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -446,6 +446,60 @@ function ComercialFunilBoard() {
       );
     } finally {
       setAnaliseSaving(false);
+    }
+  }
+
+  async function registerComercialDoc() {
+    if (!comercialDocPrompt) return;
+    const prompt = comercialDocPrompt;
+    const fonte = docFonteOptions.includes("Outro")
+      ? "Outro"
+      : (docFonteOptions[0] ?? "Outro");
+    const status1 = docStatus1Options.includes("Análise")
+      ? "Análise"
+      : (docStatus1Options[0] ?? "Análise");
+    const status2 = docStatus2Options.includes("Andamento")
+      ? "Andamento"
+      : (docStatus2Options[0] ?? "Andamento");
+    setComercialDocSaving(true);
+    try {
+      await createDocumentacao({
+        leadId: prompt.lead.id,
+        nome: prompt.lead.nome,
+        construtoraId: prompt.construtoraId,
+        empreendimentoId: prompt.empreendimentoId,
+        fonte,
+        status1,
+        status2,
+        corretorId: prompt.lead.corretorId ?? undefined,
+        dataAnalise: new Date().toISOString().slice(0, 10),
+        temEntrada: prompt.temEntrada,
+        valorEntrada: prompt.valorEntrada,
+        temFgts: prompt.temFgts,
+        valorFgts: prompt.valorFgts,
+        temDependente: prompt.temDependente,
+      });
+      toast.success("Documentação comercial registrada.");
+      skipComercialDocRef.current = true;
+      setComercialDocPrompt(null);
+      offerTriagemHistory(prompt.lead, prompt.targetStage);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível registrar a documentação.",
+      );
+    } finally {
+      setComercialDocSaving(false);
+    }
+  }
+
+  function dismissComercialDocPrompt() {
+    const prompt = comercialDocPrompt;
+    skipComercialDocRef.current = true;
+    setComercialDocPrompt(null);
+    if (prompt) {
+      offerTriagemHistory(prompt.lead, prompt.targetStage);
     }
   }
 
@@ -1187,6 +1241,48 @@ function ComercialFunilBoard() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog
+        open={Boolean(comercialDocPrompt)}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (!skipComercialDocRef.current) {
+            dismissComercialDocPrompt();
+          }
+          skipComercialDocRef.current = false;
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Registrar documentação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {comercialDocPrompt
+                ? `O processo de ${comercialDocPrompt.lead.nome} já foi enviado para análise. Deseja registrar uma documentação comercial agora? Ela fica visível para você e para o gerente da equipe.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={comercialDocSaving}
+              onClick={() => dismissComercialDocPrompt()}
+            >
+              Agora não
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={comercialDocSaving}
+              onClick={(e) => {
+                e.preventDefault();
+                void registerComercialDoc();
+              }}
+            >
+              {comercialDocSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Registrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog
         open={quickEmpreendimentoOpen}
         onOpenChange={setQuickEmpreendimentoOpen}
@@ -1651,11 +1747,33 @@ function AnalistaFunilBoard() {
         title="Registrar documentação"
         description={
           docTarget
-            ? `${docTarget.nome} · ${docTarget.lead.construtora?.nome ?? "Sem construtora"} · ${docTarget.lead.empreendimento?.nome ?? "Sem empreendimento"}`
+            ? `${docTarget.nome} · dados do lead já preenchidos`
             : undefined
         }
       >
         <FormDialogBody>
+          <FormSection title="Do processo (automático)">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <DetailField
+                label="Corretor"
+                value={docTarget?.lead.corretor?.name ?? "—"}
+              />
+              <DetailField
+                label="Gerente"
+                value={
+                  docTarget?.lead.corretor?.equipe?.gerente.name ?? "—"
+                }
+              />
+              <DetailField
+                label="Construtora"
+                value={docTarget?.lead.construtora?.nome ?? "—"}
+              />
+              <DetailField
+                label="Empreendimento"
+                value={docTarget?.lead.empreendimento?.nome ?? "—"}
+              />
+            </div>
+          </FormSection>
           <FormSection title="Dados restantes">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">

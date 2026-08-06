@@ -253,6 +253,11 @@ export async function updateLeadStageApi(
     construtoraId?: string;
     empreendimentoId?: string;
     omitTriagem?: boolean;
+    temEntrada?: boolean;
+    valorEntrada?: number | null;
+    temFgts?: boolean;
+    valorFgts?: number | null;
+    temDependente?: boolean;
   },
 ): Promise<ApiLead> {
   return apiFetch<ApiLead>(`/leads/${id}/stage`, {
@@ -264,6 +269,17 @@ export async function updateLeadStageApi(
         ? { empreendimentoId: extra.empreendimentoId }
         : {}),
       ...(extra?.omitTriagem ? { omitTriagem: true } : {}),
+      ...(extra?.temEntrada !== undefined
+        ? { temEntrada: extra.temEntrada }
+        : {}),
+      ...(extra?.valorEntrada !== undefined
+        ? { valorEntrada: extra.valorEntrada }
+        : {}),
+      ...(extra?.temFgts !== undefined ? { temFgts: extra.temFgts } : {}),
+      ...(extra?.valorFgts !== undefined ? { valorFgts: extra.valorFgts } : {}),
+      ...(extra?.temDependente !== undefined
+        ? { temDependente: extra.temDependente }
+        : {}),
     },
   });
 }
