@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Bell,
   Search,
+  Sparkles,
   TrendingUp,
   UserPlus,
   Home,
@@ -21,6 +22,9 @@ import {
 import { getWhatsAppUrl } from "@/lib/env";
 import { Logo } from "@/marketing/components/Logo";
 import { cn } from "@/lib/utils";
+
+const DEMO_WHATSAPP_MSG =
+  "Olá! Vi a demonstração do CRM e quero solicitar um orçamento.";
 
 type DemoView = "dashboard" | "funil" | "leads" | "agenda";
 
@@ -135,98 +139,120 @@ const AGENDA = [
   },
 ] as const;
 
-function DemoSidebar({
+function DemoMobileNav({
   active,
   onChange,
-  mobileOpen,
-  onClose,
 }: {
   active: DemoView;
   onChange: (view: DemoView) => void;
-  mobileOpen: boolean;
-  onClose: () => void;
 }) {
   return (
-    <>
-      {mobileOpen && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-brand-dark/30 lg:hidden"
-          aria-label="Fechar menu"
-          onClick={onClose}
-        />
-      )}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-brand-dark text-white transition-transform lg:static lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <div className="border-b border-white/10 px-5 py-4">
-          <Logo size="sm" tone="light" />
-          <p className="mt-2 text-[11px] font-medium tracking-wide text-brand-accent uppercase">
-            Demonstração
-          </p>
-        </div>
+    <nav
+      className="border-b border-border bg-surface-muted/80 lg:hidden"
+      aria-label="Módulos da demonstração"
+    >
+      <div className="flex gap-1 overflow-x-auto px-3 py-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {NAV.map((item) => {
+          const Icon = item.icon;
+          const isActive = active === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onChange(item.id)}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "border border-brand-accent bg-white text-brand-dark shadow-sm"
+                  : "border border-transparent text-brand-dark/70 hover:bg-white/70 hover:text-brand-dark",
+              )}
+            >
+              <Icon
+                size={18}
+                strokeWidth={1.75}
+                className={
+                  isActive ? "text-brand-accent" : "text-brand-dark/55"
+                }
+              />
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          <p className="px-2 pb-2 text-[11px] font-semibold tracking-wider text-white/40 uppercase">
-            Operação
-          </p>
-          {NAV.map((item) => {
-            const Icon = item.icon;
-            const isActive = active === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  onChange(item.id);
-                  onClose();
-                }}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-white/15 text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white",
-                )}
-              >
-                <Icon size={18} strokeWidth={1.75} />
-                {item.label}
-              </button>
-            );
-          })}
+function DemoSidebar({
+  active,
+  onChange,
+}: {
+  active: DemoView;
+  onChange: (view: DemoView) => void;
+}) {
+  return (
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-brand-dark text-white lg:flex">
+      <div className="border-b border-white/10 px-5 py-4">
+        <Logo size="sm" tone="light" />
+        <p className="mt-2 text-[11px] font-medium tracking-wide text-brand-accent uppercase">
+          Demonstração
+        </p>
+      </div>
 
-          <p className="mt-5 px-2 pb-2 text-[11px] font-semibold tracking-wider text-white/40 uppercase">
-            Mais módulos
-          </p>
-          {SIDEBAR_EXTRA.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.label}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/45"
-              >
-                <Icon size={18} strokeWidth={1.75} />
-                {item.label}
-              </div>
-            );
-          })}
-        </nav>
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <p className="px-2 pb-2 text-[11px] font-semibold tracking-wider text-white/40 uppercase">
+          Operação
+        </p>
+        {NAV.map((item) => {
+          const Icon = item.icon;
+          const isActive = active === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onChange(item.id)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-white/15 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              <Icon size={18} strokeWidth={1.75} />
+              {item.label}
+            </button>
+          );
+        })}
 
-        <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-white/10 px-3 py-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-accent/30 text-sm font-semibold">
-              ZC
+        <p className="mt-5 px-2 pb-2 text-[11px] font-semibold tracking-wider text-white/40 uppercase">
+          Mais módulos
+        </p>
+        {SIDEBAR_EXTRA.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.label}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/45"
+            >
+              <Icon size={18} strokeWidth={1.75} />
+              {item.label}
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">Imobiliária Demo</p>
-              <p className="truncate text-xs text-white/50">Gerente</p>
-            </div>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-white/10 p-4">
+        <div className="flex items-center gap-3 rounded-xl bg-white/10 px-3 py-3">
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-accent/30 text-sm font-semibold">
+            ZC
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">Imobiliária Demo</p>
+            <p className="truncate text-xs text-white/50">Gerente</p>
           </div>
         </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 }
 
@@ -422,14 +448,13 @@ const VIEW_META: Record<DemoView, { title: string; subtitle: string }> = {
 
 export default function DemoPage() {
   const [view, setView] = useState<DemoView>("dashboard");
-  const [mobileOpen, setMobileOpen] = useState(false);
   const meta = VIEW_META[view];
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
-      <header className="sticky top-0 z-30 border-b border-border bg-white/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-[60] border-b border-border bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-350 items-center justify-between gap-3 px-4 py-3 lg:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/produtos/crm-imobiliario"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-dark/80 transition-colors hover:text-brand-dark"
@@ -438,91 +463,99 @@ export default function DemoPage() {
               <span className="hidden sm:inline">Voltar</span>
             </Link>
             <span className="hidden h-4 w-px bg-border sm:block" />
-            <span className="rounded-full bg-brand-accent/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-brand-dark uppercase">
+            <span className="truncate rounded-full bg-brand-accent/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-brand-dark uppercase">
               Demo interativa
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="rounded-full px-3 py-2 text-sm font-medium text-brand-dark/80 hover:bg-surface-muted hover:text-brand-dark"
-            >
-              Login
-            </Link>
-            <a
-              href={getWhatsAppUrl(
-                "Olá! Vi a demonstração do CRM e quero saber mais.",
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full bg-brand-dark px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark/90"
-            >
-              Solicitar demonstração
-            </a>
-          </div>
+          <a
+            href={getWhatsAppUrl(DEMO_WHATSAPP_MSG)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 rounded-full bg-brand-dark px-3 py-2 text-xs font-medium whitespace-nowrap text-white transition-colors hover:bg-brand-dark/90 sm:px-4 sm:text-sm"
+          >
+            Solicitar Orçamento
+          </a>
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-350 flex-1">
-        <DemoSidebar
-          active={view}
-          onChange={setView}
-          mobileOpen={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-        />
-
-        <main className="min-w-0 flex-1 px-4 py-5 lg:px-8 lg:py-7">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <button
-                type="button"
-                className="mb-2 inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-brand-dark lg:hidden"
-                onClick={() => setMobileOpen(true)}
-              >
-                Menu do sistema
-              </button>
-              <h1 className="text-xl font-semibold text-brand-dark sm:text-2xl">
-                {meta.title}
-              </h1>
-              <p className="mt-1 text-sm text-text-muted">{meta.subtitle}</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-muted sm:flex">
-                <Search size={15} />
-                Buscar...
-              </div>
-              <button
-                type="button"
-                className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-white text-brand-dark"
-                aria-label="Notificações"
-              >
-                <Bell size={16} />
-              </button>
-            </div>
-          </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22 }}
-            >
-              {view === "dashboard" && <DashboardView />}
-              {view === "funil" && <FunnelView />}
-              {view === "leads" && <LeadsView />}
-              {view === "agenda" && <AgendaView />}
-            </motion.div>
-          </AnimatePresence>
-
-          <p className="mt-8 text-center text-xs text-text-muted">
-            Ambiente ilustrativo — dados fictícios para demonstrar a experiência
-            do CRM Zone Connection.
+      <section
+        className="border-b border-border bg-white px-6 py-10 sm:py-12 lg:px-12 lg:py-14"
+        aria-labelledby="demo-intro-title"
+      >
+        <div className="mx-auto max-w-350">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-brand-accent uppercase sm:text-sm">
+            <Sparkles size={16} strokeWidth={2} aria-hidden />
+            Demonstração interativa
           </p>
-        </main>
+          <h1
+            id="demo-intro-title"
+            className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-brand-dark sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]"
+          >
+            Explore a plataforma antes de falar com o time.
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-text-muted sm:text-lg">
+            Um passeio guiado pelos módulos da Zone Connection. Clique nos itens
+            do menu para ver como cada área da sua imobiliária fica organizada.
+          </p>
+        </div>
+      </section>
+
+      <div className="flex flex-1 flex-col px-4 pb-6 pt-2 sm:px-6 lg:mx-auto lg:w-full lg:max-w-350 lg:px-0 lg:py-6">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm lg:flex-row">
+          <DemoSidebar active={view} onChange={setView} />
+
+          <div className="flex min-w-0 flex-1 flex-col">
+            <DemoMobileNav active={view} onChange={setView} />
+
+            <main className="min-w-0 flex-1 bg-surface-muted/40 px-4 py-5 lg:px-8 lg:py-7">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-brand-dark sm:text-2xl">
+                    {meta.title}
+                  </h2>
+                  <p className="mt-1 text-sm text-text-muted">
+                    {meta.subtitle}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="hidden items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-muted sm:flex">
+                    <Search size={15} />
+                    Buscar...
+                  </div>
+                  <button
+                    type="button"
+                    className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-white text-brand-dark"
+                    aria-label="Notificações"
+                  >
+                    <Bell size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={view}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  {view === "dashboard" && <DashboardView />}
+                  {view === "funil" && <FunnelView />}
+                  {view === "leads" && <LeadsView />}
+                  {view === "agenda" && <AgendaView />}
+                </motion.div>
+              </AnimatePresence>
+
+              <p className="mt-8 text-center text-xs text-text-muted">
+                Ambiente ilustrativo — dados fictícios para demonstrar a
+                experiência do CRM Zone Connection.
+              </p>
+            </main>
+          </div>
+        </div>
       </div>
     </div>
   );
