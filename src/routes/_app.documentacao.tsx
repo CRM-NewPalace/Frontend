@@ -2170,10 +2170,11 @@ function DocumentacaoPage() {
                           variant="secondary"
                           className={cn(
                             "text-[10px] px-1 py-0 h-4 font-normal",
-                            stageBadgeClass(doc.stageSituacao),
+                            stageBadgeClass(doc.lead.stage),
                           )}
+                          title="Etapa atual no funil"
                         >
-                          {stageLabel(doc.stageSituacao)}
+                          {stageLabel(doc.lead.stage)}
                         </Badge>
                       </div>
                     </TableCell>
