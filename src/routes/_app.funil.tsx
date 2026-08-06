@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -66,6 +67,7 @@ import {
 } from "@/lib/analise-api";
 import {
   createDocumentacao,
+  fetchDocumentacoes,
   DEFAULT_DOCUMENTACAO_FONTES,
   DEFAULT_STATUS1,
   DEFAULT_STATUS2,
@@ -142,10 +144,25 @@ function ComercialFunilBoard() {
     loading: catalogLoading,
     colorByLabel,
     stageByPapel,
+    documentacaoFontes,
+    documentacaoStatus1,
+    documentacaoStatus2,
   } = useCatalog();
   const analiseStageSlug =
     stageByPapel("analise") ?? ANALISE_STAGE_SLUG_FALLBACK;
   const lostStageSlug = stageByPapel("perdido") ?? LOST_STAGE_SLUG_FALLBACK;
+  const docFonteOptions =
+    documentacaoFontes.length > 0
+      ? documentacaoFontes
+      : [...DEFAULT_DOCUMENTACAO_FONTES];
+  const docStatus1Options =
+    documentacaoStatus1.length > 0
+      ? documentacaoStatus1
+      : [...DEFAULT_STATUS1];
+  const docStatus2Options =
+    documentacaoStatus2.length > 0
+      ? documentacaoStatus2
+      : [...DEFAULT_STATUS2];
 
   function isAnaliseStage(stage: StageId): boolean {
     const found = funnelStages.find((s) => s.id === stage);
@@ -184,6 +201,11 @@ function ComercialFunilBoard() {
   );
   const [analiseConstrutoraId, setAnaliseConstrutoraId] = useState("");
   const [analiseEmpreendimentoId, setAnaliseEmpreendimentoId] = useState("");
+  const [analiseTemEntrada, setAnaliseTemEntrada] = useState(false);
+  const [analiseValorEntrada, setAnaliseValorEntrada] = useState("");
+  const [analiseTemFgts, setAnaliseTemFgts] = useState(false);
+  const [analiseValorFgts, setAnaliseValorFgts] = useState("");
+  const [analiseTemDependente, setAnaliseTemDependente] = useState(false);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
   const [analiseSaving, setAnaliseSaving] = useState(false);
@@ -304,6 +326,16 @@ function ComercialFunilBoard() {
     setAnaliseTargetStage(stage);
     setAnaliseConstrutoraId(lead.construtoraId ?? "");
     setAnaliseEmpreendimentoId(lead.empreendimentoId ?? "");
+    setAnaliseTemEntrada(false);
+    setAnaliseValorEntrada("");
+    setAnaliseTemFgts(false);
+    setAnaliseValorFgts("");
+    setAnaliseTemDependente(false);
+  }
+
+  function parseMoneyInput(value: string): number | null {
+    const digits = value.replace(/\D/g, "");
+    return digits ? Number(digits) : null;
   }
 
   const canQuickCreateEmpreendimento =
@@ -364,15 +396,45 @@ function ComercialFunilBoard() {
     const targetStage = analiseTargetStage;
     const stageName =
       funnelStages.find((s) => s.id === targetStage)?.name ?? "Em análise";
+    const fonte = docFonteOptions.includes("Outro")
+      ? "Outro"
+      : (docFonteOptions[0] ?? "Outro");
+    const status1 = docStatus1Options.includes("Análise")
+      ? "Análise"
+      : (docStatus1Options[0] ?? "Análise");
+    const status2 = docStatus2Options.includes("Andamento")
+      ? "Andamento"
+      : (docStatus2Options[0] ?? "Andamento");
     setAnaliseSaving(true);
     try {
+      // Cria documentação antes da análise para o ensureForLead herdar entrada/FGTS/dependente.
+      await createDocumentacao({
+        leadId: lead.id,
+        nome: lead.nome,
+        construtoraId: analiseConstrutoraId,
+        empreendimentoId: analiseEmpreendimentoId,
+        fonte,
+        status1,
+        status2,
+        corretorId: lead.corretorId ?? undefined,
+        dataAnalise: new Date().toISOString().slice(0, 10),
+        temEntrada: analiseTemEntrada,
+        valorEntrada: analiseTemEntrada
+          ? parseMoneyInput(analiseValorEntrada)
+          : null,
+        temFgts: analiseTemFgts,
+        valorFgts: analiseTemFgts ? parseMoneyInput(analiseValorFgts) : null,
+        temDependente: analiseTemDependente,
+      });
       await updateLeadStage(lead.id, targetStage, {
         construtoraId: analiseConstrutoraId,
         empreendimentoId: analiseEmpreendimentoId,
         ...(isCorretor ? { omitTriagem: true } : {}),
       });
       setAnaliseTarget(null);
-      toast.success(`${lead.nome} enviado para ${stageName}`);
+      toast.success(
+        `${lead.nome} enviado para ${stageName} — documentação criada`,
+      );
       offerTriagemHistory(lead, targetStage);
     } catch (err) {
       toast.error(
@@ -970,12 +1032,12 @@ function ComercialFunilBoard() {
           if (!open) setAnaliseTarget(null);
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Enviar para análise</DialogTitle>
             <DialogDescription>
               {analiseTarget
-                ? `Informe a construtora e o empreendimento de ${analiseTarget.nome} antes de avançar para esta etapa.`
+                ? `Informe o imóvel e as condições de ${analiseTarget.nome}. Ao enviar, a documentação é criada automaticamente.`
                 : null}
             </DialogDescription>
           </DialogHeader>
@@ -1045,6 +1107,62 @@ function ComercialFunilBoard() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="rounded-lg border border-border/60 p-3 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Condições do cliente
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="analise-tem-entrada">Tem entrada?</Label>
+                  <Switch
+                    id="analise-tem-entrada"
+                    checked={analiseTemEntrada}
+                    onCheckedChange={(checked) => {
+                      setAnaliseTemEntrada(checked);
+                      if (!checked) setAnaliseValorEntrada("");
+                    }}
+                  />
+                </div>
+                {analiseTemEntrada && (
+                  <Input
+                    inputMode="numeric"
+                    placeholder="Valor da entrada (R$)"
+                    value={analiseValorEntrada}
+                    onChange={(e) => setAnaliseValorEntrada(e.target.value)}
+                  />
+                )}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="analise-tem-fgts">Tem FGTS?</Label>
+                  <Switch
+                    id="analise-tem-fgts"
+                    checked={analiseTemFgts}
+                    onCheckedChange={(checked) => {
+                      setAnaliseTemFgts(checked);
+                      if (!checked) setAnaliseValorFgts("");
+                    }}
+                  />
+                </div>
+                {analiseTemFgts && (
+                  <Input
+                    inputMode="numeric"
+                    placeholder="Valor do FGTS (R$)"
+                    value={analiseValorFgts}
+                    onChange={(e) => setAnaliseValorFgts(e.target.value)}
+                  />
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="analise-tem-dependente">Tem dependente?</Label>
+                <Switch
+                  id="analise-tem-dependente"
+                  checked={analiseTemDependente}
+                  onCheckedChange={setAnaliseTemDependente}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -1236,6 +1354,11 @@ function AnalistaFunilBoard() {
 
   async function autoRegisterDoc(item: Analise) {
     try {
+      const existing = await fetchDocumentacoes();
+      if (existing.some((d) => d.leadId === item.leadId)) {
+        toast.success("Documentação já existente para este cliente.");
+        return;
+      }
       await createDocumentacao({
         leadId: item.leadId,
         nome: item.nome,
@@ -1248,6 +1371,11 @@ function AnalistaFunilBoard() {
         vgv: null,
         obs: null,
         dataAnalise: new Date().toISOString().slice(0, 10),
+        temEntrada: item.temEntrada,
+        valorEntrada: item.temEntrada ? item.valorEntrada : null,
+        temFgts: item.temFgts,
+        valorFgts: item.temFgts ? item.valorFgts : null,
+        temDependente: item.temDependente,
       });
       toast.success("Documentação registrada automaticamente.");
     } catch (err) {

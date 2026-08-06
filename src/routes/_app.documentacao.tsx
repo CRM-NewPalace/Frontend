@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -183,6 +184,11 @@ type FormState = {
   dataVenda: string;
   vgv: string;
   obs: string;
+  temEntrada: boolean;
+  valorEntrada: string;
+  temFgts: boolean;
+  valorFgts: string;
+  temDependente: boolean;
 };
 
 const emptyForm = (): FormState => ({
@@ -200,6 +206,11 @@ const emptyForm = (): FormState => ({
   dataVenda: "",
   vgv: "",
   obs: "",
+  temEntrada: false,
+  valorEntrada: "",
+  temFgts: false,
+  valorFgts: "",
+  temDependente: false,
 });
 
 function todayDateInput(): string {
@@ -953,6 +964,12 @@ function DocumentacaoPage() {
       dataVenda: toDateInput(doc.dataVenda),
       vgv: doc.vgv != null ? String(doc.vgv) : "",
       obs: doc.obs ?? "",
+      temEntrada: doc.temEntrada ?? false,
+      valorEntrada:
+        doc.valorEntrada != null ? String(doc.valorEntrada) : "",
+      temFgts: doc.temFgts ?? false,
+      valorFgts: doc.valorFgts != null ? String(doc.valorFgts) : "",
+      temDependente: doc.temDependente ?? false,
     });
   }
 
@@ -981,6 +998,8 @@ function DocumentacaoPage() {
     }
 
     const vgvDigits = form.vgv.replace(/\D/g, "");
+    const entradaDigits = form.valorEntrada.replace(/\D/g, "");
+    const fgtsDigits = form.valorFgts.replace(/\D/g, "");
     return {
       leadId,
       nome: form.nome.trim(),
@@ -995,6 +1014,19 @@ function DocumentacaoPage() {
       dataVenda: form.dataVenda || null,
       vgv: vgvDigits ? Number(vgvDigits) : null,
       obs: form.obs.trim() || null,
+      temEntrada: form.temEntrada,
+      valorEntrada: form.temEntrada
+        ? entradaDigits
+          ? Number(entradaDigits)
+          : null
+        : null,
+      temFgts: form.temFgts,
+      valorFgts: form.temFgts
+        ? fgtsDigits
+          ? Number(fgtsDigits)
+          : null
+        : null,
+      temDependente: form.temDependente,
     };
   }
 
@@ -2049,6 +2081,9 @@ function DocumentacaoPage() {
                   <TableHead className="min-w-[72px] max-w-[96px]">Corretor</TableHead>
                   <TableHead className="min-w-[72px] max-w-[96px]">Gerente</TableHead>
                   <TableHead className="min-w-[72px]">Fonte</TableHead>
+                  <TableHead className="min-w-[72px]">Entrada</TableHead>
+                  <TableHead className="min-w-[72px]">FGTS</TableHead>
+                  <TableHead className="min-w-[56px]">Dep.</TableHead>
                   <TableHead className="w-[84px]" />
                 </TableRow>
               </TableHeader>
@@ -2146,6 +2181,23 @@ function DocumentacaoPage() {
                       title={displayFonte(doc.fonte)}
                     >
                       {displayFonte(doc.fonte) || "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-[11px]">
+                      {doc.temEntrada
+                        ? doc.valorEntrada != null
+                          ? brl(doc.valorEntrada)
+                          : "Sim"
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-[11px]">
+                      {doc.temFgts
+                        ? doc.valorFgts != null
+                          ? brl(doc.valorFgts)
+                          : "Sim"
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-[11px]">
+                      {doc.temDependente ? "Sim" : "—"}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-0.5">
@@ -2560,6 +2612,81 @@ function DocumentacaoPage() {
                     disabled={readOnly}
                     placeholder="Ex: 250000"
                   />
+                </div>
+
+                <div className="space-y-3 sm:col-span-2 rounded-lg border border-border/60 p-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Condições do cliente
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="temEntrada">Tem entrada?</Label>
+                        <Switch
+                          id="temEntrada"
+                          checked={form.temEntrada}
+                          onCheckedChange={(checked) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              temEntrada: checked,
+                              valorEntrada: checked ? prev.valorEntrada : "",
+                            }));
+                          }}
+                          disabled={readOnly}
+                        />
+                      </div>
+                      {form.temEntrada && (
+                        <Input
+                          inputMode="numeric"
+                          placeholder="Valor da entrada (R$)"
+                          value={form.valorEntrada}
+                          onChange={(e) =>
+                            setField("valorEntrada", e.target.value)
+                          }
+                          disabled={readOnly}
+                        />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="temFgts">Tem FGTS?</Label>
+                        <Switch
+                          id="temFgts"
+                          checked={form.temFgts}
+                          onCheckedChange={(checked) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              temFgts: checked,
+                              valorFgts: checked ? prev.valorFgts : "",
+                            }));
+                          }}
+                          disabled={readOnly}
+                        />
+                      </div>
+                      {form.temFgts && (
+                        <Input
+                          inputMode="numeric"
+                          placeholder="Valor do FGTS (R$)"
+                          value={form.valorFgts}
+                          onChange={(e) =>
+                            setField("valorFgts", e.target.value)
+                          }
+                          disabled={readOnly}
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 sm:col-span-2">
+                      <Label htmlFor="temDependente">Tem dependente?</Label>
+                      <Switch
+                        id="temDependente"
+                        checked={form.temDependente}
+                        onCheckedChange={(checked) =>
+                          setField("temDependente", checked)
+                        }
+                        disabled={readOnly}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">

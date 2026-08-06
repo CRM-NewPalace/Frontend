@@ -51,6 +51,11 @@ export interface Documentacao {
   dataVenda: string | null;
   vgv: number | null;
   obs: string | null;
+  temEntrada: boolean;
+  valorEntrada: number | null;
+  temFgts: boolean;
+  valorFgts: number | null;
+  temDependente: boolean;
   createdAt: string;
   updatedAt: string;
   autor: { id: string; name: string };
@@ -88,6 +93,11 @@ export type CreateDocumentacaoInput = {
   dataVenda?: string | null;
   vgv?: number | null;
   obs?: string | null;
+  temEntrada?: boolean;
+  valorEntrada?: number | null;
+  temFgts?: boolean;
+  valorFgts?: number | null;
+  temDependente?: boolean;
 };
 
 export type UpdateDocumentacaoInput = Partial<
