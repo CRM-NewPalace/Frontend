@@ -333,10 +333,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (user.role === "super_admin") return;
 
     void loadNotificacoes();
-    void loadAgendaBadge({ showCard: true });
+    // Analista não tem módulo de agenda; só consulta notificações.
+    if (user.role !== "analista") {
+      void loadAgendaBadge({ showCard: true });
+    }
     const id = window.setInterval(() => {
       void loadNotificacoes();
-      void loadAgendaBadge();
+      if (user.role !== "analista") {
+        void loadAgendaBadge();
+      }
     }, 60_000);
     return () => window.clearInterval(id);
   }, [user, loadNotificacoes, loadAgendaBadge]);
