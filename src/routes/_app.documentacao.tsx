@@ -298,9 +298,12 @@ function DocumentacaoPage() {
     if (user.role === "analista") {
       return doc.autor.id === user.id || doc.autor.role === "admin";
     }
-    // Corretor/gerente: só as próprias (gerente só visualiza as da equipe).
-    if (user.role === "corretor" || user.role === "gerente") {
+    // Corretor: só as próprias. Gerente só visualiza fichas de análise.
+    if (user.role === "corretor") {
       return doc.autor.id === user.id;
+    }
+    if (user.role === "gerente") {
+      return false;
     }
     return false;
   }
