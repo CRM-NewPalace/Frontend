@@ -50,9 +50,9 @@ export type Proposta = {
   valor: number;
   entrada: number | null;
   apartado: number | null;
-  preChaves: number | null;
-  posChaves: number | null;
-  intercaladas: number | null;
+  preChaves: number[];
+  posChaves: number[];
+  intercaladas: number[];
   fgts: number | null;
   moraBem: number | null;
   mcmv: number | null;
@@ -78,13 +78,10 @@ export type Proposta = {
   } | null;
 };
 
-/** Componentes que somam no Total (tudo menos valor de venda). */
-export const PROPOSTA_COMPOSICAO_KEYS = [
+/** Campos simples (um valor). */
+export const PROPOSTA_SIMPLES_KEYS = [
   "entrada",
   "apartado",
-  "preChaves",
-  "posChaves",
-  "intercaladas",
   "fgts",
   "moraBem",
   "mcmv",
@@ -92,9 +89,21 @@ export const PROPOSTA_COMPOSICAO_KEYS = [
   "financiamento",
 ] as const;
 
-export type PropostaComposicaoKey = (typeof PROPOSTA_COMPOSICAO_KEYS)[number];
+export type PropostaSimplesKey = (typeof PROPOSTA_SIMPLES_KEYS)[number];
 
-export const PROPOSTA_COMPOSICAO_LABEL: Record<PropostaComposicaoKey, string> = {
+/** Campos com várias parcelas. */
+export const PROPOSTA_LISTA_KEYS = [
+  "preChaves",
+  "posChaves",
+  "intercaladas",
+] as const;
+
+export type PropostaListaKey = (typeof PROPOSTA_LISTA_KEYS)[number];
+
+export const PROPOSTA_COMPOSICAO_LABEL: Record<
+  PropostaSimplesKey | PropostaListaKey,
+  string
+> = {
   entrada: "Sinal",
   apartado: "Apartado",
   preChaves: "Pré-chaves",
@@ -107,17 +116,30 @@ export const PROPOSTA_COMPOSICAO_LABEL: Record<PropostaComposicaoKey, string> = 
   financiamento: "Financiamento",
 };
 
+function sumList(values: number[] | null | undefined): number {
+  if (!values?.length) return 0;
+  return values.reduce((sum, n) => sum + (Number.isFinite(n) ? n : 0), 0);
+}
+
 export function propostaComposicaoTotal(
-  p: Pick<Proposta, PropostaComposicaoKey>,
+  p: Pick<
+    Proposta,
+    PropostaSimplesKey | PropostaListaKey
+  >,
 ): number {
-  return PROPOSTA_COMPOSICAO_KEYS.reduce(
+  const simples = PROPOSTA_SIMPLES_KEYS.reduce(
     (sum, key) => sum + (p[key] ?? 0),
     0,
   );
+  const listas = PROPOSTA_LISTA_KEYS.reduce(
+    (sum, key) => sum + sumList(p[key]),
+    0,
+  );
+  return simples + listas;
 }
 
 export function propostaDiferenca(
-  p: Pick<Proposta, "valor" | PropostaComposicaoKey>,
+  p: Pick<Proposta, "valor" | PropostaSimplesKey | PropostaListaKey>,
 ): number {
   return p.valor - propostaComposicaoTotal(p);
 }
@@ -133,9 +155,9 @@ export type CreatePropostaInput = {
   valor: number;
   entrada?: number | null;
   apartado?: number | null;
-  preChaves?: number | null;
-  posChaves?: number | null;
-  intercaladas?: number | null;
+  preChaves?: number[];
+  posChaves?: number[];
+  intercaladas?: number[];
   fgts?: number | null;
   moraBem?: number | null;
   mcmv?: number | null;

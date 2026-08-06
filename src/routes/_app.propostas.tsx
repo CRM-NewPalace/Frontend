@@ -82,8 +82,9 @@ import {
   deleteProposta,
   fetchPropostas,
   formatPropostaDate,
-  PROPOSTA_COMPOSICAO_KEYS,
   PROPOSTA_COMPOSICAO_LABEL,
+  PROPOSTA_LISTA_KEYS,
+  PROPOSTA_SIMPLES_KEYS,
   PROPOSTA_STATUS_LABEL,
   propostaComposicaoTotal,
   propostaDiferenca,
@@ -91,7 +92,7 @@ import {
   updateProposta,
   type CreatePropostaInput,
   type Proposta,
-  type PropostaComposicaoKey,
+  type PropostaSimplesKey,
   type PropostaStatus,
 } from "@/lib/propostas-api";
 import { formatPhone, phoneDigits, PHONE_PLACEHOLDER } from "@/lib/phone";
@@ -141,9 +142,9 @@ type FormState = {
   valor: string;
   entrada: string;
   apartado: string;
-  preChaves: string;
-  posChaves: string;
-  intercaladas: string;
+  preChaves: string[];
+  posChaves: string[];
+  intercaladas: string[];
   fgts: string;
   moraBem: string;
   mcmv: string;
@@ -165,9 +166,9 @@ const emptyForm = (): FormState => ({
   valor: "",
   entrada: "",
   apartado: "",
-  preChaves: "",
-  posChaves: "",
-  intercaladas: "",
+  preChaves: [""],
+  posChaves: [""],
+  intercaladas: [""],
   fgts: "",
   moraBem: "",
   mcmv: "",
@@ -188,11 +189,31 @@ function moneyOrZero(raw: string): number {
   return parseMoney(raw) ?? 0;
 }
 
+function parseMoneyList(values: string[]): number[] {
+  return values
+    .map((raw) => parseMoney(raw))
+    .filter((n): n is number => n != null && n > 0);
+}
+
+function sumMoneyList(values: string[]): number {
+  return values.reduce((sum, raw) => sum + moneyOrZero(raw), 0);
+}
+
 function formComposicaoTotal(form: FormState): number {
-  return PROPOSTA_COMPOSICAO_KEYS.reduce(
+  const simples = PROPOSTA_SIMPLES_KEYS.reduce(
     (sum, key) => sum + moneyOrZero(form[key]),
     0,
   );
+  const listas = PROPOSTA_LISTA_KEYS.reduce(
+    (sum, key) => sum + sumMoneyList(form[key]),
+    0,
+  );
+  return simples + listas;
+}
+
+function toListForm(values: number[] | null | undefined): string[] {
+  if (!values?.length) return [""];
+  return values.map((n) => String(n));
 }
 
 function toDateInput(value: string | null | undefined): string {
@@ -399,9 +420,9 @@ function Page() {
       valor: String(p.valor),
       entrada: p.entrada != null ? String(p.entrada) : "",
       apartado: p.apartado != null ? String(p.apartado) : "",
-      preChaves: p.preChaves != null ? String(p.preChaves) : "",
-      posChaves: p.posChaves != null ? String(p.posChaves) : "",
-      intercaladas: p.intercaladas != null ? String(p.intercaladas) : "",
+      preChaves: toListForm(p.preChaves),
+      posChaves: toListForm(p.posChaves),
+      intercaladas: toListForm(p.intercaladas),
       fgts: p.fgts != null ? String(p.fgts) : "",
       moraBem: p.moraBem != null ? String(p.moraBem) : "",
       mcmv: p.mcmv != null ? String(p.mcmv) : "",
@@ -451,9 +472,9 @@ function Page() {
       valor,
       entrada: parseMoney(form.entrada),
       apartado: parseMoney(form.apartado),
-      preChaves: parseMoney(form.preChaves),
-      posChaves: parseMoney(form.posChaves),
-      intercaladas: parseMoney(form.intercaladas),
+      preChaves: parseMoneyList(form.preChaves),
+      posChaves: parseMoneyList(form.posChaves),
+      intercaladas: parseMoneyList(form.intercaladas),
       fgts: parseMoney(form.fgts),
       moraBem: parseMoney(form.moraBem),
       mcmv: parseMoney(form.mcmv),
@@ -777,7 +798,7 @@ function Page() {
                   label="Corretor"
                   value={`${selected.corretor?.name ?? "—"} · ${equipeName(selected)}`}
                 />
-                <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-muted/30">
+                <div className="space-y-3 rounded-lg border border-border/60 p-3 bg-muted/30">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[11px] text-muted-foreground">
                       Valor de venda
@@ -786,7 +807,7 @@ function Page() {
                       {brl(selected.valor)}
                     </span>
                   </div>
-                  {PROPOSTA_COMPOSICAO_KEYS.map((key) => {
+                  {PROPOSTA_SIMPLES_KEYS.map((key) => {
                     const value = selected[key];
                     if (value == null) return null;
                     return (
@@ -798,6 +819,33 @@ function Page() {
                           {PROPOSTA_COMPOSICAO_LABEL[key]}
                         </span>
                         <span className="tabular-nums">{brl(value)}</span>
+                      </div>
+                    );
+                  })}
+                  {PROPOSTA_LISTA_KEYS.map((key) => {
+                    const values = selected[key] ?? [];
+                    if (!values.length) return null;
+                    const subtotal = values.reduce((s, n) => s + n, 0);
+                    return (
+                      <div key={key} className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[11px] text-muted-foreground">
+                            {PROPOSTA_COMPOSICAO_LABEL[key]}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {brl(subtotal)}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {values.map((value, index) => (
+                            <span
+                              key={`${key}-${index}`}
+                              className="rounded-md border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] tabular-nums"
+                            >
+                              #{index + 1} · {brl(value)}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     );
                   })}
@@ -919,6 +967,7 @@ function Page() {
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
+        className="max-w-3xl"
         icon={<FileText className="w-5 h-5" />}
         title={formMode === "create" ? "Nova proposta" : "Editar proposta"}
         description="Preencha os dados comerciais da proposta."
@@ -1153,9 +1202,9 @@ function Page() {
               </div>
             </FormSection>
 
-            <FormSection title="Valores e status">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+            <FormSection title="Composição financeira">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
                   <Label htmlFor="valor">Valor de venda (R$) *</Label>
                   <Input
                     id="valor"
@@ -1170,18 +1219,35 @@ function Page() {
                     required
                   />
                 </div>
-                {PROPOSTA_COMPOSICAO_KEYS.map((key) => (
-                  <MoneyField
-                    key={key}
-                    id={key}
-                    label={`${PROPOSTA_COMPOSICAO_LABEL[key]} (R$)`}
-                    value={form[key]}
-                    onChange={(value) =>
-                      setForm((f) => ({ ...f, [key]: value }))
-                    }
-                  />
-                ))}
-                <div className="sm:col-span-2 lg:col-span-3 grid gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 sm:grid-cols-2">
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {PROPOSTA_SIMPLES_KEYS.map((key) => (
+                    <MoneyField
+                      key={key}
+                      id={key}
+                      label={`${PROPOSTA_COMPOSICAO_LABEL[key]} (R$)`}
+                      value={form[key]}
+                      onChange={(value) =>
+                        setForm((f) => ({ ...f, [key]: value }))
+                      }
+                    />
+                  ))}
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {PROPOSTA_LISTA_KEYS.map((key) => (
+                    <MoneyListEditor
+                      key={key}
+                      title={PROPOSTA_COMPOSICAO_LABEL[key]}
+                      values={form[key]}
+                      onChange={(values) =>
+                        setForm((f) => ({ ...f, [key]: values }))
+                      }
+                    />
+                  ))}
+                </div>
+
+                <div className="grid gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 sm:grid-cols-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-muted-foreground">Total</span>
                     <span className="font-semibold tabular-nums">
@@ -1206,56 +1272,59 @@ function Page() {
                     </span>
                   </div>
                   <p className="sm:col-span-2 text-[11px] text-muted-foreground">
-                    Total = soma dos componentes. Diferença = valor de venda −
-                    total.
+                    Total = soma de todos os valores (incluindo cada parcela).
+                    Diferença = valor de venda − total.
                   </p>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select
-                    value={form.status}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        status: v as PropostaStatus,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.filter((o) => o.value !== "todos").map(
-                        (o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="validade">Validade</Label>
-                  <Input
-                    id="validade"
-                    type="date"
-                    value={form.validade}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, validade: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="sm:col-span-2 lg:col-span-3 space-y-1.5">
-                  <Label htmlFor="observacao">Observação</Label>
-                  <Textarea
-                    id="observacao"
-                    value={form.observacao}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, observacao: e.target.value }))
-                    }
-                    rows={3}
-                  />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Status</Label>
+                    <Select
+                      value={form.status}
+                      onValueChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          status: v as PropostaStatus,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.filter((o) => o.value !== "todos").map(
+                          (o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="validade">Validade</Label>
+                    <Input
+                      id="validade"
+                      type="date"
+                      value={form.validade}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, validade: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label htmlFor="observacao">Observação</Label>
+                    <Textarea
+                      id="observacao"
+                      value={form.observacao}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, observacao: e.target.value }))
+                      }
+                      rows={3}
+                    />
+                  </div>
                 </div>
               </div>
             </FormSection>
@@ -1301,7 +1370,7 @@ function MoneyField({
   value,
   onChange,
 }: {
-  id: PropostaComposicaoKey;
+  id: PropostaSimplesKey;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -1315,6 +1384,92 @@ function MoneyField({
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
       />
+    </div>
+  );
+}
+
+function MoneyListEditor({
+  title,
+  values,
+  onChange,
+}: {
+  title: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const subtotal = sumMoneyList(values);
+  const rows = values.length ? values : [""];
+
+  function setRow(index: number, next: string) {
+    const copy = [...rows];
+    copy[index] = next;
+    onChange(copy);
+  }
+
+  function addRow() {
+    onChange([...rows, ""]);
+  }
+
+  function removeRow(index: number) {
+    if (rows.length <= 1) {
+      onChange([""]);
+      return;
+    }
+    onChange(rows.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="flex h-full flex-col rounded-xl border border-border/70 bg-card/40 p-3">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-medium">{title}</div>
+          <div className="text-[11px] text-muted-foreground tabular-nums">
+            Subtotal {brl(subtotal)}
+            {rows.filter((v) => moneyOrZero(v) > 0).length
+              ? ` · ${rows.filter((v) => moneyOrZero(v) > 0).length} parcela(s)`
+              : ""}
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 px-2"
+          onClick={addRow}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Add
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {rows.map((value, index) => (
+          <div key={`${title}-${index}`} className="flex items-center gap-2">
+            <span className="w-6 shrink-0 text-center text-[11px] text-muted-foreground">
+              {index + 1}
+            </span>
+            <Input
+              inputMode="numeric"
+              placeholder="0"
+              value={value}
+              onChange={(e) =>
+                setRow(index, e.target.value.replace(/\D/g, ""))
+              }
+              className="h-9"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => removeRow(index)}
+              title="Remover"
+              disabled={rows.length === 1 && !value}
+            >
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
