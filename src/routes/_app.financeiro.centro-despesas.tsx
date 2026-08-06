@@ -268,7 +268,7 @@ function Page() {
     setTipoForm({
       nome: t.nome,
       natureza: t.natureza,
-      orcadoMensal: t.orcadoMensal ? String(t.orcadoMensal) : "",
+      orcadoMensal: t.orcadoMensal ? formatMoneyInput(t.orcadoMensal) : "",
       ativo: t.ativo,
     });
     setTipoOpen(true);

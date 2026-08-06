@@ -262,7 +262,7 @@ function Page() {
       titulo: c.titulo,
       tipo: c.tipo,
       plano: c.plano ?? "ouro",
-      valor: String(c.valor).replace(".", ","),
+      valor: formatMoneyInput(c.valor),
       dataInicio: c.dataInicio.slice(0, 10),
       vencimento: c.vencimento?.slice(0, 10) ?? "",
       status: c.status,
