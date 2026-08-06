@@ -1,7 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type {
   CentroDespesaResumo,
-  ComissaoItem,
   DespesaLancamento,
   DespesaTipo,
   FluxoBucket,
@@ -29,6 +28,70 @@ export type CreateParceiroInput = {
 };
 
 export type UpdateParceiroInput = Partial<CreateParceiroInput>;
+
+export type ComissaoStatus = "pendente" | "liberada" | "paga";
+
+export type ComissaoRelacionamento = {
+  id?: string;
+  nome?: string;
+  name?: string;
+};
+
+export type Comissao = {
+  id: string;
+  documentacaoId: string;
+  cliente?: string | ComissaoRelacionamento | null;
+  empreendimento?: string | ComissaoRelacionamento | null;
+  corretor?: string | ComissaoRelacionamento | null;
+  gerente?: string | ComissaoRelacionamento | null;
+  equipe?: string | ComissaoRelacionamento | null;
+  dataVenda: string;
+  vgv: number;
+  percentualImobiliaria?: number;
+  comissaoBruta?: number;
+  percentualTributos?: number;
+  valorTributos?: number;
+  comissaoLiquida?: number;
+  percentualCorretor?: number;
+  valorCorretor?: number;
+  percentualGerente?: number;
+  valorGerente?: number;
+  percentualCaixa?: number;
+  valorCaixa?: number;
+  percentualSocios?: number;
+  valorSocios?: number;
+  status: ComissaoStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VendaElegivelComissao = {
+  documentacaoId: string;
+  cliente?: string | ComissaoRelacionamento | null;
+  empreendimento?: string | ComissaoRelacionamento | null;
+  corretor?: string | ComissaoRelacionamento | null;
+  gerente?: string | ComissaoRelacionamento | null;
+  equipe?: string | ComissaoRelacionamento | null;
+  dataVenda: string;
+  vgv: number;
+};
+
+export type ComissaoPercentuais = {
+  percentualImobiliaria: number;
+  percentualTributos: number;
+  percentualCorretor: number;
+  percentualGerente: number;
+  percentualCaixa: number;
+  percentualSocios: number;
+};
+
+export type CreateComissaoInput = ComissaoPercentuais & {
+  documentacaoId: string;
+};
+
+export type UpdateComissaoInput = Partial<ComissaoPercentuais> & {
+  status?: ComissaoStatus;
+};
 
 export type VisaoGeralResponse = {
   kpis: {
@@ -219,8 +282,41 @@ export async function deleteTitulo(id: string): Promise<void> {
   });
 }
 
-export async function fetchComissoes(): Promise<ComissaoItem[]> {
-  return apiFetch<ComissaoItem[]>("/financeiro/comissoes");
+export async function fetchComissoes(): Promise<Comissao[]> {
+  return apiFetch<Comissao[]>("/financeiro/comissoes");
+}
+
+export async function fetchVendasElegiveisComissao(): Promise<
+  VendaElegivelComissao[]
+> {
+  return apiFetch<VendaElegivelComissao[]>(
+    "/financeiro/comissoes/vendas-elegiveis",
+  );
+}
+
+export async function createComissao(
+  input: CreateComissaoInput,
+): Promise<Comissao> {
+  return apiFetch<Comissao>("/financeiro/comissoes", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateComissao(
+  id: string,
+  input: UpdateComissaoInput,
+): Promise<Comissao> {
+  return apiFetch<Comissao>(`/financeiro/comissoes/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteComissao(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/comissoes/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export async function fetchVisaoGeral(): Promise<VisaoGeralResponse> {

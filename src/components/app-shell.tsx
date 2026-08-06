@@ -195,6 +195,7 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     label: "Contratos",
     icon: FileText,
   },
+  { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
 ];
 
 const NAV_SECTIONS: {
@@ -415,7 +416,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return NAV_SECTIONS.filter((section) => {
       if (section.adminOnly) return user.role === "admin";
       if (section.adminOrPlatform) {
-        return user.role === "admin" || user.role === "super_admin";
+        return (
+          section.id === "financeiro" ||
+          user.role === "admin" ||
+          user.role === "super_admin"
+        );
       }
       if (section.gerenteOnly) return user.role === "gerente";
       return true;

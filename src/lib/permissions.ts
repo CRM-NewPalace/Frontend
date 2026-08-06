@@ -19,6 +19,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/financeiro/fluxo-caixa",
     "/financeiro/movimentacao",
     "/financeiro/contratos",
+    "/financeiro/comissao",
   ],
   admin: [
     "/dashboard",
@@ -58,6 +59,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/construtoras",
     "/propostas",
     "/taxa-conversao",
+    "/financeiro/comissao",
     "/configuracoes",
     "/perfil",
   ],
@@ -71,6 +73,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/metas",
     "/triagem",
     "/documentacao",
+    "/financeiro/comissao",
     "/perfil",
   ],
   analista: ["/funil", "/resultado", "/documentacao", "/imoveis", "/perfil"],
@@ -85,6 +88,7 @@ const GERENTE_BRONZE_ROUTES: readonly string[] = [
   "/imoveis",
   "/triagem",
   "/construtoras",
+  "/financeiro/comissao",
   "/perfil",
 ];
 
