@@ -286,6 +286,18 @@ function DocumentacaoPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
+
+  function canMutateDoc(doc: Documentacao): boolean {
+    if (!user) return false;
+    if (user.role === "admin") return true;
+    if (user.role === "corretor" || user.role === "gerente") {
+      return doc.autor.id === user.id;
+    }
+    if (user.role === "analista") {
+      return doc.autor.id === user.id || doc.autor.role === "admin";
+    }
+    return false;
+  }
   const { leads, assignees, loading: leadsLoading, addLead, refresh: refreshLeads } =
     useLeads();
   const {
@@ -2206,25 +2218,32 @@ function DocumentacaoPage() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => openView(doc)}
+                          title="Visualizar"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => openEdit(doc)}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setDeleteId(doc.id)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
+                        {canMutateDoc(doc) && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => openEdit(doc)}
+                              title="Editar"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setDeleteId(doc.id)}
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

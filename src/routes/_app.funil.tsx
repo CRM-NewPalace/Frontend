@@ -1289,6 +1289,11 @@ function AnalistaFunilBoard() {
   const [docStatus1, setDocStatus1] = useState("Análise");
   const [docStatus2, setDocStatus2] = useState("Andamento");
   const [docObs, setDocObs] = useState("");
+  const [docTemEntrada, setDocTemEntrada] = useState(false);
+  const [docValorEntrada, setDocValorEntrada] = useState("");
+  const [docTemFgts, setDocTemFgts] = useState(false);
+  const [docValorFgts, setDocValorFgts] = useState("");
+  const [docTemDependente, setDocTemDependente] = useState(false);
   const [quickCatalogOpen, setQuickCatalogOpen] = useState<
     null | "documentacao_fonte" | "documentacao_status1" | "documentacao_status2"
   >(null);
@@ -1354,8 +1359,15 @@ function AnalistaFunilBoard() {
 
   async function autoRegisterDoc(item: Analise) {
     try {
+      const session = getSession();
       const existing = await fetchDocumentacoes();
-      if (existing.some((d) => d.leadId === item.leadId)) {
+      // Só pula se o próprio analista já tiver ficha (a do corretor/gerente é outra).
+      if (
+        session &&
+        existing.some(
+          (d) => d.leadId === item.leadId && d.autor.id === session.id,
+        )
+      ) {
         toast.success("Documentação já existente para este cliente.");
         return;
       }
@@ -1393,6 +1405,13 @@ function AnalistaFunilBoard() {
     setDocStatus1(defaultDocStatus1());
     setDocStatus2(defaultDocStatus2());
     setDocObs("");
+    setDocTemEntrada(item.temEntrada);
+    setDocValorEntrada(
+      item.valorEntrada != null ? String(item.valorEntrada) : "",
+    );
+    setDocTemFgts(item.temFgts);
+    setDocValorFgts(item.valorFgts != null ? String(item.valorFgts) : "");
+    setDocTemDependente(item.temDependente);
     setDocOpen(true);
   }
 
@@ -1435,6 +1454,8 @@ function AnalistaFunilBoard() {
 
   async function saveDoc() {
     if (!docTarget) return;
+    const entradaDigits = docValorEntrada.replace(/\D/g, "");
+    const fgtsDigits = docValorFgts.replace(/\D/g, "");
     setDocSaving(true);
     try {
       await createDocumentacao({
@@ -1449,6 +1470,19 @@ function AnalistaFunilBoard() {
         vgv: null,
         obs: docObs.trim() || null,
         dataAnalise: new Date().toISOString().slice(0, 10),
+        temEntrada: docTemEntrada,
+        valorEntrada: docTemEntrada
+          ? entradaDigits
+            ? Number(entradaDigits)
+            : null
+          : null,
+        temFgts: docTemFgts,
+        valorFgts: docTemFgts
+          ? fgtsDigits
+            ? Number(fgtsDigits)
+            : null
+          : null,
+        temDependente: docTemDependente,
       });
       toast.success("Documentação registrada.");
       setDocOpen(false);
@@ -1713,6 +1747,63 @@ function AnalistaFunilBoard() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-3 sm:col-span-2 rounded-lg border border-border/60 p-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Condições do cliente
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label htmlFor="doc-tem-entrada">Tem entrada?</Label>
+                      <Switch
+                        id="doc-tem-entrada"
+                        checked={docTemEntrada}
+                        onCheckedChange={(checked) => {
+                          setDocTemEntrada(checked);
+                          if (!checked) setDocValorEntrada("");
+                        }}
+                      />
+                    </div>
+                    {docTemEntrada && (
+                      <Input
+                        inputMode="numeric"
+                        placeholder="Valor da entrada (R$)"
+                        value={docValorEntrada}
+                        onChange={(e) => setDocValorEntrada(e.target.value)}
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label htmlFor="doc-tem-fgts">Tem FGTS?</Label>
+                      <Switch
+                        id="doc-tem-fgts"
+                        checked={docTemFgts}
+                        onCheckedChange={(checked) => {
+                          setDocTemFgts(checked);
+                          if (!checked) setDocValorFgts("");
+                        }}
+                      />
+                    </div>
+                    {docTemFgts && (
+                      <Input
+                        inputMode="numeric"
+                        placeholder="Valor do FGTS (R$)"
+                        value={docValorFgts}
+                        onChange={(e) => setDocValorFgts(e.target.value)}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 sm:col-span-2">
+                    <Label htmlFor="doc-tem-dependente">Tem dependente?</Label>
+                    <Switch
+                      id="doc-tem-dependente"
+                      checked={docTemDependente}
+                      onCheckedChange={setDocTemDependente}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>OBS</Label>

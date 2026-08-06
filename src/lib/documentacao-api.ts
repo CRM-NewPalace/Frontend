@@ -58,7 +58,11 @@ export interface Documentacao {
   temDependente: boolean;
   createdAt: string;
   updatedAt: string;
-  autor: { id: string; name: string };
+  autor: {
+    id: string;
+    name: string;
+    role?: "admin" | "gerente" | "corretor" | "analista" | "super_admin";
+  };
   construtora: { id: string; nome: string; cor: string | null } | null;
   empreendimento: {
     id: string;
@@ -67,7 +71,7 @@ export interface Documentacao {
     cor: string | null;
   } | null;
   corretor: { id: string; name: string; cor: string | null } | null;
-  gerente: { id: string; name: string } | null;
+  gerente: { id: string; name: string; role?: string } | null;
   lead: {
     id: string;
     tipo: ContatoTipo;
