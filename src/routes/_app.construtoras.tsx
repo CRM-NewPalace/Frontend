@@ -92,6 +92,7 @@ const emptyForm = (): FormState => ({
 function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
+  const canCreate = isAdmin || user?.role === "gerente";
 
   const [items, setItems] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +179,9 @@ function ConstrutorasPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!isAdmin || formMode === "view") return;
+    if (formMode === "view") return;
+    if (formMode === "create" && !canCreate) return;
+    if (formMode === "edit" && !isAdmin) return;
     if (form.nome.trim().length < 2) {
       toast.error("Informe o nome da construtora.");
       return;
@@ -264,7 +267,10 @@ function ConstrutorasPage() {
     }
   }
 
-  const readOnly = formMode === "view" || !isAdmin;
+  const readOnly =
+    formMode === "view" ||
+    (formMode === "edit" && !isAdmin) ||
+    (formMode === "create" && !canCreate);
 
   function toggleEmpreendimento(id: string, checked: boolean) {
     setSelectedEmpreendimentos((previous) =>
@@ -277,12 +283,12 @@ function ConstrutorasPage() {
       <PageHeader
         title="Construtoras"
         description={
-          isAdmin
+          canCreate
             ? "Cadastro de construtoras parceiras."
             : "Consulta de construtoras parceiras."
         }
         actions={
-          isAdmin ? (
+          canCreate ? (
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
               Nova construtora

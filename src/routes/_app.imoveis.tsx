@@ -37,7 +37,6 @@ import {
   createEmpreendimento,
   deleteEmpreendimento,
   fetchEmpreendimentos,
-  syncEmpreendimentosFromSite,
   updateEmpreendimento,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
@@ -49,11 +48,9 @@ import {
 import { CorPicker } from "@/components/cor-picker";
 import {
   Building2,
-  ExternalLink,
   Loader2,
   Pencil,
   Plus,
-  RefreshCw,
   Bath,
   BedDouble,
   Ruler,
@@ -69,13 +66,12 @@ export const Route = createFileRoute("/_app/imoveis")({
 function ImoveisPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
-  const canCreate = isAdmin || user?.role === "gerente";
-  const canSyncFromSite = isAdmin && user?.tenant?.slug === "new-palace";
+  const canManage = isAdmin || user?.role === "gerente";
+  const canCreate = canManage;
 
   const [items, setItems] = useState<Empreendimento[]>([]);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
   const [localidade, setLocalidade] = useState("");
   const [quartos, setQuartos] = useState("");
@@ -112,29 +108,6 @@ function ImoveisPage() {
     void loadItems();
   }, [loadItems]);
 
-  async function handleSync() {
-    if (!canSyncFromSite) return;
-    setSyncing(true);
-    try {
-      const result = await syncEmpreendimentosFromSite();
-      toast.success(
-        `Sync concluído: ${result.created} novos, ${result.updated} atualizados (${result.total} no total).`,
-      );
-      if (result.detail) {
-        toast.message(result.detail);
-      }
-      await loadItems();
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Falha ao sincronizar com o site.",
-      );
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   async function loadConstrutoras() {
     try {
       setConstrutoras(await fetchConstrutoras());
@@ -160,7 +133,7 @@ function ImoveisPage() {
   }
 
   async function openEdit(item: Empreendimento) {
-    if (!isAdmin) return;
+    if (!canManage) return;
     setEditingId(item.id);
     setQuickNome(item.nome);
     setQuickConstrutoraId(item.construtoraId ?? "");
@@ -329,29 +302,13 @@ function ImoveisPage() {
     <div>
       <PageHeader
         title="Imóveis"
-        description={
-          canSyncFromSite
-            ? "Empreendimentos da imobiliária (com opção de sincronizar do site)."
-            : "Cadastre e gerencie os empreendimentos desta imobiliária."
-        }
+        description="Cadastre e gerencie os empreendimentos desta imobiliária."
         actions={
           canCreate ? (
-            <div className="flex gap-2">
-              <Button onClick={() => void openQuickCreate()}>
-                <Plus className="w-4 h-4 mr-1" />
-                Novo imóvel
-              </Button>
-              {canSyncFromSite && (
-                <Button onClick={() => void handleSync()} disabled={syncing}>
-                  {syncing ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-1" />
-                  )}
-                  Sincronizar do site
-                </Button>
-              )}
-            </div>
+            <Button onClick={() => void openQuickCreate()}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo imóvel
+            </Button>
           ) : undefined
         }
       />
@@ -472,21 +429,6 @@ function ImoveisPage() {
                 Novo imóvel
               </Button>
             )}
-            {items.length === 0 && canSyncFromSite && (
-              <Button
-                className="mt-2"
-                variant="outline"
-                onClick={() => void handleSync()}
-                disabled={syncing}
-              >
-                {syncing ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-1" />
-                )}
-                Sincronizar do site
-              </Button>
-            )}
           </CardContent>
         </Card>
       ) : (
@@ -523,7 +465,7 @@ function ImoveisPage() {
                   <CardTitle className="text-base leading-snug">
                     {item.nome}
                   </CardTitle>
-                  {isAdmin && (
+                  {canManage && (
                     <div className="flex shrink-0 gap-0.5">
                       <Button
                         type="button"
@@ -535,16 +477,18 @@ function ImoveisPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Excluir"
-                        onClick={() => setDeleteId(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Excluir"
+                          onClick={() => setDeleteId(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -580,17 +524,6 @@ function ImoveisPage() {
                     </span>
                   )}
                 </div>
-                {item.externalUrl && (
-                  <a
-                    href={item.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                  >
-                    Ver no site
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
               </CardContent>
             </Card>
           ))}

@@ -1158,7 +1158,7 @@ function DocumentacaoPage() {
 
   async function handleQuickCreate(e: FormEvent) {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!canQuickCreateEmpreendimento) return;
     if (quickNome.trim().length < 2) {
       toast.error("Informe o nome da construtora.");
       return;
@@ -1486,7 +1486,11 @@ function DocumentacaoPage() {
             localConstrutoras,
             row.construtoraNome,
           );
-          if (!construtoraId && row.construtoraNome.trim() && isAdmin) {
+          if (
+            !construtoraId &&
+            row.construtoraNome.trim() &&
+            canQuickCreateEmpreendimento
+          ) {
             try {
               const created = await createConstrutora({
                 nome: row.construtoraNome.trim(),
@@ -1501,7 +1505,7 @@ function DocumentacaoPage() {
           if (
             !construtoraId &&
             row.empreendimentoNome.trim() &&
-            isAdmin
+            canQuickCreateEmpreendimento
           ) {
             const fallbackName = "Não informada";
             construtoraId = resolveIdByName(localConstrutoras, fallbackName);
@@ -2409,7 +2413,7 @@ function DocumentacaoPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label>Construtora</Label>
-                    {isAdmin && !readOnly && (
+                    {canQuickCreateEmpreendimento && !readOnly && (
                       <Button
                         type="button"
                         variant="link"

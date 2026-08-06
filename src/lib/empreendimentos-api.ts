@@ -19,15 +19,6 @@ export type Empreendimento = {
   construtora: { id: string; nome: string; cor: string | null } | null;
 };
 
-export type SyncEmpreendimentosResult = {
-  ok: boolean;
-  source: "bundle" | "fallback";
-  detail: string | null;
-  total: number;
-  created: number;
-  updated: number;
-};
-
 export type CreateEmpreendimentoInput = {
   nome: string;
   construtoraId: string;
@@ -54,12 +45,6 @@ export async function createEmpreendimento(
   return apiFetch<Empreendimento>("/empreendimentos", {
     method: "POST",
     body: input,
-  });
-}
-
-export async function syncEmpreendimentosFromSite(): Promise<SyncEmpreendimentosResult> {
-  return apiFetch<SyncEmpreendimentosResult>("/empreendimentos/sync", {
-    method: "POST",
   });
 }
 
