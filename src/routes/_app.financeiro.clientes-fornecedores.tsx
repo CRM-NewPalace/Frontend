@@ -238,7 +238,7 @@ function Page() {
       email: form.email.trim() || undefined,
       telefone: form.telefone.trim() || undefined,
       cidade: form.cidade.trim() || undefined,
-      imobiliaria: form.imobiliaria.trim(),
+      imobiliaria: isPlatformAdmin ? "" : form.imobiliaria.trim(),
       ativo: form.ativo,
     };
 
@@ -287,7 +287,7 @@ function Page() {
     }
   }
 
-  const colCount = isPlatformAdmin ? 7 : 8;
+  const colCount = isPlatformAdmin ? 6 : 8;
 
   return (
     <div>
@@ -352,7 +352,7 @@ function Page() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Documento</TableHead>
                 {!isPlatformAdmin && <TableHead>Tipo</TableHead>}
-                <TableHead>Imobiliária</TableHead>
+                {!isPlatformAdmin && <TableHead>Imobiliária</TableHead>}
                 <TableHead>Cidade</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Status</TableHead>
@@ -385,7 +385,9 @@ function Page() {
                         </Badge>
                       </TableCell>
                     )}
-                    <TableCell>{p.imobiliaria || "—"}</TableCell>
+                    {!isPlatformAdmin && (
+                      <TableCell>{p.imobiliaria || "—"}</TableCell>
+                    )}
                     <TableCell>{p.cidade || "—"}</TableCell>
                     <TableCell className="text-sm">
                       <div>{p.email || "—"}</div>
@@ -555,15 +557,17 @@ function Page() {
                     placeholder="São Paulo"
                   />
                 </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="parceiro-imobiliaria">Imobiliária</Label>
-                  <Input
-                    id="parceiro-imobiliaria"
-                    value={form.imobiliaria}
-                    onChange={(e) => setField("imobiliaria", e.target.value)}
-                    placeholder="Ex.: New Palace Imóveis"
-                  />
-                </div>
+                {!isPlatformAdmin && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="parceiro-imobiliaria">Imobiliária</Label>
+                    <Input
+                      id="parceiro-imobiliaria"
+                      value={form.imobiliaria}
+                      onChange={(e) => setField("imobiliaria", e.target.value)}
+                      placeholder="Ex.: New Palace Imóveis"
+                    />
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:col-span-2">
                   <div>
                     <div className="text-sm font-medium">Ativo</div>
