@@ -178,7 +178,7 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
   },
   {
     to: "/financeiro/clientes-fornecedores",
-    label: "Clientes e fornecedores",
+    label: "Fornecedores",
     icon: Users,
   },
   {

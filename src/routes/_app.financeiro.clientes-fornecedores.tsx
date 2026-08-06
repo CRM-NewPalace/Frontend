@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import {
   createParceiro,
   deleteParceiro,
@@ -55,9 +56,18 @@ import { Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/financeiro/clientes-fornecedores")({
-  head: () => ({
-    meta: [{ title: "Clientes e fornecedores ? Zone Connection" }],
-  }),
+  head: () => {
+    const isPlatform = getSession()?.role === "super_admin";
+    return {
+      meta: [
+        {
+          title: isPlatform
+            ? "Fornecedores — Zone Connection"
+            : "Clientes e fornecedores — Zone Connection",
+        },
+      ],
+    };
+  },
   component: Page,
 });
 
@@ -102,11 +112,16 @@ const EMPTY_FORM: FormState = {
   ativo: true,
 };
 
-function toForm(p: ParceiroFinanceiro): FormState {
+const EMPTY_FORM_FORNECEDOR: FormState = {
+  ...EMPTY_FORM,
+  tipo: "fornecedor",
+};
+
+function toForm(p: ParceiroFinanceiro, forceFornecedor: boolean): FormState {
   return {
     nome: p.nome,
     documento: formatCpfCnpj(p.documento),
-    tipo: p.tipo,
+    tipo: forceFornecedor ? "fornecedor" : p.tipo,
     email: p.email || "",
     telefone: p.telefone || "",
     cidade: p.cidade || "",
@@ -116,6 +131,8 @@ function toForm(p: ParceiroFinanceiro): FormState {
 }
 
 function Page() {
+  const isPlatformAdmin = getSession()?.role === "super_admin";
+  const emptyForm = isPlatformAdmin ? EMPTY_FORM_FORNECEDOR : EMPTY_FORM;
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -124,7 +141,7 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ParceiroFinanceiro | null>(
     null,
@@ -153,7 +170,11 @@ function Page() {
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return parceiros.filter((p) => {
-      if (tipo !== "todos" && p.tipo !== (tipo as TipoParceiro)) return false;
+      if (isPlatformAdmin) {
+        if (p.tipo !== "fornecedor" && p.tipo !== "ambos") return false;
+      } else if (tipo !== "todos" && p.tipo !== (tipo as TipoParceiro)) {
+        return false;
+      }
       if (ativo === "ativo" && !p.ativo) return false;
       if (ativo === "inativo" && p.ativo) return false;
       if (!q) return true;
@@ -165,9 +186,11 @@ function Page() {
         (p.imobiliaria || "").toLowerCase().includes(q)
       );
     });
-  }, [parceiros, search, tipo, ativo]);
+  }, [parceiros, search, tipo, ativo, isPlatformAdmin]);
 
-  const hasActive = Boolean(search || tipo !== "todos" || ativo !== "todos");
+  const hasActive = Boolean(
+    search || (!isPlatformAdmin && tipo !== "todos") || ativo !== "todos",
+  );
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -176,14 +199,14 @@ function Page() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm(emptyForm);
     setOpen(true);
   }
 
   function openEdit(p: ParceiroFinanceiro) {
     setFormMode("edit");
     setEditingId(p.id);
-    setForm(toForm(p));
+    setForm(toForm(p, isPlatformAdmin));
     setOpen(true);
   }
 
@@ -211,7 +234,7 @@ function Page() {
     const payload = {
       nome,
       documento,
-      tipo: form.tipo,
+      tipo: isPlatformAdmin ? ("fornecedor" as const) : form.tipo,
       email: form.email.trim() || undefined,
       telefone: form.telefone.trim() || undefined,
       cidade: form.cidade.trim() || undefined,
@@ -231,14 +254,14 @@ function Page() {
         toast.success(`${created.nome} cadastrado.`);
       }
       setOpen(false);
-      setForm(EMPTY_FORM);
+      setForm(emptyForm);
       setEditingId(null);
       setFormMode("create");
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "N?o foi poss?vel salvar o parceiro.",
+          : "Não foi possível salvar o parceiro.",
       );
     } finally {
       setSaving(false);
@@ -251,28 +274,34 @@ function Page() {
     try {
       await deleteParceiro(deleteTarget.id);
       setParceiros((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-      toast.success(`${deleteTarget.nome} exclu?do.`);
+      toast.success(`${deleteTarget.nome} excluído.`);
       setDeleteTarget(null);
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "N?o foi poss?vel excluir o parceiro.",
+          : "Não foi possível excluir o parceiro.",
       );
     } finally {
       setDeleting(false);
     }
   }
 
+  const colCount = isPlatformAdmin ? 7 : 8;
+
   return (
     <div>
       <PageHeader
-        title="Clientes e fornecedores"
-        description="Cadastro de parceiros financeiros"
+        title={isPlatformAdmin ? "Fornecedores" : "Clientes e fornecedores"}
+        description={
+          isPlatformAdmin
+            ? "Cadastro de fornecedores da plataforma"
+            : "Cadastro de parceiros financeiros"
+        }
         actions={
           <Button type="button" onClick={openCreate}>
             <Plus className="w-4 h-4 mr-1" />
-            Novo parceiro
+            {isPlatformAdmin ? "Novo fornecedor" : "Novo parceiro"}
           </Button>
         }
       />
@@ -280,10 +309,14 @@ function Page() {
       <FinanceiroFiltrosBar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar nome, CNPJ, cidade?"
-        tipo={tipo}
-        onTipoChange={setTipo}
-        tipoOptions={TIPO_OPTIONS}
+        searchPlaceholder="Buscar nome, CNPJ, cidade…"
+        {...(isPlatformAdmin
+          ? {}
+          : {
+              tipo,
+              onTipoChange: setTipo,
+              tipoOptions: TIPO_OPTIONS,
+            })}
         extra={
           <Select value={ativo} onValueChange={setAtivo}>
             <SelectTrigger className="w-full sm:w-[180px]">
@@ -310,7 +343,7 @@ function Page() {
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Carregando parceiros?
+            Carregando parceiros…
           </div>
         ) : (
           <Table>
@@ -318,7 +351,7 @@ function Page() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Documento</TableHead>
-                <TableHead>Tipo</TableHead>
+                {!isPlatformAdmin && <TableHead>Tipo</TableHead>}
                 <TableHead>Imobiliária</TableHead>
                 <TableHead>Cidade</TableHead>
                 <TableHead>Contato</TableHead>
@@ -330,10 +363,12 @@ function Page() {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={colCount}
                     className="text-center text-muted-foreground py-10"
                   >
-                    Nenhum parceiro encontrado para os filtros.
+                    Nenhum{" "}
+                    {isPlatformAdmin ? "fornecedor" : "parceiro"} encontrado
+                    para os filtros.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -343,11 +378,13 @@ function Page() {
                     <TableCell className="tabular-nums text-muted-foreground">
                       {p.documento}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="capitalize">
-                        {p.tipo}
-                      </Badge>
-                    </TableCell>
+                    {!isPlatformAdmin && (
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          {p.tipo}
+                        </Badge>
+                      </TableCell>
+                    )}
                     <TableCell>{p.imobiliaria || "—"}</TableCell>
                     <TableCell>{p.cidade || "—"}</TableCell>
                     <TableCell className="text-sm">
@@ -398,7 +435,8 @@ function Page() {
         )}
       </div>
       <p className="text-xs text-muted-foreground mt-2">
-        {rows.length} de {parceiros.length} parceiros
+        {rows.length} de {parceiros.length}{" "}
+        {isPlatformAdmin ? "fornecedores" : "parceiros"}
       </p>
 
       <FormDialogShell
@@ -408,20 +446,36 @@ function Page() {
           if (!next) {
             setFormMode("create");
             setEditingId(null);
-            setForm(EMPTY_FORM);
+            setForm(emptyForm);
           }
         }}
         icon={<Building2 className="w-5 h-5" />}
-        title={formMode === "edit" ? "Editar parceiro" : "Novo parceiro"}
+        title={
+          formMode === "edit"
+            ? isPlatformAdmin
+              ? "Editar fornecedor"
+              : "Editar parceiro"
+            : isPlatformAdmin
+              ? "Novo fornecedor"
+              : "Novo parceiro"
+        }
         description={
           formMode === "edit"
-            ? "Atualize os dados do cliente ou fornecedor."
-            : "Cadastre um cliente, fornecedor ou ambos."
+            ? isPlatformAdmin
+              ? "Atualize os dados do fornecedor."
+              : "Atualize os dados do cliente ou fornecedor."
+            : isPlatformAdmin
+              ? "Cadastre um fornecedor da plataforma."
+              : "Cadastre um cliente, fornecedor ou ambos."
         }
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
-            <FormSection title="Dados do parceiro">
+            <FormSection
+              title={
+                isPlatformAdmin ? "Dados do fornecedor" : "Dados do parceiro"
+              }
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="parceiro-nome">Nome *</Label>
@@ -448,24 +502,26 @@ function Page() {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Tipo *</Label>
-                  <Select
-                    value={form.tipo}
-                    onValueChange={(v) => setField("tipo", v as TipoParceiro)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIPO_FORM_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {!isPlatformAdmin && (
+                  <div className="space-y-2">
+                    <Label>Tipo *</Label>
+                    <Select
+                      value={form.tipo}
+                      onValueChange={(v) => setField("tipo", v as TipoParceiro)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIPO_FORM_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="parceiro-email">E-mail</Label>
                   <Input
@@ -512,7 +568,9 @@ function Page() {
                   <div>
                     <div className="text-sm font-medium">Ativo</div>
                     <p className="text-xs text-muted-foreground">
-                      Parceiros inativos ficam ocultos no filtro padr?o.
+                      {isPlatformAdmin
+                        ? "Fornecedores inativos ficam ocultos no filtro padrão."
+                        : "Parceiros inativos ficam ocultos no filtro padrão."}
                     </p>
                   </div>
                   <Switch
@@ -534,10 +592,12 @@ function Page() {
             </Button>
             <Button type="submit" disabled={saving}>
               {saving
-                ? "Salvando?"
+                ? "Salvando…"
                 : formMode === "edit"
-                  ? "Salvar altera??es"
-                  : "Salvar parceiro"}
+                  ? "Salvar alterações"
+                  : isPlatformAdmin
+                    ? "Salvar fornecedor"
+                    : "Salvar parceiro"}
             </Button>
           </FormDialogActions>
         </form>
@@ -551,10 +611,12 @@ function Page() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir parceiro?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isPlatformAdmin ? "Excluir fornecedor?" : "Excluir parceiro?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `Isso remover? permanentemente "${deleteTarget.nome}" do cadastro financeiro.`
+                ? `Isso removerá permanentemente "${deleteTarget.nome}" do cadastro financeiro.`
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -567,7 +629,7 @@ function Page() {
                 void handleDelete();
               }}
             >
-              {deleting ? "Excluindo?" : "Excluir"}
+              {deleting ? "Excluindo…" : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
