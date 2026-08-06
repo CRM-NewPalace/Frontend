@@ -52,6 +52,7 @@ export type CreateTriagemInput = {
   texto: string;
   origem: TriagemOrigem;
   stage?: string;
+  stageAnterior?: string;
 };
 
 /** Contatos da tela: corretor = leads+clientes; gestor = leads do corretorId. */

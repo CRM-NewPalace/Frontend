@@ -45,7 +45,11 @@ type LeadsContextValue = {
   updateLeadStage: (
     id: string,
     stage: StageId,
-    extra?: { construtoraId?: string; empreendimentoId?: string },
+    extra?: {
+      construtoraId?: string;
+      empreendimentoId?: string;
+      omitTriagem?: boolean;
+    },
   ) => Promise<Lead>;
   /** Marca como perdido (sai das listas operacionais). */
   markLeadLost: (id: string, motivo: string) => Promise<void>;
@@ -247,7 +251,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     async (
       id: string,
       stage: StageId,
-      extra?: { construtoraId?: string; empreendimentoId?: string },
+      extra?: {
+        construtoraId?: string;
+        empreendimentoId?: string;
+        omitTriagem?: boolean;
+      },
     ) => {
       const previous = leads.find((l) => l.id === id);
       setLeads((prev) =>

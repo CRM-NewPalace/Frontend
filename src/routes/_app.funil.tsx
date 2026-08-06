@@ -200,9 +200,12 @@ function ComercialFunilBoard() {
     leadNome: string;
     stage: StageId;
     stageName: string;
+    fromStage: StageId;
+    fromStageName: string;
   } | null>(null);
   const [triagemTexto, setTriagemTexto] = useState("");
   const [triagemSaving, setTriagemSaving] = useState(false);
+  const triagemFinalizedRef = useRef(false);
 
   useEffect(() => {
     void Promise.all([
@@ -228,12 +231,17 @@ function ComercialFunilBoard() {
   function offerTriagemHistory(lead: Lead, stage: StageId) {
     if (!isCorretor) return;
     const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
+    const fromStageName =
+      funnelStages.find((s) => s.id === lead.stage)?.name ?? lead.stage;
+    triagemFinalizedRef.current = false;
     setTriagemTexto("");
     setTriagemPrompt({
       leadId: lead.id,
       leadNome: lead.nome,
       stage,
       stageName,
+      fromStage: lead.stage,
+      fromStageName,
     });
   }
 
@@ -241,6 +249,38 @@ function ComercialFunilBoard() {
     setTriagemPrompt(null);
     setTriagemTexto("");
     setTriagemSaving(false);
+  }
+
+  async function registerFunilTriagem(texto: string) {
+    if (!triagemPrompt || triagemFinalizedRef.current) return;
+    triagemFinalizedRef.current = true;
+    setTriagemSaving(true);
+    try {
+      await createTriagemEvent({
+        leadId: triagemPrompt.leadId,
+        texto,
+        origem: "funil",
+        stage: triagemPrompt.stage,
+        stageAnterior: triagemPrompt.fromStage,
+      });
+      toast.success("Histórico registrado na Triagem.");
+      closeTriagemPrompt();
+    } catch (err) {
+      triagemFinalizedRef.current = false;
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível salvar o histórico.",
+      );
+    } finally {
+      setTriagemSaving(false);
+    }
+  }
+
+  async function skipTriagemHistory() {
+    if (!triagemPrompt || triagemSaving || triagemFinalizedRef.current) return;
+    const texto = `Etapa avançada de "${triagemPrompt.fromStageName}" para "${triagemPrompt.stageName}".`;
+    await registerFunilTriagem(texto);
   }
 
   async function saveTriagemHistory() {
@@ -256,25 +296,7 @@ function ComercialFunilBoard() {
       );
       return;
     }
-    setTriagemSaving(true);
-    try {
-      await createTriagemEvent({
-        leadId: triagemPrompt.leadId,
-        texto,
-        origem: "funil",
-        stage: triagemPrompt.stage,
-      });
-      toast.success("Histórico registrado na Triagem.");
-      closeTriagemPrompt();
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível salvar o histórico.",
-      );
-    } finally {
-      setTriagemSaving(false);
-    }
+    await registerFunilTriagem(texto);
   }
 
   function openAnaliseDialog(lead: Lead, stage: StageId = analiseStageSlug) {
@@ -347,6 +369,7 @@ function ComercialFunilBoard() {
       await updateLeadStage(lead.id, targetStage, {
         construtoraId: analiseConstrutoraId,
         empreendimentoId: analiseEmpreendimentoId,
+        ...(isCorretor ? { omitTriagem: true } : {}),
       });
       setAnaliseTarget(null);
       toast.success(`${lead.nome} enviado para ${stageName}`);
@@ -420,7 +443,11 @@ function ComercialFunilBoard() {
     toast.success(`${lead.nome} movido para ${stageName}`);
     offerTriagemHistory(lead, stage);
     try {
-      await updateLeadStage(leadId, stage);
+      await updateLeadStage(
+        leadId,
+        stage,
+        isCorretor ? { omitTriagem: true } : undefined,
+      );
     } catch (err) {
       closeTriagemPrompt();
       toast.error(
@@ -488,9 +515,13 @@ function ComercialFunilBoard() {
     // Atualização otimista no próprio modal + feedback imediato.
     setDetailLead({ ...detailLead, stage });
     toast.success(`${detailLead.nome} movido para ${stageName}`);
-    offerTriagemHistory({ ...detailLead, stage }, stage);
+    offerTriagemHistory(detailLead, stage);
     try {
-      await updateLeadStage(detailLead.id, stage);
+      await updateLeadStage(
+        detailLead.id,
+        stage,
+        isCorretor ? { omitTriagem: true } : undefined,
+      );
     } catch (err) {
       closeTriagemPrompt();
       setDetailLead((cur) =>
@@ -871,7 +902,9 @@ function ComercialFunilBoard() {
       <Dialog
         open={Boolean(triagemPrompt)}
         onOpenChange={(open) => {
-          if (!open) closeTriagemPrompt();
+          if (!open && triagemPrompt && !triagemSaving) {
+            void skipTriagemHistory();
+          }
         }}
       >
         <DialogContent className="max-w-md">
@@ -913,7 +946,7 @@ function ComercialFunilBoard() {
               type="button"
               variant="outline"
               disabled={triagemSaving}
-              onClick={closeTriagemPrompt}
+              onClick={() => void skipTriagemHistory()}
             >
               Não, obrigado
             </Button>

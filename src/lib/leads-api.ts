@@ -249,7 +249,11 @@ export async function updateLeadApi(
 export async function updateLeadStageApi(
   id: string,
   stage: StageId,
-  extra?: { construtoraId?: string; empreendimentoId?: string },
+  extra?: {
+    construtoraId?: string;
+    empreendimentoId?: string;
+    omitTriagem?: boolean;
+  },
 ): Promise<ApiLead> {
   return apiFetch<ApiLead>(`/leads/${id}/stage`, {
     method: "PATCH",
@@ -259,6 +263,7 @@ export async function updateLeadStageApi(
       ...(extra?.empreendimentoId
         ? { empreendimentoId: extra.empreendimentoId }
         : {}),
+      ...(extra?.omitTriagem ? { omitTriagem: true } : {}),
     },
   });
 }
