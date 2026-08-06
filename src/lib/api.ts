@@ -13,20 +13,25 @@
  */
 
 function resolveApiUrl(): string {
+  // No browser, SEMPRE same-origin `/api` (Vite proxy / Vercel rewrite).
+  // URL absoluta quebra CSRF: cookie fica no domínio da API e o header
+  // lê token antigo do frontend (ou sessionStorage desatualizado).
+  if (typeof window !== "undefined") return "/api";
+
   const configured = (
     import.meta.env.VITE_API_URL as string | undefined
   )?.trim();
   if (!configured || configured === "/api") return "/api";
-
-  // Absolute URL só é segura em SSR/server; no browser força same-origin.
-  if (typeof window !== "undefined") {
-    return "/api";
-  }
-
   return configured;
 }
 
-export const API_URL = resolveApiUrl();
+/** Resolve a cada chamada — evita URL absoluta “presa” de SSR/build. */
+export function getApiUrl(): string {
+  return resolveApiUrl();
+}
+
+/** @deprecated use getApiUrl() — mantido para imports existentes. */
+export const API_URL = "/api";
 
 const USER_KEY = "crm_session_user";
 const CSRF_COOKIE = "crm_csrf";
@@ -93,11 +98,15 @@ function readCookie(name: string): string | null {
   return decodeURIComponent(match.slice(name.length + 1));
 }
 
-/** Cookie same-origin ou token salvo no sessionStorage (cross-origin Vercel→Render). */
+/**
+ * Prefere sessionStorage (atualizado no login/refresh) e só cai no cookie
+ * same-origin. Cookie legado de outro domínio/proxy antigo não pode ganhar
+ * do token fresco — senão header ≠ cookie da API → 403 CSRF.
+ */
 function readCsrfToken(): string | null {
+  if (!isBrowser()) return null;
   return (
-    readCookie(CSRF_COOKIE) ??
-    (isBrowser() ? sessionStorage.getItem(CSRF_STORAGE_KEY) : null)
+    sessionStorage.getItem(CSRF_STORAGE_KEY) ?? readCookie(CSRF_COOKIE)
   );
 }
 
@@ -130,7 +139,7 @@ async function parseError(response: Response): Promise<string> {
 let refreshInFlight: Promise<boolean> | null = null;
 
 async function refreshSession(): Promise<boolean> {
-  const response = await fetch(`${API_URL}/auth/refresh`, {
+  const response = await fetch(`${getApiUrl()}/auth/refresh`, {
     method: "POST",
     credentials: "include",
   });
@@ -141,9 +150,11 @@ async function refreshSession(): Promise<boolean> {
   }
   try {
     const body = (await response.json()) as { csrfToken?: string };
+    // Body é a fonte da verdade após refresh (evita cookie legado divergente).
     storeCsrfToken(body.csrfToken);
   } catch {
-    // ok
+    const cookieToken = readCookie(CSRF_COOKIE);
+    if (cookieToken) storeCsrfToken(cookieToken);
   }
   return true;
 }
@@ -164,7 +175,7 @@ export async function apiFetch<T>(
 
   const send = async (): Promise<Response> => {
     const csrf = skipAuth ? null : readCsrfToken();
-    return fetch(`${API_URL}${path}`, {
+    return fetch(`${getApiUrl()}${path}`, {
       ...rest,
       credentials: "include",
       headers: {
