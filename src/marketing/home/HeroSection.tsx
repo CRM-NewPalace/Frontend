@@ -30,9 +30,9 @@ export function HeroSection() {
             Tecnologia feita para a rotina da imobiliária.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-text-muted sm:text-lg">
-            CRM, atendimento no WhatsApp e presença digital no mesmo
-            ecossistema — para leads, contratos, financeiro e equipe
-            trabalharem juntos, sem planilha solta nem sistema paralelo.
+            CRM, atendimento no WhatsApp e presença digital no mesmo ecossistema
+            — para leads, contratos, financeiro e equipe trabalharem juntos, sem
+            planilha solta nem sistema paralelo.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a

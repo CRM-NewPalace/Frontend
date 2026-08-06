@@ -1,9 +1,4 @@
-import {
-  createFileRoute,
-  Link,
-  useNavigate,
-  useRouter,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent, type ReactNode } from "react";
 import {
   Eye,
@@ -227,20 +222,11 @@ function LoginAuthField({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const router = useRouter();
   const [email, setEmail] = useState(
     SHOW_DEMO_ACCOUNTS ? "admin@imob.com" : "",
   );
   const [password, setPassword] = useState(SHOW_DEMO_ACCOUNTS ? "admin" : "");
   const [loading, setLoading] = useState(false);
-
-  function handleBack() {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.history.back();
-      return;
-    }
-    void navigate({ to: "/" });
-  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -271,14 +257,13 @@ function LoginPage() {
 
         <div className="relative z-10 mx-auto flex min-h-full w-full flex-col">
           <div className="animate-[login-fade_0.5s_ease-out]">
-            <button
-              type="button"
-              onClick={handleBack}
+            <Link
+              to="/"
               className="inline-flex items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </button>
+              Ir para o site
+            </Link>
           </div>
 
           <div className="mt-8 animate-[login-fade_0.5s_ease-out_0.08s_both] lg:mt-10">
@@ -345,14 +330,13 @@ function LoginPage() {
               <LoginBrandLogo size="md" tone="light" />
             </Link>
 
-            <button
-              type="button"
-              onClick={handleBack}
+            <Link
+              to="/"
               className="inline-flex items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-white animate-[login-fade_0.5s_ease-out_0.12s_both]"
             >
               <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </button>
+              Ir para o site
+            </Link>
           </div>
 
           <div className="w-full rounded-3xl border border-white/15 bg-white/95 p-6 shadow-[0_20px_50px_-24px_rgba(2,25,35,0.55)] backdrop-blur-sm sm:p-8 lg:border-border lg:bg-white lg:shadow-sm lg:backdrop-blur-none">
