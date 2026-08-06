@@ -53,6 +53,8 @@ export interface Analise {
 export type UpdateAnaliseInput = {
   status?: AnaliseStatus;
   parecer?: string | null;
+  /** VGV em reais (inteiro), sincronizado na documentação ao aprovar. */
+  vgv?: number | null;
 };
 
 export async function fetchAnalises(params?: {

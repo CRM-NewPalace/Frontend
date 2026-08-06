@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -13,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   FormDialogActions,
   FormDialogBody,
@@ -119,6 +128,8 @@ function AnalisePage() {
   const [statusDraft, setStatusDraft] = useState<AnaliseStatus>("pendente");
   const [parecerDraft, setParecerDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [vgvModalOpen, setVgvModalOpen] = useState(false);
+  const [vgvValor, setVgvValor] = useState("");
 
   const boardRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -223,15 +234,42 @@ function AnalisePage() {
 
   async function handleSaveDetail() {
     if (!detail) return;
+    if (statusDraft === "aprovado" && detail.status !== "aprovado") {
+      setVgvValor("");
+      setVgvModalOpen(true);
+      return;
+    }
+    await commitDetailSave(null);
+  }
+
+  async function confirmVgvAndSave() {
+    const digits = vgvValor.replace(/\D/g, "");
+    if (!digits) {
+      toast.error("Informe o VGV do processo.");
+      return;
+    }
+    const vgv = Number(digits);
+    if (!Number.isFinite(vgv) || vgv < 0) {
+      toast.error("VGV inválido.");
+      return;
+    }
+    setVgvModalOpen(false);
+    await commitDetailSave(vgv);
+  }
+
+  async function commitDetailSave(vgv: number | null) {
+    if (!detail) return;
     const previousStatus = detail.status;
     setSaving(true);
     try {
       const updated = await updateAnalise(detail.id, {
         status: statusDraft,
         parecer: parecerDraft.trim() || null,
+        ...(vgv != null ? { vgv } : {}),
       });
       setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
       setDetail(updated);
+      setVgvValor("");
 
       const isResultado =
         updated.status === "aprovado" || updated.status === "reprovado";
@@ -239,8 +277,11 @@ function AnalisePage() {
         isResultado && previousStatus !== updated.status;
 
       if (statusMudouParaResultado) {
-        toast.success("Análise salva. O corretor foi notificado no sistema.");
-        // Abre WhatsApp com mensagem pronta (gerente confirma o envio no app).
+        toast.success(
+          updated.status === "aprovado"
+            ? "Processo aprovado — documentação e VGV atualizados."
+            : "Processo reprovado — documentação atualizada.",
+        );
         openWhatsApp(updated, { silentIfMissing: true });
       } else {
         toast.success("Análise atualizada.");
@@ -567,6 +608,58 @@ function AnalisePage() {
           </>
         )}
       </FormDialogShell>
+
+      <Dialog
+        open={vgvModalOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setVgvModalOpen(false);
+            setVgvValor("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Informe o VGV</DialogTitle>
+            <DialogDescription>
+              {detail
+                ? `Valor geral de vendas do processo de ${detail.nome}. Esse valor atualiza a documentação e os indicadores.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5 py-1">
+            <Label htmlFor="resultado-vgv">VGV (R$)</Label>
+            <Input
+              id="resultado-vgv"
+              inputMode="numeric"
+              placeholder="Ex: 350000"
+              value={vgvValor}
+              onChange={(e) => setVgvValor(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setVgvModalOpen(false);
+                setVgvValor("");
+              }}
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              disabled={saving}
+              onClick={() => void confirmVgvAndSave()}
+            >
+              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Confirmar aprovação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

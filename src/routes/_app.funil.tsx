@@ -1399,6 +1399,8 @@ function AnalistaFunilBoard() {
   const [parecerStatus, setParecerStatus] = useState<AnaliseStatus>("aprovado");
   const [parecerTexto, setParecerTexto] = useState("");
   const [parecerSaving, setParecerSaving] = useState(false);
+  const [vgvModalOpen, setVgvModalOpen] = useState(false);
+  const [vgvValor, setVgvValor] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1597,15 +1599,47 @@ function AnalistaFunilBoard() {
 
   async function saveParecer() {
     if (!parecerTarget) return;
+    if (parecerStatus === "aprovado") {
+      setVgvValor("");
+      setVgvModalOpen(true);
+      return;
+    }
+    await commitParecer(null);
+  }
+
+  async function confirmParecerComVgv() {
+    const digits = vgvValor.replace(/\D/g, "");
+    if (!digits) {
+      toast.error("Informe o VGV do processo.");
+      return;
+    }
+    const vgv = Number(digits);
+    if (!Number.isFinite(vgv) || vgv < 0) {
+      toast.error("VGV inválido.");
+      return;
+    }
+    setVgvModalOpen(false);
+    await commitParecer(vgv);
+  }
+
+  async function commitParecer(vgv: number | null) {
+    if (!parecerTarget) return;
     setParecerSaving(true);
     try {
       const updated = await updateAnalise(parecerTarget.id, {
         status: parecerStatus,
         parecer: parecerTexto.trim() || null,
+        ...(vgv != null ? { vgv } : {}),
       });
       setItems((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-      toast.success("Parecer registrado.");
+      toast.success(
+        parecerStatus === "aprovado"
+          ? "Processo aprovado — documentação e VGV atualizados."
+          : "Processo reprovado — documentação atualizada.",
+      );
       setParecerTarget(null);
+      setVgvModalOpen(false);
+      setVgvValor("");
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível salvar.",
@@ -1953,8 +1987,14 @@ function AnalistaFunilBoard() {
       </FormDialogShell>
 
       <Dialog
-        open={Boolean(parecerTarget)}
-        onOpenChange={(o) => !o && setParecerTarget(null)}
+        open={Boolean(parecerTarget) && !vgvModalOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setParecerTarget(null);
+            setVgvModalOpen(false);
+            setVgvValor("");
+          }
+        }}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1995,6 +2035,60 @@ function AnalistaFunilBoard() {
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               )}
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={vgvModalOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setVgvModalOpen(false);
+            setVgvValor("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Informe o VGV</DialogTitle>
+            <DialogDescription>
+              {parecerTarget
+                ? `Valor geral de vendas do processo de ${parecerTarget.nome}. Esse valor atualiza a documentação e os indicadores.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5 py-1">
+            <Label htmlFor="parecer-vgv">VGV (R$)</Label>
+            <Input
+              id="parecer-vgv"
+              inputMode="numeric"
+              placeholder="Ex: 350000"
+              value={vgvValor}
+              onChange={(e) => setVgvValor(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setVgvModalOpen(false);
+                setVgvValor("");
+              }}
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              disabled={parecerSaving}
+              onClick={() => void confirmParecerComVgv()}
+            >
+              {parecerSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Confirmar aprovação
             </Button>
           </DialogFooter>
         </DialogContent>
