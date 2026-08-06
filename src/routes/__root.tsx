@@ -11,7 +11,7 @@ import { useEffect, type ReactNode } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/sonner";
 
-import appCss from "../styles.css?url";
+import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { initTheme } from "../lib/theme";
 
@@ -103,7 +103,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
       return {
         links: [
-          { rel: "stylesheet", href: appCss },
           { rel: "preconnect", href: "https://fonts.googleapis.com" },
           {
             rel: "preconnect",
