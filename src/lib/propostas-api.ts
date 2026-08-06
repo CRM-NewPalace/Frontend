@@ -49,6 +49,14 @@ export type Proposta = {
   autorId: string;
   valor: number;
   entrada: number | null;
+  apartado: number | null;
+  preChaves: number | null;
+  posChaves: number | null;
+  intercaladas: number | null;
+  fgts: number | null;
+  moraBem: number | null;
+  mcmv: number | null;
+  parcelaCaixa: number | null;
   financiamento: number | null;
   status: PropostaStatus;
   validade: string | null;
@@ -70,6 +78,50 @@ export type Proposta = {
   } | null;
 };
 
+/** Componentes que somam no Total (tudo menos valor de venda). */
+export const PROPOSTA_COMPOSICAO_KEYS = [
+  "entrada",
+  "apartado",
+  "preChaves",
+  "posChaves",
+  "intercaladas",
+  "fgts",
+  "moraBem",
+  "mcmv",
+  "parcelaCaixa",
+  "financiamento",
+] as const;
+
+export type PropostaComposicaoKey = (typeof PROPOSTA_COMPOSICAO_KEYS)[number];
+
+export const PROPOSTA_COMPOSICAO_LABEL: Record<PropostaComposicaoKey, string> = {
+  entrada: "Sinal",
+  apartado: "Apartado",
+  preChaves: "Pré-chaves",
+  posChaves: "Pós-chaves",
+  intercaladas: "Intercaladas",
+  fgts: "FGTS",
+  moraBem: "Mora Bem",
+  mcmv: "MCMV",
+  parcelaCaixa: "Parcela Caixa",
+  financiamento: "Financiamento",
+};
+
+export function propostaComposicaoTotal(
+  p: Pick<Proposta, PropostaComposicaoKey>,
+): number {
+  return PROPOSTA_COMPOSICAO_KEYS.reduce(
+    (sum, key) => sum + (p[key] ?? 0),
+    0,
+  );
+}
+
+export function propostaDiferenca(
+  p: Pick<Proposta, "valor" | PropostaComposicaoKey>,
+): number {
+  return p.valor - propostaComposicaoTotal(p);
+}
+
 export type CreatePropostaInput = {
   leadId?: string | null;
   clienteNome: string;
@@ -80,6 +132,14 @@ export type CreatePropostaInput = {
   corretorId?: string | null;
   valor: number;
   entrada?: number | null;
+  apartado?: number | null;
+  preChaves?: number | null;
+  posChaves?: number | null;
+  intercaladas?: number | null;
+  fgts?: number | null;
+  moraBem?: number | null;
+  mcmv?: number | null;
+  parcelaCaixa?: number | null;
   financiamento?: number | null;
   status?: PropostaStatus;
   validade?: string | null;

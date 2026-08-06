@@ -82,11 +82,16 @@ import {
   deleteProposta,
   fetchPropostas,
   formatPropostaDate,
+  PROPOSTA_COMPOSICAO_KEYS,
+  PROPOSTA_COMPOSICAO_LABEL,
   PROPOSTA_STATUS_LABEL,
+  propostaComposicaoTotal,
+  propostaDiferenca,
   propostaStatusClass,
   updateProposta,
   type CreatePropostaInput,
   type Proposta,
+  type PropostaComposicaoKey,
   type PropostaStatus,
 } from "@/lib/propostas-api";
 import { formatPhone, phoneDigits, PHONE_PLACEHOLDER } from "@/lib/phone";
@@ -135,6 +140,14 @@ type FormState = {
   corretorId: string;
   valor: string;
   entrada: string;
+  apartado: string;
+  preChaves: string;
+  posChaves: string;
+  intercaladas: string;
+  fgts: string;
+  moraBem: string;
+  mcmv: string;
+  parcelaCaixa: string;
   financiamento: string;
   status: PropostaStatus;
   validade: string;
@@ -151,6 +164,14 @@ const emptyForm = (): FormState => ({
   corretorId: "",
   valor: "",
   entrada: "",
+  apartado: "",
+  preChaves: "",
+  posChaves: "",
+  intercaladas: "",
+  fgts: "",
+  moraBem: "",
+  mcmv: "",
+  parcelaCaixa: "",
   financiamento: "",
   status: "rascunho",
   validade: "",
@@ -161,6 +182,17 @@ function parseMoney(raw: string): number | null {
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;
   return Number(digits);
+}
+
+function moneyOrZero(raw: string): number {
+  return parseMoney(raw) ?? 0;
+}
+
+function formComposicaoTotal(form: FormState): number {
+  return PROPOSTA_COMPOSICAO_KEYS.reduce(
+    (sum, key) => sum + moneyOrZero(form[key]),
+    0,
+  );
 }
 
 function toDateInput(value: string | null | undefined): string {
@@ -340,12 +372,16 @@ function Page() {
     (!isGerente && equipeId !== "todos"),
   );
 
+  const formTotal = useMemo(() => formComposicaoTotal(form), [form]);
+  const formDiferenca = useMemo(
+    () => moneyOrZero(form.valor) - formTotal,
+    [form.valor, formTotal],
+  );
+
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    const next = emptyForm();
-    if (user?.role === "corretor") next.corretorId = user.id;
-    setForm(next);
+    setForm(emptyForm());
     setOpen(true);
   }
 
@@ -362,6 +398,14 @@ function Page() {
       corretorId: p.corretorId ?? "",
       valor: String(p.valor),
       entrada: p.entrada != null ? String(p.entrada) : "",
+      apartado: p.apartado != null ? String(p.apartado) : "",
+      preChaves: p.preChaves != null ? String(p.preChaves) : "",
+      posChaves: p.posChaves != null ? String(p.posChaves) : "",
+      intercaladas: p.intercaladas != null ? String(p.intercaladas) : "",
+      fgts: p.fgts != null ? String(p.fgts) : "",
+      moraBem: p.moraBem != null ? String(p.moraBem) : "",
+      mcmv: p.mcmv != null ? String(p.mcmv) : "",
+      parcelaCaixa: p.parcelaCaixa != null ? String(p.parcelaCaixa) : "",
       financiamento: p.financiamento != null ? String(p.financiamento) : "",
       status: p.status,
       validade: toDateInput(p.validade),
@@ -390,7 +434,7 @@ function Page() {
     e.preventDefault();
     const valor = parseMoney(form.valor);
     if (!form.clienteNome.trim() || valor == null) {
-      toast.error("Informe o cliente e o valor da proposta.");
+      toast.error("Informe o cliente e o valor de venda.");
       return;
     }
 
@@ -406,6 +450,14 @@ function Page() {
       corretorId: form.corretorId || null,
       valor,
       entrada: parseMoney(form.entrada),
+      apartado: parseMoney(form.apartado),
+      preChaves: parseMoney(form.preChaves),
+      posChaves: parseMoney(form.posChaves),
+      intercaladas: parseMoney(form.intercaladas),
+      fgts: parseMoney(form.fgts),
+      moraBem: parseMoney(form.moraBem),
+      mcmv: parseMoney(form.mcmv),
+      parcelaCaixa: parseMoney(form.parcelaCaixa),
       financiamento: parseMoney(form.financiamento),
       status: form.status,
       validade: form.validade || null,
@@ -725,32 +777,54 @@ function Page() {
                   label="Corretor"
                   value={`${selected.corretor?.name ?? "—"} · ${equipeName(selected)}`}
                 />
-                <div className="grid grid-cols-3 gap-2 rounded-lg border border-border/60 p-3 bg-muted/30">
-                  <div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Valor
-                    </div>
-                    <div className="font-semibold tabular-nums">
+                <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-muted/30">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-muted-foreground">
+                      Valor de venda
+                    </span>
+                    <span className="font-semibold tabular-nums">
                       {brl(selected.valor)}
-                    </div>
+                    </span>
                   </div>
-                  <div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Entrada
-                    </div>
-                    <div className="font-semibold tabular-nums">
-                      {selected.entrada != null ? brl(selected.entrada) : "—"}
-                    </div>
+                  {PROPOSTA_COMPOSICAO_KEYS.map((key) => {
+                    const value = selected[key];
+                    if (value == null) return null;
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span className="text-[11px] text-muted-foreground">
+                          {PROPOSTA_COMPOSICAO_LABEL[key]}
+                        </span>
+                        <span className="tabular-nums">{brl(value)}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      Total
+                    </span>
+                    <span className="font-semibold tabular-nums">
+                      {brl(propostaComposicaoTotal(selected))}
+                    </span>
                   </div>
-                  <div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Financiamento
-                    </div>
-                    <div className="font-semibold tabular-nums">
-                      {selected.financiamento != null
-                        ? brl(selected.financiamento)
-                        : "—"}
-                    </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-muted-foreground">
+                      Diferença
+                    </span>
+                    <span
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        propostaDiferenca(selected) === 0
+                          ? "text-emerald-700 dark:text-emerald-300"
+                          : propostaDiferenca(selected) < 0
+                            ? "text-destructive"
+                            : "text-amber-800 dark:text-amber-300",
+                      )}
+                    >
+                      {brl(propostaDiferenca(selected))}
+                    </span>
                   </div>
                 </div>
                 <DetailRow
@@ -1080,9 +1154,9 @@ function Page() {
             </FormSection>
 
             <FormSection title="Valores e status">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="valor">Valor (R$) *</Label>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                  <Label htmlFor="valor">Valor de venda (R$) *</Label>
                   <Input
                     id="valor"
                     inputMode="numeric"
@@ -1096,33 +1170,45 @@ function Page() {
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="entrada">Entrada (R$)</Label>
-                  <Input
-                    id="entrada"
-                    inputMode="numeric"
-                    value={form.entrada}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        entrada: e.target.value.replace(/\D/g, ""),
-                      }))
+                {PROPOSTA_COMPOSICAO_KEYS.map((key) => (
+                  <MoneyField
+                    key={key}
+                    id={key}
+                    label={`${PROPOSTA_COMPOSICAO_LABEL[key]} (R$)`}
+                    value={form[key]}
+                    onChange={(value) =>
+                      setForm((f) => ({ ...f, [key]: value }))
                     }
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="financiamento">Financiamento (R$)</Label>
-                  <Input
-                    id="financiamento"
-                    inputMode="numeric"
-                    value={form.financiamento}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        financiamento: e.target.value.replace(/\D/g, ""),
-                      }))
-                    }
-                  />
+                ))}
+                <div className="sm:col-span-2 lg:col-span-3 grid gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 sm:grid-cols-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Total</span>
+                    <span className="font-semibold tabular-nums">
+                      {brl(formTotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">
+                      Diferença
+                    </span>
+                    <span
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        formDiferenca === 0
+                          ? "text-emerald-700 dark:text-emerald-300"
+                          : formDiferenca < 0
+                            ? "text-destructive"
+                            : "text-amber-800 dark:text-amber-300",
+                      )}
+                    >
+                      {brl(formDiferenca)}
+                    </span>
+                  </div>
+                  <p className="sm:col-span-2 text-[11px] text-muted-foreground">
+                    Total = soma dos componentes. Diferença = valor de venda −
+                    total.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Status</Label>
@@ -1160,7 +1246,7 @@ function Page() {
                     }
                   />
                 </div>
-                <div className="sm:col-span-3 space-y-1.5">
+                <div className="sm:col-span-2 lg:col-span-3 space-y-1.5">
                   <Label htmlFor="observacao">Observação</Label>
                   <Textarea
                     id="observacao"
@@ -1205,6 +1291,30 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-start justify-between gap-4 border-b border-border/40 pb-2">
       <span className="text-muted-foreground shrink-0">{label}</span>
       <span className="text-right font-medium">{value}</span>
+    </div>
+  );
+}
+
+function MoneyField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: PropostaComposicaoKey;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+      />
     </div>
   );
 }
