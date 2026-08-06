@@ -37,6 +37,7 @@ import {
 } from "recharts";
 import {
   AlertTriangle,
+  Banknote,
   BriefcaseBusiness,
   CalendarCheck,
   CheckCircle2,
@@ -45,6 +46,7 @@ import {
   FileCheck2,
   Goal,
   Loader2,
+  Percent,
   TrendingUp,
   UserRound,
   UserX,
@@ -181,6 +183,7 @@ function Page() {
 }
 
 function DashboardAdminView() {
+  const user = getSession();
   const { funnelStages, origens } = useCatalog();
   const agora = useMemo(() => agoraBrasil(), []);
   const [mes, setMes] = useState(agora.mes);
@@ -188,6 +191,7 @@ function DashboardAdminView() {
   const [origemFilter, setOrigemFilter] = useState("all");
   const [summary, setSummary] = useState<DashboardAdmin | null>(null);
   const [loading, setLoading] = useState(true);
+  const isGerente = user?.role === "gerente";
 
   const anosDisponiveis = useMemo(() => {
     const list: number[] = [];
@@ -462,6 +466,72 @@ function DashboardAdminView() {
           tone="orange"
           format="number"
           href="/documentacao"
+        />
+      </section>
+
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">
+            {isGerente ? "Sua comissão do mês" : "Comissões do mês"}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {isGerente
+              ? `Valor a receber nas vendas de ${mesLabel} (sua fatia de gerente).`
+              : `Comissão líquida lançada nas vendas de ${mesLabel}.`}
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/financeiro/comissao">Ver comissões</Link>
+        </Button>
+      </div>
+      <section className="mt-3 grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <FinanceKpiCard
+          label={isGerente ? "A receber" : "Total líquido"}
+          value={
+            isGerente
+              ? summary.comissao.aReceber.valor
+              : summary.comissao.total.valor
+          }
+          evolucaoPct={
+            isGerente
+              ? summary.comissao.aReceber.evolucaoPct
+              : summary.comissao.total.evolucaoPct
+          }
+          valorMesAnterior={
+            isGerente
+              ? summary.comissao.aReceber.valorMesAnterior
+              : summary.comissao.total.valorMesAnterior
+          }
+          icon={Percent}
+          tone="violet"
+          href="/financeiro/comissao"
+        />
+        <FinanceKpiCard
+          label="Pendentes"
+          value={summary.comissao.pendente.valor}
+          evolucaoPct={summary.comissao.pendente.evolucaoPct}
+          valorMesAnterior={summary.comissao.pendente.valorMesAnterior}
+          icon={Clock3}
+          tone="orange"
+          href="/financeiro/comissao"
+        />
+        <FinanceKpiCard
+          label="Liberadas"
+          value={summary.comissao.liberada.valor}
+          evolucaoPct={summary.comissao.liberada.evolucaoPct}
+          valorMesAnterior={summary.comissao.liberada.valorMesAnterior}
+          icon={Banknote}
+          tone="blue"
+          href="/financeiro/comissao"
+        />
+        <FinanceKpiCard
+          label="Pagas"
+          value={summary.comissao.paga.valor}
+          evolucaoPct={summary.comissao.paga.evolucaoPct}
+          valorMesAnterior={summary.comissao.paga.valorMesAnterior}
+          icon={CheckCircle2}
+          tone="emerald"
+          href="/financeiro/comissao"
         />
       </section>
 
@@ -1055,6 +1125,48 @@ function DashboardCorretorView() {
           value={summary.documentacao.vgvVendidoMes}
           icon={Wallet}
           tone="teal"
+        />
+      </section>
+
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Sua comissão do mês</h2>
+          <p className="text-xs text-muted-foreground">
+            Quanto você recebe nas vendas de {mesLabel}.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/financeiro/comissao">Ver comissões</Link>
+        </Button>
+      </div>
+      <section className="mt-3 grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <FinanceKpiCard
+          label="A receber"
+          value={summary.comissao.aReceber}
+          icon={Percent}
+          tone="violet"
+          href="/financeiro/comissao"
+        />
+        <FinanceKpiCard
+          label="Pendentes"
+          value={summary.comissao.pendente}
+          icon={Clock3}
+          tone="orange"
+          href="/financeiro/comissao"
+        />
+        <FinanceKpiCard
+          label="Liberadas"
+          value={summary.comissao.liberada}
+          icon={Banknote}
+          tone="blue"
+          href="/financeiro/comissao"
+        />
+        <FinanceKpiCard
+          label="Pagas"
+          value={summary.comissao.paga}
+          icon={CheckCircle2}
+          tone="emerald"
+          href="/financeiro/comissao"
         />
       </section>
 

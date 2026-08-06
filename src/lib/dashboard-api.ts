@@ -7,6 +7,17 @@ export type DashboardMetric = {
   evolucaoPct: number | null;
 };
 
+/** Resumo de comissão do mês (valores já no papel do usuário). */
+export type DashboardComissaoResumo = {
+  total: number;
+  aReceber: number;
+  pendente: number;
+  liberada: number;
+  paga: number;
+  vendas: number;
+  vgv: number;
+};
+
 export type DashboardCorretor = {
   periodo: { inicio: string; fim: string };
   carteira: {
@@ -23,6 +34,7 @@ export type DashboardCorretor = {
     emAndamento: number;
     vgvVendidoMes: number;
   };
+  comissao: DashboardComissaoResumo;
   agenda: {
     totalHoje: number;
     pendentesHoje: number;
@@ -64,6 +76,16 @@ export type DashboardAdmin = {
     reprovadas: DashboardMetric;
     emAnalise: DashboardMetric;
     vgv: DashboardMetric;
+  };
+  comissao: {
+    total: DashboardMetric;
+    aReceber: DashboardMetric;
+    pendente: DashboardMetric;
+    liberada: DashboardMetric;
+    paga: DashboardMetric;
+    vendas: DashboardMetric;
+    vgv: DashboardMetric;
+    papel: "gerente" | "admin";
   };
   atencao: {
     semDono: number;
