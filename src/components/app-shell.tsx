@@ -73,6 +73,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -95,6 +105,7 @@ const AGENDA_DOT_BY_URGENCIA: Record<
 };
 
 const SESSION_LEMBRETE_KEY = "agenda-lembretes-card-shown";
+const SESSION_ANALISE_ALERT_KEY = "analise-resultado-alerted-ids";
 
 type NavLeaf = { to: string; label: string; icon: LucideIcon };
 type NavGroup = {
@@ -283,6 +294,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [agendaProximos, setAgendaProximos] = useState<AgendaProximo[]>([]);
   const [lembretesOpen, setLembretesOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [analiseAlert, setAnaliseAlert] = useState<Notificacao | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -297,6 +309,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // silencioso: sino não deve quebrar o shell
     }
   }, []);
+
+  // Gerente: aviso em tela (toast + modal) quando chega resultado de análise.
+  useEffect(() => {
+    if (user?.role !== "gerente") return;
+    if (analiseAlert) return;
+
+    const unread = notificacoes.filter(
+      (n) => !n.lida && n.tipo === "analise_resultado",
+    );
+    if (unread.length === 0) return;
+
+    let shown: string[] = [];
+    try {
+      shown = JSON.parse(
+        sessionStorage.getItem(SESSION_ANALISE_ALERT_KEY) || "[]",
+      ) as string[];
+      if (!Array.isArray(shown)) shown = [];
+    } catch {
+      shown = [];
+    }
+
+    const next = unread.find((n) => !shown.includes(n.id));
+    if (!next) return;
+
+    const updated = [...shown, next.id].slice(-40);
+    try {
+      sessionStorage.setItem(
+        SESSION_ANALISE_ALERT_KEY,
+        JSON.stringify(updated),
+      );
+    } catch {
+      // ignore
+    }
+
+    setAnaliseAlert(next);
+    const aprovada = /aprovad/i.test(next.titulo);
+    if (aprovada) {
+      toast.success(next.titulo, {
+        description: next.corpo,
+        duration: 10_000,
+      });
+    } else {
+      toast.message(next.titulo, {
+        description: next.corpo,
+        duration: 10_000,
+      });
+    }
+  }, [notificacoes, user?.role, analiseAlert]);
 
   const loadAgendaBadge = useCallback(
     async (opts?: { showCard?: boolean }) => {
@@ -337,12 +397,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (user.role !== "analista") {
       void loadAgendaBadge({ showCard: true });
     }
+    const pollMs = user.role === "gerente" ? 20_000 : 60_000;
     const id = window.setInterval(() => {
       void loadNotificacoes();
       if (user.role !== "analista") {
         void loadAgendaBadge();
       }
-    }, 60_000);
+    }, pollMs);
     return () => window.clearInterval(id);
   }, [user, loadNotificacoes, loadAgendaBadge]);
 
@@ -400,7 +461,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       void navigate({ to: "/agenda" });
       return;
     }
+    if (n.tipo === "analise_resultado") {
+      void navigate({
+        to: user?.role === "gerente" || user?.role === "admin"
+          ? "/documentacao"
+          : "/resultado",
+      });
+      return;
+    }
     void navigate({ to: "/funil" });
+  }
+
+  async function dismissAnaliseAlert(opts?: { openDoc?: boolean }) {
+    const current = analiseAlert;
+    setAnaliseAlert(null);
+    if (!current) return;
+    try {
+      if (!current.lida) {
+        const updated = await markNotificacaoLida(current.id);
+        setNotificacoes((prev) =>
+          prev.map((x) => (x.id === updated.id ? updated : x)),
+        );
+      }
+    } catch {
+      // ignore
+    }
+    if (opts?.openDoc) {
+      void navigate({ to: "/documentacao" });
+    }
   }
 
   async function handleMarkAllRead() {
@@ -503,6 +591,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   async function handleSignOut() {
     await signOut();
     sessionStorage.removeItem(SESSION_LEMBRETE_KEY);
+    sessionStorage.removeItem(SESSION_ANALISE_ALERT_KEY);
     toast.success("Você saiu da conta");
     navigate({ to: "/login", replace: true });
   }
@@ -962,6 +1051,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           void navigate({ to: "/agenda" });
         }}
       />
+
+      <AlertDialog
+        open={Boolean(analiseAlert)}
+        onOpenChange={(open) => {
+          if (!open) void dismissAnaliseAlert();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {analiseAlert?.titulo ?? "Resultado da análise"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {analiseAlert?.corpo ??
+                "Um processo da sua equipe teve o resultado da análise atualizado."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => void dismissAnaliseAlert()}>
+              Fechar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void dismissAnaliseAlert({ openDoc: true })}
+            >
+              Ver documentação
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
