@@ -139,6 +139,7 @@ function Clientes() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
+  const isAdmin = user?.role === "admin";
 
   const {
     leads: allLeads,
@@ -172,13 +173,20 @@ function Clientes() {
   const corretorOptions = useMemo(
     () =>
       assignees
-        .filter((a) => !a.role || a.role === "corretor")
+        .filter(
+          (a) =>
+            !a.role ||
+            a.role === "corretor" ||
+            (isAdmin && a.role === "admin"),
+        )
         .map((a) => a.name),
-    [assignees],
+    [assignees, isAdmin],
   );
 
   const defaultCorretor =
-    isCorretor && user ? user.name : (corretorOptions[0] ?? "");
+    (isCorretor || isAdmin) && user
+      ? user.name
+      : (corretorOptions[0] ?? "");
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
@@ -195,7 +203,9 @@ function Clientes() {
     setEditingId(null);
     setForm(
       emptyForm(
-        isCorretor ? defaultCorretor : (corretorOptions[0] ?? defaultCorretor),
+        isCorretor || isAdmin
+          ? defaultCorretor
+          : (corretorOptions[0] ?? defaultCorretor),
       ),
     );
     setFormOpen(true);
@@ -244,11 +254,14 @@ function Clientes() {
       return;
     }
     if (!corretorNome) {
-      toast.error("Selecione o corretor responsável.");
+      toast.error("Selecione o responsável pelo cliente.");
       return;
     }
 
-    const corretorId = isCorretor ? undefined : resolveCorretorId(corretorNome);
+    const corretorId = isCorretor
+      ? undefined
+      : resolveCorretorId(corretorNome) ??
+        (isAdmin && user && corretorNome === user.name ? user.id : undefined);
     const rendaDigits = String(form.renda).replace(/\D/g, "");
     const rendaNum = rendaDigits ? Number(rendaDigits) : null;
     const emailFinal =
@@ -335,7 +348,9 @@ function Clientes() {
             ? "Carregando clientes..."
             : isCorretor
               ? "Sua carteira pessoal de clientes — também aparece no funil."
-              : "Clientes da carteira dos corretores (não misturam com leads de captação)."
+              : isAdmin
+                ? "Sua carteira e a dos corretores — clientes não misturam com leads de captação."
+                : "Clientes da carteira dos corretores (não misturam com leads de captação)."
         }
         actions={
           <Button size="sm" onClick={openCreate}>
@@ -573,7 +588,7 @@ function Clientes() {
                 {!isCorretor && (
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Corretor
+                      Responsável
                     </Label>
                     <Select
                       value={form.corretor}

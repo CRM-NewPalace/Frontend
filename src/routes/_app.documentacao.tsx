@@ -291,9 +291,13 @@ function DocumentacaoPage() {
 
   function canMutateDoc(doc: Documentacao): boolean {
     if (!user) return false;
-    // Admin edita só fichas de análise (autor analista/admin).
+    // Admin: fichas de análise + as que ele criou (vendas/carteira).
     if (user.role === "admin") {
-      return doc.autor.role === "analista" || doc.autor.role === "admin";
+      return (
+        doc.autor.id === user.id ||
+        doc.autor.role === "analista" ||
+        doc.autor.role === "admin"
+      );
     }
     if (user.role === "analista") {
       return doc.autor.id === user.id || doc.autor.role === "admin";
@@ -429,8 +433,14 @@ function DocumentacaoPage() {
   );
 
   const corretorOptions = useMemo(
-    () => assignees.filter((a) => !a.role || a.role === "corretor"),
-    [assignees],
+    () =>
+      assignees.filter(
+        (a) =>
+          !a.role ||
+          a.role === "corretor" ||
+          (isAdmin && a.role === "admin"),
+      ),
+    [assignees, isAdmin],
   );
   const gerenteOptions = useMemo<EquipeOptionUser[]>(() => {
     const options =
@@ -981,7 +991,7 @@ function DocumentacaoPage() {
     setEditingId(null);
     const base = emptyForm();
     base.dataAnalise = todayDateInput();
-    if (user?.role === "corretor") {
+    if (user?.role === "corretor" || user?.role === "admin") {
       base.corretorId = user.id;
       base.gerenteId = gerenteIdOfCorretor(user.id);
     }

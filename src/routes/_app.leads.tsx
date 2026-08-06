@@ -219,10 +219,16 @@ function LeadsPage() {
     return scoped.filter((l) => l.tipo === "lead");
   }, [allLeads, isCorretor, user]);
 
-  /** Corretores ativos (perfil corretor) para atribuição/filtro. */
+  /** Responsáveis ativos para atribuição/filtro (corretores + admin na própria carteira). */
   const corretorAssignees = useMemo(
-    () => assignees.filter((a) => !a.role || a.role === "corretor"),
-    [assignees],
+    () =>
+      assignees.filter(
+        (a) =>
+          !a.role ||
+          a.role === "corretor" ||
+          (isAdmin && a.role === "admin"),
+      ),
+    [assignees, isAdmin],
   );
 
   /** Opções do filtro (por id UUID — o que a API espera). */
