@@ -74,6 +74,11 @@ import {
 } from "@/lib/documentacao-api";
 import { nextCatalogColor } from "@/lib/catalog-colors";
 import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
+import {
   Clock,
   User,
   Eye,
@@ -347,11 +352,6 @@ function ComercialFunilBoard() {
     setAnaliseTemDependente(false);
   }
 
-  function parseMoneyInput(value: string): number | null {
-    const digits = value.replace(/\D/g, "");
-    return digits ? Number(digits) : null;
-  }
-
   const canQuickCreateEmpreendimento =
     user?.role === "admin" || user?.role === "gerente";
 
@@ -413,10 +413,12 @@ function ComercialFunilBoard() {
     const finance = {
       temEntrada: analiseTemEntrada,
       valorEntrada: analiseTemEntrada
-        ? parseMoneyInput(analiseValorEntrada)
+        ? parseOptionalMoneyInput(analiseValorEntrada)
         : null,
       temFgts: analiseTemFgts,
-      valorFgts: analiseTemFgts ? parseMoneyInput(analiseValorFgts) : null,
+      valorFgts: analiseTemFgts
+        ? parseOptionalMoneyInput(analiseValorFgts)
+        : null,
       temDependente: analiseTemDependente,
     };
     setAnaliseSaving(true);
@@ -1182,9 +1184,11 @@ function ComercialFunilBoard() {
                 {analiseTemEntrada && (
                   <Input
                     inputMode="numeric"
-                    placeholder="Valor da entrada (R$)"
+                    placeholder="0,00"
                     value={analiseValorEntrada}
-                    onChange={(e) => setAnaliseValorEntrada(e.target.value)}
+                    onChange={(e) =>
+                      setAnaliseValorEntrada(maskMoneyInput(e.target.value))
+                    }
                   />
                 )}
               </div>
@@ -1203,9 +1207,11 @@ function ComercialFunilBoard() {
                 {analiseTemFgts && (
                   <Input
                     inputMode="numeric"
-                    placeholder="Valor do FGTS (R$)"
+                    placeholder="0,00"
                     value={analiseValorFgts}
-                    onChange={(e) => setAnaliseValorFgts(e.target.value)}
+                    onChange={(e) =>
+                      setAnaliseValorFgts(maskMoneyInput(e.target.value))
+                    }
                   />
                 )}
               </div>
@@ -1505,10 +1511,12 @@ function AnalistaFunilBoard() {
     setDocObs("");
     setDocTemEntrada(item.temEntrada);
     setDocValorEntrada(
-      item.valorEntrada != null ? String(item.valorEntrada) : "",
+      item.valorEntrada != null ? formatMoneyInput(item.valorEntrada) : "",
     );
     setDocTemFgts(item.temFgts);
-    setDocValorFgts(item.valorFgts != null ? String(item.valorFgts) : "");
+    setDocValorFgts(
+      item.valorFgts != null ? formatMoneyInput(item.valorFgts) : "",
+    );
     setDocTemDependente(item.temDependente);
     setDocOpen(true);
   }
@@ -1552,8 +1560,6 @@ function AnalistaFunilBoard() {
 
   async function saveDoc() {
     if (!docTarget) return;
-    const entradaDigits = docValorEntrada.replace(/\D/g, "");
-    const fgtsDigits = docValorFgts.replace(/\D/g, "");
     setDocSaving(true);
     try {
       await createDocumentacao({
@@ -1570,15 +1576,11 @@ function AnalistaFunilBoard() {
         dataAnalise: new Date().toISOString().slice(0, 10),
         temEntrada: docTemEntrada,
         valorEntrada: docTemEntrada
-          ? entradaDigits
-            ? Number(entradaDigits)
-            : null
+          ? parseOptionalMoneyInput(docValorEntrada)
           : null,
         temFgts: docTemFgts,
         valorFgts: docTemFgts
-          ? fgtsDigits
-            ? Number(fgtsDigits)
-            : null
+          ? parseOptionalMoneyInput(docValorFgts)
           : null,
         temDependente: docTemDependente,
       });
@@ -1608,13 +1610,12 @@ function AnalistaFunilBoard() {
   }
 
   async function confirmParecerComVgv() {
-    const digits = vgvValor.replace(/\D/g, "");
-    if (!digits) {
+    const vgv = parseOptionalMoneyInput(vgvValor);
+    if (vgv == null) {
       toast.error("Informe o VGV do processo.");
       return;
     }
-    const vgv = Number(digits);
-    if (!Number.isFinite(vgv) || vgv < 0) {
+    if (vgv < 0) {
       toast.error("VGV inválido.");
       return;
     }
@@ -1920,9 +1921,11 @@ function AnalistaFunilBoard() {
                     {docTemEntrada && (
                       <Input
                         inputMode="numeric"
-                        placeholder="Valor da entrada (R$)"
+                        placeholder="0,00"
                         value={docValorEntrada}
-                        onChange={(e) => setDocValorEntrada(e.target.value)}
+                        onChange={(e) =>
+                          setDocValorEntrada(maskMoneyInput(e.target.value))
+                        }
                       />
                     )}
                   </div>
@@ -1941,9 +1944,11 @@ function AnalistaFunilBoard() {
                     {docTemFgts && (
                       <Input
                         inputMode="numeric"
-                        placeholder="Valor do FGTS (R$)"
+                        placeholder="0,00"
                         value={docValorFgts}
-                        onChange={(e) => setDocValorFgts(e.target.value)}
+                        onChange={(e) =>
+                          setDocValorFgts(maskMoneyInput(e.target.value))
+                        }
                       />
                     )}
                   </div>
@@ -2063,9 +2068,9 @@ function AnalistaFunilBoard() {
             <Input
               id="parecer-vgv"
               inputMode="numeric"
-              placeholder="Ex: 350000"
+              placeholder="0,00"
               value={vgvValor}
-              onChange={(e) => setVgvValor(e.target.value)}
+              onChange={(e) => setVgvValor(maskMoneyInput(e.target.value))}
               autoFocus
             />
           </div>

@@ -62,6 +62,11 @@ import {
   FormSection,
 } from "@/components/form-dialog";
 import { brl, type Lead } from "@/lib/crm-types";
+import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
@@ -1026,13 +1031,14 @@ function DocumentacaoPage() {
       createdAt: toDateInput(doc.createdAt) || todayDateInput(),
       dataAnalise: toDateInput(doc.dataAnalise),
       dataVenda: toDateInput(doc.dataVenda),
-      vgv: doc.vgv != null ? String(doc.vgv) : "",
+      vgv: doc.vgv != null ? formatMoneyInput(doc.vgv) : "",
       obs: doc.obs ?? "",
       temEntrada: doc.temEntrada ?? false,
       valorEntrada:
-        doc.valorEntrada != null ? String(doc.valorEntrada) : "",
+        doc.valorEntrada != null ? formatMoneyInput(doc.valorEntrada) : "",
       temFgts: doc.temFgts ?? false,
-      valorFgts: doc.valorFgts != null ? String(doc.valorFgts) : "",
+      valorFgts:
+        doc.valorFgts != null ? formatMoneyInput(doc.valorFgts) : "",
       temDependente: doc.temDependente ?? false,
     });
   }
@@ -1061,9 +1067,6 @@ function DocumentacaoPage() {
       return null;
     }
 
-    const vgvDigits = form.vgv.replace(/\D/g, "");
-    const entradaDigits = form.valorEntrada.replace(/\D/g, "");
-    const fgtsDigits = form.valorFgts.replace(/\D/g, "");
     return {
       leadId,
       nome: form.nome.trim(),
@@ -1077,19 +1080,15 @@ function DocumentacaoPage() {
       createdAt: form.createdAt || null,
       dataAnalise: form.dataAnalise || null,
       dataVenda: form.dataVenda || null,
-      vgv: vgvDigits ? Number(vgvDigits) : null,
+      vgv: parseOptionalMoneyInput(form.vgv),
       obs: form.obs.trim() || null,
       temEntrada: form.temEntrada,
       valorEntrada: form.temEntrada
-        ? entradaDigits
-          ? Number(entradaDigits)
-          : null
+        ? parseOptionalMoneyInput(form.valorEntrada)
         : null,
       temFgts: form.temFgts,
       valorFgts: form.temFgts
-        ? fgtsDigits
-          ? Number(fgtsDigits)
-          : null
+        ? parseOptionalMoneyInput(form.valorFgts)
         : null,
       temDependente: form.temDependente,
     };
@@ -2729,9 +2728,11 @@ function DocumentacaoPage() {
                     id="vgv"
                     inputMode="numeric"
                     value={form.vgv}
-                    onChange={(e) => setField("vgv", e.target.value)}
+                    onChange={(e) =>
+                      setField("vgv", maskMoneyInput(e.target.value))
+                    }
                     disabled={readOnly}
-                    placeholder="Ex: 250000"
+                    placeholder="0,00"
                   />
                 </div>
 
@@ -2759,10 +2760,13 @@ function DocumentacaoPage() {
                       {form.temEntrada && (
                         <Input
                           inputMode="numeric"
-                          placeholder="Valor da entrada (R$)"
+                          placeholder="0,00"
                           value={form.valorEntrada}
                           onChange={(e) =>
-                            setField("valorEntrada", e.target.value)
+                            setField(
+                              "valorEntrada",
+                              maskMoneyInput(e.target.value),
+                            )
                           }
                           disabled={readOnly}
                         />
@@ -2787,10 +2791,13 @@ function DocumentacaoPage() {
                       {form.temFgts && (
                         <Input
                           inputMode="numeric"
-                          placeholder="Valor do FGTS (R$)"
+                          placeholder="0,00"
                           value={form.valorFgts}
                           onChange={(e) =>
-                            setField("valorFgts", e.target.value)
+                            setField(
+                              "valorFgts",
+                              maskMoneyInput(e.target.value),
+                            )
                           }
                           disabled={readOnly}
                         />

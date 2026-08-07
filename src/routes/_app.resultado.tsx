@@ -30,6 +30,7 @@ import {
 } from "@/components/form-dialog";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
 import { ApiError } from "@/lib/api";
+import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { useLeads } from "@/lib/leads-store";
 import {
   fetchAnalises,
@@ -243,13 +244,12 @@ function AnalisePage() {
   }
 
   async function confirmVgvAndSave() {
-    const digits = vgvValor.replace(/\D/g, "");
-    if (!digits) {
+    const vgv = parseOptionalMoneyInput(vgvValor);
+    if (vgv == null) {
       toast.error("Informe o VGV do processo.");
       return;
     }
-    const vgv = Number(digits);
-    if (!Number.isFinite(vgv) || vgv < 0) {
+    if (vgv < 0) {
       toast.error("VGV inválido.");
       return;
     }
@@ -632,9 +632,9 @@ function AnalisePage() {
             <Input
               id="resultado-vgv"
               inputMode="numeric"
-              placeholder="Ex: 350000"
+              placeholder="0,00"
               value={vgvValor}
-              onChange={(e) => setVgvValor(e.target.value)}
+              onChange={(e) => setVgvValor(maskMoneyInput(e.target.value))}
               autoFocus
             />
           </div>

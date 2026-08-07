@@ -46,6 +46,11 @@ import {
   type MetaTipo,
 } from "@/lib/metas-api";
 import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
+import {
   BarChart3,
   Building2,
   CalendarDays,
@@ -188,15 +193,29 @@ function Page() {
       gerenteId: meta.gerenteId ?? "",
       tipo: meta.tipo,
       periodo: meta.periodo,
-      valor: String(meta.valor),
+      valor:
+        meta.tipo === "vgv"
+          ? formatMoneyInput(meta.valor)
+          : String(meta.valor),
     });
     setOpen(true);
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const valor = Number(form.valor);
-    if (!Number.isInteger(valor) || valor < 1) {
+    const valor =
+      form.tipo === "vgv"
+        ? parseOptionalMoneyInput(form.valor)
+        : Number(form.valor.replace(/\D/g, ""));
+    if (valor == null || !Number.isFinite(valor) || valor < 1) {
+      toast.error(
+        form.tipo === "vgv"
+          ? "Informe um valor de meta maior que zero."
+          : "Informe uma meta inteira maior que zero.",
+      );
+      return;
+    }
+    if (form.tipo !== "vgv" && !Number.isInteger(valor)) {
       toast.error("Informe uma meta inteira maior que zero.");
       return;
     }
@@ -557,14 +576,18 @@ function Page() {
                 {form.tipo === "vgv" ? "Valor em R$" : "Quantidade"}
               </Label>
               <Input
-                type="number"
-                min="1"
-                step="1"
+                inputMode="numeric"
                 value={form.valor}
                 onChange={(event) =>
-                  setForm((atual) => ({ ...atual, valor: event.target.value }))
+                  setForm((atual) => ({
+                    ...atual,
+                    valor:
+                      form.tipo === "vgv"
+                        ? maskMoneyInput(event.target.value)
+                        : event.target.value.replace(/\D/g, ""),
+                  }))
                 }
-                placeholder={form.tipo === "vgv" ? "Ex.: 500000" : "Ex.: 5"}
+                placeholder={form.tipo === "vgv" ? "0,00" : "Ex.: 5"}
               />
             </div>
             <DialogFooter>
@@ -829,7 +852,8 @@ function formatValor(valor: number, tipo: MetaTipo) {
     ? valor.toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL",
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       })
     : valor.toLocaleString("pt-BR");
 }

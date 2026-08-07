@@ -16,9 +16,9 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    // Pré-carrega a rota ao passar o mouse / focus no link.
-    defaultPreload: "intent",
-    defaultPreloadStaleTime: 30_000,
+    // Desligado: com "intent", preload em voo pode crashar com
+    // TypeError "_nonReactive" quando o match é evicted (TanStack #7759).
+    defaultPreload: false,
     // Evita “piscar” loading em beforeLoads curtos.
     defaultPendingMs: 500,
     defaultPendingMinMs: 0,

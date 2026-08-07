@@ -104,6 +104,11 @@ import {
   DetailField,
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
+import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
 
 export const Route = createFileRoute("/_app/leads")({
   head: () => ({ meta: [{ title: "Leads — Zone Connection" }] }),
@@ -167,7 +172,7 @@ function leadToForm(lead: Lead): FormState {
     bairro: lead.bairro,
     prioridade: lead.prioridade,
     temperatura: temp,
-    renda: lead.renda != null ? String(lead.renda) : "",
+    renda: lead.renda != null ? formatMoneyInput(lead.renda) : "",
     estadoCivil: lead.estadoCivil ?? "",
     equipeId: lead.equipeId ?? "",
     corretorId: lead.corretorId ?? (lead.equipeId ? "__pool__" : ""),
@@ -182,11 +187,9 @@ function LeadsPage() {
   const canDistribuir = user?.role === "admin" || user?.role === "gerente";
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
-  /** Só admin/analista filtram entre várias equipes; gerente já vê só a própria. */
+  /** Só admin/analista filtram entre várias equipes. Gerente não filtra por outras. */
   const canFilterEquipe =
-    user?.role === "admin" ||
-    user?.role === "analista" ||
-    user?.role === "gerente";
+    user?.role === "admin" || user?.role === "analista";
 
   const {
     leads: allLeads,
@@ -227,7 +230,7 @@ function LeadsPage() {
     return scoped.filter((l) => l.tipo === "lead");
   }, [allLeads, isCorretor, user]);
 
-  /** Responsáveis ativos para atribuição/filtro (corretores + própria carteira). */
+  /** Responsáveis ativos para atribuição (corretores + própria carteira). */
   const corretorAssignees = useMemo(
     () =>
       assignees.filter(
@@ -239,12 +242,6 @@ function LeadsPage() {
             a.id === user?.id),
       ),
     [assignees, isAdmin, isGerente, user?.id],
-  );
-
-  /** Opções do filtro (por id UUID — o que a API espera). */
-  const corretorFilterOptions = useMemo(
-    () => corretorAssignees,
-    [corretorAssignees],
   );
 
   const [open, setOpen] = useState(false);
@@ -268,6 +265,16 @@ function LeadsPage() {
   const [interesseFilter, setInteresseFilter] = useState<string>("all");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
   const [showExtraFilters, setShowExtraFilters] = useState(false);
+
+  /** Filtro de corretor: gerente só vê a própria equipe (não outras). */
+  const corretorFilterOptions = useMemo(() => {
+    if (!isGerente || !user) return corretorAssignees;
+    const minhaEquipe = equipes.find((e) => e.gerenteId === user.id);
+    const idsEquipe = new Set(minhaEquipe?.membros.map((m) => m.id) ?? []);
+    return corretorAssignees.filter(
+      (a) => a.id === user.id || idsEquipe.has(a.id),
+    );
+  }, [corretorAssignees, isGerente, user, equipes]);
 
   useEffect(() => {
     if (!canDistribuir && !canFilterEquipe) return;
@@ -468,7 +475,8 @@ function LeadsPage() {
       string,
       { id: string; name: string; count: number }
     >();
-    for (const a of corretorAssignees) {
+    // Gerente: só chips da própria equipe (mesma lista do select de filtro).
+    for (const a of corretorFilterOptions) {
       byId.set(a.id, { id: a.id, name: a.name, count: 0 });
     }
 
@@ -481,7 +489,8 @@ function LeadsPage() {
       const existing = byId.get(l.corretorId);
       if (existing) {
         existing.count += 1;
-      } else {
+      } else if (!isGerente) {
+        // Admin/analista: inclui corretores que aparecem nos leads.
         byId.set(l.corretorId, {
           id: l.corretorId,
           name: l.corretor || "Corretor",
@@ -499,6 +508,7 @@ function LeadsPage() {
     return rows;
   }, [
     isCorretor,
+    isGerente,
     leads,
     debouncedSearch,
     stageFilter,
@@ -508,7 +518,7 @@ function LeadsPage() {
     interesseFilter,
     origemFilter,
     canFilterEquipe,
-    corretorAssignees,
+    corretorFilterOptions,
   ]);
 
   const totalAtivosResumo = useMemo(
@@ -591,8 +601,7 @@ function LeadsPage() {
       return;
     }
 
-    const rendaDigits = String(form.renda).replace(/\D/g, "");
-    const rendaNum = rendaDigits ? Number(rendaDigits) : null;
+    const rendaNum = parseOptionalMoneyInput(String(form.renda));
     const otherTags =
       formMode === "edit" && editingId
         ? (leads
@@ -1117,9 +1126,9 @@ function LeadsPage() {
                     inputMode="numeric"
                     value={form.renda}
                     onChange={(e) =>
-                      setField("renda", e.target.value.replace(/\D/g, ""))
+                      setField("renda", maskMoneyInput(e.target.value))
                     }
-                    placeholder="Ex.: 8500"
+                    placeholder="0,00"
                     className="h-10 bg-background pl-9"
                   />
                 </div>

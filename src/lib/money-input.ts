@@ -12,6 +12,13 @@ export function parseMoneyInput(raw: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+/** Igual a parseMoneyInput, mas retorna null se vazio/inválido. */
+export function parseOptionalMoneyInput(raw: string): number | null {
+  if (!raw.trim()) return null;
+  const n = parseMoneyInput(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Formata número para exibição no input (pt-BR com 2 casas). */
 export function formatMoneyInput(n: number): string {
   if (!Number.isFinite(n)) return "";

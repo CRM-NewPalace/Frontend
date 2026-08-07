@@ -53,6 +53,11 @@ import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { brl, type Lead } from "@/lib/crm-types";
 import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
+import {
   formatPhone,
   isValidPhone,
   phoneDigits,
@@ -124,7 +129,7 @@ function leadToForm(lead: Lead): FormState {
     email: isPlaceholderEmail(lead.email) ? "" : lead.email,
     origem: lead.origem,
     interesse: lead.interesse,
-    renda: lead.renda != null ? String(lead.renda) : "",
+    renda: lead.renda != null ? formatMoneyInput(lead.renda) : "",
     cidade: lead.cidade,
     bairro: lead.bairro,
     corretor: lead.corretor,
@@ -276,8 +281,7 @@ function Clientes() {
         (canOwnCarteira && user && corretorNome === user.name
           ? user.id
           : undefined);
-    const rendaDigits = String(form.renda).replace(/\D/g, "");
-    const rendaNum = rendaDigits ? Number(rendaDigits) : null;
+    const rendaNum = parseOptionalMoneyInput(String(form.renda));
     const emailFinal =
       email || `contato.${phoneDigits(telefone)}@sem-email.local`;
     const origemFinal = form.origem.trim() || "Não informado";
@@ -669,10 +673,10 @@ function Clientes() {
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
-                        renda: e.target.value.replace(/\D/g, ""),
+                        renda: maskMoneyInput(e.target.value),
                       }))
                     }
-                    placeholder="Ex.: 8500"
+                    placeholder="0,00"
                     className="h-10 bg-background pl-9"
                   />
                 </div>

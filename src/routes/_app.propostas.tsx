@@ -96,6 +96,11 @@ import {
   type PropostaStatus,
 } from "@/lib/propostas-api";
 import { formatPhone, phoneDigits, PHONE_PLACEHOLDER } from "@/lib/phone";
+import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -180,9 +185,7 @@ const emptyForm = (): FormState => ({
 });
 
 function parseMoney(raw: string): number | null {
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return null;
-  return Number(digits);
+  return parseOptionalMoneyInput(raw);
 }
 
 function moneyOrZero(raw: string): number {
@@ -213,7 +216,7 @@ function formComposicaoTotal(form: FormState): number {
 
 function toListForm(values: number[] | null | undefined): string[] {
   if (!values?.length) return [""];
-  return values.map((n) => String(n));
+  return values.map((n) => formatMoneyInput(n));
 }
 
 function toDateInput(value: string | null | undefined): string {
@@ -417,17 +420,19 @@ function Page() {
       empreendimentoId: p.empreendimentoId ?? "",
       unidade: p.unidade ?? "",
       corretorId: p.corretorId ?? "",
-      valor: String(p.valor),
-      entrada: p.entrada != null ? String(p.entrada) : "",
-      apartado: p.apartado != null ? String(p.apartado) : "",
+      valor: formatMoneyInput(p.valor),
+      entrada: p.entrada != null ? formatMoneyInput(p.entrada) : "",
+      apartado: p.apartado != null ? formatMoneyInput(p.apartado) : "",
       preChaves: toListForm(p.preChaves),
       posChaves: toListForm(p.posChaves),
       intercaladas: toListForm(p.intercaladas),
-      fgts: p.fgts != null ? String(p.fgts) : "",
-      moraBem: p.moraBem != null ? String(p.moraBem) : "",
-      mcmv: p.mcmv != null ? String(p.mcmv) : "",
-      parcelaCaixa: p.parcelaCaixa != null ? String(p.parcelaCaixa) : "",
-      financiamento: p.financiamento != null ? String(p.financiamento) : "",
+      fgts: p.fgts != null ? formatMoneyInput(p.fgts) : "",
+      moraBem: p.moraBem != null ? formatMoneyInput(p.moraBem) : "",
+      mcmv: p.mcmv != null ? formatMoneyInput(p.mcmv) : "",
+      parcelaCaixa:
+        p.parcelaCaixa != null ? formatMoneyInput(p.parcelaCaixa) : "",
+      financiamento:
+        p.financiamento != null ? formatMoneyInput(p.financiamento) : "",
       status: p.status,
       validade: toDateInput(p.validade),
       observacao: p.observacao ?? "",
@@ -1213,9 +1218,10 @@ function Page() {
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
-                        valor: e.target.value.replace(/\D/g, ""),
+                        valor: maskMoneyInput(e.target.value),
                       }))
                     }
+                    placeholder="0,00"
                     required
                   />
                 </div>
@@ -1382,7 +1388,8 @@ function MoneyField({
         id={id}
         inputMode="numeric"
         value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+        onChange={(e) => onChange(maskMoneyInput(e.target.value))}
+        placeholder="0,00"
       />
     </div>
   );
@@ -1449,11 +1456,9 @@ function MoneyListEditor({
             </span>
             <Input
               inputMode="numeric"
-              placeholder="0"
+              placeholder="0,00"
               value={value}
-              onChange={(e) =>
-                setRow(index, e.target.value.replace(/\D/g, ""))
-              }
+              onChange={(e) => setRow(index, maskMoneyInput(e.target.value))}
               className="h-9"
             />
             <Button
