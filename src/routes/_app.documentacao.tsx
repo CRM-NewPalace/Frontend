@@ -353,7 +353,10 @@ function DocumentacaoPage() {
     useState("__all__");
   const [filterTipo, setFilterTipo] = useState("__all__");
   const [filterGerenteId, setFilterGerenteId] = useState("__all__");
-  const [filterPeriodo, setFilterPeriodo] = useState<DocPeriodo>("mes");
+  /** Analista: padrão “todo período” para não esconder fichas de outros cargos. */
+  const [filterPeriodo, setFilterPeriodo] = useState<DocPeriodo>(() =>
+    getSession()?.role === "analista" ? "todos" : "mes",
+  );
   const [filterCampoData, setFilterCampoData] =
     useState<DocCampoData>("createdAt");
   const [filterDataDe, setFilterDataDe] = useState("");
