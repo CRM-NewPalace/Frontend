@@ -140,8 +140,10 @@ function ComercialFunilBoard() {
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const isManager = canSeeTeam;
   const {
     leads: allLeads,
+    assignees,
     updateLeadStage,
     markLeadLost,
     loading,
@@ -185,6 +187,7 @@ function ComercialFunilBoard() {
 
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [filterEquipeId, setFilterEquipeId] = useState("__all__");
+  const [filterCorretorId, setFilterCorretorId] = useState("__all__");
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -200,6 +203,24 @@ function ComercialFunilBoard() {
       cancelled = true;
     };
   }, [isAdmin]);
+
+  const corretorOptions = useMemo(() => {
+    let list = assignees.filter((a) => !a.role || a.role === "corretor");
+    if (
+      isAdmin &&
+      filterEquipeId !== "__all__" &&
+      filterEquipeId !== "__none__"
+    ) {
+      const eq = equipes.find((e) => e.id === filterEquipeId);
+      if (eq) {
+        const memberIds = new Set(eq.membros.map((m) => m.id));
+        list = list.filter((a) => memberIds.has(a.id));
+      }
+    }
+    return [...list].sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [assignees, equipes, filterEquipeId, isAdmin]);
 
   const leads = useMemo(() => {
     let list =
@@ -217,8 +238,24 @@ function ComercialFunilBoard() {
       }
     }
 
+    if (isManager && filterCorretorId !== "__all__") {
+      if (filterCorretorId === "__none__") {
+        list = list.filter((l) => !l.corretorId);
+      } else {
+        list = list.filter((l) => l.corretorId === filterCorretorId);
+      }
+    }
+
     return list;
-  }, [allLeads, filterEquipeId, isAdmin, isCorretor, user]);
+  }, [
+    allLeads,
+    filterCorretorId,
+    filterEquipeId,
+    isAdmin,
+    isCorretor,
+    isManager,
+    user,
+  ]);
   const [dragging, setDragging] = useState<string | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const didDrag = useRef(false);
@@ -711,17 +748,39 @@ function ComercialFunilBoard() {
             {isAdmin && (
               <Select
                 value={filterEquipeId}
-                onValueChange={setFilterEquipeId}
+                onValueChange={(v) => {
+                  setFilterEquipeId(v);
+                  setFilterCorretorId("__all__");
+                }}
               >
                 <SelectTrigger className="h-8 w-[11.5rem] bg-background">
                   <SelectValue placeholder="Equipe" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-72">
                   <SelectItem value="__all__">Todas as equipes</SelectItem>
                   <SelectItem value="__none__">Sem equipe</SelectItem>
                   {equipes.map((eq) => (
                     <SelectItem key={eq.id} value={eq.id}>
                       {eq.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {isManager && (
+              <Select
+                value={filterCorretorId}
+                onValueChange={setFilterCorretorId}
+              >
+                <SelectTrigger className="h-8 w-[11.5rem] bg-background">
+                  <SelectValue placeholder="Corretor" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="__all__">Todos os corretores</SelectItem>
+                  <SelectItem value="__none__">Sem corretor</SelectItem>
+                  {corretorOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
