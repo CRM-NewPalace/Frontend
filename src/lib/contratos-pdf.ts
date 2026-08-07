@@ -22,6 +22,69 @@ function safeName(raw: string) {
     .slice(0, 40);
 }
 
+type LoadedLogo = {
+  dataUrl: string;
+  format: "PNG" | "JPEG";
+  width: number;
+  height: number;
+};
+
+function absoluteAssetUrl(src: string) {
+  if (
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("data:")
+  ) {
+    return src;
+  }
+  if (typeof window === "undefined") return src;
+  return new URL(src, window.location.origin).href;
+}
+
+/** Carrega a logo do tenant para embutir no PDF (best-effort; CORS pode bloquear URLs externas). */
+async function loadLogoForPdf(src: string): Promise<LoadedLogo | null> {
+  if (typeof window === "undefined" || !src.trim()) return null;
+  const url = absoluteAssetUrl(src.trim());
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("logo load failed"));
+      image.src = url;
+    });
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0);
+    const jpeg = /\.jpe?g($|\?)/i.test(url) || url.startsWith("data:image/jpeg");
+    return {
+      dataUrl: canvas.toDataURL(jpeg ? "image/jpeg" : "image/png"),
+      format: jpeg ? "JPEG" : "PNG",
+      width: w,
+      height: h,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeLogo(doc: jsPDF, logo: LoadedLogo, y: number) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const maxW = 130;
+  const maxH = 52;
+  const scale = Math.min(maxW / logo.width, maxH / logo.height, 1);
+  const w = Math.max(24, logo.width * scale);
+  const h = Math.max(16, logo.height * scale);
+  doc.addImage(logo.dataUrl, logo.format, (pageW - w) / 2, y, w, h);
+  return y + h + 14;
+}
+
 function writeTitle(doc: jsPDF, title: string, y: number) {
   const pageW = doc.internal.pageSize.getWidth();
   doc.setFont("helvetica", "bold");
@@ -322,9 +385,18 @@ function pdfParentescoCom(values: Values) {
   doc.save(`parentesco-com-conjuge-${safeName(v(values, "nomeParente"))}.pdf`);
 }
 
-function pdfIntermediacao(values: Values) {
+async function pdfIntermediacao(
+  values: Values,
+  logoUrl?: string | null,
+) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  let y = 48;
+  let y = 40;
+  if (logoUrl?.trim()) {
+    const logo = await loadLogoForPdf(logoUrl);
+    if (logo) {
+      y = writeLogo(doc, logo, y);
+    }
+  }
   y = writeTitle(
     doc,
     "CONTRATO DE INTERMEDIAÇÃO PARA COMPRA/VENDA DE IMÓVEL",
@@ -496,7 +568,11 @@ function pdfIntermediacao(values: Values) {
   );
 }
 
-export function downloadContratoPdf(id: ContratoTemplateId, values: Values) {
+export async function downloadContratoPdf(
+  id: ContratoTemplateId,
+  values: Values,
+  opts?: { logoUrl?: string | null },
+) {
   switch (id) {
     case "carta-cancelamento":
       pdfCartaCancelamento(values);
@@ -508,7 +584,7 @@ export function downloadContratoPdf(id: ContratoTemplateId, values: Values) {
       pdfParentescoCom(values);
       break;
     case "intermediacao":
-      pdfIntermediacao(values);
+      await pdfIntermediacao(values, opts?.logoUrl);
       break;
   }
 }

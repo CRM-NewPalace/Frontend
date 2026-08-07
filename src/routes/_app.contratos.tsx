@@ -22,6 +22,7 @@ import {
 import { formatPhone } from "@/lib/phone";
 import { maskMoneyInput } from "@/lib/money-input";
 import { formatCpfCnpj } from "@/lib/utils";
+import { useTenantTheme } from "@/lib/tenant-theme";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +41,7 @@ function maskField(field: ContratoField, raw: string) {
 }
 
 function ContratosPage() {
+  const { logoUrl } = useTenantTheme();
   const [selected, setSelected] = useState<ContratoTemplate | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
@@ -56,7 +58,7 @@ function ContratosPage() {
       .map((f) => f.label);
   }, [form, selected]);
 
-  function handleGenerate(e: FormEvent) {
+  async function handleGenerate(e: FormEvent) {
     e.preventDefault();
     if (!selected) return;
     if (requiredMissing.length) {
@@ -65,7 +67,9 @@ function ContratosPage() {
     }
     setGenerating(true);
     try {
-      downloadContratoPdf(selected.id as ContratoTemplateId, form);
+      await downloadContratoPdf(selected.id as ContratoTemplateId, form, {
+        logoUrl,
+      });
       toast.success("PDF gerado e baixado.");
       setSelected(null);
     } catch (err) {
