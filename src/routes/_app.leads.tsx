@@ -128,7 +128,11 @@ type FormState = {
   equipeId: string;
   /** UUID do corretor. "__pool__" = pool da equipe. Vazio = sem seleção. */
   corretorId: string;
+  /** YYYY-MM-DD — cadastro retroativo. */
+  createdAt: string;
 };
+
+const todayInput = () => new Date().toISOString().slice(0, 10);
 
 const emptyForm = (origemDefault = ""): FormState => ({
   nome: "",
@@ -144,6 +148,7 @@ const emptyForm = (origemDefault = ""): FormState => ({
   estadoCivil: "",
   equipeId: "",
   corretorId: "",
+  createdAt: todayInput(),
 });
 
 type FormMode = "create" | "edit";
@@ -166,6 +171,7 @@ function leadToForm(lead: Lead): FormState {
     estadoCivil: lead.estadoCivil ?? "",
     equipeId: lead.equipeId ?? "",
     corretorId: lead.corretorId ?? (lead.equipeId ? "__pool__" : ""),
+    createdAt: lead.createdAt?.slice(0, 10) || todayInput(),
   };
 }
 
@@ -219,16 +225,18 @@ function LeadsPage() {
     return scoped.filter((l) => l.tipo === "lead");
   }, [allLeads, isCorretor, user]);
 
-  /** Responsáveis ativos para atribuição/filtro (corretores + admin na própria carteira). */
+  /** Responsáveis ativos para atribuição/filtro (corretores + própria carteira). */
   const corretorAssignees = useMemo(
     () =>
       assignees.filter(
         (a) =>
           !a.role ||
           a.role === "corretor" ||
-          (isAdmin && a.role === "admin"),
+          ((isAdmin || isGerente) &&
+            (a.role === "admin" || a.role === "gerente") &&
+            a.id === user?.id),
       ),
-    [assignees, isAdmin],
+    [assignees, isAdmin, isGerente, user?.id],
   );
 
   /** Opções do filtro (por id UUID — o que a API espera). */
@@ -287,9 +295,22 @@ function LeadsPage() {
 
   /** Corretores disponíveis no form conforme gerente/equipe selecionado. */
   const formCorretorOptions = useMemo(() => {
+    const selfOption =
+      user && (isAdmin || isGerente)
+        ? [
+            {
+              id: user.id,
+              name: `${user.name} (eu)`,
+              role: user.role,
+              status: "ativo" as const,
+            },
+          ]
+        : [];
     if (isAdmin) {
-      const membros = formEquipe?.membros ?? [];
-      return membros.filter((m) => m.role === "corretor" && m.status === "ativo");
+      const membros = (formEquipe?.membros ?? []).filter(
+        (m) => m.role === "corretor" && m.status === "ativo",
+      );
+      return [...selfOption, ...membros];
     }
     if (isGerente) {
       const equipe =
@@ -297,12 +318,13 @@ function LeadsPage() {
         equipesAtivas.find((e) => e.gerenteId === user?.id) ??
         equipesAtivas[0] ??
         null;
-      return (equipe?.membros ?? []).filter(
+      const membros = (equipe?.membros ?? []).filter(
         (m) => m.role === "corretor" && m.status === "ativo",
       );
+      return [...selfOption, ...membros];
     }
     return [];
-  }, [isAdmin, isGerente, formEquipe, equipesAtivas, user?.id]);
+  }, [isAdmin, isGerente, formEquipe, equipesAtivas, user]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -643,6 +665,7 @@ function LeadsPage() {
           tags,
           ...(equipeId !== undefined ? { equipeId } : {}),
           ...(corretorId !== undefined ? { corretorId } : {}),
+          ...(form.createdAt ? { createdAt: form.createdAt } : {}),
         });
         return;
       }
@@ -666,6 +689,7 @@ function LeadsPage() {
         tags,
         ...(equipeId !== undefined ? { equipeId } : {}),
         ...(corretorId !== undefined ? { corretorId } : {}),
+        ...(form.createdAt ? { createdAt: form.createdAt } : {}),
       });
     } catch (err) {
       toast.error(
@@ -1028,16 +1052,9 @@ function LeadsPage() {
                       onValueChange={(v) =>
                         setField("corretorId", v === "__none__" ? "" : v)
                       }
-                      disabled={isAdmin && !form.equipeId}
                     >
                       <SelectTrigger className="h-10 bg-background">
-                        <SelectValue
-                          placeholder={
-                            isAdmin && !form.equipeId
-                              ? "Sem corretor"
-                              : "Sem corretor"
-                          }
-                        />
+                        <SelectValue placeholder="Sem corretor" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">Sem corretor</SelectItem>
@@ -1069,9 +1086,20 @@ function LeadsPage() {
                 <p className="text-[11px] text-muted-foreground">
                   Gerente e corretor são opcionais. Você pode salvar sem vínculo
                   e distribuir depois, deixar no pool da equipe ou escolher um
-                  corretor.
+                  corretor — inclusive a si mesmo.
                 </p>
               )}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Data de cadastro
+                </Label>
+                <Input
+                  type="date"
+                  value={form.createdAt}
+                  onChange={(e) => setField("createdAt", e.target.value)}
+                  className="h-10 bg-background"
+                />
+              </div>
             </FormSection>
 
             <FormSection

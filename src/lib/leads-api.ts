@@ -68,6 +68,8 @@ export type CreateLeadInput = {
   corretorId?: string | null;
   /** UUID da equipe/gerente (pool). */
   equipeId?: string | null;
+  /** Data de cadastro retroativa (YYYY-MM-DD ou ISO). */
+  createdAt?: string | null;
 };
 
 export type UpdateLeadInput = Partial<CreateLeadInput>;
@@ -102,6 +104,7 @@ export function mapApiLead(api: ApiLead): Lead {
     prioridade: api.prioridade,
     renda: api.renda ?? null,
     estadoCivil: api.estadoCivil ?? null,
+    createdAt: api.createdAt,
     updatedAt: formatUpdatedAt(api.updatedAt),
     tags: api.tags ?? [],
     analise: api.analise ?? null,

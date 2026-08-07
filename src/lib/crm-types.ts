@@ -39,6 +39,8 @@ export interface Lead {
   renda: number | null;
   /** Estado civil do cliente (opcional). */
   estadoCivil: string | null;
+  /** Data de cadastro (ISO). */
+  createdAt?: string;
   updatedAt: string;
   tags: string[];
   /** Ficha de análise, se existir. */

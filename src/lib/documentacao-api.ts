@@ -102,6 +102,8 @@ export type CreateDocumentacaoInput = {
   temFgts?: boolean;
   valorFgts?: number | null;
   temDependente?: boolean;
+  /** Data de cadastro retroativa (YYYY-MM-DD ou ISO). */
+  createdAt?: string | null;
 };
 
 export type UpdateDocumentacaoInput = Partial<

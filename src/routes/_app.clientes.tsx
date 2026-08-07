@@ -91,9 +91,15 @@ type FormState = {
   bairro: string;
   corretor: string;
   tags: string[];
+  /** YYYY-MM-DD — cadastro retroativo. */
+  createdAt: string;
 };
 
 type FormMode = "create" | "edit";
+
+function todayInput() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function emptyForm(corretorDefault: string, origemDefault = ""): FormState {
   return {
@@ -107,6 +113,7 @@ function emptyForm(corretorDefault: string, origemDefault = ""): FormState {
     bairro: "",
     corretor: corretorDefault,
     tags: [],
+    createdAt: todayInput(),
   };
 }
 
@@ -122,6 +129,7 @@ function leadToForm(lead: Lead): FormState {
     bairro: lead.bairro,
     corretor: lead.corretor,
     tags: [...lead.tags],
+    createdAt: lead.createdAt?.slice(0, 10) || todayInput(),
   };
 }
 
@@ -140,6 +148,8 @@ function Clientes() {
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
   const isAdmin = user?.role === "admin";
+  const isGerente = user?.role === "gerente";
+  const canOwnCarteira = isAdmin || isGerente;
 
   const {
     leads: allLeads,
@@ -177,14 +187,16 @@ function Clientes() {
           (a) =>
             !a.role ||
             a.role === "corretor" ||
-            (isAdmin && a.role === "admin"),
+            (canOwnCarteira &&
+              (a.role === "admin" || a.role === "gerente") &&
+              a.id === user?.id),
         )
         .map((a) => a.name),
-    [assignees, isAdmin],
+    [assignees, canOwnCarteira, user?.id],
   );
 
   const defaultCorretor =
-    (isCorretor || isAdmin) && user
+    (isCorretor || canOwnCarteira) && user
       ? user.name
       : (corretorOptions[0] ?? "");
 
@@ -203,7 +215,7 @@ function Clientes() {
     setEditingId(null);
     setForm(
       emptyForm(
-        isCorretor || isAdmin
+        isCorretor || canOwnCarteira
           ? defaultCorretor
           : (corretorOptions[0] ?? defaultCorretor),
       ),
@@ -261,7 +273,9 @@ function Clientes() {
     const corretorId = isCorretor
       ? undefined
       : resolveCorretorId(corretorNome) ??
-        (isAdmin && user && corretorNome === user.name ? user.id : undefined);
+        (canOwnCarteira && user && corretorNome === user.name
+          ? user.id
+          : undefined);
     const rendaDigits = String(form.renda).replace(/\D/g, "");
     const rendaNum = rendaDigits ? Number(rendaDigits) : null;
     const emailFinal =
@@ -285,6 +299,7 @@ function Clientes() {
           ...(rendaNum != null ? { renda: rendaNum } : {}),
           tags: form.tags,
           ...(corretorId ? { corretorId } : {}),
+          ...(form.createdAt ? { createdAt: form.createdAt } : {}),
         });
       } else if (editingId) {
         setFormOpen(false);
@@ -300,6 +315,7 @@ function Clientes() {
           renda: rendaNum,
           tags: form.tags,
           ...(corretorId ? { corretorId } : {}),
+          ...(form.createdAt ? { createdAt: form.createdAt } : {}),
         });
       }
     } catch (err) {
@@ -348,8 +364,8 @@ function Clientes() {
             ? "Carregando clientes..."
             : isCorretor
               ? "Sua carteira pessoal de clientes — também aparece no funil."
-              : isAdmin
-                ? "Sua carteira e a dos corretores — clientes não misturam com leads de captação."
+              : canOwnCarteira
+                ? "Sua carteira e a da equipe — clientes não misturam com leads de captação."
                 : "Clientes da carteira dos corretores (não misturam com leads de captação)."
         }
         actions={
@@ -615,6 +631,19 @@ function Clientes() {
                     </Select>
                   </div>
                 )}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Data de cadastro
+                  </Label>
+                  <Input
+                    type="date"
+                    value={form.createdAt}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, createdAt: e.target.value }))
+                    }
+                    className="h-10 bg-background"
+                  />
+                </div>
               </div>
             </FormSection>
 

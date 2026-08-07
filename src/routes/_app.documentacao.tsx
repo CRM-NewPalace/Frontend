@@ -181,6 +181,8 @@ type FormState = {
   status2: string;
   corretorId: string;
   gerenteId: string;
+  /** YYYY-MM-DD — cadastro retroativo. */
+  createdAt: string;
   dataAnalise: string;
   dataVenda: string;
   vgv: string;
@@ -203,6 +205,7 @@ const emptyForm = (): FormState => ({
   status2: "Andamento",
   corretorId: "",
   gerenteId: "",
+  createdAt: todayDateInput(),
   dataAnalise: "",
   dataVenda: "",
   vgv: "",
@@ -287,7 +290,9 @@ function DocumentacaoPage() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
+  const isGerente = user?.role === "gerente";
   const isAnalista = user?.role === "analista";
+  const canOwnCarteira = isAdmin || isGerente;
 
   function canMutateDoc(doc: Documentacao): boolean {
     if (!user) return false;
@@ -302,12 +307,9 @@ function DocumentacaoPage() {
     if (user.role === "analista") {
       return doc.autor.id === user.id || doc.autor.role === "admin";
     }
-    // Corretor: só as próprias. Gerente só visualiza fichas de análise.
-    if (user.role === "corretor") {
+    // Corretor/gerente: só as próprias fichas comerciais.
+    if (user.role === "corretor" || user.role === "gerente") {
       return doc.autor.id === user.id;
-    }
-    if (user.role === "gerente") {
-      return false;
     }
     return false;
   }
@@ -438,9 +440,11 @@ function DocumentacaoPage() {
         (a) =>
           !a.role ||
           a.role === "corretor" ||
-          (isAdmin && a.role === "admin"),
+          (canOwnCarteira &&
+            (a.role === "admin" || a.role === "gerente") &&
+            a.id === user?.id),
       ),
-    [assignees, isAdmin],
+    [assignees, canOwnCarteira, user?.id],
   );
   const gerenteOptions = useMemo<EquipeOptionUser[]>(() => {
     const options =
@@ -991,9 +995,17 @@ function DocumentacaoPage() {
     setEditingId(null);
     const base = emptyForm();
     base.dataAnalise = todayDateInput();
-    if (user?.role === "corretor" || user?.role === "admin") {
+    base.createdAt = todayDateInput();
+    if (
+      user?.role === "corretor" ||
+      user?.role === "admin" ||
+      user?.role === "gerente"
+    ) {
       base.corretorId = user.id;
-      base.gerenteId = gerenteIdOfCorretor(user.id);
+      base.gerenteId =
+        user.role === "gerente"
+          ? user.id
+          : gerenteIdOfCorretor(user.id);
     }
     setForm(base);
     setOpen(true);
@@ -1011,6 +1023,7 @@ function DocumentacaoPage() {
       status2: doc.status2,
       corretorId: doc.corretorId ?? "",
       gerenteId: doc.gerenteId ?? "",
+      createdAt: toDateInput(doc.createdAt) || todayDateInput(),
       dataAnalise: toDateInput(doc.dataAnalise),
       dataVenda: toDateInput(doc.dataVenda),
       vgv: doc.vgv != null ? String(doc.vgv) : "",
@@ -1061,6 +1074,7 @@ function DocumentacaoPage() {
       status2: form.status2.trim(),
       corretorId: form.corretorId || null,
       gerenteId: form.gerenteId || null,
+      createdAt: form.createdAt || null,
       dataAnalise: form.dataAnalise || null,
       dataVenda: form.dataVenda || null,
       vgv: vgvDigits ? Number(vgvDigits) : null,
@@ -2674,6 +2688,17 @@ function DocumentacaoPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="createdAt">Data cadastro</Label>
+                  <Input
+                    id="createdAt"
+                    type="date"
+                    value={form.createdAt}
+                    onChange={(e) => setField("createdAt", e.target.value)}
+                    disabled={readOnly}
+                  />
                 </div>
 
                 <div className="space-y-2">
