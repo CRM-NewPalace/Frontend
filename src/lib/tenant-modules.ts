@@ -11,6 +11,7 @@ export type TenantModuleKey =
   | "agenda"
   | "imoveis"
   | "clientes"
+  | "clientesPerdidos"
   | "construtoras"
   | "leadsPerdidos"
   | "usuarios"
@@ -53,6 +54,7 @@ export const TENANT_MODULE_GROUPS: TenantModuleGroup[] = [
       { key: "agenda", label: "Agenda" },
       { key: "imoveis", label: "Imóveis" },
       { key: "clientes", label: "Clientes" },
+      { key: "clientesPerdidos", label: "Perda de cliente" },
       { key: "construtoras", label: "Construtoras" },
       { key: "leadsPerdidos", label: "Leads Perdidos" },
     ],
@@ -101,6 +103,7 @@ export const ROUTE_MODULE_KEY: Record<string, TenantModuleKey> = {
   "/agenda": "agenda",
   "/imoveis": "imoveis",
   "/clientes": "clientes",
+  "/clientes-perdidos": "clientesPerdidos",
   "/construtoras": "construtoras",
   "/leads-perdidos": "leadsPerdidos",
   "/usuarios": "usuarios",

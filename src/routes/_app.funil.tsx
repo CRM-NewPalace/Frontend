@@ -100,7 +100,7 @@ import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 import { isStatusVendido } from "@/lib/documentacao-status";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
-  pendente: "Análise pendente",
+  pendente: "Pré-análise",
   em_analise: "Em análise",
   aprovado: "Análise aprovada",
   reprovado: "Análise reprovada",
@@ -173,10 +173,15 @@ export function ComercialFunilBoard({
     documentacaoFontes.length > 0
       ? documentacaoFontes
       : [...DEFAULT_DOCUMENTACAO_FONTES];
-  const docStatus1Options =
-    documentacaoStatus1.length > 0
-      ? documentacaoStatus1
-      : [...DEFAULT_STATUS1];
+  const docStatus1Options = (() => {
+    const base =
+      documentacaoStatus1.length > 0
+        ? documentacaoStatus1
+        : [...DEFAULT_STATUS1];
+    return base.includes("Pré-análise")
+      ? base
+      : ["Pré-análise", ...base];
+  })();
   const docStatus2Options =
     documentacaoStatus2.length > 0
       ? documentacaoStatus2
@@ -537,9 +542,11 @@ export function ComercialFunilBoard({
     const fonte = docFonteOptions.includes("Outro")
       ? "Outro"
       : (docFonteOptions[0] ?? "Outro");
-    const status1 = docStatus1Options.includes("Análise")
-      ? "Análise"
-      : (docStatus1Options[0] ?? "Análise");
+    const status1 = docStatus1Options.includes("Pré-análise")
+      ? "Pré-análise"
+      : docStatus1Options.includes("Análise")
+        ? "Pré-análise"
+        : (docStatus1Options[0] ?? "Pré-análise");
     const status2 = docStatus2Options.includes("Andamento")
       ? "Andamento"
       : (docStatus2Options[0] ?? "Andamento");
@@ -675,7 +682,7 @@ export function ComercialFunilBoard({
     setLostMotivoOutro("");
     toast.success(
       tipo === "cliente"
-        ? `${nome} excluído da carteira.`
+        ? `${nome} movido para Perda de cliente.`
         : `${nome} movido para Leads Perdidos.`,
     );
     try {
@@ -1118,7 +1125,7 @@ export function ComercialFunilBoard({
             <AlertDialogDescription>
               {lostTarget
                 ? lostTarget.tipo === "cliente"
-                  ? `${lostTarget.nome} será removido da carteira e do funil. Clientes não vão para Leads Perdidos.`
+                  ? `${lostTarget.nome} sairá do funil e da carteira, e irá para Perda de cliente (visível só para o corretor).`
                   : `${lostTarget.nome} sairá do funil e das listas operacionais, e irá para Leads Perdidos (visível só para o administrador).`
                 : null}
             </AlertDialogDescription>
@@ -1485,7 +1492,7 @@ const ANALISTA_COLUMNS: {
   id: AnaliseStatus;
   label: string;
 }[] = [
-  { id: "pendente", label: "Pendente" },
+  { id: "pendente", label: "Pré-análise" },
   { id: "em_analise", label: "Em análise" },
   { id: "aprovado", label: "Aprovado" },
   { id: "reprovado", label: "Reprovado" },
@@ -1503,10 +1510,15 @@ function AnalistaFunilBoard() {
     documentacaoFontes.length > 0
       ? documentacaoFontes
       : [...DEFAULT_DOCUMENTACAO_FONTES];
-  const status1Options =
-    documentacaoStatus1.length > 0
-      ? documentacaoStatus1
-      : [...DEFAULT_STATUS1];
+  const status1Options = (() => {
+    const base =
+      documentacaoStatus1.length > 0
+        ? documentacaoStatus1
+        : [...DEFAULT_STATUS1];
+    return base.includes("Pré-análise")
+      ? base
+      : ["Pré-análise", ...base];
+  })();
   const status2Options =
     documentacaoStatus2.length > 0
       ? documentacaoStatus2
@@ -1519,7 +1531,7 @@ function AnalistaFunilBoard() {
   const [docTarget, setDocTarget] = useState<Analise | null>(null);
   const [docSaving, setDocSaving] = useState(false);
   const [docFonte, setDocFonte] = useState("Outro");
-  const [docStatus1, setDocStatus1] = useState("Análise");
+  const [docStatus1, setDocStatus1] = useState("Pré-análise");
   const [docStatus2, setDocStatus2] = useState("Andamento");
   const [docObs, setDocObs] = useState("");
   const [docTemEntrada, setDocTemEntrada] = useState(false);
@@ -1581,9 +1593,9 @@ function AnalistaFunilBoard() {
   }
 
   function defaultDocStatus1() {
-    return status1Options.includes("Análise")
-      ? "Análise"
-      : (status1Options[0] ?? "Análise");
+    if (status1Options.includes("Pré-análise")) return "Pré-análise";
+    if (status1Options.includes("Análise")) return "Pré-análise";
+    return status1Options[0] ?? "Pré-análise";
   }
 
   function defaultDocStatus2() {
@@ -1789,7 +1801,7 @@ function AnalistaFunilBoard() {
     <div>
       <PageHeader
         title="Fila de Análise"
-        description="Processos de toda a imobiliária: pendentes, em análise e com resultado."
+        description="Processos de toda a imobiliária: pré-análise, em análise e com resultado."
         actions={
           <Button size="sm" variant="outline" asChild>
             <Link to="/resultado">Abrir Análise</Link>

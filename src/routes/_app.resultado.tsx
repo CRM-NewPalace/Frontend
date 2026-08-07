@@ -65,7 +65,7 @@ export const Route = createFileRoute("/_app/resultado")({
 const COLUMN_STEP_PX = 288 + 12;
 
 const STATUS_LABEL: Record<AnaliseStatus, string> = {
-  pendente: "Pendente",
+  pendente: "Pré-análise",
   em_analise: "Em análise",
   aprovado: "Aprovado",
   reprovado: "Reprovado",
@@ -530,7 +530,7 @@ function AnalisePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="pendente">Pré-análise</SelectItem>
                       <SelectItem value="em_analise">Em análise</SelectItem>
                       <SelectItem value="aprovado">Aprovado</SelectItem>
                       <SelectItem value="reprovado">Reprovado</SelectItem>

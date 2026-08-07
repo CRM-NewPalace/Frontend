@@ -26,8 +26,9 @@ export const FONTE_LABELS: Record<string, string> = {
 
 /** Defaults de Status 1 (crédito/análise). */
 export const DEFAULT_STATUS1 = [
+  "Pré-análise",
+  "Em análise",
   "Aprovado",
-  "Análise",
   "Aprovado c/ restrição",
 ] as const;
 

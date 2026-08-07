@@ -207,7 +207,7 @@ const emptyForm = (): FormState => ({
   construtoraId: "",
   empreendimentoId: "",
   fonte: "Outro",
-  status1: "Análise",
+  status1: "Pré-análise",
   status2: "Andamento",
   corretorId: "",
   gerenteId: "",
@@ -516,6 +516,7 @@ function DocumentacaoPage() {
   const status1Options = useMemo(() => {
     return dedupeStatusOptions(
       [
+        "Pré-análise",
         ...status1Catalog,
         ...extraStatus1,
         ...items.map((i) => i.status1),
@@ -3135,7 +3136,7 @@ function DocumentacaoPage() {
                       <td className="p-2">Cyrela</td>
                       <td className="p-2">Torre Aurora</td>
                       <td className="p-2">Indicação</td>
-                      <td className="p-2">Análise</td>
+                      <td className="p-2">Pré-análise</td>
                       <td className="p-2">Andamento</td>
                       <td className="p-2">Rafael Souza</td>
                       <td className="p-2">Juliana Costa</td>

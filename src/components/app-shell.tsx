@@ -227,6 +227,7 @@ const NAV_SECTIONS: {
       { to: "/imoveis", label: "Imóveis", icon: Building2 },
       { to: "/clientes", label: "Clientes", icon: UserCircle2 },
       { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
+      { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
       { to: "/construtoras", label: "Construtoras", icon: Building2 },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },

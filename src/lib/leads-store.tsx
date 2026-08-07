@@ -24,6 +24,7 @@ import {
   type UpdateLeadInput,
 } from "@/lib/leads-api";
 import { prependLostLeadToCache } from "@/lib/lost-leads-cache";
+import { prependLostClienteToCache } from "@/lib/lost-clientes-cache";
 
 const LEGACY_STORAGE_KEY = "crm_mock_leads";
 
@@ -293,7 +294,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
     try {
       const api = await markLeadLostApi(id, motivo);
-      prependLostLeadToCache(api);
+      if (api.tipo === "cliente") {
+        prependLostClienteToCache(api);
+      } else {
+        prependLostLeadToCache(api);
+      }
     } catch (err) {
       if (previous) {
         setLeads((prev) => [previous!, ...prev]);

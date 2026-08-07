@@ -15,6 +15,7 @@ import { Route as DemonstracaoRouteImport } from './routes/demonstracao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
+import { Route as AppClientesPerdidosRouteImport } from './routes/_app.clientes-perdidos'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
 import { Route as AppConstrutorasRouteImport } from './routes/_app.construtoras'
 import { Route as AppContratosRouteImport } from './routes/_app.contratos'
@@ -75,6 +76,11 @@ const AppAgendaRoute = AppAgendaRouteImport.update({
 const AppClientesRoute = AppClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesPerdidosRoute = AppClientesPerdidosRouteImport.update({
+  id: '/clientes-perdidos',
+  path: '/clientes-perdidos',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
@@ -249,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
+  '/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/construtoras': typeof AppConstrutorasRoute
   '/contratos': typeof AppContratosRoute
@@ -288,6 +295,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
+  '/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/construtoras': typeof AppConstrutorasRoute
   '/contratos': typeof AppContratosRoute
@@ -329,6 +337,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/clientes': typeof AppClientesRoute
+  '/_app/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/construtoras': typeof AppConstrutorasRoute
   '/_app/contratos': typeof AppContratosRoute
@@ -370,6 +379,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/clientes'
+    | '/clientes-perdidos'
     | '/configuracoes'
     | '/construtoras'
     | '/contratos'
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/clientes'
+    | '/clientes-perdidos'
     | '/configuracoes'
     | '/construtoras'
     | '/contratos'
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/agenda'
     | '/_app/clientes'
+    | '/_app/clientes-perdidos'
     | '/_app/configuracoes'
     | '/_app/construtoras'
     | '/_app/contratos'
@@ -533,6 +545,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/clientes'
       preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clientes-perdidos': {
+      id: '/_app/clientes-perdidos'
+      path: '/clientes-perdidos'
+      fullPath: '/clientes-perdidos'
+      preLoaderRoute: typeof AppClientesPerdidosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/configuracoes': {
@@ -794,6 +813,7 @@ const AppFinanceiroRouteWithChildren = AppFinanceiroRoute._addFileChildren(
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppClientesRoute: typeof AppClientesRoute
+  AppClientesPerdidosRoute: typeof AppClientesPerdidosRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppConstrutorasRoute: typeof AppConstrutorasRoute
   AppContratosRoute: typeof AppContratosRoute
@@ -821,6 +841,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppClientesRoute: AppClientesRoute,
+  AppClientesPerdidosRoute: AppClientesPerdidosRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppConstrutorasRoute: AppConstrutorasRoute,
   AppContratosRoute: AppContratosRoute,

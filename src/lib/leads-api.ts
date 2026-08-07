@@ -309,6 +309,19 @@ export async function fetchLostLeads(params?: {
   return apiFetch<PaginatedLeads>(`/leads/perdidos?${qs.toString()}`);
 }
 
+/** Clientes perdidos — só corretor (própria carteira). */
+export async function fetchLostClientes(params?: {
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<PaginatedLeads> {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set("search", params.search);
+  qs.set("page", String(params?.page ?? 1));
+  qs.set("limit", String(params?.limit ?? 100));
+  return apiFetch<PaginatedLeads>(`/leads/clientes-perdidos?${qs.toString()}`);
+}
+
 /** Exclusão definitiva (admin, só leads já perdidos). */
 export async function deleteLeadApi(id: string): Promise<void> {
   await apiFetch<void>(`/leads/${id}`, { method: "DELETE" });

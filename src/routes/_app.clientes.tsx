@@ -379,7 +379,7 @@ function Clientes() {
       setDeleteTarget(null);
       setDeleteMotivo("");
       setDeleteMotivoOutro("");
-      toast.success(`Cliente "${nome}" excluído da carteira.`);
+      toast.success(`Cliente "${nome}" movido para Perda de cliente.`);
       await markLeadLost(id, motivo);
     } catch (err) {
       toast.error(
@@ -1033,7 +1033,7 @@ function Clientes() {
         )}
       </FormDialogShell>
 
-      {/* Excluir cliente da carteira (não vai para Leads Perdidos) */}
+      {/* Excluir cliente da carteira → Perda de cliente (só corretor) */}
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={(open) => {
@@ -1051,7 +1051,7 @@ function Clientes() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `"${deleteTarget.nome}" será removido da carteira. Clientes não vão para Leads Perdidos.`
+                ? `"${deleteTarget.nome}" sairá da carteira e irá para Perda de cliente (visível só para o corretor).`
                 : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
