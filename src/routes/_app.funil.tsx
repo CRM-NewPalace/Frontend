@@ -465,6 +465,7 @@ function ComercialFunilBoard() {
       : (docStatus2Options[0] ?? "Andamento");
     setComercialDocSaving(true);
     try {
+      // Backend reutiliza ficha ativa do lead, se já existir.
       await createDocumentacao({
         leadId: prompt.lead.id,
         nome: prompt.lead.nome,
@@ -1463,15 +1464,9 @@ function AnalistaFunilBoard() {
 
   async function autoRegisterDoc(item: Analise) {
     try {
-      const session = getSession();
       const existing = await fetchDocumentacoes();
-      // Só pula se o próprio analista já tiver ficha (a do corretor/gerente é outra).
-      if (
-        session &&
-        existing.some(
-          (d) => d.leadId === item.leadId && d.autor.id === session.id,
-        )
-      ) {
+      // Uma ficha por lead: se corretor/gerente já registrou, não cria outra.
+      if (existing.some((d) => d.leadId === item.leadId)) {
         toast.success("Documentação já existente para este cliente.");
         return;
       }
