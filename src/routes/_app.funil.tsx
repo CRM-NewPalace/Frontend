@@ -1654,7 +1654,7 @@ function AnalistaFunilBoard() {
     <div>
       <PageHeader
         title="Fila de Análise"
-        description="Processos de todos os corretores: pendentes, em análise e com resultado."
+        description="Processos de toda a imobiliária: pendentes, em análise e com resultado."
         actions={
           <Button size="sm" variant="outline" asChild>
             <Link to="/resultado">Abrir Análise</Link>

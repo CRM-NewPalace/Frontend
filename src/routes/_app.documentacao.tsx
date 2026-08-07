@@ -301,16 +301,9 @@ function DocumentacaoPage() {
 
   function canMutateDoc(doc: Documentacao): boolean {
     if (!user) return false;
-    // Admin: fichas de análise + as que ele criou (vendas/carteira).
-    if (user.role === "admin") {
-      return (
-        doc.autor.id === user.id ||
-        doc.autor.role === "analista" ||
-        doc.autor.role === "admin"
-      );
-    }
-    if (user.role === "analista") {
-      return doc.autor.id === user.id || doc.autor.role === "admin";
+    // Admin/analista: visão global — editam qualquer ficha.
+    if (user.role === "admin" || user.role === "analista") {
+      return true;
     }
     // Corretor/gerente: só as próprias fichas comerciais.
     if (user.role === "corretor" || user.role === "gerente") {
