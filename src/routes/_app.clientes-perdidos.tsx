@@ -21,13 +21,33 @@ import {
   FormSection,
   DetailField,
 } from "@/components/form-dialog";
-import { Search, Eye, UserX, Sparkles, Wallet } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Search,
+  Eye,
+  UserX,
+  Sparkles,
+  Wallet,
+  Download,
+  FileSpreadsheet,
+  FileText,
+} from "lucide-react";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import {
   getLostClientesCache,
   loadLostClientes,
 } from "@/lib/lost-clientes-cache";
 import type { LostLead } from "@/lib/lost-leads-cache";
+import {
+  exportLostLeadsToExcel,
+  exportLostLeadsToPdf,
+} from "@/lib/lost-leads-io";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
 import { useCatalog } from "@/lib/catalog-store";
 import { displayEmail } from "@/lib/email";
@@ -49,6 +69,7 @@ function initials(nome: string) {
 }
 
 function ClientesPerdidos() {
+  const user = getSession();
   const { funnelStages } = useCatalog();
   const cached = getLostClientesCache();
   const [items, setItems] = useState<LostLead[]>(cached ?? []);
@@ -103,6 +124,50 @@ function ClientesPerdidos() {
             : `${filtered.length} cliente(s) removidos da sua carteira.${
                 refreshing ? " Atualizando…" : ""
               }`
+        }
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading || filtered.length === 0}
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() =>
+                  exportLostLeadsToExcel(
+                    filtered,
+                    `clientes-perdidos-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                    { sheetName: "Clientes perdidos" },
+                  )
+                }
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  exportLostLeadsToPdf(
+                    filtered,
+                    `clientes-perdidos-${new Date().toISOString().slice(0, 10)}.pdf`,
+                    user?.tenant?.name?.trim() || "Imobiliária",
+                    {
+                      title: "Perda de cliente",
+                      entityLabel: "cliente(s)",
+                    },
+                  )
+                }
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
 

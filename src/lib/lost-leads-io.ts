@@ -47,10 +47,15 @@ function buildSheet(rows: string[][]) {
 export function exportLostLeadsToExcel(
   leads: LostLead[],
   filename = "leads-perdidos.xlsx",
+  opts?: { sheetName?: string },
 ) {
   const workbook = XLSX.utils.book_new();
   const sheet = buildSheet(leads.map((l) => lostLeadToRow(l)));
-  XLSX.utils.book_append_sheet(workbook, sheet, "Leads perdidos");
+  XLSX.utils.book_append_sheet(
+    workbook,
+    sheet,
+    opts?.sheetName ?? "Leads perdidos",
+  );
   const data = XLSX.write(workbook, {
     bookType: "xlsx",
     type: "array",
@@ -68,14 +73,17 @@ export function exportLostLeadsToPdf(
   leads: LostLead[],
   filename = "leads-perdidos.pdf",
   imobiliariaNome = "Imobiliária",
+  opts?: { title?: string; entityLabel?: string },
 ) {
+  const title = opts?.title ?? "Leads Perdidos";
+  const entityLabel = opts?.entityLabel ?? "lead(s)";
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   doc.setFontSize(14);
-  doc.text(`Leads Perdidos — ${imobiliariaNome}`, 40, 36);
+  doc.text(`${title} — ${imobiliariaNome}`, 40, 36);
   doc.setFontSize(9);
   doc.setTextColor(100);
   doc.text(
-    `Exportado em ${new Date().toLocaleDateString("pt-BR")} · ${leads.length} lead(s)`,
+    `Exportado em ${new Date().toLocaleDateString("pt-BR")} · ${leads.length} ${entityLabel}`,
     40,
     52,
   );
