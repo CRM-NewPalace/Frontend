@@ -41,7 +41,10 @@ export function EvolucaoBadge({
           className,
         )}
       >
-        vs mês ant. —
+        vs mês ant. 0
+        {previous != null
+          ? ` · ant. ${previous.toLocaleString("pt-BR")}`
+          : ""}
       </span>
     );
   }

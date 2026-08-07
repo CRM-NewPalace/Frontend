@@ -200,28 +200,28 @@ function Page() {
           <section className="mt-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
             <FinanceKpiCard
               label="Entradas do mês"
-              value={data.totais.entradas}
+              value={data.totais.entradas ?? 0}
               icon={UsersRound}
               tone="blue"
               format="number"
             />
             <FinanceKpiCard
               label="Vendas do mês"
-              value={data.totais.vendas}
+              value={data.totais.vendas ?? 0}
               icon={TrendingUp}
               tone="emerald"
               format="number"
             />
             <FinanceKpiCard
               label="VGV do mês"
-              value={data.totais.vgv}
+              value={data.totais.vgv ?? 0}
               icon={Wallet}
               tone="teal"
               format="money"
             />
             <FinanceKpiCard
               label="Taxa de conversão"
-              value={data.totais.taxaConversao}
+              value={data.totais.taxaConversao ?? 0}
               icon={Goal}
               tone="violet"
               format="percent"
@@ -373,6 +373,10 @@ function Page() {
 }
 
 function CorretorRow({ row }: { row: DashboardRankingCorretor }) {
+  const vendas = row.vendas.valor ?? 0;
+  const vgv = row.vgv.valor ?? 0;
+  const entradas = row.entradas.valor ?? 0;
+  const conversao = row.taxaConversao.valor ?? 0;
   return (
     <tr className="border-b last:border-0 align-top">
       <td className="py-2.5 pr-2 tabular-nums text-muted-foreground">
@@ -385,42 +389,42 @@ function CorretorRow({ row }: { row: DashboardRankingCorretor }) {
           {row.gerente ? ` · ${row.gerente}` : ""}
         </div>
       </td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.leads}</td>
+      <td className="py-2.5 pr-2 text-right tabular-nums">{row.leads ?? 0}</td>
       <td className="py-2.5 pr-2 text-right">
-        <div className="tabular-nums font-medium">{row.entradas.valor}</div>
+        <div className="tabular-nums font-medium">{entradas}</div>
         <EvolucaoBadge
-          value={row.entradas.evolucaoPct}
-          previous={row.entradas.valorMesAnterior}
+          value={row.entradas.evolucaoPct ?? 0}
+          previous={row.entradas.valorMesAnterior ?? 0}
         />
       </td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.visitas}</td>
+      <td className="py-2.5 pr-2 text-right tabular-nums">{row.visitas ?? 0}</td>
       <td className="py-2.5 pr-2 text-right tabular-nums">
-        {row.documentacoes}
+        {row.documentacoes ?? 0}
       </td>
       <td className="py-2.5 pr-2 text-right">
-        <div className="tabular-nums font-medium">{row.vendas.valor}</div>
+        <div className="tabular-nums font-medium">{vendas}</div>
         <EvolucaoBadge
-          value={row.vendas.evolucaoPct}
-          previous={row.vendas.valorMesAnterior}
+          value={row.vendas.evolucaoPct ?? 0}
+          previous={row.vendas.valorMesAnterior ?? 0}
         />
       </td>
       <td className="py-2.5 pr-2 text-right">
-        <div className="tabular-nums font-medium">{money(row.vgv.valor)}</div>
+        <div className="tabular-nums font-medium">{money(vgv)}</div>
         <EvolucaoBadge
-          value={row.vgv.evolucaoPct}
-          previous={row.vgv.valorMesAnterior}
+          value={row.vgv.evolucaoPct ?? 0}
+          previous={row.vgv.valorMesAnterior ?? 0}
         />
       </td>
       <td className="py-2.5 pr-2 text-right">
         <div className="tabular-nums font-medium">
-          {row.taxaConversao.valor.toLocaleString("pt-BR", {
+          {conversao.toLocaleString("pt-BR", {
             maximumFractionDigits: 1,
           })}
           %
         </div>
-        <EvolucaoBadge value={row.taxaConversao.evolucaoPct} />
+        <EvolucaoBadge value={row.taxaConversao.evolucaoPct ?? 0} />
       </td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.perdidos}</td>
+      <td className="py-2.5 pr-2 text-right tabular-nums">{row.perdidos ?? 0}</td>
       <td className="py-2.5 text-right">
         {row.meta ? (
           <div className="min-w-22 ml-auto">
@@ -443,6 +447,10 @@ function CorretorRow({ row }: { row: DashboardRankingCorretor }) {
 }
 
 function GerenteRow({ row }: { row: DashboardRankingGerente }) {
+  const vendas = row.vendas.valor ?? 0;
+  const vgv = row.vgv.valor ?? 0;
+  const entradas = row.entradas.valor ?? 0;
+  const conversao = row.taxaConversao.valor ?? 0;
   return (
     <tr className="border-b last:border-0 align-top">
       <td className="py-2.5 pr-2 tabular-nums text-muted-foreground">
@@ -453,39 +461,39 @@ function GerenteRow({ row }: { row: DashboardRankingGerente }) {
         <div className="text-xs text-muted-foreground">{row.equipe}</div>
       </td>
       <td className="py-2.5 pr-2 text-right tabular-nums">{row.corretores}</td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.leads}</td>
+      <td className="py-2.5 pr-2 text-right tabular-nums">{row.leads ?? 0}</td>
       <td className="py-2.5 pr-2 text-right">
-        <div className="tabular-nums font-medium">{row.entradas.valor}</div>
+        <div className="tabular-nums font-medium">{entradas}</div>
         <EvolucaoBadge
-          value={row.entradas.evolucaoPct}
-          previous={row.entradas.valorMesAnterior}
+          value={row.entradas.evolucaoPct ?? 0}
+          previous={row.entradas.valorMesAnterior ?? 0}
         />
       </td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.visitas}</td>
+      <td className="py-2.5 pr-2 text-right tabular-nums">{row.visitas ?? 0}</td>
       <td className="py-2.5 pr-2 text-right">
-        <div className="tabular-nums font-medium">{row.vendas.valor}</div>
+        <div className="tabular-nums font-medium">{vendas}</div>
         <EvolucaoBadge
-          value={row.vendas.evolucaoPct}
-          previous={row.vendas.valorMesAnterior}
+          value={row.vendas.evolucaoPct ?? 0}
+          previous={row.vendas.valorMesAnterior ?? 0}
         />
       </td>
       <td className="py-2.5 pr-2 text-right">
-        <div className="tabular-nums font-medium">{money(row.vgv.valor)}</div>
+        <div className="tabular-nums font-medium">{money(vgv)}</div>
         <EvolucaoBadge
-          value={row.vgv.evolucaoPct}
-          previous={row.vgv.valorMesAnterior}
+          value={row.vgv.evolucaoPct ?? 0}
+          previous={row.vgv.valorMesAnterior ?? 0}
         />
       </td>
       <td className="py-2.5 pr-2 text-right">
         <div className="tabular-nums font-medium">
-          {row.taxaConversao.valor.toLocaleString("pt-BR", {
+          {conversao.toLocaleString("pt-BR", {
             maximumFractionDigits: 1,
           })}
           %
         </div>
-        <EvolucaoBadge value={row.taxaConversao.evolucaoPct} />
+        <EvolucaoBadge value={row.taxaConversao.evolucaoPct ?? 0} />
       </td>
-      <td className="py-2.5 text-right tabular-nums">{row.perdidos}</td>
+      <td className="py-2.5 text-right tabular-nums">{row.perdidos ?? 0}</td>
     </tr>
   );
 }
