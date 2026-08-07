@@ -243,6 +243,7 @@ const NAV_SECTIONS: {
       { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/metas", label: "Metas", icon: Target },
       { to: "/propostas", label: "Propostas", icon: FileText },
+      { to: "/contratos", label: "Contratos", icon: FileText },
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
     ],

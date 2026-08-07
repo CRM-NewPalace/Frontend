@@ -17,6 +17,7 @@ import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
 import { Route as AppConstrutorasRouteImport } from './routes/_app.construtoras'
+import { Route as AppContratosRouteImport } from './routes/_app.contratos'
 import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppDocumentacaoRouteImport } from './routes/_app.documentacao'
@@ -83,6 +84,11 @@ const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
 const AppConstrutorasRoute = AppConstrutorasRouteImport.update({
   id: '/construtoras',
   path: '/construtoras',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContratosRoute = AppContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCorretoresRoute = AppCorretoresRouteImport.update({
@@ -239,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof AppClientesRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/construtoras': typeof AppConstrutorasRoute
+  '/contratos': typeof AppContratosRoute
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
   '/documentacao': typeof AppDocumentacaoRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof AppClientesRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/construtoras': typeof AppConstrutorasRoute
+  '/contratos': typeof AppContratosRoute
   '/corretores': typeof AppCorretoresRoute
   '/dashboard': typeof AppDashboardRoute
   '/documentacao': typeof AppDocumentacaoRoute
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/_app/clientes': typeof AppClientesRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/construtoras': typeof AppConstrutorasRoute
+  '/_app/contratos': typeof AppContratosRoute
   '/_app/corretores': typeof AppCorretoresRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/documentacao': typeof AppDocumentacaoRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/construtoras'
+    | '/contratos'
     | '/corretores'
     | '/dashboard'
     | '/documentacao'
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/construtoras'
+    | '/contratos'
     | '/corretores'
     | '/dashboard'
     | '/documentacao'
@@ -429,6 +440,7 @@ export interface FileRouteTypes {
     | '/_app/clientes'
     | '/_app/configuracoes'
     | '/_app/construtoras'
+    | '/_app/contratos'
     | '/_app/corretores'
     | '/_app/dashboard'
     | '/_app/documentacao'
@@ -523,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/construtoras'
       fullPath: '/construtoras'
       preLoaderRoute: typeof AppConstrutorasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contratos': {
+      id: '/_app/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof AppContratosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/corretores': {
@@ -758,6 +777,7 @@ interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppConstrutorasRoute: typeof AppConstrutorasRoute
+  AppContratosRoute: typeof AppContratosRoute
   AppCorretoresRoute: typeof AppCorretoresRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDocumentacaoRoute: typeof AppDocumentacaoRoute
@@ -783,6 +803,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppConstrutorasRoute: AppConstrutorasRoute,
+  AppContratosRoute: AppContratosRoute,
   AppCorretoresRoute: AppCorretoresRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDocumentacaoRoute: AppDocumentacaoRoute,

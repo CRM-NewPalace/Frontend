@@ -40,6 +40,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/leads-perdidos",
     "/taxa-conversao",
     "/propostas",
+    "/contratos",
     "/financeiro",
     "/configuracoes",
     "/perfil",
@@ -60,6 +61,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/usuarios",
     "/construtoras",
     "/propostas",
+    "/contratos",
     "/taxa-conversao",
     "/financeiro/comissao",
     "/configuracoes",
@@ -75,10 +77,18 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/metas",
     "/triagem",
     "/documentacao",
+    "/contratos",
     "/financeiro/comissao",
     "/perfil",
   ],
-  analista: ["/funil", "/resultado", "/documentacao", "/imoveis", "/perfil"],
+  analista: [
+    "/funil",
+    "/resultado",
+    "/documentacao",
+    "/contratos",
+    "/imoveis",
+    "/perfil",
+  ],
 };
 
 /** No Bronze o gerente acessa só o CRM operacional. */
@@ -90,6 +100,7 @@ const GERENTE_BRONZE_ROUTES: readonly string[] = [
   "/imoveis",
   "/triagem",
   "/construtoras",
+  "/contratos",
   "/financeiro/comissao",
   "/perfil",
 ];

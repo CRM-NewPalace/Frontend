@@ -20,6 +20,7 @@ export type TenantModuleKey =
   | "analise"
   | "metas"
   | "propostas"
+  | "contratos"
   | "taxaConversao"
   | "configuracoes"
   | "financeiro";
@@ -71,6 +72,7 @@ export const TENANT_MODULE_GROUPS: TenantModuleGroup[] = [
       { key: "analise", label: "Análise" },
       { key: "metas", label: "Metas" },
       { key: "propostas", label: "Propostas" },
+      { key: "contratos", label: "Contratos" },
       { key: "taxaConversao", label: "Taxa de conversão" },
       {
         key: "configuracoes",
@@ -108,6 +110,7 @@ export const ROUTE_MODULE_KEY: Record<string, TenantModuleKey> = {
   "/resultado": "analise",
   "/metas": "metas",
   "/propostas": "propostas",
+  "/contratos": "contratos",
   "/taxa-conversao": "taxaConversao",
   "/configuracoes": "configuracoes",
   "/financeiro": "financeiro",
