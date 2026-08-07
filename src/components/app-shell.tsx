@@ -222,6 +222,7 @@ const NAV_SECTIONS: {
       { to: "/vendas", label: "Vendas", icon: DollarSign },
       { to: "/leads", label: "Leads", icon: Users },
       { to: "/funil", label: "Funil", icon: Kanban },
+      { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
       { to: "/triagem", label: "Triagem", icon: ClipboardList },
       { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/imoveis", label: "Imóveis", icon: Building2 },

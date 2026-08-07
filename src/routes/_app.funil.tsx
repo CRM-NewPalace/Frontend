@@ -132,10 +132,17 @@ function Funil() {
   if (user?.role === "analista") {
     return <AnalistaFunilBoard />;
   }
-  return <ComercialFunilBoard />;
+  return <ComercialFunilBoard tipoFiltro="lead" />;
 }
 
-function ComercialFunilBoard() {
+export type ComercialFunilTipoFiltro = "lead" | "cliente";
+
+export function ComercialFunilBoard({
+  tipoFiltro = "lead",
+}: {
+  tipoFiltro?: ComercialFunilTipoFiltro;
+}) {
+  const isClientesFunil = tipoFiltro === "cliente";
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
@@ -223,12 +230,13 @@ function ComercialFunilBoard() {
   }, [assignees, equipes, filterEquipeId, isAdmin]);
 
   const leads = useMemo(() => {
-    let list =
-      isCorretor && user
-        ? allLeads.filter(
-            (l) => l.corretor === user.name || l.corretorId === user.id,
-          )
-        : allLeads;
+    let list = allLeads.filter((l) => l.tipo === tipoFiltro);
+
+    if (isCorretor && user) {
+      list = list.filter(
+        (l) => l.corretor === user.name || l.corretorId === user.id,
+      );
+    }
 
     if (isAdmin && filterEquipeId !== "__all__") {
       if (filterEquipeId === "__none__") {
@@ -254,6 +262,7 @@ function ComercialFunilBoard() {
     isAdmin,
     isCorretor,
     isManager,
+    tipoFiltro,
     user,
   ]);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -735,13 +744,17 @@ function ComercialFunilBoard() {
   return (
     <div>
       <PageHeader
-        title="Funil de Vendas"
+        title={isClientesFunil ? "Funil de Clientes" : "Funil de Vendas"}
         description={
           loading || catalogLoading
             ? "Carregando funil..."
-            : isCorretor
-              ? "Seus leads e clientes no funil — arraste os cards para mover entre etapas."
-              : "Funil da equipe — leads de captação e clientes da carteira. Clique para ver detalhes."
+            : isClientesFunil
+              ? isCorretor
+                ? "Seus clientes no funil — arraste os cards para mover entre etapas."
+                : "Funil da equipe — apenas clientes da carteira. Clique para ver detalhes."
+              : isCorretor
+                ? "Seus leads no funil — arraste os cards para mover entre etapas."
+                : "Funil da equipe — apenas leads de captação. Clique para ver detalhes."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
