@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiError } from "@/lib/api";
 import {
   distribuirLeadsCorretores,
@@ -27,6 +27,8 @@ function splitEvenly(total: number, parts: number): number[] {
   return Array.from({ length: parts }, (_, i) => base + (i < rem ? 1 : 0));
 }
 
+type Destino = "equipes" | "corretores";
+
 export function LeadsDistribuirDialog({
   open,
   onOpenChange,
@@ -39,24 +41,34 @@ export function LeadsDistribuirDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resumo, setResumo] = useState<DistribuirResumo | null>(null);
-  const [quantidades, setQuantidades] = useState<Record<string, number>>({});
-  const [porCorretor, setPorCorretor] = useState(1);
+  const [destino, setDestino] = useState<Destino>("equipes");
+  const [qtdEquipes, setQtdEquipes] = useState<Record<string, number>>({});
+  const [qtdCorretores, setQtdCorretores] = useState<Record<string, number>>(
+    {},
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchDistribuirResumo();
       setResumo(data);
-      if (data.modo === "equipes") {
-        const split = splitEvenly(data.disponiveis, data.equipes.length);
-        const next: Record<string, number> = {};
-        data.equipes.forEach((eq, i) => {
-          next[eq.equipeId] = split[i] ?? 0;
-        });
-        setQuantidades(next);
-      } else {
-        setPorCorretor(1);
-      }
+      const defaultDestino: Destino =
+        data.equipes.length > 0 ? "equipes" : "corretores";
+      setDestino(defaultDestino);
+
+      const splitEq = splitEvenly(data.disponiveis, data.equipes.length);
+      const nextEq: Record<string, number> = {};
+      data.equipes.forEach((eq, i) => {
+        nextEq[eq.equipeId] = splitEq[i] ?? 0;
+      });
+      setQtdEquipes(nextEq);
+
+      const splitCr = splitEvenly(data.disponiveis, data.corretores.length);
+      const nextCr: Record<string, number> = {};
+      data.corretores.forEach((c, i) => {
+        nextCr[c.id] = splitCr[i] ?? 0;
+      });
+      setQtdCorretores(nextCr);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -74,56 +86,72 @@ export function LeadsDistribuirDialog({
   }, [open, load]);
 
   const somaEquipes = useMemo(
-    () => Object.values(quantidades).reduce((s, n) => s + (Number(n) || 0), 0),
-    [quantidades],
+    () => Object.values(qtdEquipes).reduce((s, n) => s + (Number(n) || 0), 0),
+    [qtdEquipes],
+  );
+  const somaCorretores = useMemo(
+    () =>
+      Object.values(qtdCorretores).reduce((s, n) => s + (Number(n) || 0), 0),
+    [qtdCorretores],
   );
 
   function autoDividir() {
-    if (!resumo || resumo.modo !== "equipes") return;
-    const split = splitEvenly(resumo.disponiveis, resumo.equipes.length);
+    if (!resumo) return;
+    if (destino === "equipes") {
+      const split = splitEvenly(resumo.disponiveis, resumo.equipes.length);
+      const next: Record<string, number> = {};
+      resumo.equipes.forEach((eq, i) => {
+        next[eq.equipeId] = split[i] ?? 0;
+      });
+      setQtdEquipes(next);
+      return;
+    }
+    const split = splitEvenly(resumo.disponiveis, resumo.corretores.length);
     const next: Record<string, number> = {};
-    resumo.equipes.forEach((eq, i) => {
-      next[eq.equipeId] = split[i] ?? 0;
+    resumo.corretores.forEach((c, i) => {
+      next[c.id] = split[i] ?? 0;
     });
-    setQuantidades(next);
+    setQtdCorretores(next);
   }
 
   async function handleConfirm() {
     if (!resumo) return;
-    if (resumo.modo === "equipes") {
-      if (somaEquipes <= 0) {
-        toast.error("Informe quantidades maiores que zero.");
-        return;
-      }
-      if (somaEquipes > resumo.disponiveis) {
-        toast.error(
-          `A soma (${somaEquipes}) ultrapassa os ${resumo.disponiveis} leads disponíveis.`,
-        );
-        return;
-      }
-    } else if (porCorretor < 1) {
-      toast.error("Informe ao menos 1 lead por corretor na fila.");
+    const soma = destino === "equipes" ? somaEquipes : somaCorretores;
+    if (soma <= 0) {
+      toast.error("Informe quantidades maiores que zero.");
+      return;
+    }
+    if (soma > resumo.disponiveis) {
+      toast.error(
+        `A soma (${soma}) ultrapassa os ${resumo.disponiveis} leads disponíveis.`,
+      );
       return;
     }
 
     setSaving(true);
     try {
-      if (resumo.modo === "equipes") {
+      if (destino === "equipes") {
         const result = await distribuirLeadsEquipes(
           resumo.equipes.map((eq) => ({
             equipeId: eq.equipeId,
-            quantidade: Number(quantidades[eq.equipeId]) || 0,
+            quantidade: Number(qtdEquipes[eq.equipeId]) || 0,
           })),
         );
-        toast.success(
-          `${result.total} lead(s) enviados às equipes. Os gerentes podem redistribuir.`,
-        );
+        toast.success(`${result.total} lead(s) enviados às equipes.`);
       } else {
-        const result = await distribuirLeadsCorretores(porCorretor);
+        const result = await distribuirLeadsCorretores({
+          alocacoes: resumo.corretores.map((c) => ({
+            corretorId: c.id,
+            quantidade: Number(qtdCorretores[c.id]) || 0,
+          })),
+        });
         const detalhe = result.distribuicao
+          .filter((d) => d.quantidade > 0)
           .map((d) => `${d.nome}: ${d.quantidade}`)
           .join(" · ");
-        toast.success(`${result.total} lead(s) distribuídos. ${detalhe}`);
+        toast.success(
+          `${result.total} lead(s) enviados aos corretores.${detalhe ? ` ${detalhe}` : ""}`,
+        );
       }
       onOpenChange(false);
       onDone();
@@ -138,17 +166,21 @@ export function LeadsDistribuirDialog({
     }
   }
 
+  const podeConfirmar =
+    !!resumo &&
+    resumo.disponiveis > 0 &&
+    (destino === "equipes"
+      ? resumo.equipes.length > 0 && somaEquipes > 0
+      : resumo.corretores.length > 0 && somaCorretores > 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Distribuir leads</DialogTitle>
           <DialogDescription>
-            {resumo?.modo === "equipes"
-              ? "Divida os leads sem dono entre as equipes. O gerente de cada equipe redistribui aos corretores."
-              : resumo?.equipeId
-                ? "Defina quantos leads cada corretor recebe por rodada da fila (round-robin)."
-                : "Não há equipes cadastradas. Defina quantos leads cada corretor recebe por rodada da fila."}
+            Envie leads do pool do admin para equipes ou diretamente para
+            corretores.
           </DialogDescription>
         </DialogHeader>
 
@@ -166,104 +198,120 @@ export function LeadsDistribuirDialog({
               </span>
             </p>
 
-            {resumo.modo === "equipes" ? (
-              <>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={autoDividir}
-                  >
-                    Dividir automaticamente
-                  </Button>
-                </div>
+            <Tabs
+              value={destino}
+              onValueChange={(v) => setDestino(v as Destino)}
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger
+                  value="equipes"
+                  disabled={resumo.equipes.length === 0}
+                >
+                  Por equipes
+                </TabsTrigger>
+                <TabsTrigger
+                  value="corretores"
+                  disabled={resumo.corretores.length === 0}
+                >
+                  Por corretores
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="mt-3 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={autoDividir}
+                >
+                  Dividir automaticamente
+                </Button>
+              </div>
+
+              <TabsContent value="equipes" className="mt-3 space-y-2">
                 {resumo.equipes.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Nenhuma equipe cadastrada. Crie equipes em Administração →
-                    Equipes, ou feche e abra de novo para distribuir direto aos
-                    corretores.
+                    Nenhuma equipe cadastrada. Use a aba Corretores.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {resumo.equipes.map((eq) => (
-                      <div
-                        key={eq.equipeId}
-                        className="flex items-center gap-3 rounded-md border px-3 py-2"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            {eq.nome}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Gerente: {eq.gerente} · {eq.corretores} corretor
-                            {eq.corretores === 1 ? "" : "es"}
-                          </div>
+                  resumo.equipes.map((eq) => (
+                    <div
+                      key={eq.equipeId}
+                      className="flex items-center gap-3 rounded-md border px-3 py-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {eq.nome}
                         </div>
-                        <Input
-                          type="number"
-                          min={0}
-                          className="w-24 h-9"
-                          value={quantidades[eq.equipeId] ?? 0}
-                          onChange={(e) =>
-                            setQuantidades((prev) => ({
-                              ...prev,
-                              [eq.equipeId]: Math.max(
-                                0,
-                                Number(e.target.value) || 0,
-                              ),
-                            }))
-                          }
-                        />
+                        <div className="text-xs text-muted-foreground">
+                          Gerente: {eq.gerente} · {eq.corretores} corretor
+                          {eq.corretores === 1 ? "" : "es"}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-24 h-9"
+                        value={qtdEquipes[eq.equipeId] ?? 0}
+                        onChange={(e) =>
+                          setQtdEquipes((prev) => ({
+                            ...prev,
+                            [eq.equipeId]: Math.max(
+                              0,
+                              Number(e.target.value) || 0,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                  ))
                 )}
                 <p className="text-xs text-muted-foreground">
                   Soma: {somaEquipes} / {resumo.disponiveis}
                 </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {resumo.equipeId ? "Equipe: " : "Escopo: "}
-                  <span className="text-foreground">{resumo.equipeNome}</span>
-                  {" · "}
-                  {resumo.corretores.length} corretor
-                  {resumo.corretores.length === 1 ? "" : "es"}
-                </p>
+              </TabsContent>
+
+              <TabsContent value="corretores" className="mt-3 space-y-2">
                 {resumo.corretores.length === 0 ? (
                   <p className="text-sm text-amber-600 dark:text-amber-400">
-                    Cadastre corretores ativos em Usuários para poder
-                    distribuir.
+                    Cadastre corretores ativos em Usuários para poder distribuir.
                   </p>
-                ) : null}
-                <div className="space-y-1.5">
-                  <Label htmlFor="por-corretor">
-                    Leads por corretor em cada rodada da fila
-                  </Label>
-                  <Input
-                    id="por-corretor"
-                    type="number"
-                    min={1}
-                    className="w-32"
-                    value={porCorretor}
-                    onChange={(e) =>
-                      setPorCorretor(Math.max(1, Number(e.target.value) || 1))
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ex.: 1 = um para cada; 5 = cada corretor recebe 5, depois o
-                    próximo, até acabar o pool.
-                  </p>
-                </div>
-                <ul className="text-xs text-muted-foreground list-disc pl-5">
-                  {resumo.corretores.map((c) => (
-                    <li key={c.id}>{c.nome}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+                ) : (
+                  resumo.corretores.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-3 rounded-md border px-3 py-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {c.nome}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.equipeNome
+                            ? `Equipe: ${c.equipeNome}`
+                            : "Sem equipe"}
+                        </div>
+                      </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-24 h-9"
+                        value={qtdCorretores[c.id] ?? 0}
+                        onChange={(e) =>
+                          setQtdCorretores((prev) => ({
+                            ...prev,
+                            [c.id]: Math.max(0, Number(e.target.value) || 0),
+                          }))
+                        }
+                      />
+                    </div>
+                  ))
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Soma: {somaCorretores} / {resumo.disponiveis}
+                </p>
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 
@@ -278,14 +326,7 @@ export function LeadsDistribuirDialog({
           </Button>
           <Button
             type="button"
-            disabled={
-              saving ||
-              loading ||
-              !resumo ||
-              resumo.disponiveis === 0 ||
-              (resumo.modo === "equipes" && resumo.equipes.length === 0) ||
-              (resumo.modo === "corretores" && resumo.corretores.length === 0)
-            }
+            disabled={saving || loading || !podeConfirmar}
             onClick={() => void handleConfirm()}
           >
             {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}

@@ -184,7 +184,9 @@ function LeadsPage() {
   const isGerente = user?.role === "gerente";
   /** Só admin/analista filtram entre várias equipes; gerente já vê só a própria. */
   const canFilterEquipe =
-    user?.role === "admin" || user?.role === "analista";
+    user?.role === "admin" ||
+    user?.role === "analista" ||
+    user?.role === "gerente";
 
   const {
     leads: allLeads,
@@ -293,7 +295,7 @@ function LeadsPage() {
     [equipesAtivas, form.equipeId],
   );
 
-  /** Corretores disponíveis no form conforme gerente/equipe selecionado. */
+  /** Corretores disponíveis no form conforme equipe selecionada (admin/gerente). */
   const formCorretorOptions = useMemo(() => {
     const selfOption =
       user && (isAdmin || isGerente)
@@ -306,25 +308,26 @@ function LeadsPage() {
             },
           ]
         : [];
-    if (isAdmin) {
-      const membros = (formEquipe?.membros ?? []).filter(
+    if (!isAdmin && !isGerente) return [];
+
+    if (formEquipe) {
+      const membros = formEquipe.membros.filter(
         (m) => m.role === "corretor" && m.status === "ativo",
       );
       return [...selfOption, ...membros];
     }
-    if (isGerente) {
-      const equipe =
-        formEquipe ??
-        equipesAtivas.find((e) => e.gerenteId === user?.id) ??
-        equipesAtivas[0] ??
-        null;
-      const membros = (equipe?.membros ?? []).filter(
-        (m) => m.role === "corretor" && m.status === "ativo",
-      );
-      return [...selfOption, ...membros];
-    }
-    return [];
-  }, [isAdmin, isGerente, formEquipe, equipesAtivas, user]);
+
+    // Sem equipe: todos os corretores do tenant (assignees).
+    const todos = corretorAssignees
+      .filter((a) => a.role === "corretor" || !a.role)
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        role: "corretor" as const,
+        status: "ativo" as const,
+      }));
+    return [...selfOption, ...todos.filter((c) => c.id !== user?.id)];
+  }, [isAdmin, isGerente, formEquipe, corretorAssignees, user]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -538,14 +541,10 @@ function LeadsPage() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    const gerenteEquipe =
-      isGerente
-        ? (equipesAtivas.find((e) => e.gerenteId === user?.id) ??
-          equipesAtivas[0])
-        : null;
+    // Sem vínculo: lead fica no pool do admin para distribuição.
     setForm({
       ...emptyForm(),
-      equipeId: gerenteEquipe?.id ?? "",
+      equipeId: "",
       corretorId: "",
     });
     setOpen(true);
@@ -560,11 +559,6 @@ function LeadsPage() {
         e.membros.some((m) => m.id === lead.corretorId),
       );
       if (eq) next.equipeId = eq.id;
-    } else if (!next.equipeId && isGerente) {
-      next.equipeId =
-        equipesAtivas.find((e) => e.gerenteId === user?.id)?.id ??
-        equipesAtivas[0]?.id ??
-        "";
     }
     setForm(next);
     setOpen(true);
@@ -804,7 +798,7 @@ function LeadsPage() {
               ? isCorretor
                 ? `${leads.length} leads atribuídos a você`
                 : isGerente
-                  ? `${leads.length} leads da sua equipe no funil`
+                  ? `${leads.length} leads (equipe + pool do admin)`
                   : `${leads.length} leads de toda a equipe no funil`
               : `${filteredLeads.length} de ${leads.length} leads`
         }
@@ -1009,10 +1003,10 @@ function LeadsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {isAdmin && (
+                {(isAdmin || isGerente) && (
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Gerente{" "}
+                      Equipe / gerente{" "}
                       <span className="font-normal">(opcional)</span>
                     </Label>
                     <Select
@@ -1027,10 +1021,12 @@ function LeadsPage() {
                       }}
                     >
                       <SelectTrigger className="h-10 bg-background">
-                        <SelectValue placeholder="Sem gerente" />
+                        <SelectValue placeholder="Sem equipe (pool admin)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">Sem gerente</SelectItem>
+                        <SelectItem value="__none__">
+                          Sem equipe (pool admin)
+                        </SelectItem>
                         {equipesAtivas.map((eq) => (
                           <SelectItem key={eq.id} value={eq.id}>
                             {eq.gerente.name}
@@ -1058,7 +1054,7 @@ function LeadsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">Sem corretor</SelectItem>
-                        {(isGerente || form.equipeId) && (
+                        {form.equipeId && (
                           <SelectItem value="__pool__">
                             Pool da equipe (sem corretor)
                           </SelectItem>
@@ -1084,9 +1080,8 @@ function LeadsPage() {
               </div>
               {(isAdmin || isGerente) && (
                 <p className="text-[11px] text-muted-foreground">
-                  Gerente e corretor são opcionais. Você pode salvar sem vínculo
-                  e distribuir depois, deixar no pool da equipe ou escolher um
-                  corretor — inclusive a si mesmo.
+                  Sem equipe = pool do admin. Admin e gerentes podem distribuir
+                  depois para qualquer equipe ou corretor.
                 </p>
               )}
               <div className="space-y-1.5">

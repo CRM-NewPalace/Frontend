@@ -186,8 +186,7 @@ export async function importLeads(
   });
 }
 
-export type DistribuirResumoEquipes = {
-  modo: "equipes";
+export type DistribuirResumo = {
   disponiveis: number;
   equipes: Array<{
     equipeId: string;
@@ -196,18 +195,12 @@ export type DistribuirResumoEquipes = {
     corretores: number;
     status?: string;
   }>;
+  corretores: Array<{
+    id: string;
+    nome: string;
+    equipeNome: string | null;
+  }>;
 };
-
-export type DistribuirResumoCorretores = {
-  modo: "corretores";
-  disponiveis: number;
-  equipeId: string | null;
-  equipeNome: string;
-  corretores: Array<{ id: string; nome: string }>;
-};
-
-export type DistribuirResumo =
-  DistribuirResumoEquipes | DistribuirResumoCorretores;
 
 export async function fetchDistribuirResumo(): Promise<DistribuirResumo> {
   return apiFetch<DistribuirResumo>("/leads/distribuir/resumo");
@@ -226,10 +219,13 @@ export async function distribuirLeadsEquipes(
   });
 }
 
-export async function distribuirLeadsCorretores(porCorretor: number): Promise<{
+export async function distribuirLeadsCorretores(input: {
+  alocacoes?: Array<{ corretorId: string; quantidade: number }>;
+  porCorretor?: number;
+}): Promise<{
   ok: boolean;
   total: number;
-  porCorretor: number;
+  porCorretor: number | null;
   distribuicao: Array<{
     corretorId: string;
     nome: string;
@@ -238,7 +234,7 @@ export async function distribuirLeadsCorretores(porCorretor: number): Promise<{
 }> {
   return apiFetch("/leads/distribuir/corretores", {
     method: "POST",
-    body: { modo: "corretores", porCorretor },
+    body: { modo: "corretores", ...input },
   });
 }
 
