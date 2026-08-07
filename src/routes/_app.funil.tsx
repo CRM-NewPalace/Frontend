@@ -239,13 +239,18 @@ export function ComercialFunilBoard({
   const leads = useMemo(() => {
     let list = allLeads.filter((l) => l.tipo === tipoFiltro);
 
-    if (isCorretor && user) {
+    // Clientes = carteira pessoal (corretor, admin e gerente só a própria).
+    if (isClientesFunil && user) {
+      list = list.filter(
+        (l) => l.corretorId === user.id || l.corretor === user.name,
+      );
+    } else if (isCorretor && user) {
       list = list.filter(
         (l) => l.corretor === user.name || l.corretorId === user.id,
       );
     }
 
-    if (isAdmin && filterEquipeId !== "__all__") {
+    if (!isClientesFunil && isAdmin && filterEquipeId !== "__all__") {
       if (filterEquipeId === "__none__") {
         list = list.filter((l) => !l.equipeId);
       } else {
@@ -253,7 +258,7 @@ export function ComercialFunilBoard({
       }
     }
 
-    if (isManager && filterCorretorId !== "__all__") {
+    if (!isClientesFunil && isManager && filterCorretorId !== "__all__") {
       if (filterCorretorId === "__none__") {
         list = list.filter((l) => !l.corretorId);
       } else {
@@ -267,6 +272,7 @@ export function ComercialFunilBoard({
     filterCorretorId,
     filterEquipeId,
     isAdmin,
+    isClientesFunil,
     isCorretor,
     isManager,
     tipoFiltro,
@@ -763,16 +769,14 @@ export function ComercialFunilBoard({
           loading || catalogLoading
             ? "Carregando funil..."
             : isClientesFunil
-              ? isCorretor
-                ? "Seus clientes no funil — arraste os cards para mover entre etapas."
-                : "Funil da equipe — apenas clientes da carteira. Clique para ver detalhes."
+              ? "Sua carteira de clientes no funil — arraste os cards para mover entre etapas."
               : isCorretor
                 ? "Seus leads no funil — arraste os cards para mover entre etapas."
                 : "Funil da equipe — apenas leads de captação. Clique para ver detalhes."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {isAdmin && (
+            {!isClientesFunil && isAdmin && (
               <Select
                 value={filterEquipeId}
                 onValueChange={(v) => {
@@ -794,7 +798,7 @@ export function ComercialFunilBoard({
                 </SelectContent>
               </Select>
             )}
-            {isManager && (
+            {!isClientesFunil && isManager && (
               <Select
                 value={filterCorretorId}
                 onValueChange={setFilterCorretorId}
@@ -931,7 +935,7 @@ export function ComercialFunilBoard({
                     <div className="text-xs text-muted-foreground">
                       {l.telefone}
                     </div>
-                    {l.tipo === "cliente" && !isCorretor && (
+                    {l.tipo === "cliente" && !isCorretor && !isClientesFunil && (
                       <div className="text-[10px] text-violet-600 dark:text-violet-300 mt-1">
                         Carteira de {l.corretor.split(" ")[0]}
                       </div>

@@ -200,14 +200,14 @@ function Clientes() {
     funnelStages.find((s) => s.id === stage)?.name ?? stage;
 
   const clientes = useMemo(() => {
-    const scoped =
-      isCorretor && user
-        ? allLeads.filter(
-            (l) => l.corretor === user.name || l.corretorId === user.id,
-          )
-        : allLeads;
+    // Carteira pessoal: corretor, admin e gerente só veem os próprios clientes.
+    const scoped = user
+      ? allLeads.filter(
+          (l) => l.corretorId === user.id || l.corretor === user.name,
+        )
+      : [];
     return scoped.filter((l) => l.tipo === "cliente");
-  }, [allLeads, isCorretor, user]);
+  }, [allLeads, user]);
 
   const corretorOptions = useMemo(
     () =>
@@ -532,15 +532,11 @@ function Clientes() {
   return (
     <div>
       <PageHeader
-        title={isCorretor ? "Meus clientes" : "Clientes"}
+        title="Meus clientes"
         description={
           loading
             ? "Carregando clientes..."
-            : isCorretor
-              ? "Sua carteira pessoal de clientes — também aparece no funil."
-              : canOwnCarteira
-                ? "Sua carteira e a da equipe — clientes não misturam com leads de captação."
-                : "Clientes da carteira dos corretores (não misturam com leads de captação)."
+            : "Sua carteira pessoal de clientes — também aparece no funil. A carteira do corretor é privada."
         }
         actions={
           <>
