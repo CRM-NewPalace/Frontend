@@ -9,6 +9,7 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import {
+  DetailField,
   FormDialogActions,
   FormDialogBody,
   FormDialogShell,
@@ -48,9 +49,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Command,
   CommandEmpty,
@@ -95,7 +103,20 @@ import {
   type PropostaSimplesKey,
   type PropostaStatus,
 } from "@/lib/propostas-api";
-import { formatPhone, phoneDigits, PHONE_PLACEHOLDER } from "@/lib/phone";
+import {
+  downloadPropostaPdfCliente,
+  downloadPropostaPdfCorretor,
+  getPropostaMailtoUrl,
+  getPropostaWhatsAppUrl,
+  propostaWhatsAppDigits,
+} from "@/lib/proposta-pdf";
+import {
+  formatPhone,
+  isValidPhone,
+  phoneDigits,
+  PHONE_INVALID_MESSAGE,
+  PHONE_PLACEHOLDER,
+} from "@/lib/phone";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -107,6 +128,7 @@ import {
   CheckCircle2,
   ChevronsUpDown,
   Clock3,
+  Download,
   Eye,
   FileText,
   Handshake,
@@ -115,6 +137,7 @@ import {
   Plus,
   Search,
   Send,
+  Share2,
   Trash2,
   X,
   XCircle,
@@ -241,6 +264,133 @@ function leadPickerLabel(lead: Lead): string {
   return phone ? `${lead.nome} · ${phone}` : lead.nome;
 }
 
+function shareToast() {
+  toast.message("PDF do cliente baixado", {
+    description: "Anexe o arquivo na conversa ou no e-mail que acabou de abrir.",
+  });
+}
+
+function PropostaActionMenus({
+  proposta,
+  onView,
+  onRequestWhatsAppPhone,
+  compact = false,
+}: {
+  proposta: Proposta;
+  onView?: () => void;
+  onRequestWhatsAppPhone: (proposta: Proposta) => void;
+  compact?: boolean;
+}) {
+  const handlePdfCliente = () => {
+    downloadPropostaPdfCliente(proposta);
+    toast.success("PDF para cliente baixado");
+  };
+
+  const handlePdfCorretor = () => {
+    downloadPropostaPdfCorretor(proposta);
+    toast.success("PDF para corretor baixado");
+  };
+
+  const handleWhatsApp = () => {
+    if (!propostaWhatsAppDigits(proposta.clienteTelefone)) {
+      onRequestWhatsAppPhone(proposta);
+      return;
+    }
+    downloadPropostaPdfCliente(proposta);
+    const url = getPropostaWhatsAppUrl(proposta);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    shareToast();
+  };
+
+  const handleEmail = () => {
+    downloadPropostaPdfCliente(proposta);
+    window.location.href = getPropostaMailtoUrl(proposta);
+    shareToast();
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex items-center",
+        compact ? "justify-end gap-0.5" : "flex-wrap gap-2",
+      )}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          {compact ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="Baixar PDF"
+              title="Baixar PDF"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="button" size="sm" variant="outline">
+              <Download className="h-4 w-4 mr-1" />
+              Baixar PDF
+            </Button>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handlePdfCliente}>
+            PDF para cliente
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handlePdfCorretor}>
+            PDF para corretor
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          {compact ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="Compartilhar"
+              title="Compartilhar"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="button" size="sm" variant="outline">
+              <Share2 className="h-4 w-4 mr-1" />
+              Compartilhar
+            </Button>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleWhatsApp}>
+            WhatsApp
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleEmail}>E-mail</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {onView && compact && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={onView}
+          aria-label="Ver detalhes"
+          title="Ver detalhes"
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function Page() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
@@ -270,6 +420,8 @@ function Page() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [whatsAppTarget, setWhatsAppTarget] = useState<Proposta | null>(null);
+  const [whatsAppPhone, setWhatsAppPhone] = useState("");
 
   const corretorOptions = useMemo(
     () => assignees.filter((a) => !a.role || a.role === "corretor"),
@@ -669,7 +821,7 @@ function Page() {
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Validade</TableHead>
-              <TableHead className="w-12" />
+              <TableHead className="text-right w-28">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -735,19 +887,20 @@ function Page() {
                   <TableCell className="tabular-nums whitespace-nowrap">
                     {formatPropostaDate(p.validade)}
                   </TableCell>
-                  <TableCell>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelected(p);
+                  <TableCell className="text-right">
+                    <PropostaActionMenus
+                      proposta={p}
+                      compact
+                      onView={() => setSelected(p)}
+                      onRequestWhatsAppPhone={(item) => {
+                        setWhatsAppTarget(item);
+                        setWhatsAppPhone(
+                          item.clienteTelefone
+                            ? formatPhone(item.clienteTelefone)
+                            : "",
+                        );
                       }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    />
                   </TableCell>
                 </TableRow>
               ))
@@ -759,28 +912,111 @@ function Page() {
         {rows.length} de {items.length} propostas
       </p>
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="sm:max-w-lg">
-          {selected && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 flex-wrap">
-                  {selected.codigo}
-                  <Badge
+      <FormDialogShell
+        open={Boolean(selected)}
+        onOpenChange={(openDialog) => !openDialog && setSelected(null)}
+        icon={<FileText className="size-5" />}
+        title={selected?.codigo ?? "Proposta"}
+        description={
+          selected ? (
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className={propostaStatusClass(selected.status)}
+              >
+                {PROPOSTA_STATUS_LABEL[selected.status]}
+              </Badge>
+              <span>Detalhes da proposta comercial</span>
+            </span>
+          ) : undefined
+        }
+        className="max-w-2xl"
+        footer={
+          selected ? (
+            <FormDialogActions>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelected(null)}
+              >
+                Fechar
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setDeleteId(selected.id)}
+              >
+                <Trash2 className="mr-1 size-4" />
+                Excluir
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => openEdit(selected)}
+              >
+                <Pencil className="mr-1 size-4" />
+                Editar
+              </Button>
+              {selected.status === "rascunho" && (
+                <Button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => void patchStatus(selected.id, "enviada")}
+                >
+                  <Send className="mr-1 size-4" />
+                  Enviar
+                </Button>
+              )}
+              {(selected.status === "enviada" ||
+                selected.status === "negociacao") && (
+                <>
+                  <Button
+                    type="button"
                     variant="outline"
-                    className={propostaStatusClass(selected.status)}
+                    disabled={actionLoading}
+                    onClick={() => void patchStatus(selected.id, "recusada")}
                   >
-                    {PROPOSTA_STATUS_LABEL[selected.status]}
-                  </Badge>
-                </DialogTitle>
-                <DialogDescription>
-                  Detalhes da proposta comercial.
-                </DialogDescription>
-              </DialogHeader>
+                    <XCircle className="mr-1 size-4" />
+                    Recusar
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => void patchStatus(selected.id, "aceita")}
+                  >
+                    <CheckCircle2 className="mr-1 size-4" />
+                    Aceitar
+                  </Button>
+                </>
+              )}
+            </FormDialogActions>
+          ) : undefined
+        }
+      >
+        {selected && (
+          <FormDialogBody>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/20 px-3 py-2.5">
+              <span className="text-xs text-muted-foreground">
+                Exportar ou enviar ao cliente
+              </span>
+              <PropostaActionMenus
+                proposta={selected}
+                onRequestWhatsAppPhone={(item) => {
+                  setWhatsAppTarget(item);
+                  setWhatsAppPhone(
+                    item.clienteTelefone
+                      ? formatPhone(item.clienteTelefone)
+                      : "",
+                  );
+                }}
+              />
+            </div>
 
-              <div className="grid gap-3 text-sm">
-                <DetailRow label="Cliente" value={selected.clienteNome} />
-                <DetailRow
+            <FormSection title="Cliente e imóvel">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DetailField label="Cliente" value={selected.clienteNome} />
+                <DetailField
                   label="Telefone"
                   value={
                     selected.clienteTelefone
@@ -788,42 +1024,59 @@ function Page() {
                       : "—"
                   }
                 />
-                <DetailRow
+                <DetailField
                   label="Empreendimento"
-                  value={
-                    (selected.empreendimento?.nome ?? "—") +
-                    (selected.unidade ? ` · Un. ${selected.unidade}` : "")
-                  }
+                  value={selected.empreendimento?.nome ?? "—"}
                 />
-                <DetailRow
+                <DetailField
+                  label="Unidade"
+                  value={selected.unidade ? `Un. ${selected.unidade}` : "—"}
+                />
+                <DetailField
                   label="Construtora"
                   value={selected.construtora?.nome ?? "—"}
                 />
-                <DetailRow
+                <DetailField
                   label="Corretor"
-                  value={`${selected.corretor?.name ?? "—"} · ${equipeName(selected)}`}
+                  value={selected.corretor?.name ?? "—"}
                 />
-                <div className="space-y-3 rounded-lg border border-border/60 p-3 bg-muted/30">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[11px] text-muted-foreground">
-                      Valor de venda
-                    </span>
-                    <span className="font-semibold tabular-nums">
-                      {brl(selected.valor)}
-                    </span>
-                  </div>
+                <DetailField
+                  label="Equipe"
+                  value={equipeName(selected)}
+                  className="sm:col-span-2"
+                />
+              </div>
+            </FormSection>
+
+            <FormSection title="Valores">
+              <div className="rounded-lg border border-border/60 bg-muted/25 px-4 py-3">
+                <div className="text-xs text-muted-foreground">
+                  Valor de venda
+                </div>
+                <div className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+                  {brl(selected.valor)}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">
+                  Composição do pagamento
+                </div>
+                <div className="divide-y divide-border/60 rounded-lg border border-border/60">
                   {PROPOSTA_SIMPLES_KEYS.map((key) => {
                     const value = selected[key];
                     if (value == null) return null;
                     return (
                       <div
                         key={key}
-                        className="flex items-center justify-between gap-3"
+                        className="flex items-center justify-between gap-3 px-3 py-2.5"
                       >
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-sm text-muted-foreground">
                           {PROPOSTA_COMPOSICAO_LABEL[key]}
                         </span>
-                        <span className="tabular-nums">{brl(value)}</span>
+                        <span className="text-sm font-medium tabular-nums">
+                          {brl(value)}
+                        </span>
                       </div>
                     );
                   })}
@@ -832,12 +1085,15 @@ function Page() {
                     if (!values.length) return null;
                     const subtotal = values.reduce((s, n) => s + n, 0);
                     return (
-                      <div key={key} className="space-y-1.5">
+                      <div key={key} className="space-y-2 px-3 py-2.5">
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-[11px] text-muted-foreground">
+                          <span className="text-sm text-muted-foreground">
                             {PROPOSTA_COMPOSICAO_LABEL[key]}
+                            <span className="ml-1 text-xs opacity-70">
+                              ({values.length})
+                            </span>
                           </span>
-                          <span className="font-medium tabular-nums">
+                          <span className="text-sm font-medium tabular-nums">
                             {brl(subtotal)}
                           </span>
                         </div>
@@ -845,46 +1101,60 @@ function Page() {
                           {values.map((value, index) => (
                             <span
                               key={`${key}-${index}`}
-                              className="rounded-md border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] tabular-nums"
+                              className="rounded-md bg-muted/60 px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground"
                             >
-                              #{index + 1} · {brl(value)}
+                              {index + 1}ª · {brl(value)}
                             </span>
                           ))}
                         </div>
                       </div>
                     );
                   })}
-                  <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-2">
-                    <span className="text-[11px] text-muted-foreground">
-                      Total
-                    </span>
-                    <span className="font-semibold tabular-nums">
-                      {brl(propostaComposicaoTotal(selected))}
-                    </span>
+                  {!PROPOSTA_SIMPLES_KEYS.some((key) => selected[key] != null) &&
+                  !PROPOSTA_LISTA_KEYS.some(
+                    (key) => (selected[key] ?? []).length > 0,
+                  ) ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">
+                      Nenhuma composição informada.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border/60 px-3 py-2.5">
+                  <div className="text-xs text-muted-foreground">
+                    Total da composição
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[11px] text-muted-foreground">
-                      Diferença
-                    </span>
-                    <span
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        propostaDiferenca(selected) === 0
-                          ? "text-emerald-700 dark:text-emerald-300"
-                          : propostaDiferenca(selected) < 0
-                            ? "text-destructive"
-                            : "text-amber-800 dark:text-amber-300",
-                      )}
-                    >
-                      {brl(propostaDiferenca(selected))}
-                    </span>
+                  <div className="mt-1 text-sm font-semibold tabular-nums">
+                    {brl(propostaComposicaoTotal(selected))}
                   </div>
                 </div>
-                <DetailRow
+                <div className="rounded-lg border border-border/60 px-3 py-2.5">
+                  <div className="text-xs text-muted-foreground">Diferença</div>
+                  <div
+                    className={cn(
+                      "mt-1 text-sm font-semibold tabular-nums",
+                      propostaDiferenca(selected) === 0
+                        ? "text-emerald-700 dark:text-emerald-300"
+                        : propostaDiferenca(selected) < 0
+                          ? "text-destructive"
+                          : "text-amber-800 dark:text-amber-300",
+                    )}
+                  >
+                    {brl(propostaDiferenca(selected))}
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection title="Datas">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <DetailField
                   label="Criada em"
                   value={formatPropostaDate(selected.createdAt)}
                 />
-                <DetailRow
+                <DetailField
                   label="Enviada em"
                   value={
                     selected.enviadaEm
@@ -892,80 +1162,83 @@ function Page() {
                       : "Ainda não enviada"
                   }
                 />
-                <DetailRow
+                <DetailField
                   label="Validade"
                   value={formatPropostaDate(selected.validade)}
                 />
-                {selected.observacao ? (
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Observação
-                    </div>
-                    <p className="text-foreground">{selected.observacao}</p>
-                  </div>
-                ) : null}
               </div>
+            </FormSection>
 
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEdit(selected)}
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Editar
-                </Button>
-                {selected.status === "rascunho" && (
-                  <Button
-                    size="sm"
-                    disabled={actionLoading}
-                    onClick={() => void patchStatus(selected.id, "enviada")}
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    Enviar proposta
-                  </Button>
-                )}
-                {(selected.status === "enviada" ||
-                  selected.status === "negociacao") && (
-                  <>
-                    <Button
-                      size="sm"
-                      disabled={actionLoading}
-                      onClick={() => void patchStatus(selected.id, "aceita")}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Aceitar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={actionLoading}
-                      onClick={() => void patchStatus(selected.id, "recusada")}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Recusar
-                    </Button>
-                  </>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  onClick={() => setDeleteId(selected.id)}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Excluir
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setSelected(null)}
-                >
-                  Fechar
-                </Button>
-              </div>
-            </>
-          )}
+            {selected.observacao ? (
+              <FormSection title="Observação">
+                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                  {selected.observacao}
+                </p>
+              </FormSection>
+            ) : null}
+          </FormDialogBody>
+        )}
+      </FormDialogShell>
+
+      <Dialog
+        open={Boolean(whatsAppTarget)}
+        onOpenChange={(openDialog) => {
+          if (!openDialog) {
+            setWhatsAppTarget(null);
+            setWhatsAppPhone("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Compartilhar no WhatsApp</DialogTitle>
+            <DialogDescription>
+              Informe o telefone do cliente com DDD. O PDF para cliente será
+              baixado e a conversa abrirá com a mensagem pronta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="whatsapp-phone">Telefone</Label>
+            <Input
+              id="whatsapp-phone"
+              placeholder={PHONE_PLACEHOLDER}
+              value={whatsAppPhone}
+              onChange={(e) => setWhatsAppPhone(formatPhone(e.target.value))}
+            />
+            {whatsAppPhone && !isValidPhone(whatsAppPhone) ? (
+              <p className="text-xs text-destructive">{PHONE_INVALID_MESSAGE}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setWhatsAppTarget(null);
+                setWhatsAppPhone("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={!whatsAppTarget || !isValidPhone(whatsAppPhone)}
+              onClick={() => {
+                if (!whatsAppTarget || !isValidPhone(whatsAppPhone)) return;
+                downloadPropostaPdfCliente(whatsAppTarget);
+                const url = getPropostaWhatsAppUrl(
+                  whatsAppTarget,
+                  phoneDigits(whatsAppPhone),
+                );
+                if (url) window.open(url, "_blank", "noopener,noreferrer");
+                shareToast();
+                setWhatsAppTarget(null);
+                setWhatsAppPhone("");
+              }}
+            >
+              Abrir WhatsApp
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1357,15 +1630,6 @@ function Page() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-border/40 pb-2">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }

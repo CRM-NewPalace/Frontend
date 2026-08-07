@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronsUpDown,
   Clock3,
+  Eye,
   Loader2,
   Pencil,
   Percent,
@@ -23,6 +24,7 @@ import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import {
+  DetailField,
   FormDialogActions,
   FormDialogBody,
   FormDialogShell,
@@ -187,6 +189,7 @@ function Page() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Comissao | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [detail, setDetail] = useState<Comissao | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -533,16 +536,13 @@ function Page() {
                 {commissionColumnLabel}
               </TableHead>
               <TableHead>Status</TableHead>
-              {canManage && <TableHead className="text-right">Ações</TableHead>}
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell
-                  colSpan={canManage ? 9 : 8}
-                  className="py-12 text-center"
-                >
+                <TableCell colSpan={9} className="py-12 text-center">
                   <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
                   <span className="mt-2 block text-sm text-muted-foreground">
                     Carregando comissões…
@@ -552,7 +552,7 @@ function Page() {
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={canManage ? 9 : 8}
+                  colSpan={9}
                   className="py-10 text-center text-muted-foreground"
                 >
                   Nenhuma comissão encontrada.
@@ -611,27 +611,40 @@ function Page() {
                       </Badge>
                     )}
                   </TableCell>
-                  {canManage && (
-                    <TableCell className="text-right whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(item)}
-                        aria-label="Editar comissão"
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleteTarget(item)}
-                        aria-label="Excluir comissão"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </TableCell>
-                  )}
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDetail(item)}
+                      aria-label="Ver detalhes da comissão"
+                      title="Ver detalhes"
+                    >
+                      <Eye className="size-4" />
+                    </Button>
+                    {canManage && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEdit(item)}
+                          aria-label="Editar comissão"
+                          title="Editar"
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(item)}
+                          aria-label="Excluir comissão"
+                          title="Excluir"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -871,6 +884,150 @@ function Page() {
             </FormSection>
           </FormDialogBody>
         </form>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={Boolean(detail)}
+        onOpenChange={(open) => !open && setDetail(null)}
+        icon={<Eye className="size-5" />}
+        title="Detalhes da comissão"
+        description={
+          detail
+            ? `${relationName(detail.cliente)} · ${relationName(detail.empreendimento)}`
+            : undefined
+        }
+        className="max-w-2xl"
+        footer={
+          <FormDialogActions>
+            <Button type="button" variant="outline" onClick={() => setDetail(null)}>
+              Fechar
+            </Button>
+            {canManage && detail && (
+              <Button
+                type="button"
+                onClick={() => {
+                  const item = detail;
+                  setDetail(null);
+                  openEdit(item);
+                }}
+              >
+                <Pencil className="mr-2 size-4" />
+                Editar
+              </Button>
+            )}
+          </FormDialogActions>
+        }
+      >
+        {detail && (
+          <FormDialogBody>
+            <FormSection title="Venda">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <DetailField label="Cliente" value={relationName(detail.cliente)} />
+                <DetailField
+                  label="Empreendimento"
+                  value={relationName(detail.empreendimento)}
+                />
+                <DetailField
+                  label="Corretor"
+                  value={relationName(detail.corretor)}
+                />
+                <DetailField
+                  label="Gerente"
+                  value={relationName(detail.gerente)}
+                />
+                <DetailField
+                  label="Equipe"
+                  value={relationName(detail.equipe)}
+                />
+                <DetailField
+                  label="Data da venda"
+                  value={formatDate(detail.dataVenda)}
+                />
+                <DetailField
+                  label="VGV"
+                  value={brl(numberValue(detail.vgv))}
+                />
+                <DetailField
+                  label="Status"
+                  value={
+                    <Badge
+                      variant="outline"
+                      className={statusBadgeClass(detail.status)}
+                    >
+                      {statusLabel(detail.status)}
+                    </Badge>
+                  }
+                />
+              </div>
+            </FormSection>
+
+            <FormSection title="Percentuais">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <DetailField
+                  label="Imobiliária"
+                  value={`${numberValue(detail.percentualImobiliaria).toLocaleString("pt-BR")}%`}
+                />
+                <DetailField
+                  label="Tributos"
+                  value={`${numberValue(detail.percentualTributos).toLocaleString("pt-BR")}%`}
+                />
+                <DetailField
+                  label="Corretor"
+                  value={`${numberValue(detail.percentualCorretor).toLocaleString("pt-BR")}%`}
+                />
+                <DetailField
+                  label="Gerente"
+                  value={`${numberValue(detail.percentualGerente).toLocaleString("pt-BR")}%`}
+                />
+                <DetailField
+                  label="Caixa"
+                  value={`${numberValue(detail.percentualCaixa).toLocaleString("pt-BR")}%`}
+                />
+                <DetailField
+                  label="Sócios"
+                  value={`${numberValue(detail.percentualSocios).toLocaleString("pt-BR")}%`}
+                />
+              </div>
+            </FormSection>
+
+            <FormSection title="Valores calculados" className="bg-muted/20">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <DetailField
+                  label="Comissão bruta"
+                  value={brl(numberValue(detail.comissaoBruta))}
+                />
+                <DetailField
+                  label="Tributos"
+                  value={brl(numberValue(detail.valorTributos))}
+                />
+                <DetailField
+                  label="Comissão líquida"
+                  value={
+                    <span className="font-semibold text-primary">
+                      {brl(numberValue(detail.comissaoLiquida))}
+                    </span>
+                  }
+                />
+                <DetailField
+                  label="Corretor"
+                  value={brl(numberValue(detail.valorCorretor))}
+                />
+                <DetailField
+                  label="Gerente"
+                  value={brl(numberValue(detail.valorGerente))}
+                />
+                <DetailField
+                  label="Caixa"
+                  value={brl(numberValue(detail.valorCaixa))}
+                />
+                <DetailField
+                  label="Sócios"
+                  value={brl(numberValue(detail.valorSocios))}
+                />
+              </div>
+            </FormSection>
+          </FormDialogBody>
+        )}
       </FormDialogShell>
 
       <AlertDialog
