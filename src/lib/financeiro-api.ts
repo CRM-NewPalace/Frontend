@@ -6,7 +6,6 @@ import type {
   FluxoBucket,
   FluxoGranularidade,
   FluxoItem,
-  LinhaDemonstrativo,
   MesResumo,
   MovimentoFinanceiro,
   NaturezaDespesa,
@@ -107,12 +106,6 @@ export type VisaoGeralResponse = {
   };
   mesesResumo: MesResumo[];
   centros: CentroDespesaResumo[];
-};
-
-export type DemonstrativoResponse = {
-  meses: string[];
-  linhas: LinhaDemonstrativo[];
-  mesesResumo: MesResumo[];
 };
 
 export async function fetchParceiros(): Promise<ParceiroFinanceiro[]> {
@@ -349,10 +342,6 @@ export async function fetchFluxoCaixaItens(params: {
 
 export async function fetchCentrosDespesa(): Promise<CentroDespesaResumo[]> {
   return apiFetch<CentroDespesaResumo[]>("/financeiro/centros-despesa");
-}
-
-export async function fetchDemonstrativo(): Promise<DemonstrativoResponse> {
-  return apiFetch<DemonstrativoResponse>("/financeiro/demonstrativo");
 }
 
 export type CreateDespesaTipoInput = {

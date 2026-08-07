@@ -24,7 +24,6 @@ import {
   CircleUser,
   ArrowLeftRight,
   Banknote,
-  ScrollText,
   ArrowUpRight,
   ArrowDownRight,
   FolderKanban,
@@ -162,11 +161,6 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
     icon: FolderKanban,
   },
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
-  {
-    to: "/financeiro/demonstrativo",
-    label: "Demonstrativo de resultado",
-    icon: ScrollText,
-  },
 ];
 
 /** Financeiro da plataforma (super_admin) — mesmo design das imobiliárias. */

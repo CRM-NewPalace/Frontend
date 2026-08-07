@@ -211,14 +211,6 @@ export interface DespesaLancamento {
   createdAt: string;
 }
 
-export interface LinhaDemonstrativo {
-  id: string;
-  grupo: "receita" | "custo" | "despesa" | "resultado";
-  label: string;
-  valores: Record<string, number>;
-  destaque?: boolean;
-}
-
 /** Coleções vazias até a API do financeiro existir. */
 export const MOCK_PARCEIROS: ParceiroFinanceiro[] = [];
 export const MOCK_MOVIMENTOS: MovimentoFinanceiro[] = [];
@@ -228,8 +220,6 @@ export const MOCK_COMISSOES: ComissaoItem[] = [];
 export const MOCK_FLUXO_CAIXA: FluxoDia[] = [];
 export const MOCK_MESES_RESUMO: MesResumo[] = [];
 export const MOCK_CENTROS: CentroDespesaResumo[] = [];
-export const MESES_DEMONSTRATIVO = ["Mai", "Jun", "Jul"] as const;
-export const MOCK_DEMONSTRATIVO: LinhaDemonstrativo[] = [];
 
 export const VISAO_GERAL_KPIS = {
   saldoAtual: 0,
