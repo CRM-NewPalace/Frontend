@@ -31,10 +31,12 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   LabelList,
   XAxis,
   YAxis,
 } from "recharts";
+import { catalogColorToChartHex } from "@/lib/catalog-colors";
 import {
   AlertTriangle,
   Banknote,
@@ -65,7 +67,7 @@ const chartConfig = {
 function FunnelBarChart({
   data,
 }: {
-  data: { etapa: string; total: number }[];
+  data: { etapa: string; total: number; fill?: string }[];
 }) {
   return (
     <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
@@ -97,7 +99,13 @@ function FunnelBarChart({
             tick={{ fontSize: 11 }}
           />
           <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-          <Bar dataKey="total" fill="var(--color-total)" radius={4}>
+          <Bar dataKey="total" radius={4}>
+            {data.map((entry, index) => (
+              <Cell
+                key={`${entry.etapa}-${index}`}
+                fill={entry.fill ?? "hsl(var(--primary))"}
+              />
+            ))}
             <LabelList
               dataKey="total"
               position="right"
@@ -231,11 +239,16 @@ function DashboardAdminView() {
     const fromCatalog = funnelStages.map((stage) => ({
       etapa: stage.name,
       total: totals.get(stage.id) ?? 0,
+      fill: catalogColorToChartHex(stage.color),
     }));
     if (fromCatalog.some((i) => i.total > 0) || funnelStages.length > 0) {
       return fromCatalog;
     }
-    return summary.funil.map((i) => ({ etapa: i.etapa, total: i.total }));
+    return summary.funil.map((i) => ({
+      etapa: i.etapa,
+      total: i.total,
+      fill: "hsl(var(--primary))",
+    }));
   }, [summary, funnelStages]);
 
   const mesLabel = useMemo(
@@ -959,6 +972,7 @@ function DashboardCorretorView() {
     return funnelStages.map((stage) => ({
       etapa: stage.name,
       total: totals.get(stage.id) ?? 0,
+      fill: catalogColorToChartHex(stage.color),
     }));
   }, [summary, funnelStages]);
 
