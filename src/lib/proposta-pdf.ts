@@ -1,5 +1,4 @@
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 import { brl } from "@/lib/crm-types";
 import { phoneDigits } from "@/lib/phone";
 import {
@@ -7,7 +6,6 @@ import {
   PROPOSTA_COMPOSICAO_LABEL,
   PROPOSTA_LISTA_KEYS,
   PROPOSTA_SIMPLES_KEYS,
-  PROPOSTA_STATUS_LABEL,
   propostaComposicaoTotal,
   propostaDiferenca,
   type Proposta,
@@ -47,9 +45,12 @@ function compositionLines(p: Proposta): CompositionLine[] {
     const values = p[key as PropostaListaKey] ?? [];
     if (!values.length) continue;
     const subtotal = values.reduce((sum, n) => sum + n, 0);
-    const detail = values
-      .map((value, index) => `${index + 1}ª · ${brl(value)}`)
-      .join("  ·  ");
+    const equal = values.every((n) => n === values[0]);
+    const detail = equal
+      ? `${values.length} × ${brl(values[0] ?? 0)}`
+      : values
+          .map((value, index) => `${index + 1}ª · ${brl(value)}`)
+          .join("  ·  ");
     lines.push({
       label: `${PROPOSTA_COMPOSICAO_LABEL[key]} (${values.length} parcela${values.length > 1 ? "s" : ""})`,
       detail,
@@ -116,7 +117,7 @@ export function getPropostaMailtoUrl(p: Proposta) {
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-export function downloadPropostaPdfCliente(p: Proposta) {
+function buildPropostaPdfDescritivo(p: Proposta, filename: string) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -124,7 +125,6 @@ export function downloadPropostaPdfCliente(p: Proposta) {
   const contentW = pageW - margin * 2;
   let y = 0;
 
-  // Faixa superior
   doc.setFillColor(...INK.accent);
   doc.rect(0, 0, pageW, 8, "F");
 
@@ -165,7 +165,6 @@ export function downloadPropostaPdfCliente(p: Proposta) {
   doc.text(introLines, margin, y);
   y += introLines.length * 15 + 18;
 
-  // Card do imóvel / valor
   const cardH = 78;
   doc.setFillColor(...INK.band);
   doc.roundedRect(margin, y, contentW, cardH, 8, 8, "F");
@@ -194,7 +193,6 @@ export function downloadPropostaPdfCliente(p: Proposta) {
 
   y += cardH + 20;
 
-  // Valor em destaque
   doc.setFillColor(...INK.accentSoft);
   doc.roundedRect(margin, y, contentW, 56, 8, 8, "F");
   doc.setFontSize(9);
@@ -217,7 +215,6 @@ export function downloadPropostaPdfCliente(p: Proposta) {
   }
   y += 72;
 
-  // Composição descritiva
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(...INK.ink);
@@ -306,10 +303,8 @@ export function downloadPropostaPdfCliente(p: Proposta) {
     doc.setTextColor(...INK.muted);
     const obs = doc.splitTextToSize(p.observacao, contentW);
     doc.text(obs, margin, y);
-    y += obs.length * 13 + 16;
   }
 
-  // Rodapé
   const footerY = pageH - 28;
   doc.setDrawColor(...INK.line);
   doc.line(margin, footerY - 10, pageW - margin, footerY - 10);
@@ -322,112 +317,19 @@ export function downloadPropostaPdfCliente(p: Proposta) {
   );
   doc.text(p.codigo, pageW - margin, footerY, { align: "right" });
 
-  doc.save(`proposta-cliente-${safeFilename(p.codigo)}.pdf`);
+  doc.save(filename);
+}
+
+export function downloadPropostaPdfCliente(p: Proposta) {
+  buildPropostaPdfDescritivo(
+    p,
+    `proposta-cliente-${safeFilename(p.codigo)}.pdf`,
+  );
 }
 
 export function downloadPropostaPdfCorretor(p: Proposta) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  const margin = 40;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.setTextColor(30, 30, 30);
-  doc.text(`Proposta ${p.codigo}`, margin, 40);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(90, 90, 90);
-  doc.text(
-    `Status: ${PROPOSTA_STATUS_LABEL[p.status]}  ·  Emitido em ${new Date().toLocaleDateString("pt-BR")}`,
-    margin,
-    56,
+  buildPropostaPdfDescritivo(
+    p,
+    `proposta-corretor-${safeFilename(p.codigo)}.pdf`,
   );
-
-  const infoRows: [string, string][] = [
-    ["Cliente", p.clienteNome],
-    [
-      "Telefone",
-      p.clienteTelefone ? phoneDigits(p.clienteTelefone) || p.clienteTelefone : "—",
-    ],
-    ["Empreendimento", empreendimentoLabel(p)],
-    ["Construtora", p.construtora?.nome ?? "—"],
-    ["Corretor", p.corretor?.name ?? "—"],
-    ["Valor de venda (VGV)", brl(p.valor)],
-    ["Validade", formatPropostaDate(p.validade)],
-    ["Enviada em", formatPropostaDate(p.enviadaEm)],
-  ];
-
-  autoTable(doc, {
-    startY: 68,
-    head: [["Campo", "Valor"]],
-    body: infoRows,
-    styles: { fontSize: 9, cellPadding: 4 },
-    headStyles: { fillColor: [55, 65, 75], textColor: 255 },
-    columnStyles: {
-      0: { cellWidth: 140, fontStyle: "bold" },
-      1: { cellWidth: "auto" },
-    },
-    margin: { left: margin, right: margin },
-  });
-
-  const body: [string, string][] = [];
-  for (const key of PROPOSTA_SIMPLES_KEYS) {
-    const value = p[key];
-    if (value == null) continue;
-    body.push([PROPOSTA_COMPOSICAO_LABEL[key], brl(value)]);
-  }
-  for (const key of PROPOSTA_LISTA_KEYS) {
-    const values = p[key] ?? [];
-    if (!values.length) continue;
-    values.forEach((value, index) => {
-      body.push([
-        `${PROPOSTA_COMPOSICAO_LABEL[key]} #${index + 1}`,
-        brl(value),
-      ]);
-    });
-    const subtotal = values.reduce((sum, n) => sum + n, 0);
-    body.push([
-      `${PROPOSTA_COMPOSICAO_LABEL[key]} (subtotal)`,
-      brl(subtotal),
-    ]);
-  }
-  body.push(["Total composição", brl(propostaComposicaoTotal(p))]);
-  body.push(["Diferença vs VGV", brl(propostaDiferenca(p))]);
-
-  const prev = (
-    doc as jsPDF & { lastAutoTable?: { finalY: number } }
-  ).lastAutoTable?.finalY;
-
-  autoTable(doc, {
-    startY: (prev ?? 68) + 16,
-    head: [["Composição", "Valor"]],
-    body: body.length
-      ? body
-      : [["—", "Sem composição informada"]],
-    styles: { fontSize: 9, cellPadding: 4 },
-    headStyles: { fillColor: [55, 65, 75], textColor: 255 },
-    columnStyles: {
-      0: { cellWidth: 220 },
-      1: { cellWidth: "auto", halign: "right" },
-    },
-    margin: { left: margin, right: margin },
-  });
-
-  if (p.observacao) {
-    const after = (
-      doc as jsPDF & { lastAutoTable?: { finalY: number } }
-    ).lastAutoTable?.finalY;
-    const y = (after ?? 200) + 20;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(30, 30, 30);
-    doc.text("Observação", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(70, 70, 70);
-    const obs = doc.splitTextToSize(p.observacao, 515);
-    doc.text(obs, margin, y + 14);
-  }
-
-  doc.save(`proposta-corretor-${safeFilename(p.codigo)}.pdf`);
 }
