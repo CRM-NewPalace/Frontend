@@ -83,6 +83,14 @@ export function isStatusPreAnalise(
   return status1Group(status) === "pre_analise";
 }
 
+/** Parecer final do Status 1 (aprovado ou reprovado). */
+export function isStatusParecerFinal(
+  status: string | null | undefined,
+): boolean {
+  const g = status1Group(status);
+  return g === "aprovado" || g === "reprovado";
+}
+
 /** Status 1 de documentação aprovado (inclui "Aprovado c/ restrição"). */
 export function isStatusAprovadoDoc(
   status: string | null | undefined,

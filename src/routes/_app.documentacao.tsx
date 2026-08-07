@@ -93,7 +93,9 @@ import {
 import {
   dedupeStatusOptions,
   isStatusAnalise,
+  isStatusParecerFinal,
   isStatusVendido,
+  status1Group,
   statusesMatch,
 } from "@/lib/documentacao-status";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
@@ -2207,16 +2209,31 @@ function DocumentacaoPage() {
                       </div>
                       <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-0.5 mt-0.5">
                         <span>{doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}</span>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-[10px] px-1 py-0 h-4 font-normal",
-                            stageBadgeClass(doc.lead.stage),
-                          )}
-                          title="Etapa atual no funil"
-                        >
-                          {stageLabel(doc.lead.stage)}
-                        </Badge>
+                        {isStatusParecerFinal(doc.status1) ? (
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-[10px] px-1 py-0 h-4 font-normal",
+                              status1Group(doc.status1) === "reprovado"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-emerald-100 text-emerald-700",
+                            )}
+                            title="Parecer da documentação"
+                          >
+                            {doc.status1}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-[10px] px-1 py-0 h-4 font-normal",
+                              stageBadgeClass(doc.lead.stage),
+                            )}
+                            title="Etapa atual no funil"
+                          >
+                            {stageLabel(doc.lead.stage)}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
