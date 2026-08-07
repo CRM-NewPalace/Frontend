@@ -235,6 +235,7 @@ export function AgendaDayTable({
                   item.alvoTipo === "todos" ||
                   item.alvoTipo === "equipe" ||
                   item.alvoTipo === "gerente" ||
+                  item.alvoTipo === "gerentes" ||
                   item.autor.role === "admin";
                 const alvoBadgeLabel =
                   item.alvoTipo === "todos"
@@ -247,9 +248,11 @@ export function AgendaDayTable({
                         ? item.alvoGerente?.name
                           ? `Gerente: ${item.alvoGerente.name}`
                           : "Gerente"
-                        : item.autor.role === "admin"
-                          ? "Equipe"
-                          : null;
+                        : item.alvoTipo === "gerentes"
+                          ? "Todos os gerentes"
+                          : item.autor.role === "admin"
+                            ? "Equipe"
+                            : null;
                 const isNow =
                   isToday && new Date(item.startsAt).getHours() === currentHour;
 

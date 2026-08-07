@@ -487,9 +487,11 @@ function AgendaPage() {
             user?.role === "admin"
               ? form.alvoTipo === "gerente"
                 ? "Evento agendado para o gerente."
-                : form.alvoTipo === "equipe"
-                  ? "Evento agendado para a equipe."
-                  : "Evento agendado para todas as equipes."
+                : form.alvoTipo === "gerentes"
+                  ? "Evento agendado para todos os gerentes."
+                  : form.alvoTipo === "equipe"
+                    ? "Evento agendado para a equipe."
+                    : "Evento agendado para todas as equipes."
               : payload.escopo === "pessoal"
                 ? "Tarefa agendada."
                 : "Compromisso criado.",
@@ -1108,6 +1110,9 @@ function AgendaPage() {
                         <SelectItem value="equipe">
                           {AGENDAMENTO_ALVO_LABEL.equipe}
                         </SelectItem>
+                        <SelectItem value="gerentes">
+                          {AGENDAMENTO_ALVO_LABEL.gerentes}
+                        </SelectItem>
                         <SelectItem value="gerente">
                           {AGENDAMENTO_ALVO_LABEL.gerente}
                         </SelectItem>
@@ -1116,9 +1121,11 @@ function AgendaPage() {
                     <p className="text-[11px] text-muted-foreground">
                       {form.alvoTipo === "gerente"
                         ? "Somente o gerente escolhido verá este evento (corretores não)."
-                        : form.alvoTipo === "equipe"
-                          ? "Gerente e corretores da equipe escolhida verão este evento."
-                          : "Todos os usuários verão este evento na agenda."}
+                        : form.alvoTipo === "gerentes"
+                          ? "Todos os gerentes verão este evento (corretores não)."
+                          : form.alvoTipo === "equipe"
+                            ? "Gerente e corretores da equipe escolhida verão este evento."
+                            : "Todos os usuários verão este evento na agenda."}
                     </p>
                   </div>
 

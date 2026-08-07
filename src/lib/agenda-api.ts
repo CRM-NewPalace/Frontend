@@ -28,6 +28,7 @@ export const AGENDAMENTO_ALVOS = [
   "todos",
   "equipe",
   "gerente",
+  "gerentes",
 ] as const;
 export type AgendamentoAlvo = (typeof AGENDAMENTO_ALVOS)[number];
 
@@ -64,6 +65,7 @@ export const AGENDAMENTO_ALVO_LABEL: Record<AgendamentoAlvo, string> = {
   todos: "Todas as equipes",
   equipe: "Uma equipe",
   gerente: "Um gerente",
+  gerentes: "Todos os gerentes",
 };
 
 /** Origem visual no calendário: quem criou o compromisso. */

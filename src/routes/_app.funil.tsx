@@ -58,6 +58,7 @@ import {
   fetchEmpreendimentos,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
+import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { createTriagemEvent } from "@/lib/triagem-api";
 import {
   assumirAnalise,
@@ -138,6 +139,7 @@ function ComercialFunilBoard() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const {
     leads: allLeads,
     updateLeadStage,
@@ -181,12 +183,42 @@ function ComercialFunilBoard() {
     return stage === lostStageSlug || stage === LOST_STAGE_SLUG_FALLBACK;
   }
 
-  const leads =
-    isCorretor && user
-      ? allLeads.filter(
-          (l) => l.corretor === user.name || l.corretorId === user.id,
-        )
-      : allLeads;
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [filterEquipeId, setFilterEquipeId] = useState("__all__");
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    void fetchEquipes()
+      .then((list) => {
+        if (!cancelled) setEquipes(list);
+      })
+      .catch(() => {
+        if (!cancelled) setEquipes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
+  const leads = useMemo(() => {
+    let list =
+      isCorretor && user
+        ? allLeads.filter(
+            (l) => l.corretor === user.name || l.corretorId === user.id,
+          )
+        : allLeads;
+
+    if (isAdmin && filterEquipeId !== "__all__") {
+      if (filterEquipeId === "__none__") {
+        list = list.filter((l) => !l.equipeId);
+      } else {
+        list = list.filter((l) => l.equipeId === filterEquipeId);
+      }
+    }
+
+    return list;
+  }, [allLeads, filterEquipeId, isAdmin, isCorretor, user]);
   const [dragging, setDragging] = useState<string | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const didDrag = useRef(false);
@@ -675,7 +707,26 @@ function ComercialFunilBoard() {
               : "Funil da equipe — leads de captação e clientes da carteira. Clique para ver detalhes."
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <Select
+                value={filterEquipeId}
+                onValueChange={setFilterEquipeId}
+              >
+                <SelectTrigger className="h-8 w-[11.5rem] bg-background">
+                  <SelectValue placeholder="Equipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas as equipes</SelectItem>
+                  <SelectItem value="__none__">Sem equipe</SelectItem>
+                  {equipes.map((eq) => (
+                    <SelectItem key={eq.id} value={eq.id}>
+                      {eq.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="flex items-center rounded-md border bg-background">
               <Button
                 type="button"
