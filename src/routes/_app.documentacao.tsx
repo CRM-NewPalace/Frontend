@@ -999,16 +999,13 @@ function DocumentacaoPage() {
     const base = emptyForm();
     base.dataAnalise = todayDateInput();
     base.createdAt = todayDateInput();
-    if (
-      user?.role === "corretor" ||
-      user?.role === "admin" ||
-      user?.role === "gerente"
-    ) {
+    // Só o corretor se auto-preenche: admin/gerente escolhem o corretor
+    // (ou herdam do lead) para a venda não ficar creditada no admin.
+    if (user?.role === "corretor") {
       base.corretorId = user.id;
-      base.gerenteId =
-        user.role === "gerente"
-          ? user.id
-          : gerenteIdOfCorretor(user.id);
+      base.gerenteId = gerenteIdOfCorretor(user.id);
+    } else if (user?.role === "gerente") {
+      base.gerenteId = user.id;
     }
     setForm(base);
     setOpen(true);
