@@ -96,6 +96,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { displayEmail } from "@/lib/email";
+import { celebrateAfterDocumentacao } from "@/lib/celebrations";
+import { isStatusVendido } from "@/lib/documentacao-status";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Análise pendente",
@@ -544,7 +546,7 @@ export function ComercialFunilBoard({
     setComercialDocSaving(true);
     try {
       // Backend reutiliza ficha ativa do lead, se já existir.
-      await createDocumentacao({
+      const created = await createDocumentacao({
         leadId: prompt.lead.id,
         nome: prompt.lead.nome,
         construtoraId: prompt.construtoraId,
@@ -561,6 +563,11 @@ export function ComercialFunilBoard({
         temDependente: prompt.temDependente,
       });
       toast.success("Documentação comercial registrada.");
+      void celebrateAfterDocumentacao({
+        corretorId: created.corretorId ?? prompt.lead.corretorId,
+        docCreated: true,
+        becameVendido: isStatusVendido(created.status2),
+      });
       skipComercialDocRef.current = true;
       setComercialDocPrompt(null);
       offerTriagemHistory(prompt.lead, prompt.targetStage);
@@ -1593,7 +1600,7 @@ function AnalistaFunilBoard() {
         toast.success("Documentação já existente para este cliente.");
         return;
       }
-      await createDocumentacao({
+      const created = await createDocumentacao({
         leadId: item.leadId,
         nome: item.nome,
         construtoraId: item.lead.construtoraId,
@@ -1612,6 +1619,11 @@ function AnalistaFunilBoard() {
         temDependente: item.temDependente,
       });
       toast.success("Documentação registrada automaticamente.");
+      void celebrateAfterDocumentacao({
+        corretorId: created.corretorId ?? item.lead.corretorId,
+        docCreated: true,
+        becameVendido: isStatusVendido(created.status2),
+      });
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -1680,7 +1692,7 @@ function AnalistaFunilBoard() {
     if (!docTarget) return;
     setDocSaving(true);
     try {
-      await createDocumentacao({
+      const created = await createDocumentacao({
         leadId: docTarget.leadId,
         nome: docTarget.nome,
         construtoraId: docTarget.lead.construtoraId,
@@ -1703,6 +1715,11 @@ function AnalistaFunilBoard() {
         temDependente: docTemDependente,
       });
       toast.success("Documentação registrada.");
+      void celebrateAfterDocumentacao({
+        corretorId: created.corretorId ?? docTarget.lead.corretorId,
+        docCreated: true,
+        becameVendido: isStatusVendido(created.status2 ?? docStatus2),
+      });
       setDocOpen(false);
       setDocTarget(null);
       void navigate({ to: "/documentacao" });

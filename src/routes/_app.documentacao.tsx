@@ -96,6 +96,7 @@ import {
   isStatusVendido,
   statusesMatch,
 } from "@/lib/documentacao-status";
+import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 
 function docInVendaPeriod(
   doc: { dataVenda: string | null; createdAt: string },
@@ -1138,17 +1139,35 @@ function DocumentacaoPage() {
       const payload = buildPayload(leadId);
       if (!payload) return;
 
+      const prevDoc =
+        formMode === "edit" && editingId
+          ? items.find((d) => d.id === editingId)
+          : undefined;
+      const wasVendido = prevDoc ? isStatusVendido(prevDoc.status2) : false;
+      const nowVendido = isStatusVendido(payload.status2);
+      const becameVendido = nowVendido && !wasVendido;
+
       if (formMode === "create") {
-        await createDocumentacao(payload);
+        const created = await createDocumentacao(payload);
         toast.success(
           criarClienteNovo
             ? "Cliente e documentação criados."
             : "Documentação criada.",
         );
+        void celebrateAfterDocumentacao({
+          corretorId: created.corretorId ?? payload.corretorId,
+          docCreated: true,
+          becameVendido: isStatusVendido(created.status2 ?? payload.status2),
+        });
       } else if (editingId) {
         const { leadId: _leadId, ...patch } = payload;
-        await updateDocumentacao(editingId, patch);
+        const updated = await updateDocumentacao(editingId, patch);
         toast.success("Documentação atualizada.");
+        void celebrateAfterDocumentacao({
+          corretorId: updated.corretorId ?? payload.corretorId,
+          docCreated: false,
+          becameVendido,
+        });
       }
       setOpen(false);
       await loadItems();
