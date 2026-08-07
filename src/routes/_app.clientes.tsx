@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -243,6 +244,11 @@ function Clientes() {
 
   const [detail, setDetail] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkMotivo, setBulkMotivo] = useState("");
+  const [bulkMotivoOutro, setBulkMotivoOutro] = useState("");
   const [deleteMotivo, setDeleteMotivo] = useState("");
   const [deleteMotivoOutro, setDeleteMotivoOutro] = useState("");
 
@@ -362,6 +368,26 @@ function Clientes() {
     }
   }
 
+  const allVisibleIds = useMemo(() => clientes.map((c) => c.id), [clientes]);
+  const allSelected =
+    allVisibleIds.length > 0 &&
+    allVisibleIds.every((id) => selectedIds.has(id));
+  const someSelected = allVisibleIds.some((id) => selectedIds.has(id));
+  const selectedCount = selectedIds.size;
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(allVisibleIds) : new Set());
+  }
+
+  function toggleSelectOne(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     const motivo =
@@ -379,6 +405,11 @@ function Clientes() {
       setDeleteTarget(null);
       setDeleteMotivo("");
       setDeleteMotivoOutro("");
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast.success(`Cliente "${nome}" movido para Perda de cliente.`);
       await markLeadLost(id, motivo);
     } catch (err) {
@@ -387,6 +418,43 @@ function Clientes() {
           ? err.message
           : "Não foi possível excluir o cliente.",
       );
+    }
+  }
+
+  async function confirmBulkDelete() {
+    const motivo =
+      bulkMotivo === "__outro__" ? bulkMotivoOutro.trim() : bulkMotivo.trim();
+    if (!motivo) {
+      toast.error("Selecione ou informe o motivo da exclusão.");
+      return;
+    }
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setBulkDeleteOpen(false);
+    setBulkMotivo("");
+    setBulkMotivoOutro("");
+    setBulkDeleting(true);
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      try {
+        await markLeadLost(id, motivo);
+        ok += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+    setSelectedIds(new Set());
+    if (detail && ids.includes(detail.id)) setDetail(null);
+    setBulkDeleting(false);
+    if (fail === 0) {
+      toast.success(
+        ok === 1
+          ? "1 cliente movido para Perda de cliente."
+          : `${ok} clientes movidos para Perda de cliente.`,
+      );
+    } else {
+      toast.error(`${ok} excluído(s), ${fail} com erro.`);
     }
   }
 
@@ -541,6 +609,21 @@ function Clientes() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {selectedCount > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={bulkDeleting}
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                {bulkDeleting ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-1" />
+                )}
+                Excluir ({selectedCount})
+              </Button>
+            )}
             <Button size="sm" onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
               Novo cliente
@@ -552,6 +635,20 @@ function Clientes() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={
+                    allSelected
+                      ? true
+                      : someSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={(v) => toggleSelectAll(v === true)}
+                  aria-label="Selecionar todos os clientes"
+                  disabled={clientes.length === 0 || bulkDeleting}
+                />
+              </TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Contato</TableHead>
               <TableHead>Interesse</TableHead>
@@ -567,7 +664,16 @@ function Clientes() {
                 key={l.id}
                 className="hover:bg-muted/40 cursor-pointer"
                 onClick={() => setDetail(l)}
+                data-state={selectedIds.has(l.id) ? "selected" : undefined}
               >
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds.has(l.id)}
+                    onCheckedChange={(v) => toggleSelectOne(l.id, v === true)}
+                    aria-label={`Selecionar ${l.nome}`}
+                    disabled={bulkDeleting}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="w-8 h-8">
@@ -640,7 +746,7 @@ function Clientes() {
             {clientes.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={isCorretor ? 6 : 7}
+                  colSpan={isCorretor ? 7 : 8}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum cliente cadastrado.
@@ -1075,6 +1181,51 @@ function Clientes() {
               }}
             >
               Confirmar exclusão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBulkDeleteOpen(false);
+            setBulkMotivo("");
+            setBulkMotivoOutro("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {selectedCount} cliente(s) selecionado(s)?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Os clientes sairão da carteira e irão para Perda de cliente
+              (visível só para o corretor). Informe o motivo da exclusão.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-1">
+            <LostMotivoFields
+              value={bulkMotivo}
+              outroValue={bulkMotivoOutro}
+              onChange={setBulkMotivo}
+              onOutroChange={setBulkMotivoOutro}
+              selectId="cli-bulk-lost-motivo"
+              outroId="cli-bulk-motivo-outro"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmBulkDelete();
+              }}
+            >
+              Excluir selecionados
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

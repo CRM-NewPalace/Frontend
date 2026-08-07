@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -251,6 +252,11 @@ function LeadsPage() {
   const [deleteLead, setDeleteLead] = useState<Lead | null>(null);
   const [deleteMotivo, setDeleteMotivo] = useState("");
   const [deleteMotivoOutro, setDeleteMotivoOutro] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkMotivo, setBulkMotivo] = useState("");
+  const [bulkMotivoOutro, setBulkMotivoOutro] = useState("");
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
 
   const [search, setSearch] = useState("");
@@ -701,6 +707,29 @@ function LeadsPage() {
     }
   }
 
+  const allVisibleIds = useMemo(
+    () => filteredLeads.map((l) => l.id),
+    [filteredLeads],
+  );
+  const allSelected =
+    allVisibleIds.length > 0 &&
+    allVisibleIds.every((id) => selectedIds.has(id));
+  const someSelected = allVisibleIds.some((id) => selectedIds.has(id));
+  const selectedCount = selectedIds.size;
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(allVisibleIds) : new Set());
+  }
+
+  function toggleSelectOne(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   async function confirmDelete() {
     if (!deleteLead) return;
     const motivo =
@@ -717,12 +746,54 @@ function LeadsPage() {
       setDeleteLead(null);
       setDeleteMotivo("");
       setDeleteMotivoOutro("");
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast.success(`Lead ${nome} movido para Leads Perdidos.`);
       await markLeadLost(id, motivo);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Não foi possível excluir o lead.",
       );
+    }
+  }
+
+  async function confirmBulkDelete() {
+    const motivo =
+      bulkMotivo === "__outro__" ? bulkMotivoOutro.trim() : bulkMotivo.trim();
+    if (!motivo) {
+      toast.error("Selecione ou informe o motivo da exclusão.");
+      return;
+    }
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setBulkDeleteOpen(false);
+    setBulkMotivo("");
+    setBulkMotivoOutro("");
+    setBulkDeleting(true);
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      try {
+        await markLeadLost(id, motivo);
+        ok += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+    setSelectedIds(new Set());
+    if (detailLead && ids.includes(detailLead.id)) setDetailLead(null);
+    setBulkDeleting(false);
+    if (fail === 0) {
+      toast.success(
+        ok === 1
+          ? "1 lead movido para Leads Perdidos."
+          : `${ok} leads movidos para Leads Perdidos.`,
+      );
+    } else {
+      toast.error(`${ok} excluído(s), ${fail} com erro.`);
     }
   }
 
@@ -886,6 +957,21 @@ function LeadsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {selectedCount > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={bulkDeleting}
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                {bulkDeleting ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-1" />
+                )}
+                Excluir ({selectedCount})
+              </Button>
+            )}
             <Button size="sm" onClick={openCreate}>
               <Plus className="w-4 h-4 mr-1" />
               Novo lead
@@ -1472,6 +1558,51 @@ function LeadsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBulkDeleteOpen(false);
+            setBulkMotivo("");
+            setBulkMotivoOutro("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {selectedCount} lead(s) selecionado(s)?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Os leads sairão da lista e do funil, e irão para Leads Perdidos
+              (visível só para o administrador). Informe o motivo da exclusão.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-1">
+            <LostMotivoFields
+              value={bulkMotivo}
+              outroValue={bulkMotivoOutro}
+              onChange={setBulkMotivo}
+              onOutroChange={setBulkMotivoOutro}
+              selectId="leads-bulk-lost-motivo"
+              outroId="leads-bulk-motivo-outro"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmBulkDelete();
+              }}
+            >
+              Excluir selecionados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {!isCorretor && leadsAtivosPorCorretor.length > 0 && (
         <Card className="mb-4">
           <CardContent className="p-3 space-y-2">
@@ -1696,6 +1827,20 @@ function LeadsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={
+                    allSelected
+                      ? true
+                      : someSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={(v) => toggleSelectAll(v === true)}
+                  aria-label="Selecionar todos os leads"
+                  disabled={filteredLeads.length === 0 || bulkDeleting}
+                />
+              </TableHead>
               <TableHead>Lead</TableHead>
               <TableHead>Origem</TableHead>
               <TableHead>Interesse</TableHead>
@@ -1713,7 +1858,7 @@ function LeadsPage() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={isCorretor ? 9 : 11}
+                  colSpan={isCorretor ? 10 : 12}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Carregando leads...
@@ -1722,7 +1867,7 @@ function LeadsPage() {
             ) : filteredLeads.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={isCorretor ? 9 : 11}
+                  colSpan={isCorretor ? 10 : 12}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum lead encontrado com esses filtros.
@@ -1736,7 +1881,21 @@ function LeadsPage() {
                   color: "bg-slate-200 text-slate-700",
                 };
                 return (
-                  <TableRow key={l.id} className="hover:bg-muted/40">
+                  <TableRow
+                    key={l.id}
+                    className="hover:bg-muted/40"
+                    data-state={selectedIds.has(l.id) ? "selected" : undefined}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(l.id)}
+                        onCheckedChange={(v) =>
+                          toggleSelectOne(l.id, v === true)
+                        }
+                        aria-label={`Selecionar ${l.nome}`}
+                        disabled={bulkDeleting}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
