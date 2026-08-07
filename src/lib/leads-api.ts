@@ -179,10 +179,14 @@ export type ImportLeadsResult = {
 
 export async function importLeads(
   leads: ImportLeadInput[],
+  opts?: { tipo?: ContatoTipo },
 ): Promise<ImportLeadsResult> {
   return apiFetch<ImportLeadsResult>("/leads/import", {
     method: "POST",
-    body: { leads },
+    body: {
+      leads,
+      ...(opts?.tipo ? { tipo: opts.tipo } : {}),
+    },
   });
 }
 

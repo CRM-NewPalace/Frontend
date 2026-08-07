@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import {
@@ -25,6 +25,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +60,15 @@ import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { brl, type Lead } from "@/lib/crm-types";
+import { ApiError } from "@/lib/api";
+import { importLeads } from "@/lib/leads-api";
+import {
+  downloadImportTemplate,
+  exportLeadsToExcel,
+  exportLeadsToPdf,
+  parseLeadsFromFile,
+  type ParsedImportLead,
+} from "@/lib/leads-io";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -75,6 +92,11 @@ import {
   MapPin,
   Sparkles,
   Wallet,
+  Upload,
+  Download,
+  Loader2,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -164,6 +186,7 @@ function Clientes() {
     resolveCorretorId,
     assignees,
     loading,
+    refresh,
   } = useLeads();
   const {
     funnelStages,
@@ -204,6 +227,14 @@ function Clientes() {
     (isCorretor || canOwnCarteira) && user
       ? user.name
       : (corretorOptions[0] ?? "");
+
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importHelpOpen, setImportHelpOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ParsedImportLead[]>([]);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importSaving, setImportSaving] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
@@ -359,6 +390,77 @@ function Clientes() {
     }
   }
 
+  async function handleImportFile(file: File) {
+    setImportParsing(true);
+    setImportFileName(file.name);
+    try {
+      const rows = await parseLeadsFromFile(file, {
+        origem: origemOptions[0] ?? "Importação",
+      });
+      if (rows.length === 0) {
+        toast.error("Nenhum cliente encontrado no arquivo.");
+        return;
+      }
+      setImportRows(rows);
+      setImportOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível ler o arquivo.",
+      );
+    } finally {
+      setImportParsing(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
+  async function confirmImport() {
+    const valid = importRows.filter((r) => !r.error);
+    if (valid.length === 0) {
+      toast.error("Nenhum cliente válido para importar.");
+      return;
+    }
+    setImportSaving(true);
+    try {
+      const result = await importLeads(
+        valid.map((r) => ({
+          nome: r.nome,
+          telefone: r.telefone,
+          origem: r.origem || origemOptions[0] || "Importação",
+          interesse: r.interesse,
+          cidade: r.cidade || undefined,
+          bairro: r.bairro || undefined,
+          prioridade: r.prioridade,
+          renda: r.renda,
+        })),
+        { tipo: "cliente" },
+      );
+      setImportOpen(false);
+      setImportRows([]);
+      await refresh({ silent: true });
+      if (result.failed > 0) {
+        const sample = result.errors
+          .slice(0, 3)
+          .map((e) => `${e.nome}: ${e.message}`)
+          .join(" · ");
+        toast.error(
+          `${result.created} importado(s), ${result.failed} com erro.${
+            sample ? ` ${sample}` : ""
+          }`,
+        );
+      } else {
+        toast.success(`${result.created} cliente(s) importado(s).`);
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível importar os clientes.",
+      );
+    } finally {
+      setImportSaving(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -373,10 +475,77 @@ function Clientes() {
                 : "Clientes da carteira dos corretores (não misturam com leads de captação)."
         }
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            Novo cliente
-          </Button>
+          <>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setImportHelpOpen(false);
+                  void handleImportFile(file);
+                }
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={importParsing}
+              onClick={() => setImportHelpOpen(true)}
+            >
+              {importParsing ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-1" />
+              )}
+              Importar
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={clientes.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    exportLeadsToExcel(
+                      clientes,
+                      `clientes-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                      "Clientes",
+                    )
+                  }
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    exportLeadsToPdf(
+                      clientes,
+                      `clientes-${new Date().toISOString().slice(0, 10)}.pdf`,
+                      user?.tenant?.name?.trim() || "Imobiliária",
+                      "Clientes",
+                    )
+                  }
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo cliente
+            </Button>
+          </>
         }
       />
       <Card>
@@ -910,6 +1079,174 @@ function Clientes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={importHelpOpen} onOpenChange={setImportHelpOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Importar clientes</DialogTitle>
+            <DialogDescription>
+              Use o padrão abaixo para o arquivo ser lido corretamente.
+              Preferível Excel (.xlsx).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="font-medium mb-1.5">Colunas (nessa ordem)</p>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/60 text-left">
+                      <th className="p-2 font-medium">Data Captura</th>
+                      <th className="p-2 font-medium">Nome do Cliente</th>
+                      <th className="p-2 font-medium">Telefone</th>
+                      <th className="p-2 font-medium">Origem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t text-muted-foreground">
+                      <td className="p-2">02/08/2026</td>
+                      <td className="p-2">Maria Silva</td>
+                      <td className="p-2 tabular-nums">(81) 98888-7777</td>
+                      <td className="p-2">WhatsApp</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-medium mb-1.5">Regras</p>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li>
+                  <span className="text-foreground">Nome do Cliente</span> e{" "}
+                  <span className="text-foreground">Telefone</span> são
+                  obrigatórios
+                </li>
+                <li>
+                  Telefone já com DDD, ex.: (81) 98888-7777 ou 81 98888-7777
+                </li>
+                <li>Data Captura e Origem são opcionais</li>
+                <li>Uma linha = um cliente</li>
+                <li>
+                  Os clientes entram na sua carteira (ou na de quem importa)
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="font-medium mb-1.5">Não incluir</p>
+              <p className="text-muted-foreground">
+                Hora da captura, DDD em coluna separada, imóvel de interesse,
+                mensagem de captura, etapa, corretor ou prioridade.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                downloadImportTemplate("modelo-importacao-clientes.xlsx")
+              }
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1" />
+              Baixar modelo Excel
+            </Button>
+            <Button
+              type="button"
+              disabled={importParsing}
+              onClick={() => importInputRef.current?.click()}
+            >
+              {importParsing ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-1" />
+              )}
+              Escolher arquivo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Confirmar importação</DialogTitle>
+            <DialogDescription>
+              {importFileName ? `Arquivo: ${importFileName}. ` : ""}
+              Formato: Data Captura, Nome do Cliente, Telefone (com DDD) e
+              Origem. Hora, e-mail, imóvel e mensagem são ignorados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto flex-1 min-h-0 border rounded-md">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+                <tr className="text-left text-muted-foreground border-b">
+                  <th className="p-2 font-medium">Nome</th>
+                  <th className="p-2 font-medium">Telefone</th>
+                  <th className="p-2 font-medium">Origem</th>
+                  <th className="p-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importRows.map((row, index) => (
+                  <tr
+                    key={`${row.telefone}-${index}`}
+                    className={cn(
+                      "border-b last:border-0",
+                      row.error && "bg-destructive/5",
+                    )}
+                  >
+                    <td className="p-2">{row.nome || "—"}</td>
+                    <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
+                    <td className="p-2">{row.origem || "—"}</td>
+                    <td className="p-2">
+                      {row.error ? (
+                        <span className="text-xs text-destructive">
+                          {row.error}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                          OK
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {importRows.filter((r) => !r.error).length} válido(s) ·{" "}
+            {importRows.filter((r) => r.error).length} inválido(s) (serão
+            ignorados)
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={importSaving}
+              onClick={() => setImportOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                importSaving || importRows.every((r) => Boolean(r.error))
+              }
+              onClick={() => void confirmImport()}
+            >
+              {importSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Importar válidos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

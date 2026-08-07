@@ -492,10 +492,14 @@ function leadsToSheetRows(leads: Lead[]): string[][] {
   ]);
 }
 
-export function exportLeadsToExcel(leads: Lead[], filename = "leads.xlsx") {
+export function exportLeadsToExcel(
+  leads: Lead[],
+  filename = "leads.xlsx",
+  sheetName = "Leads",
+) {
   const workbook = XLSX.utils.book_new();
   const sheet = buildLeadsSheet(leadsToSheetRows(leads));
-  XLSX.utils.book_append_sheet(workbook, sheet, "Leads");
+  XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
   const data = XLSX.write(workbook, {
     bookType: "xlsx",
     type: "array",
@@ -513,14 +517,17 @@ export function exportLeadsToPdf(
   leads: Lead[],
   filename = "leads.pdf",
   imobiliariaNome = "Imobiliária",
+  entityLabel = "Leads",
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(14);
-  doc.text(`Leads — ${imobiliariaNome}`, 40, 36);
+  doc.text(`${entityLabel} — ${imobiliariaNome}`, 40, 36);
   doc.setFontSize(9);
   doc.setTextColor(100);
+  const unit =
+    entityLabel.toLowerCase() === "clientes" ? "cliente(s)" : "lead(s)";
   doc.text(
-    `Exportado em ${new Date().toLocaleDateString("pt-BR")} · ${leads.length} lead(s)`,
+    `Exportado em ${new Date().toLocaleDateString("pt-BR")} · ${leads.length} ${unit}`,
     40,
     52,
   );
@@ -536,7 +543,9 @@ export function exportLeadsToPdf(
   doc.save(filename);
 }
 
-export function downloadImportTemplate() {
+export function downloadImportTemplate(
+  filename = "modelo-importacao-leads.xlsx",
+) {
   const workbook = XLSX.utils.book_new();
   const sheet = buildLeadsSheet([
     ["02/08/2026", "Maria Silva", "(81) 98888-7777", "WhatsApp"],
@@ -551,6 +560,6 @@ export function downloadImportTemplate() {
     new Blob([data], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }),
-    "modelo-importacao-leads.xlsx",
+    filename,
   );
 }
