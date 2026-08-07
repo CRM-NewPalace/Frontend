@@ -14,7 +14,7 @@ export function MarketingFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative z-0 border-t border-border bg-white/80 backdrop-blur-sm">
+    <footer className="relative z-0 border-t border-border bg-white">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10 lg:px-12 lg:py-12">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-4">

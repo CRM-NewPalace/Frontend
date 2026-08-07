@@ -40,7 +40,7 @@ export function MarketingNav() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-white/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-border bg-white">
       <nav
         className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-3 lg:px-12"
         aria-label="Navegação principal"
