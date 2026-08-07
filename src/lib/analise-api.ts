@@ -40,6 +40,7 @@ export interface Analise {
     corretor: {
       id: string;
       name: string;
+      role?: string | null;
       whatsapp?: string | null;
       equipe: { gerente: { id: string; name: string } } | null;
     } | null;

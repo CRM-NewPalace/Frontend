@@ -1689,7 +1689,13 @@ function AnalistaFunilBoard() {
                         {item.nome}
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
-                        {item.lead.corretor?.name ?? "—"}
+                        {item.lead.tipo === "cliente" ? "Cliente · " : ""}
+                        {item.lead.corretor?.name ?? "Sem responsável"}
+                        {item.lead.corretor?.role === "gerente"
+                          ? " (Gerente)"
+                          : item.lead.corretor?.role === "admin"
+                            ? " (Admin)"
+                            : ""}
                         {item.lead.empreendimento
                           ? ` · ${item.lead.empreendimento.nome}`
                           : ""}

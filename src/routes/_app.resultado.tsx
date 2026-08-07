@@ -136,8 +136,15 @@ function AnalisePage() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  /** Colunas: corretores + admin/gerente com carteira própria. */
   const corretores = useMemo(
-    () => assignees.filter((a) => a.role === "corretor"),
+    () =>
+      assignees.filter(
+        (a) =>
+          a.role === "corretor" ||
+          a.role === "admin" ||
+          a.role === "gerente",
+      ),
     [assignees],
   );
 
@@ -335,7 +342,7 @@ function AnalisePage() {
     <div>
       <PageHeader
         title="Análise"
-        description="Processos em análise da equipe — uma coluna por corretor."
+        description="Processos em análise — uma coluna por responsável (corretor, gerente ou admin)."
         actions={
           <div className="flex items-center rounded-md border bg-background">
             <Button
@@ -377,7 +384,7 @@ function AnalisePage() {
           <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
             <SearchCheck className="w-5 h-5 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium">Nenhum corretor na equipe</p>
+          <p className="text-sm font-medium">Nenhum responsável encontrado</p>
           <p className="text-xs text-muted-foreground mt-1">
             Vincule corretores à equipe em Administração → Equipes. Processos
             entram aqui ao avançar para Em análise no funil.
