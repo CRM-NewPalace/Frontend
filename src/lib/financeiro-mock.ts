@@ -20,8 +20,18 @@ export function brlCompact(n: number) {
   });
 }
 
+/** Interpreta YYYY-MM-DD (ou ISO) ao meio-dia local — evita dia anterior em BRT. */
+export function parseFinanceiroDay(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const day = String(iso).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const date = new Date(`${day}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function formatDate(iso: string) {
-  return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR");
+  const date = parseFinanceiroDay(iso);
+  return date ? date.toLocaleDateString("pt-BR") : "—";
 }
 
 export const PERIODO_OPTIONS: { value: PeriodoFiltro; label: string }[] = [
@@ -275,9 +285,8 @@ export function filterByPeriodo<
   if (periodo === "tudo") return items;
   const now = new Date();
   return items.filter((item) => {
-    const raw = String(item[dateKey] ?? "");
-    if (!raw) return true;
-    const d = new Date(raw + "T12:00:00");
+    const d = parseFinanceiroDay(String(item[dateKey] ?? ""));
+    if (!d) return true;
     if (periodo === "mes") {
       return (
         d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
@@ -292,4 +301,27 @@ export function filterByPeriodo<
     }
     return d.getFullYear() === now.getFullYear();
   });
+}
+
+/** True se a data cai no filtro de período (mês/trimestre/ano/tudo). */
+export function matchesPeriodoFiltro(
+  iso: string | null | undefined,
+  periodo: PeriodoFiltro,
+  now = new Date(),
+): boolean {
+  if (periodo === "tudo") return true;
+  const d = parseFinanceiroDay(iso);
+  if (!d) return true;
+  if (periodo === "mes") {
+    return (
+      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    );
+  }
+  if (periodo === "trimestre") {
+    return (
+      Math.floor(d.getMonth() / 3) === Math.floor(now.getMonth() / 3) &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }
+  return d.getFullYear() === now.getFullYear();
 }

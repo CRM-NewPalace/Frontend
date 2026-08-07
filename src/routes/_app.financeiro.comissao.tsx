@@ -88,6 +88,7 @@ import {
 import {
   brl,
   formatDate,
+  matchesPeriodoFiltro,
   statusBadgeClass,
   statusLabel,
   type PeriodoFiltro,
@@ -283,29 +284,11 @@ function Page() {
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const now = new Date();
     return items.filter((item) => {
       if (status !== "todos" && item.status !== status) return false;
       if (equipe !== "todos" && relationName(item.equipe) !== equipe)
         return false;
-      if (periodo !== "tudo") {
-        const date = new Date(item.dataVenda);
-        if (
-          periodo === "mes" &&
-          (date.getMonth() !== now.getMonth() ||
-            date.getFullYear() !== now.getFullYear())
-        )
-          return false;
-        if (
-          periodo === "trimestre" &&
-          (Math.floor(date.getMonth() / 3) !== Math.floor(now.getMonth() / 3) ||
-            date.getFullYear() !== now.getFullYear())
-        )
-          return false;
-        if (periodo === "ano" && date.getFullYear() !== now.getFullYear()) {
-          return false;
-        }
-      }
+      if (!matchesPeriodoFiltro(item.dataVenda, periodo)) return false;
       if (!query) return true;
       return [item.corretor, item.cliente, item.empreendimento, item.equipe]
         .map((value) => relationName(value, "").toLowerCase())
@@ -390,9 +373,17 @@ function Page() {
             });
       upsert(saved);
       setDialogOpen(false);
-      toast.success(
-        mode === "edit" ? "Comissão atualizada." : "Comissão lançada.",
-      );
+      // Venda com data fora do "Mês atual" sumia da grade após o lançamento.
+      if (mode === "create" && !matchesPeriodoFiltro(saved.dataVenda, periodo)) {
+        setPeriodo("tudo");
+        toast.success(
+          "Comissão lançada. Filtro ajustado para Todo o período.",
+        );
+      } else {
+        toast.success(
+          mode === "edit" ? "Comissão atualizada." : "Comissão lançada.",
+        );
+      }
       if (mode === "create") void loadEligibleSales();
     } catch (err) {
       toast.error(
@@ -691,6 +682,10 @@ function Page() {
               <FormSection title="Venda elegível">
                 <div className="space-y-2">
                   <Label>Venda</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Só listamos vendas ainda sem comissão. Depois do lançamento,
+                    a venda sai daqui e a comissão fica na tabela abaixo.
+                  </p>
                   <Popover
                     open={salePickerOpen}
                     onOpenChange={setSalePickerOpen}
