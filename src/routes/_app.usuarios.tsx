@@ -144,6 +144,7 @@ type FormState = {
   email: string;
   phone: string;
   whatsapp: string;
+  dataNascimento: string;
   cargo: string;
   cor: string;
   role: Role;
@@ -156,6 +157,7 @@ const emptyForm = (): FormState => ({
   email: "",
   phone: "",
   whatsapp: "",
+  dataNascimento: "",
   cargo: "",
   cor: "",
   role: "corretor",
@@ -163,12 +165,24 @@ const emptyForm = (): FormState => ({
   password: "",
 });
 
+function toDateInput(value: string | null | undefined) {
+  return value?.slice(0, 10) ?? "";
+}
+
+function formatBirthDate(value: string | null | undefined) {
+  const day = toDateInput(value);
+  if (!day) return "—";
+  const [y, m, d] = day.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : "—";
+}
+
 function userToForm(u: ApiUser): FormState {
   return {
     name: u.name,
     email: u.email,
     phone: u.phone ? formatPhone(u.phone) : "",
     whatsapp: u.whatsapp ? formatPhone(u.whatsapp) : "",
+    dataNascimento: toDateInput(u.dataNascimento),
     cargo: u.cargo ?? "",
     cor: u.cor ?? "",
     role: u.role,
@@ -385,6 +399,7 @@ function Usuarios() {
           password: form.password,
           phone: phone || undefined,
           whatsapp: whatsapp || undefined,
+          dataNascimento: form.dataNascimento || null,
           cargo: cargo || undefined,
           cor: cor || undefined,
           role: form.role,
@@ -410,6 +425,7 @@ function Usuarios() {
           email,
           phone: phone || null,
           whatsapp: whatsapp || null,
+          dataNascimento: form.dataNascimento || null,
           cargo: cargo || null,
           cor: cor || null,
           role: form.role,
@@ -804,6 +820,21 @@ function Usuarios() {
               </div>
               <div className="space-y-1.5">
                 <Label
+                  htmlFor="usr-nascimento"
+                  className="text-xs text-muted-foreground"
+                >
+                  Data de nascimento
+                </Label>
+                <Input
+                  id="usr-nascimento"
+                  type="date"
+                  value={form.dataNascimento}
+                  onChange={(e) => setField("dataNascimento", e.target.value)}
+                  className="h-10 bg-background"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
                   htmlFor="usr-cargo"
                   className="text-xs text-muted-foreground"
                 >
@@ -977,6 +1008,10 @@ function Usuarios() {
                   <DetailField
                     label="WhatsApp"
                     value={detail.whatsapp || "—"}
+                  />
+                  <DetailField
+                    label="Nascimento"
+                    value={formatBirthDate(detail.dataNascimento)}
                   />
                   <DetailField label="Cargo" value={detail.cargo || "—"} />
                   <DetailField

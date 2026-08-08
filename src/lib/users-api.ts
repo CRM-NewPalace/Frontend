@@ -7,6 +7,7 @@ export type ApiUser = {
   email: string;
   phone: string | null;
   whatsapp: string | null;
+  dataNascimento: string | null;
   cargo: string | null;
   cor: string | null;
   role: Role;
@@ -28,6 +29,7 @@ export type CreateUserInput = {
   password: string;
   phone?: string;
   whatsapp?: string;
+  dataNascimento?: string | null;
   cargo?: string;
   cor?: string | null;
   role: Role;
@@ -39,6 +41,7 @@ export type UpdateUserInput = {
   email?: string;
   phone?: string | null;
   whatsapp?: string | null;
+  dataNascimento?: string | null;
   cargo?: string | null;
   cor?: string | null;
   role?: Role;
