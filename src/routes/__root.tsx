@@ -10,6 +10,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/sonner";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+import { GoogleAnalytics } from "@/components/google-analytics";
 
 import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -96,6 +98,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         "http://localhost:3333",
         "https://backend-wbxw.onrender.com",
         ...(apiOrigin ? [apiOrigin] : []),
+        "https://www.google-analytics.com",
+        "https://analytics.google.com",
+        "https://www.googletagmanager.com",
+        "https://region1.google-analytics.com",
         "ws://localhost:8080",
         "ws://127.0.0.1:8080",
         "wss:",
@@ -108,6 +114,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             rel: "preconnect",
             href: "https://fonts.gstatic.com",
             crossOrigin: "anonymous",
+          },
+          {
+            rel: "preconnect",
+            href: "https://www.googletagmanager.com",
           },
           {
             rel: "stylesheet",
@@ -133,23 +143,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         meta: [
           { charSet: "utf-8" },
           { name: "viewport", content: "width=device-width, initial-scale=1" },
-          { title: "Zone Connection — Gestão Imobiliária" },
+          {
+            title:
+              "Zone Connection | CRM, IA no WhatsApp e Sites para Imobiliárias",
+          },
           {
             name: "description",
             content:
-              "Zone Connection: CRM, financeiro, imóveis e atendimento em uma só plataforma para imobiliárias.",
+              "Ecossistema Zone Connection: CRM imobiliário, IA para WhatsApp e sites/landing pages — gestão, atendimento e captação no mesmo lugar.",
           },
           { name: "author", content: "Zone Connection" },
           {
             property: "og:title",
-            content: "Zone Connection — Gestão Imobiliária",
+            content:
+              "Zone Connection | CRM, IA no WhatsApp e Sites para Imobiliárias",
           },
           {
             property: "og:description",
-            content: "Tudo em uma só conexão para a gestão da sua imobiliária.",
+            content:
+              "Ecossistema Zone Connection: CRM imobiliário, IA para WhatsApp e sites/landing pages — gestão, atendimento e captação no mesmo lugar.",
           },
           { property: "og:type", content: "website" },
+          { property: "og:image", content: "/og-default.png" },
           { name: "twitter:card", content: "summary_large_image" },
+          { name: "twitter:image", content: "/og-default.png" },
           {
             // frame-ancestors NÃO funciona em <meta> — só em header HTTP (ver server.ts).
             httpEquiv: "Content-Security-Policy",
@@ -161,7 +178,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               "img-src 'self' data: blob: https:",
               "font-src 'self' https://fonts.gstatic.com data:",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "script-src 'self' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
               `connect-src ${connectSrc}`,
             ].join("; "),
           },
@@ -214,7 +231,9 @@ function RootComponent() {
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
+        <GoogleAnalytics />
         <Outlet />
+        <CookieConsentBanner />
         <Toaster richColors position="top-right" />
       </QueryClientProvider>
     </HelmetProvider>

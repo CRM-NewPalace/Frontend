@@ -1,26 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import DemoPage from "@/marketing/pages/DemoPage";
+import { marketingHead } from "@/marketing/seo";
 
 export const Route = createFileRoute("/demonstracao")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: "Demonstração do CRM | Zone Connection" },
-      {
-        name: "description",
-        content:
-          "Explore uma demonstração visual do CRM Zone Connection: dashboard, funil, leads e agenda em um ambiente ilustrativo.",
-      },
-      {
-        property: "og:title",
-        content: "Demonstração do CRM | Zone Connection",
-      },
-      {
-        property: "og:description",
-        content:
-          "Veja como é por dentro da plataforma Zone Connection para imobiliárias.",
-      },
-    ],
-  }),
+  ssr: true,
+  head: () =>
+    marketingHead({
+      title: "Demonstração do CRM Imobiliário | Zone Connection",
+      description:
+        "Explore o CRM Zone Connection: dashboard, funil, leads e agenda em uma demonstração interativa antes de falar com o time.",
+      path: "/demonstracao",
+    }),
   component: DemoPage,
 });

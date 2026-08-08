@@ -56,7 +56,7 @@ const PRODUCTS = [
     icon: MessageSquareText,
   },
   {
-    title: "Sites Institucionais e Landing Pages",
+    title: "Sites e Landing Pages",
     text: "Desenvolvimento de sites para imobiliárias e landing pages profissionais para corretores captarem mais clientes.",
     href: PRODUCT_ROUTES.sites,
     icon: LayoutTemplate,
@@ -133,6 +133,19 @@ export function ChallengesSection() {
                   </p>
                   {product.href === PRODUCT_ROUTES.crm ? (
                     <Link to="/produtos/crm-imobiliario" className={linkClass}>
+                      Saiba mais
+                      <ArrowRight size={16} strokeWidth={1.75} />
+                    </Link>
+                  ) : product.href === PRODUCT_ROUTES.whatsappAi ? (
+                    <Link to="/produtos/ia-whatsapp" className={linkClass}>
+                      Saiba mais
+                      <ArrowRight size={16} strokeWidth={1.75} />
+                    </Link>
+                  ) : product.href === PRODUCT_ROUTES.sites ? (
+                    <Link
+                      to="/produtos/sites-institucionais"
+                      className={linkClass}
+                    >
                       Saiba mais
                       <ArrowRight size={16} strokeWidth={1.75} />
                     </Link>

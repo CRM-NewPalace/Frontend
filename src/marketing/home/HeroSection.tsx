@@ -27,7 +27,8 @@ export function HeroSection() {
             id="home-hero-title"
             className="max-w-5xl text-3xl font-semibold tracking-[0.04em] text-brand-dark sm:text-4xl sm:tracking-[0.055em] lg:text-5xl lg:leading-[1.15] lg:tracking-[0.07em]"
           >
-            Tecnologia feita para a rotina da imobiliária.
+            Tecnologia feita para a rotina da{" "}
+            <span className="text-gradient-brand">imobiliária</span>.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-text-muted sm:text-lg">
             CRM, atendimento no WhatsApp e presença digital no mesmo ecossistema

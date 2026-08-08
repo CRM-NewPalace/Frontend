@@ -1,39 +1,39 @@
 import {
-  HeroSection,
   MarketingNav,
-  ModulesSection,
-  ProblemSection,
-  SolutionSection,
-  WhatsAppAiSection,
-  BenefitsSection,
-  PlansSection,
-  CtaSection,
   MarketingFooter,
   ScrollReveal,
   JsonLd,
 } from "@/marketing/components";
+import {
+  HeroSection,
+  ProblemSection,
+  HowItWorksSection,
+  IntegrationSection,
+  BenefitsSection,
+  PlansSection,
+  CtaSection,
+} from "@/marketing/whatsapp-ai";
 import { softwareApplicationJsonLd } from "@/marketing/seo";
 
-const PATH = "/produtos/crm-imobiliario";
+const PATH = "/produtos/ia-whatsapp";
 const DESCRIPTION =
-  "CRM imobiliário com funil, leads, agenda, imóveis, financeiro e automações. Centralize a operação da imobiliária em uma plataforma.";
+  "IA de WhatsApp que atende 24h, qualifica leads, agenda visitas e integra com o CRM Zone Connection. Planos IA SDR e IA Comercial.";
 
 const SECTIONS = [
   { id: "problem", Component: ProblemSection },
-  { id: "solution", Component: SolutionSection },
-  { id: "modules", Component: ModulesSection },
-  { id: "whatsapp-ai", Component: WhatsAppAiSection },
+  { id: "how-it-works", Component: HowItWorksSection },
+  { id: "integration", Component: IntegrationSection },
   { id: "benefits", Component: BenefitsSection },
   { id: "plans", Component: PlansSection },
   { id: "cta", Component: CtaSection },
 ] as const;
 
-export default function LeadingPage() {
+export default function WhatsAppAiPage() {
   return (
     <div className="min-h-screen bg-white">
       <JsonLd
         data={softwareApplicationJsonLd({
-          name: "CRM Imobiliário Zone Connection",
+          name: "IA para WhatsApp Zone Connection",
           description: DESCRIPTION,
           path: PATH,
         })}

@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as DemonstracaoRouteImport } from './routes/demonstracao'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppClientesPerdidosRouteImport } from './routes/_app.clientes-perdidos'
@@ -39,6 +41,8 @@ import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as ProdutosCrmImobiliarioRouteImport } from './routes/produtos.crm-imobiliario'
+import { Route as ProdutosIaWhatsappRouteImport } from './routes/produtos.ia-whatsapp'
+import { Route as ProdutosSitesInstitucionaisRouteImport } from './routes/produtos.sites-institucionais'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
 import { Route as AppFinanceiroClientesFornecedoresRouteImport } from './routes/_app.financeiro.clientes-fornecedores'
 import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.financeiro.comissao'
@@ -66,6 +70,16 @@ const DemonstracaoRoute = DemonstracaoRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppAgendaRoute = AppAgendaRouteImport.update({
@@ -198,6 +212,17 @@ const ProdutosCrmImobiliarioRoute = ProdutosCrmImobiliarioRouteImport.update({
   path: '/produtos/crm-imobiliario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProdutosIaWhatsappRoute = ProdutosIaWhatsappRouteImport.update({
+  id: '/produtos/ia-whatsapp',
+  path: '/produtos/ia-whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosSitesInstitucionaisRoute =
+  ProdutosSitesInstitucionaisRouteImport.update({
+    id: '/produtos/sites-institucionais',
+    path: '/produtos/sites-institucionais',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppFinanceiroCentroDespesasRoute =
   AppFinanceiroCentroDespesasRouteImport.update({
     id: '/centro-despesas',
@@ -253,6 +278,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
@@ -279,6 +306,8 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
+  '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
+  '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -293,6 +322,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
@@ -319,6 +350,8 @@ export interface FileRoutesByTo {
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
+  '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
+  '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -335,6 +368,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/clientes': typeof AppClientesRoute
   '/_app/clientes-perdidos': typeof AppClientesPerdidosRoute
@@ -361,6 +396,8 @@ export interface FileRoutesById {
   '/_app/usuarios': typeof AppUsuariosRoute
   '/_app/vendas': typeof AppVendasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
+  '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
+  '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/_app/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/_app/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -377,6 +414,8 @@ export interface FileRouteTypes {
     | '/'
     | '/demonstracao'
     | '/login'
+    | '/privacidade'
+    | '/termos'
     | '/agenda'
     | '/clientes'
     | '/clientes-perdidos'
@@ -403,6 +442,8 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/vendas'
     | '/produtos/crm-imobiliario'
+    | '/produtos/ia-whatsapp'
+    | '/produtos/sites-institucionais'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -417,6 +458,8 @@ export interface FileRouteTypes {
     | '/'
     | '/demonstracao'
     | '/login'
+    | '/privacidade'
+    | '/termos'
     | '/agenda'
     | '/clientes'
     | '/clientes-perdidos'
@@ -443,6 +486,8 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/vendas'
     | '/produtos/crm-imobiliario'
+    | '/produtos/ia-whatsapp'
+    | '/produtos/sites-institucionais'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -458,6 +503,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/demonstracao'
     | '/login'
+    | '/privacidade'
+    | '/termos'
     | '/_app/agenda'
     | '/_app/clientes'
     | '/_app/clientes-perdidos'
@@ -484,6 +531,8 @@ export interface FileRouteTypes {
     | '/_app/usuarios'
     | '/_app/vendas'
     | '/produtos/crm-imobiliario'
+    | '/produtos/ia-whatsapp'
+    | '/produtos/sites-institucionais'
     | '/_app/financeiro/centro-despesas'
     | '/_app/financeiro/clientes-fornecedores'
     | '/_app/financeiro/comissao'
@@ -500,7 +549,11 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   DemonstracaoRoute: typeof DemonstracaoRoute
   LoginRoute: typeof LoginRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
+  TermosRoute: typeof TermosRoute
   ProdutosCrmImobiliarioRoute: typeof ProdutosCrmImobiliarioRoute
+  ProdutosIaWhatsappRoute: typeof ProdutosIaWhatsappRoute
+  ProdutosSitesInstitucionaisRoute: typeof ProdutosSitesInstitucionaisRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -531,6 +584,20 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/agenda': {
@@ -715,6 +782,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosCrmImobiliarioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/produtos/ia-whatsapp': {
+      id: '/produtos/ia-whatsapp'
+      path: '/produtos/ia-whatsapp'
+      fullPath: '/produtos/ia-whatsapp'
+      preLoaderRoute: typeof ProdutosIaWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos/sites-institucionais': {
+      id: '/produtos/sites-institucionais'
+      path: '/produtos/sites-institucionais'
+      fullPath: '/produtos/sites-institucionais'
+      preLoaderRoute: typeof ProdutosSitesInstitucionaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/financeiro/centro-despesas': {
       id: '/_app/financeiro/centro-despesas'
       path: '/centro-despesas'
@@ -873,8 +954,22 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   DemonstracaoRoute: DemonstracaoRoute,
   LoginRoute: LoginRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
+  TermosRoute: TermosRoute,
   ProdutosCrmImobiliarioRoute: ProdutosCrmImobiliarioRoute,
+  ProdutosIaWhatsappRoute: ProdutosIaWhatsappRoute,
+  ProdutosSitesInstitucionaisRoute: ProdutosSitesInstitucionaisRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

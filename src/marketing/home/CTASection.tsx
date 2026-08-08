@@ -18,8 +18,12 @@ export function CTASection() {
             }}
           >
             <div
-              className="pointer-events-none absolute top-[-40%] left-1/2 h-4/5 w-3/5 -translate-x-1/2 rounded-full bg-white/10 blur-3xl"
+              className="pointer-events-none absolute top-[-40%] left-1/2 h-4/5 w-3/5 -translate-x-1/2 rounded-full"
               aria-hidden
+              style={{
+                background:
+                  "radial-gradient(ellipse at center, rgba(255,255,255,0.14) 0%, transparent 70%)",
+              }}
             />
             <div className="relative mx-auto max-w-2xl">
               <h2

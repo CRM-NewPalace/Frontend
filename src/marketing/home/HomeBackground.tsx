@@ -1,10 +1,3 @@
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
-
 const LINE = "#94a3b8";
 const ACCENT = "#079ed4";
 const MUTED = "#cbd5e1";
@@ -267,85 +260,36 @@ function BottomRightDecor() {
   );
 }
 
-function GlowDot({
-  className,
-  delay = 0,
-  animate,
-}: {
-  className: string;
-  delay?: number;
-  animate: boolean;
-}) {
-  if (!animate) {
-    return (
-      <span
-        className={`absolute h-1.5 w-1.5 rounded-full bg-brand-accent/70 shadow-[0_0_10px_rgba(7,158,212,0.55)] ${className}`}
-      />
-    );
-  }
-
+function GlowDot({ className }: { className: string }) {
   return (
-    <motion.span
-      className={`absolute h-1.5 w-1.5 rounded-full bg-brand-accent/70 shadow-[0_0_10px_rgba(7,158,212,0.55)] ${className}`}
-      animate={{ opacity: [0.35, 0.95, 0.35], scale: [1, 1.35, 1] }}
-      transition={{
-        duration: 4.8,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay,
-      }}
+    <span
+      className={`absolute h-1.5 w-1.5 rounded-full bg-brand-accent/70 ${className}`}
     />
   );
 }
 
 /**
- * Fundo técnico vetorial (nítido) com parallax suave na rolagem.
+ * Fundo técnico vetorial estático — sem parallax no scroll para manter a rolagem fluida.
  */
 export function HomeBackground() {
-  const reducedMotion = useReducedMotion();
-  const { scrollYProgress } = useScroll();
-
-  const ySlow = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
-  const yMid = useTransform(scrollYProgress, [0, 1], ["0%", "-7%"]);
-  const yFast = useTransform(scrollYProgress, [0, 1], ["0%", "14%"]);
-
-  const animate = !reducedMotion;
-
   return (
     <div
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#fbfcfd]"
       aria-hidden
     >
-      <motion.div
-        className="absolute -top-8 -right-6 h-105 w-130 sm:h-120 sm:w-145 lg:h-140 lg:w-160"
-        style={animate ? { y: ySlow } : undefined}
-      >
+      <div className="absolute -top-8 -right-6 h-105 w-130 sm:h-120 sm:w-145 lg:h-140 lg:w-160">
         <TopRightDecor />
-        <GlowDot
-          className="top-[28%] right-[34%]"
-          delay={0}
-          animate={animate}
-        />
-      </motion.div>
+        <GlowDot className="top-[28%] right-[34%]" />
+      </div>
 
-      <motion.div
-        className="absolute -bottom-10 -left-8 h-80 w-105 sm:h-95 sm:w-125 lg:h-110 lg:w-140"
-        style={animate ? { y: yMid } : undefined}
-      >
+      <div className="absolute -bottom-10 -left-8 h-80 w-105 sm:h-95 sm:w-125 lg:h-110 lg:w-140">
         <BottomLeftDecor />
-        <GlowDot
-          className="bottom-[22%] left-[38%]"
-          delay={1.1}
-          animate={animate}
-        />
-      </motion.div>
+        <GlowDot className="bottom-[22%] left-[38%]" />
+      </div>
 
-      <motion.div
-        className="absolute right-4 bottom-16 h-55 w-45 sm:right-10 sm:bottom-24 sm:h-65 sm:w-52.5 lg:right-16"
-        style={animate ? { y: yFast } : undefined}
-      >
+      <div className="absolute right-4 bottom-16 h-55 w-45 sm:right-10 sm:bottom-24 sm:h-65 sm:w-52.5 lg:right-16">
         <BottomRightDecor />
-      </motion.div>
+      </div>
 
       {/* Vinheta central leve para leitura do conteúdo */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(251,252,253,0.75)_0%,rgba(251,252,253,0.35)_42%,transparent_72%)]" />
