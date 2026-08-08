@@ -179,7 +179,8 @@ function Page() {
   const [loading, setLoading] = useState(true);
   const [loadingSales, setLoadingSales] = useState(false);
   const [search, setSearch] = useState("");
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
+  // Padrão "tudo": vendas de meses anteriores (jun/jul) não somem no filtro.
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>("tudo");
   const [status, setStatus] = useState("todos");
   const [equipe, setEquipe] = useState("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -288,7 +289,11 @@ function Page() {
       if (status !== "todos" && item.status !== status) return false;
       if (equipe !== "todos" && relationName(item.equipe) !== equipe)
         return false;
-      if (!matchesPeriodoFiltro(item.dataVenda, periodo)) return false;
+      // Mês atual considera data da venda OU data do lançamento da comissão.
+      const inPeriodo =
+        matchesPeriodoFiltro(item.dataVenda, periodo) ||
+        matchesPeriodoFiltro(item.createdAt, periodo);
+      if (!inPeriodo) return false;
       if (!query) return true;
       return [item.corretor, item.cliente, item.empreendimento, item.equipe]
         .map((value) => relationName(value, "").toLowerCase())
@@ -373,18 +378,17 @@ function Page() {
             });
       upsert(saved);
       setDialogOpen(false);
-      // Venda com data fora do "Mês atual" sumia da grade após o lançamento.
-      if (mode === "create" && !matchesPeriodoFiltro(saved.dataVenda, periodo)) {
+      if (mode === "create") {
         setPeriodo("tudo");
-        toast.success(
-          "Comissão lançada. Filtro ajustado para Todo o período.",
-        );
+        setStatus("todos");
+        setEquipe("todos");
+        setSearch("");
+        toast.success("Comissão lançada.");
+        void loadEligibleSales();
+        void load();
       } else {
-        toast.success(
-          mode === "edit" ? "Comissão atualizada." : "Comissão lançada.",
-        );
+        toast.success("Comissão atualizada.");
       }
-      if (mode === "create") void loadEligibleSales();
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -432,7 +436,7 @@ function Page() {
   }
 
   const hasActive = Boolean(
-    search || periodo !== "mes" || status !== "todos" || equipe !== "todos",
+    search || periodo !== "tudo" || status !== "todos" || equipe !== "todos",
   );
 
   return (
@@ -454,30 +458,34 @@ function Page() {
         }
       />
 
-      <section className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <section className="mb-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
         <FinanceKpiCard
           label={commissionValueLabel}
           value={kpis.total}
           icon={Percent}
           tone="violet"
+          compact
         />
         <FinanceKpiCard
           label="Pendentes"
           value={kpis.pending}
           icon={Clock3}
           tone="orange"
+          compact
         />
         <FinanceKpiCard
           label="Liberadas"
           value={kpis.released}
           icon={Banknote}
           tone="blue"
+          compact
         />
         <FinanceKpiCard
           label="Pagas"
           value={kpis.paid}
           icon={CheckCircle2}
           tone="emerald"
+          compact
         />
       </section>
 
@@ -507,143 +515,176 @@ function Page() {
         hasActive={hasActive}
         onClear={() => {
           setSearch("");
-          setPeriodo("mes");
+          setPeriodo("tudo");
           setStatus("todos");
           setEquipe("todos");
         }}
       />
 
       <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Corretor</TableHead>
-              <TableHead>Equipe</TableHead>
-              <TableHead>Empreendimento</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead className="text-right">VGV</TableHead>
-              <TableHead className="text-right">
-                {commissionColumnLabel}
-              </TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="py-12 text-center">
-                  <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-                  <span className="mt-2 block text-sm text-muted-foreground">
-                    Carregando comissões…
-                  </span>
-                </TableCell>
+                <TableHead className="h-9">Corretor</TableHead>
+                <TableHead className="h-9">Equipe</TableHead>
+                <TableHead className="h-9">Empreendimento</TableHead>
+                <TableHead className="h-9">Cliente</TableHead>
+                <TableHead className="h-9">Data</TableHead>
+                <TableHead className="h-9 text-right">VGV</TableHead>
+                <TableHead className="h-9 text-right">
+                  {commissionColumnLabel}
+                </TableHead>
+                <TableHead className="h-9">Status</TableHead>
+                <TableHead className="h-9 text-right">Ações</TableHead>
               </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={9}
-                  className="py-10 text-center text-muted-foreground"
-                >
-                  Nenhuma comissão encontrada.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">
-                    {relationName(item.corretor)}
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-10 text-center">
+                    <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+                    <span className="mt-2 block text-sm text-muted-foreground">
+                      Carregando comissões…
+                    </span>
                   </TableCell>
-                  <TableCell>{relationName(item.equipe)}</TableCell>
-                  <TableCell>{relationName(item.empreendimento)}</TableCell>
-                  <TableCell>{relationName(item.cliente)}</TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">
-                    {formatDate(item.dataVenda)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {brl(numberValue(item.vgv))}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums">
-                    {commissionValue(item) == null
-                      ? "—"
-                      : brl(numberValue(commissionValue(item)))}
-                  </TableCell>
-                  <TableCell>
-                    {canManage ? (
-                      <Select
-                        value={item.status}
-                        onValueChange={(value) =>
-                          void handleStatus(item, value as ComissaoStatus)
-                        }
-                      >
-                        <SelectTrigger className="h-8 w-31 border-0 bg-transparent p-0 shadow-none">
-                          <Badge
-                            variant="outline"
-                            className={statusBadgeClass(item.status)}
-                          >
-                            {statusLabel(item.status)}
-                          </Badge>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.slice(1).map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                </TableRow>
+              ) : rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-8 text-center">
+                    {items.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Há {items.length} comissão(ões), mas nenhuma neste
+                          filtro.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setPeriodo("tudo");
+                            setStatus("todos");
+                            setEquipe("todos");
+                            setSearch("");
+                          }}
+                        >
+                          Ver todas as comissões
+                        </Button>
+                      </div>
                     ) : (
-                      <Badge
-                        variant="outline"
-                        className={statusBadgeClass(item.status)}
-                      >
-                        {statusLabel(item.status)}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDetail(item)}
-                      aria-label="Ver detalhes da comissão"
-                      title="Ver detalhes"
-                    >
-                      <Eye className="size-4" />
-                    </Button>
-                    {canManage && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(item)}
-                          aria-label="Editar comissão"
-                          title="Editar"
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteTarget(item)}
-                          aria-label="Excluir comissão"
-                          title="Excluir"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </>
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma comissão lançada ainda.
+                      </p>
                     )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                rows.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="py-2 font-medium">
+                      {relationName(item.corretor)}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {relationName(item.equipe)}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {relationName(item.empreendimento)}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {relationName(item.cliente)}
+                    </TableCell>
+                    <TableCell className="py-2 whitespace-nowrap tabular-nums">
+                      {formatDate(item.dataVenda)}
+                    </TableCell>
+                    <TableCell className="py-2 text-right tabular-nums">
+                      {brl(numberValue(item.vgv))}
+                    </TableCell>
+                    <TableCell className="py-2 text-right font-semibold tabular-nums">
+                      {commissionValue(item) == null
+                        ? "—"
+                        : brl(numberValue(commissionValue(item)))}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {canManage ? (
+                        <Select
+                          value={item.status}
+                          onValueChange={(value) =>
+                            void handleStatus(item, value as ComissaoStatus)
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-31 border-0 bg-transparent p-0 shadow-none">
+                            <Badge
+                              variant="outline"
+                              className={statusBadgeClass(item.status)}
+                            >
+                              {statusLabel(item.status)}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUS_OPTIONS.slice(1).map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className={statusBadgeClass(item.status)}
+                        >
+                          {statusLabel(item.status)}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2 text-right whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDetail(item)}
+                        aria-label="Ver detalhes da comissão"
+                        title="Ver detalhes"
+                      >
+                        <Eye className="size-4" />
+                      </Button>
+                      {canManage && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(item)}
+                            aria-label="Editar comissão"
+                            title="Editar"
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(item)}
+                            aria-label="Excluir comissão"
+                            title="Excluir"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        VGV filtrado: {brl(kpis.vgv)} · {rows.length} comissão(ões)
+      <p className="mt-2 mb-4 text-xs text-muted-foreground">
+        VGV filtrado: {brl(kpis.vgv)} · {rows.length} de {items.length}{" "}
+        comissão(ões)
       </p>
 
       <FormDialogShell
@@ -681,10 +722,17 @@ function Page() {
             {mode === "create" && (
               <FormSection title="Venda elegível">
                 <div className="space-y-2">
-                  <Label>Venda</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Venda</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {loadingSales
+                        ? "Carregando…"
+                        : `${eligibleSales.length} elegível(is)`}
+                    </span>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Só listamos vendas ainda sem comissão. Depois do lançamento,
-                    a venda sai daqui e a comissão fica na tabela abaixo.
+                    Apenas vendas sem comissão. Após salvar, a venda sai desta
+                    lista e a comissão aparece na tabela.
                   </p>
                   <Popover
                     open={salePickerOpen}
@@ -695,18 +743,29 @@ function Page() {
                         type="button"
                         variant="outline"
                         role="combobox"
-                        className="w-full justify-between font-normal"
+                        className="h-auto min-h-10 w-full justify-between py-2 font-normal"
                         disabled={loadingSales}
                       >
-                        {loadingSales
-                          ? "Carregando vendas…"
-                          : selectedSale
-                            ? `${relationName(selectedSale.cliente)} · ${relationName(selectedSale.empreendimento)}`
-                            : "Selecione uma venda"}
                         {loadingSales ? (
-                          <Loader2 className="size-4 animate-spin" />
+                          "Carregando vendas…"
+                        ) : selectedSale ? (
+                          <span className="min-w-0 flex-1 text-left">
+                            <span className="block truncate font-medium">
+                              {relationName(selectedSale.cliente)}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {relationName(selectedSale.empreendimento)} ·{" "}
+                              {formatDate(selectedSale.dataVenda)} ·{" "}
+                              {brl(numberValue(selectedSale.vgv))}
+                            </span>
+                          </span>
                         ) : (
-                          <ChevronsUpDown className="size-4 opacity-50" />
+                          "Selecione uma venda"
+                        )}
+                        {loadingSales ? (
+                          <Loader2 className="size-4 shrink-0 animate-spin" />
+                        ) : (
+                          <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -716,13 +775,13 @@ function Page() {
                     >
                       <Command>
                         <CommandInput placeholder="Buscar cliente, corretor ou empreendimento…" />
-                        <CommandList>
+                        <CommandList className="max-h-72">
                           <CommandEmpty>Nenhuma venda elegível.</CommandEmpty>
                           <CommandGroup>
                             {eligibleSales.map((sale) => (
                               <CommandItem
                                 key={sale.documentacaoId}
-                                value={`${relationName(sale.cliente)} ${relationName(sale.empreendimento)} ${relationName(sale.corretor)} ${sale.documentacaoId}`}
+                                value={`${relationName(sale.cliente)} ${relationName(sale.empreendimento)} ${relationName(sale.corretor)} ${formatDate(sale.dataVenda)} ${sale.documentacaoId}`}
                                 onSelect={() => {
                                   setField(
                                     "documentacaoId",
@@ -733,19 +792,23 @@ function Page() {
                               >
                                 <Check
                                   className={cn(
-                                    "size-4",
+                                    "size-4 shrink-0",
                                     form.documentacaoId === sale.documentacaoId
                                       ? "opacity-100"
                                       : "opacity-0",
                                   )}
                                 />
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <p className="truncate font-medium">
                                     {relationName(sale.cliente)}
                                   </p>
                                   <p className="truncate text-xs text-muted-foreground">
                                     {relationName(sale.empreendimento)} ·{" "}
                                     {relationName(sale.corretor)}
+                                  </p>
+                                  <p className="truncate text-xs tabular-nums text-muted-foreground">
+                                    {formatDate(sale.dataVenda)} ·{" "}
+                                    {brl(numberValue(sale.vgv))}
                                   </p>
                                 </div>
                               </CommandItem>

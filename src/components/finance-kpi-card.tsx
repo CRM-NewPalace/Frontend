@@ -88,6 +88,7 @@ export function FinanceKpiCard({
   valorMesAnterior,
   invertEvolucao = false,
   suffix,
+  compact = false,
 }: {
   label: string;
   value: number;
@@ -100,6 +101,7 @@ export function FinanceKpiCard({
   valorMesAnterior?: number;
   invertEvolucao?: boolean;
   suffix?: string;
+  compact?: boolean;
 }) {
   const t = TONE[tone];
   const display =
@@ -110,8 +112,11 @@ export function FinanceKpiCard({
         : money(value);
 
   const len = display.length;
-  const valueSize =
-    len > 18
+  const valueSize = compact
+    ? len > 14
+      ? "text-sm leading-snug"
+      : "text-base leading-tight"
+    : len > 18
       ? "text-sm leading-snug"
       : len > 14
         ? "text-base leading-snug"
@@ -126,15 +131,23 @@ export function FinanceKpiCard({
       )}
       title={display}
     >
-      <div className={cn("h-1.5 w-full shrink-0", t.bar)} />
-      <div className="p-3 sm:p-4 flex flex-1 items-center gap-2.5 sm:gap-3 min-w-0 min-h-21 sm:min-h-23">
+      <div className={cn("w-full shrink-0", compact ? "h-1" : "h-1.5", t.bar)} />
+      <div
+        className={cn(
+          "flex flex-1 items-center min-w-0",
+          compact
+            ? "gap-2 p-2.5 min-h-0"
+            : "gap-2.5 sm:gap-3 p-3 sm:p-4 min-h-21 sm:min-h-23",
+        )}
+      >
         <div
           className={cn(
-            "w-8 h-8 sm:w-12 sm:h-12 rounded-md sm:rounded-lg flex items-center justify-center shrink-0 text-white shadow-sm",
+            "rounded-md flex items-center justify-center shrink-0 text-white shadow-sm",
+            compact ? "w-8 h-8" : "w-8 h-8 sm:w-12 sm:h-12 sm:rounded-lg",
             t.icon,
           )}
         >
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+          <Icon className={cn(compact ? "w-4 h-4" : "w-4 h-4 sm:w-5 sm:h-5")} />
         </div>
         <div className="min-w-0 flex-1 overflow-hidden flex flex-col justify-center">
           <div className="text-[11px] sm:text-xs text-muted-foreground leading-snug truncate">
@@ -161,7 +174,7 @@ export function FinanceKpiCard({
               invert={invertEvolucao}
               className="mt-1"
             />
-          ) : (
+          ) : compact ? null : (
             <span className="mt-1 block h-4.5" aria-hidden />
           )}
         </div>
