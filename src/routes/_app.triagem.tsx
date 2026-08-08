@@ -118,11 +118,14 @@ function HistoryTimeline({
   events,
   contactName,
   stageLabel,
+  fallbackStage,
   loading,
 }: {
   events: TriagemEvent[];
   contactName: string;
   stageLabel: (slug: string | null) => string;
+  /** Etapa atual do lead — usada só em relatos antigos sem stage gravado. */
+  fallbackStage?: string | null;
   loading?: boolean;
 }) {
   if (loading && events.length === 0) {
@@ -149,11 +152,13 @@ function HistoryTimeline({
       </div>
       <ol className="relative space-y-0">
         {events.map((ev, index) => {
-          const stageBadge = ev.stageNovo
-            ? stageLabel(ev.stageNovo)
-            : ev.stageAnterior
-              ? stageLabel(ev.stageAnterior)
-              : null;
+          const stageSlug = ev.stageNovo || ev.stageAnterior || fallbackStage;
+          const stageName = stageSlug ? stageLabel(stageSlug) : null;
+          const changedStage = Boolean(
+            ev.stageAnterior &&
+              ev.stageNovo &&
+              ev.stageAnterior !== ev.stageNovo,
+          );
           const isLast = index === events.length - 1;
 
           return (
@@ -190,18 +195,20 @@ function HistoryTimeline({
                     <div className="min-w-0 space-y-1.5">
                       <p className="text-sm leading-snug">
                         <span className="font-semibold">{ev.autor.name}</span>
-                        {stageBadge
+                        {changedStage
                           ? " atualizou a triagem de "
                           : " registrou um relato sobre "}
                         <span className="font-semibold">{contactName}</span>
                       </p>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {stageBadge && (
+                        {stageName && (
                           <Badge
                             variant="secondary"
                             className="text-[10px] font-medium bg-primary/10 text-primary border-primary/20"
                           >
-                            {stageBadge}
+                            {changedStage
+                              ? stageName
+                              : `Manteve ${stageName}`}
                           </Badge>
                         )}
                         <Badge variant="outline" className="text-[10px]">
@@ -668,6 +675,7 @@ function CorretorTriagem() {
                 events={events}
                 contactName={selectedContact.nome}
                 stageLabel={stageName}
+                fallbackStage={selectedContact.stage}
                 loading={historyLoading}
               />
             </div>
@@ -1147,6 +1155,7 @@ function ManagerTriagem() {
                 events={events}
                 contactName={selectedLead.nome}
                 stageLabel={stageName}
+                fallbackStage={selectedLead.stage}
                 loading={historyLoading}
               />
             </div>
