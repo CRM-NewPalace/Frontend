@@ -39,7 +39,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { getSession, signOut, type AuthUser } from "@/lib/auth";
+import { getSession, sendHeartbeat, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import { useTenantTheme } from "@/lib/tenant-theme";
 import { ApiError } from "@/lib/api";
@@ -404,6 +404,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }, pollMs);
     return () => window.clearInterval(id);
   }, [user, loadNotificacoes, loadAgendaBadge]);
+
+  // Presença: heartbeat a cada 60s com a aba visível (tempo logado no dia).
+  useEffect(() => {
+    if (!user || user.role === "super_admin") return;
+
+    const beat = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      void sendHeartbeat().catch(() => {
+        // silencioso — falha de presença não deve afetar o uso
+      });
+    };
+
+    beat();
+    const id = window.setInterval(beat, 60_000);
+
+    const onVisibility = () => {
+      if (!document.hidden) beat();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [user]);
 
   const unreadCount = useMemo(
     () => notificacoes.filter((n) => !n.lida).length,

@@ -107,6 +107,11 @@ export async function signOut(): Promise<void> {
   }
 }
 
+/** Sinaliza atividade no CRM para medir tempo logado no dia. */
+export async function sendHeartbeat(): Promise<void> {
+  await apiFetch<void>("/auth/heartbeat", { method: "POST" });
+}
+
 /** Busca o usuário atual no backend e atualiza o cache local. */
 export async function fetchMe(): Promise<AuthUser> {
   const user = await apiFetch<AuthUser>("/auth/me");

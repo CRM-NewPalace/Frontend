@@ -78,6 +78,19 @@ export async function fetchUsersQuota(): Promise<UsersQuota> {
   return apiFetch<UsersQuota>("/users/quota");
 }
 
+export type UserPresenceToday = {
+  userId: string;
+  secondsToday: number;
+  online: boolean;
+};
+
+export async function fetchUsersPresenceToday(): Promise<UserPresenceToday[]> {
+  const res = await apiFetch<{ data: UserPresenceToday[] }>(
+    "/users/presence/today",
+  );
+  return res.data;
+}
+
 export async function createUser(input: CreateUserInput): Promise<ApiUser> {
   return apiFetch<ApiUser>("/users", { method: "POST", body: input });
 }

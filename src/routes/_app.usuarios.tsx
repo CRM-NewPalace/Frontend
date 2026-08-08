@@ -72,11 +72,13 @@ import {
   createUser,
   deleteUser,
   fetchUsers,
+  fetchUsersPresenceToday,
   fetchUsersQuota,
   resetUserPassword,
   updateUser,
   updateUserStatus,
   type ApiUser,
+  type UserPresenceToday,
   type UsersQuota,
 } from "@/lib/users-api";
 import { PLANO_LABELS } from "@/lib/tenant-modules";
@@ -224,6 +226,16 @@ function formatLastAccess(iso: string | null): string {
   return d.toLocaleDateString("pt-BR");
 }
 
+function formatTimeToday(seconds: number | undefined): string {
+  if (seconds == null || seconds <= 0) return "—";
+  if (seconds < 60) return "< 1 min";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}min`;
+}
+
 function isStrongPassword(value: string) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
 }
@@ -246,6 +258,9 @@ function Usuarios() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [quota, setQuota] = useState<UsersQuota | null>(null);
+  const [presenceByUser, setPresenceByUser] = useState<
+    Record<string, UserPresenceToday>
+  >({});
 
   /** Atualiza estado + cache juntos. */
   const setUsers = useCallback((updater: (prev: ApiUser[]) => ApiUser[]) => {
@@ -278,12 +293,16 @@ function Usuarios() {
     async (opts?: { silent?: boolean }) => {
       if (!opts?.silent) setLoading(true);
       try {
-        const [page, q] = await Promise.all([
+        const [page, q, presence] = await Promise.all([
           fetchUsers({ page: 1, limit: 100 }),
           isAdmin ? fetchUsersQuota().catch(() => null) : Promise.resolve(null),
+          fetchUsersPresenceToday().catch(() => [] as UserPresenceToday[]),
         ]);
         setUsers(() => page.data);
         if (q) setQuota(q);
+        const map: Record<string, UserPresenceToday> = {};
+        for (const row of presence) map[row.userId] = row;
+        setPresenceByUser(map);
       } catch (err) {
         if (!opts?.silent) {
           toast.error(
@@ -598,6 +617,7 @@ function Usuarios() {
               <TableHead>Perfil</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Último acesso</TableHead>
+              <TableHead>Tempo hoje</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -605,7 +625,7 @@ function Usuarios() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Carregando usuários...
@@ -614,7 +634,7 @@ function Usuarios() {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum usuário encontrado.
@@ -650,6 +670,17 @@ function Usuarios() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {formatLastAccess(u.lastLoginAt)}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      {presenceByUser[u.id]?.online ? (
+                        <span
+                          className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"
+                          title="Online agora"
+                        />
+                      ) : null}
+                      {formatTimeToday(presenceByUser[u.id]?.secondsToday)}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -1017,6 +1048,16 @@ function Usuarios() {
                   <DetailField
                     label="Último acesso"
                     value={formatLastAccess(detail.lastLoginAt)}
+                  />
+                  <DetailField
+                    label="Tempo hoje"
+                    value={
+                      presenceByUser[detail.id]?.online
+                        ? `${formatTimeToday(presenceByUser[detail.id]?.secondsToday)} · online`
+                        : formatTimeToday(
+                            presenceByUser[detail.id]?.secondsToday,
+                          )
+                    }
                   />
                 </div>
               </FormSection>
