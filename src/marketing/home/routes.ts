@@ -6,6 +6,8 @@ export const PRODUCT_ROUTES = {
   sites: "/produtos/sites-institucionais",
   landingPages: "/produtos/sites-institucionais",
   demo: "/demonstracao",
+  privacy: "/privacidade",
+  terms: "/termos",
 } as const;
 
 export const HOME_ANCHORS = {

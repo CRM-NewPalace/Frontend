@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as DemonstracaoRouteImport } from './routes/demonstracao'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppClientesPerdidosRouteImport } from './routes/_app.clientes-perdidos'
@@ -68,6 +70,16 @@ const DemonstracaoRoute = DemonstracaoRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppAgendaRoute = AppAgendaRouteImport.update({
@@ -266,6 +278,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
@@ -308,6 +322,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
@@ -352,6 +368,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/demonstracao': typeof DemonstracaoRoute
   '/login': typeof LoginRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/clientes': typeof AppClientesRoute
   '/_app/clientes-perdidos': typeof AppClientesPerdidosRoute
@@ -396,6 +414,8 @@ export interface FileRouteTypes {
     | '/'
     | '/demonstracao'
     | '/login'
+    | '/privacidade'
+    | '/termos'
     | '/agenda'
     | '/clientes'
     | '/clientes-perdidos'
@@ -438,6 +458,8 @@ export interface FileRouteTypes {
     | '/'
     | '/demonstracao'
     | '/login'
+    | '/privacidade'
+    | '/termos'
     | '/agenda'
     | '/clientes'
     | '/clientes-perdidos'
@@ -481,6 +503,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/demonstracao'
     | '/login'
+    | '/privacidade'
+    | '/termos'
     | '/_app/agenda'
     | '/_app/clientes'
     | '/_app/clientes-perdidos'
@@ -525,6 +549,8 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   DemonstracaoRoute: typeof DemonstracaoRoute
   LoginRoute: typeof LoginRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
+  TermosRoute: typeof TermosRoute
   ProdutosCrmImobiliarioRoute: typeof ProdutosCrmImobiliarioRoute
   ProdutosIaWhatsappRoute: typeof ProdutosIaWhatsappRoute
   ProdutosSitesInstitucionaisRoute: typeof ProdutosSitesInstitucionaisRoute
@@ -558,6 +584,20 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/agenda': {
@@ -914,6 +954,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   DemonstracaoRoute: DemonstracaoRoute,
   LoginRoute: LoginRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
+  TermosRoute: TermosRoute,
   ProdutosCrmImobiliarioRoute: ProdutosCrmImobiliarioRoute,
   ProdutosIaWhatsappRoute: ProdutosIaWhatsappRoute,
   ProdutosSitesInstitucionaisRoute: ProdutosSitesInstitucionaisRoute,

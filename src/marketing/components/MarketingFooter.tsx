@@ -48,7 +48,7 @@ export function MarketingFooter() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 sm:gap-12">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 sm:gap-12">
             <nav className="flex flex-col gap-2.5" aria-label="Institucional">
               <p className="text-xs font-semibold uppercase tracking-widest text-brand-accent">
                 Institucional
@@ -92,13 +92,39 @@ export function MarketingFooter() {
                 Sites e Landing Pages
               </Link>
             </nav>
+
+            <nav className="flex flex-col gap-2.5" aria-label="Legal">
+              <p className="text-xs font-semibold uppercase tracking-widest text-brand-accent">
+                Legal
+              </p>
+              <Link to="/privacidade" className={footerLinkClass}>
+                Privacidade
+              </Link>
+              <Link to="/termos" className={footerLinkClass}>
+                Termos de Uso
+              </Link>
+            </nav>
           </div>
         </div>
 
-        <div className="border-t border-border pt-6">
+        <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-text-muted sm:text-sm">
             © {year} Zone Connection. Todos os direitos reservados.
           </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link
+              to="/privacidade"
+              className="text-xs text-text-muted transition-colors hover:text-brand-dark sm:text-sm"
+            >
+              Política de Privacidade
+            </Link>
+            <Link
+              to="/termos"
+              className="text-xs text-text-muted transition-colors hover:text-brand-dark sm:text-sm"
+            >
+              Termos de Uso
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

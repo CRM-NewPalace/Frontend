@@ -10,10 +10,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/sonner";
-import {
-  GoogleAnalytics,
-  GoogleAnalyticsScripts,
-} from "@/components/google-analytics";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+import { GoogleAnalytics } from "@/components/google-analytics";
 
 import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -209,7 +207,6 @@ function RootShell({ children }: { children: ReactNode }) {
         />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=11" />
         <link rel="icon" href="/favicon.ico?v=11" sizes="any" />
-        <GoogleAnalyticsScripts />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var m=localStorage.getItem("crm_theme_zone_light_v1");if(!m){localStorage.setItem("crm_theme_zone_light_v1","1");localStorage.setItem("crm_theme","light")}var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light"}}catch(e){}})();`,
@@ -236,6 +233,7 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <GoogleAnalytics />
         <Outlet />
+        <CookieConsentBanner />
         <Toaster richColors position="top-right" />
       </QueryClientProvider>
     </HelmetProvider>
