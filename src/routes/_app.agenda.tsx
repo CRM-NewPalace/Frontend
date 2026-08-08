@@ -384,7 +384,7 @@ function AgendaPage() {
 
   function openEdit(item: Agendamento) {
     if (isAgendamentoAniversario(item)) {
-      toast.message("Aniversário do corretor", {
+      toast.message("Aniversário", {
         description: "Evento automático — somente leitura na agenda.",
       });
       return;
