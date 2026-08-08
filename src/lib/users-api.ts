@@ -91,6 +91,23 @@ export async function fetchUsersPresenceToday(): Promise<UserPresenceToday[]> {
   return res.data;
 }
 
+export type UserPresenceDay = {
+  dateKey: string;
+  seconds: number;
+};
+
+export type UserPresenceWeek = {
+  userId: string;
+  days: UserPresenceDay[];
+  secondsWeek: number;
+};
+
+export async function fetchUserPresenceWeek(
+  userId: string,
+): Promise<UserPresenceWeek> {
+  return apiFetch<UserPresenceWeek>(`/users/${userId}/presence/week`);
+}
+
 export async function createUser(input: CreateUserInput): Promise<ApiUser> {
   return apiFetch<ApiUser>("/users", { method: "POST", body: input });
 }

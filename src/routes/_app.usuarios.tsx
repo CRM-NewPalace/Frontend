@@ -62,6 +62,7 @@ import {
   Shield,
   Copy,
   Check,
+  Clock3,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { isAnalistaAllowed } from "@/lib/tenant-modules";
@@ -71,6 +72,7 @@ import { useLeads } from "@/lib/leads-store";
 import {
   createUser,
   deleteUser,
+  fetchUserPresenceWeek,
   fetchUsers,
   fetchUsersPresenceToday,
   fetchUsersQuota,
@@ -79,6 +81,7 @@ import {
   updateUserStatus,
   type ApiUser,
   type UserPresenceToday,
+  type UserPresenceWeek,
   type UsersQuota,
 } from "@/lib/users-api";
 import { PLANO_LABELS } from "@/lib/tenant-modules";
@@ -236,6 +239,33 @@ function formatTimeToday(seconds: number | undefined): string {
   return `${h}h ${m}min`;
 }
 
+const WEEKDAY_LABEL: Record<number, string> = {
+  0: "Seg",
+  1: "Ter",
+  2: "Qua",
+  3: "Qui",
+  4: "Sex",
+  5: "Sáb",
+  6: "Dom",
+};
+
+function formatWeekDayLabel(dateKey: string): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const utc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  // getUTCDay: 0=Dom … 6=Sáb → índice seg=0
+  const weekdayIdx = (utc.getUTCDay() + 6) % 7;
+  return `${WEEKDAY_LABEL[weekdayIdx]} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+}
+
+function todayDateKeyBrasil(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function isStrongPassword(value: string) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
 }
@@ -278,6 +308,10 @@ function Usuarios() {
   const [saving, setSaving] = useState(false);
 
   const [detail, setDetail] = useState<ApiUser | null>(null);
+  const [weekPresence, setWeekPresence] = useState<UserPresenceWeek | null>(
+    null,
+  );
+  const [weekPresenceLoading, setWeekPresenceLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ApiUser | null>(null);
   const [credentials, setCredentials] = useState<{
     name: string;
@@ -323,6 +357,30 @@ function Usuarios() {
     // Só no mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!detail) {
+      setWeekPresence(null);
+      setWeekPresenceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setWeekPresence(null);
+    setWeekPresenceLoading(true);
+    void fetchUserPresenceWeek(detail.id)
+      .then((week) => {
+        if (!cancelled) setWeekPresence(week);
+      })
+      .catch(() => {
+        if (!cancelled) setWeekPresence(null);
+      })
+      .finally(() => {
+        if (!cancelled) setWeekPresenceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.id]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -985,7 +1043,12 @@ function Usuarios() {
 
       <FormDialogShell
         open={!!detail}
-        onOpenChange={(o) => !o && setDetail(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDetail(null);
+            setWeekPresence(null);
+          }
+        }}
         icon={<Eye className="w-5 h-5" />}
         title={detail?.name ?? "Detalhes do usuário"}
         description={
@@ -1060,6 +1123,58 @@ function Usuarios() {
                     }
                   />
                 </div>
+              </FormSection>
+              <FormSection
+                icon={<Clock3 className="w-3.5 h-3.5 text-primary" />}
+                title="Tempo logado na semana"
+              >
+                {weekPresenceLoading ? (
+                  <p className="text-xs text-muted-foreground">
+                    Carregando presença da semana...
+                  </p>
+                ) : !weekPresence ? (
+                  <p className="text-xs text-muted-foreground">
+                    Não foi possível carregar o tempo da semana.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-xs text-muted-foreground">
+                        Segunda a domingo (horário de Brasília)
+                      </span>
+                      <span className="text-sm font-medium">
+                        Total {formatTimeToday(weekPresence.secondsWeek)}
+                      </span>
+                    </div>
+                    <ul className="divide-y divide-border/60 rounded-md border border-border/60">
+                      {weekPresence.days.map((day) => {
+                        const isToday = day.dateKey === todayDateKeyBrasil();
+                        return (
+                          <li
+                            key={day.dateKey}
+                            className={cn(
+                              "flex items-center justify-between gap-3 px-3 py-2 text-sm",
+                              isToday && "bg-muted/40",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "text-muted-foreground",
+                                isToday && "font-medium text-foreground",
+                              )}
+                            >
+                              {formatWeekDayLabel(day.dateKey)}
+                              {isToday ? " · hoje" : ""}
+                            </span>
+                            <span className="tabular-nums font-medium">
+                              {formatTimeToday(day.seconds)}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
               </FormSection>
               <FormSection
                 icon={<Shield className="w-3.5 h-3.5 text-primary" />}
