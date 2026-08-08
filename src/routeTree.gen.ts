@@ -39,6 +39,8 @@ import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as ProdutosCrmImobiliarioRouteImport } from './routes/produtos.crm-imobiliario'
+import { Route as ProdutosIaWhatsappRouteImport } from './routes/produtos.ia-whatsapp'
+import { Route as ProdutosSitesInstitucionaisRouteImport } from './routes/produtos.sites-institucionais'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
 import { Route as AppFinanceiroClientesFornecedoresRouteImport } from './routes/_app.financeiro.clientes-fornecedores'
 import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.financeiro.comissao'
@@ -198,6 +200,17 @@ const ProdutosCrmImobiliarioRoute = ProdutosCrmImobiliarioRouteImport.update({
   path: '/produtos/crm-imobiliario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProdutosIaWhatsappRoute = ProdutosIaWhatsappRouteImport.update({
+  id: '/produtos/ia-whatsapp',
+  path: '/produtos/ia-whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosSitesInstitucionaisRoute =
+  ProdutosSitesInstitucionaisRouteImport.update({
+    id: '/produtos/sites-institucionais',
+    path: '/produtos/sites-institucionais',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppFinanceiroCentroDespesasRoute =
   AppFinanceiroCentroDespesasRouteImport.update({
     id: '/centro-despesas',
@@ -279,6 +292,8 @@ export interface FileRoutesByFullPath {
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
+  '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
+  '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -319,6 +334,8 @@ export interface FileRoutesByTo {
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
+  '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
+  '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -361,6 +378,8 @@ export interface FileRoutesById {
   '/_app/usuarios': typeof AppUsuariosRoute
   '/_app/vendas': typeof AppVendasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
+  '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
+  '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/_app/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/_app/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -403,6 +422,8 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/vendas'
     | '/produtos/crm-imobiliario'
+    | '/produtos/ia-whatsapp'
+    | '/produtos/sites-institucionais'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -443,6 +464,8 @@ export interface FileRouteTypes {
     | '/usuarios'
     | '/vendas'
     | '/produtos/crm-imobiliario'
+    | '/produtos/ia-whatsapp'
+    | '/produtos/sites-institucionais'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -484,6 +507,8 @@ export interface FileRouteTypes {
     | '/_app/usuarios'
     | '/_app/vendas'
     | '/produtos/crm-imobiliario'
+    | '/produtos/ia-whatsapp'
+    | '/produtos/sites-institucionais'
     | '/_app/financeiro/centro-despesas'
     | '/_app/financeiro/clientes-fornecedores'
     | '/_app/financeiro/comissao'
@@ -501,6 +526,8 @@ export interface RootRouteChildren {
   DemonstracaoRoute: typeof DemonstracaoRoute
   LoginRoute: typeof LoginRoute
   ProdutosCrmImobiliarioRoute: typeof ProdutosCrmImobiliarioRoute
+  ProdutosIaWhatsappRoute: typeof ProdutosIaWhatsappRoute
+  ProdutosSitesInstitucionaisRoute: typeof ProdutosSitesInstitucionaisRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -715,6 +742,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosCrmImobiliarioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/produtos/ia-whatsapp': {
+      id: '/produtos/ia-whatsapp'
+      path: '/produtos/ia-whatsapp'
+      fullPath: '/produtos/ia-whatsapp'
+      preLoaderRoute: typeof ProdutosIaWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos/sites-institucionais': {
+      id: '/produtos/sites-institucionais'
+      path: '/produtos/sites-institucionais'
+      fullPath: '/produtos/sites-institucionais'
+      preLoaderRoute: typeof ProdutosSitesInstitucionaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/financeiro/centro-despesas': {
       id: '/_app/financeiro/centro-despesas'
       path: '/centro-despesas'
@@ -874,7 +915,19 @@ const rootRouteChildren: RootRouteChildren = {
   DemonstracaoRoute: DemonstracaoRoute,
   LoginRoute: LoginRoute,
   ProdutosCrmImobiliarioRoute: ProdutosCrmImobiliarioRoute,
+  ProdutosIaWhatsappRoute: ProdutosIaWhatsappRoute,
+  ProdutosSitesInstitucionaisRoute: ProdutosSitesInstitucionaisRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -136,6 +136,19 @@ export function ChallengesSection() {
                       Saiba mais
                       <ArrowRight size={16} strokeWidth={1.75} />
                     </Link>
+                  ) : product.href === PRODUCT_ROUTES.whatsappAi ? (
+                    <Link to="/produtos/ia-whatsapp" className={linkClass}>
+                      Saiba mais
+                      <ArrowRight size={16} strokeWidth={1.75} />
+                    </Link>
+                  ) : product.href === PRODUCT_ROUTES.sites ? (
+                    <Link
+                      to="/produtos/sites-institucionais"
+                      className={linkClass}
+                    >
+                      Saiba mais
+                      <ArrowRight size={16} strokeWidth={1.75} />
+                    </Link>
                   ) : (
                     <a href={product.href} className={linkClass}>
                       Saiba mais
