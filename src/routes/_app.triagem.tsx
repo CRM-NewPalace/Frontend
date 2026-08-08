@@ -190,7 +190,9 @@ function HistoryTimeline({
                     <div className="min-w-0 space-y-1.5">
                       <p className="text-sm leading-snug">
                         <span className="font-semibold">{ev.autor.name}</span>
-                        {" atualizou a triagem de "}
+                        {stageBadge
+                          ? " atualizou a triagem de "
+                          : " registrou um relato sobre "}
                         <span className="font-semibold">{contactName}</span>
                       </p>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -348,6 +350,9 @@ function CorretorTriagem() {
   const [createTexto, setCreateTexto] = useState("");
   const [saving, setSaving] = useState(false);
   const [stageFilter, setStageFilter] = useState<string>("__all__");
+  /** Relato rápido no painel (sem avançar etapa). */
+  const [quickTexto, setQuickTexto] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
 
   const filteredLeads = useMemo(
     () =>
@@ -378,15 +383,65 @@ function CorretorTriagem() {
 
   function selectContact(id: string) {
     setSelectedId(id);
+    setQuickTexto("");
   }
 
   function openCreateManual() {
     setCreateOrigem("manual");
-    setCreateLeadId("");
-    setCreateClienteId("");
+    const selected = [...leads, ...clientes].find((c) => c.id === selectedId);
+    if (selected?.tipo === "cliente") {
+      setCreateLeadId("");
+      setCreateClienteId(selected.id);
+    } else if (selected) {
+      setCreateLeadId(selected.id);
+      setCreateClienteId("");
+    } else {
+      setCreateLeadId("");
+      setCreateClienteId("");
+    }
     setCreateStage("__none__");
     setCreateTexto("");
     setCreateOpen(true);
+  }
+
+  async function submitQuickRelato() {
+    if (!selectedId) {
+      toast.error("Selecione um lead ou cliente.");
+      return;
+    }
+    const texto = quickTexto.trim();
+    if (!texto) {
+      toast.error("Informe o relato.");
+      return;
+    }
+    if (texto.length > MAX_TEXTO) {
+      toast.error(`O relato deve ter no máximo ${MAX_TEXTO} caracteres.`);
+      return;
+    }
+
+    setQuickSaving(true);
+    try {
+      const created = await createTriagemEvent({
+        leadId: selectedId,
+        texto,
+        origem: "manual",
+      });
+      prependTriagemHistoryCached(selectedId, created);
+      setEvents((prev) => [
+        created,
+        ...prev.filter((e) => e.id !== created.id),
+      ]);
+      setQuickTexto("");
+      toast.success("Relato registrado (etapa mantida).");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível registrar o relato.",
+      );
+    } finally {
+      setQuickSaving(false);
+    }
   }
 
   function closeCreate() {
@@ -451,7 +506,7 @@ function CorretorTriagem() {
     <div>
       <PageHeader
         title="Triagem"
-        description="Seus leads e clientes — registre o histórico dos acontecimentos."
+        description="Registre relatos a qualquer momento — avançar a etapa do funil é opcional."
         actions={
           <Button size="sm" onClick={openCreateManual}>
             <Plus className="w-4 h-4 mr-1" />
@@ -570,6 +625,45 @@ function CorretorTriagem() {
                   {stageName(selectedContact.stage)}
                 </div>
               </div>
+
+              <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="triagem-quick-texto" className="text-sm">
+                    Adicionar relato
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {quickTexto.length}/{MAX_TEXTO}
+                  </span>
+                </div>
+                <Textarea
+                  id="triagem-quick-texto"
+                  value={quickTexto}
+                  maxLength={MAX_TEXTO}
+                  rows={3}
+                  placeholder="Ex.: Cliente pediu retorno amanhã… (não altera a etapa)"
+                  disabled={quickSaving}
+                  onChange={(e) => setQuickTexto(e.target.value)}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Mantém a etapa atual ({stageName(selectedContact.stage)}).
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={quickSaving || !quickTexto.trim()}
+                    onClick={() => void submitQuickRelato()}
+                  >
+                    {quickSaving ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-1" />
+                    )}
+                    Registrar
+                  </Button>
+                </div>
+              </div>
+
               <HistoryTimeline
                 events={events}
                 contactName={selectedContact.nome}
@@ -592,7 +686,7 @@ function CorretorTriagem() {
         description={
           createOrigem === "funil"
             ? "Registre o histórico desta mudança de etapa no funil."
-            : "Registre um acontecimento sobre um lead ou cliente."
+            : "Registre um relato. Deixe “Manter etapa atual” se não quiser avançar o funil."
         }
         footer={
           <FormDialogActions>
@@ -682,10 +776,18 @@ function CorretorTriagem() {
                     ))}
                 </SelectContent>
               </Select>
-              {createOrigem === "funil" && createStage !== "__none__" && (
+              {createStage === "__none__" ? (
+                <p className="text-xs text-muted-foreground">
+                  O lead permanece na etapa atual — só o histórico é registrado.
+                </p>
+              ) : createOrigem === "funil" ? (
                 <p className="text-xs text-muted-foreground">
                   A etapa já foi atualizada no funil; o relato será vinculado a{" "}
                   {stageName(createStage)}.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Ao salvar, o lead será movido para {stageName(createStage)}.
                 </p>
               )}
             </div>
@@ -720,6 +822,7 @@ function CorretorTriagem() {
 function ManagerTriagem() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
+  const canWrite = user?.role === "gerente";
   const { leads: allLeads, assignees, loading } = useLeads();
   const { funnelStages } = useCatalog();
   const stageName = useStageLabel();
@@ -732,7 +835,10 @@ function ManagerTriagem() {
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<string>("__all__");
-  const { events, loading: historyLoading } = useHistory(selectedLeadId);
+  const { events, setEvents, loading: historyLoading } =
+    useHistory(selectedLeadId);
+  const [quickTexto, setQuickTexto] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -804,13 +910,58 @@ function ManagerTriagem() {
     setSelectedCorretorId(id);
     setSelectedLeadId(null);
     setStageFilter("__all__");
+    setQuickTexto("");
+  }
+
+  async function submitQuickRelato() {
+    if (!selectedLeadId) {
+      toast.error("Selecione um lead.");
+      return;
+    }
+    const texto = quickTexto.trim();
+    if (!texto) {
+      toast.error("Informe o relato.");
+      return;
+    }
+    if (texto.length > MAX_TEXTO) {
+      toast.error(`O relato deve ter no máximo ${MAX_TEXTO} caracteres.`);
+      return;
+    }
+
+    setQuickSaving(true);
+    try {
+      const created = await createTriagemEvent({
+        leadId: selectedLeadId,
+        texto,
+        origem: "manual",
+      });
+      prependTriagemHistoryCached(selectedLeadId, created);
+      setEvents((prev) => [
+        created,
+        ...prev.filter((e) => e.id !== created.id),
+      ]);
+      setQuickTexto("");
+      toast.success("Relato registrado (etapa mantida).");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível registrar o relato.",
+      );
+    } finally {
+      setQuickSaving(false);
+    }
   }
 
   return (
     <div>
       <PageHeader
         title="Triagem"
-        description="Consulte os relatos dos corretores por lead. Somente leitura."
+        description={
+          canWrite
+            ? "Consulte e registre relatos dos leads da equipe — avançar etapa é opcional."
+            : "Consulte os relatos dos corretores por lead. Somente leitura."
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -920,7 +1071,10 @@ function ManagerTriagem() {
                     contact={l}
                     active={selectedLeadId === l.id}
                     stageName={stageName(l.stage)}
-                    onClick={() => setSelectedLeadId(l.id)}
+                    onClick={() => {
+                      setSelectedLeadId(l.id);
+                      setQuickTexto("");
+                    }}
                   />
                 ))}
               </div>
@@ -948,6 +1102,47 @@ function ManagerTriagem() {
                   Lead · {stageName(selectedLead.stage)}
                 </div>
               </div>
+
+              {canWrite && (
+                <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="triagem-gerente-quick-texto" className="text-sm">
+                      Adicionar relato
+                    </Label>
+                    <span className="text-xs text-muted-foreground">
+                      {quickTexto.length}/{MAX_TEXTO}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="triagem-gerente-quick-texto"
+                    value={quickTexto}
+                    maxLength={MAX_TEXTO}
+                    rows={3}
+                    placeholder="Ex.: Alinhei retorno com o corretor… (não altera a etapa)"
+                    disabled={quickSaving}
+                    onChange={(e) => setQuickTexto(e.target.value)}
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      Mantém a etapa atual ({stageName(selectedLead.stage)}).
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={quickSaving || !quickTexto.trim()}
+                      onClick={() => void submitQuickRelato()}
+                    >
+                      {quickSaving ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4 mr-1" />
+                      )}
+                      Registrar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <HistoryTimeline
                 events={events}
                 contactName={selectedLead.nome}

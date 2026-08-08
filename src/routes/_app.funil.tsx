@@ -148,6 +148,8 @@ export function ComercialFunilBoard({
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
+  const canWriteTriagem =
+    isCorretor || user?.role === "gerente";
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isManager = canSeeTeam;
   const {
@@ -339,6 +341,14 @@ export function ComercialFunilBoard({
   const [triagemSaving, setTriagemSaving] = useState(false);
   const triagemFinalizedRef = useRef(false);
 
+  /** Relato sem mudar etapa (só corretor), a partir dos detalhes do card. */
+  const [manualTriagem, setManualTriagem] = useState<{
+    leadId: string;
+    leadNome: string;
+  } | null>(null);
+  const [manualTriagemTexto, setManualTriagemTexto] = useState("");
+  const [manualTriagemSaving, setManualTriagemSaving] = useState(false);
+
   useEffect(() => {
     void Promise.all([
       fetchConstrutoras(),
@@ -413,6 +423,51 @@ export function ComercialFunilBoard({
     if (!triagemPrompt || triagemSaving || triagemFinalizedRef.current) return;
     const texto = `Etapa avançada de "${triagemPrompt.fromStageName}" para "${triagemPrompt.stageName}".`;
     await registerFunilTriagem(texto);
+  }
+
+  function openManualTriagem(lead: Lead) {
+    if (!canWriteTriagem) return;
+    setManualTriagemTexto("");
+    setManualTriagem({ leadId: lead.id, leadNome: lead.nome });
+  }
+
+  function closeManualTriagem() {
+    setManualTriagem(null);
+    setManualTriagemTexto("");
+    setManualTriagemSaving(false);
+  }
+
+  async function saveManualTriagem() {
+    if (!manualTriagem) return;
+    const texto = manualTriagemTexto.trim();
+    if (!texto) {
+      toast.error("Escreva o relato do histórico.");
+      return;
+    }
+    if (texto.length > MAX_HISTORICO_TEXTO) {
+      toast.error(
+        `O relato deve ter no máximo ${MAX_HISTORICO_TEXTO} caracteres.`,
+      );
+      return;
+    }
+    setManualTriagemSaving(true);
+    try {
+      await createTriagemEvent({
+        leadId: manualTriagem.leadId,
+        texto,
+        origem: "manual",
+      });
+      toast.success("Histórico registrado (etapa mantida).");
+      closeManualTriagem();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível salvar o histórico.",
+      );
+    } finally {
+      setManualTriagemSaving(false);
+    }
   }
 
   async function saveTriagemHistory() {
@@ -1080,6 +1135,16 @@ export function ComercialFunilBoard({
             </FormDialogBody>
             <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
               <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                {canWriteTriagem && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => openManualTriagem(detailLead)}
+                  >
+                    <ClipboardList className="w-4 h-4 mr-1" />
+                    Registrar histórico
+                  </Button>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     Etapa:
@@ -1219,6 +1284,69 @@ export function ComercialFunilBoard({
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               )}
               Salvar histórico
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(manualTriagem)}
+        onOpenChange={(open) => {
+          if (!open && !manualTriagemSaving) closeManualTriagem();
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <DialogTitle>Registrar histórico</DialogTitle>
+                <DialogDescription>
+                  {manualTriagem
+                    ? `Relato sobre ${manualTriagem.leadNome}. A etapa do funil não será alterada.`
+                    : null}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-2 py-1">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="funil-manual-historico-texto">Relato</Label>
+              <span className="text-xs text-muted-foreground">
+                {manualTriagemTexto.length}/{MAX_HISTORICO_TEXTO}
+              </span>
+            </div>
+            <Textarea
+              id="funil-manual-historico-texto"
+              value={manualTriagemTexto}
+              onChange={(e) => setManualTriagemTexto(e.target.value)}
+              placeholder="Ex.: Cliente pediu simulação do empreendimento X…"
+              maxLength={MAX_HISTORICO_TEXTO}
+              rows={4}
+              disabled={manualTriagemSaving}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={manualTriagemSaving}
+              onClick={closeManualTriagem}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={manualTriagemSaving}
+              onClick={() => void saveManualTriagem()}
+            >
+              {manualTriagemSaving && (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              )}
+              Registrar
             </Button>
           </DialogFooter>
         </DialogContent>
