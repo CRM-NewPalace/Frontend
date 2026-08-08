@@ -105,7 +105,7 @@ function DayToDayCarousel() {
             "absolute top-1/2 left-0 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-brand-dark shadow-sm transition-colors sm:-left-4 lg:-left-6",
             index === 0
               ? "cursor-not-allowed opacity-40"
-              : "hover:bg-brand-dark/5",
+              : "cursor-pointer hover:bg-brand-dark/5",
           )}
         >
           <HiArrowLeft className="h-5 w-5" />
@@ -120,7 +120,7 @@ function DayToDayCarousel() {
             "absolute top-1/2 right-0 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white text-brand-dark shadow-sm transition-colors sm:-right-4 lg:-right-6",
             index >= DAY_TO_DAY.length - 1
               ? "cursor-not-allowed opacity-40"
-              : "hover:bg-brand-dark/5",
+              : "cursor-pointer hover:bg-brand-dark/5",
           )}
         >
           <HiArrowRight className="h-5 w-5" />
@@ -170,7 +170,7 @@ function DayToDayCarousel() {
               aria-label={`Ir para ${item.title}`}
               onClick={() => goTo(i, i > index ? 1 : -1)}
               className={cn(
-                "h-2 rounded-full transition-all",
+                "h-2 cursor-pointer rounded-full transition-all",
                 i === index
                   ? "w-6 bg-brand-accent"
                   : "w-2 bg-border hover:bg-brand-accent/40",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 
 const navLinkClass =
-  "inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-medium text-brand-dark/80 transition-colors hover:bg-surface-muted hover:text-brand-dark";
+  "inline-flex cursor-pointer items-center gap-1 rounded-full px-3.5 py-2 text-sm font-medium text-brand-dark/80 transition-colors hover:bg-surface-muted hover:text-brand-dark";
 
 const ctaClass =
   "inline-flex items-center justify-center rounded-full bg-brand-dark px-4 py-2.5 text-sm font-medium whitespace-nowrap text-white transition-all hover:-translate-y-px hover:bg-brand-dark/90";
@@ -59,6 +59,9 @@ export function MarketingNav() {
   const [isOpen, setIsOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [desktopProductsOpen, setDesktopProductsOpen] = useState(false);
+  const productsCloseTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -78,6 +81,32 @@ export function MarketingNav() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (productsCloseTimeout.current) {
+        clearTimeout(productsCloseTimeout.current);
+      }
+    };
+  }, []);
+
+  function openDesktopProducts() {
+    if (productsCloseTimeout.current) {
+      clearTimeout(productsCloseTimeout.current);
+      productsCloseTimeout.current = null;
+    }
+    setDesktopProductsOpen(true);
+  }
+
+  function closeDesktopProductsDelayed() {
+    if (productsCloseTimeout.current) {
+      clearTimeout(productsCloseTimeout.current);
+    }
+    productsCloseTimeout.current = setTimeout(() => {
+      setDesktopProductsOpen(false);
+      productsCloseTimeout.current = null;
+    }, 140);
+  }
 
   function closeMobile() {
     setIsOpen(false);
@@ -105,14 +134,17 @@ export function MarketingNav() {
           </Link>
 
           <DropdownMenu
+            modal={false}
             open={desktopProductsOpen}
             onOpenChange={setDesktopProductsOpen}
           >
             <DropdownMenuTrigger
               className={cn(
                 navLinkClass,
-                "outline-none data-[state=open]:bg-surface-muted data-[state=open]:text-brand-dark",
+                "cursor-pointer outline-none data-[state=open]:bg-surface-muted data-[state=open]:text-brand-dark",
               )}
+              onMouseEnter={openDesktopProducts}
+              onMouseLeave={closeDesktopProductsDelayed}
             >
               Produtos
               <ChevronDown
@@ -125,7 +157,9 @@ export function MarketingNav() {
             <DropdownMenuContent
               align="center"
               sideOffset={12}
-              className="w-[min(92vw,42rem)] overflow-hidden rounded-3xl border-border p-0 shadow-xl"
+              className="w-[min(92vw,42rem)] cursor-default overflow-hidden rounded-3xl border-border p-0 shadow-xl"
+              onMouseEnter={openDesktopProducts}
+              onMouseLeave={closeDesktopProductsDelayed}
             >
               <div className="grid grid-cols-[1.4fr_0.9fr]">
                 <div className="flex flex-col gap-1 p-3">
@@ -142,7 +176,7 @@ export function MarketingNav() {
                       >
                         <Link
                           to={product.to}
-                          className="group flex items-start gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-surface-muted focus:bg-surface-muted"
+                          className="group flex cursor-pointer items-start gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-surface-muted focus:bg-surface-muted"
                         >
                           <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-brand-accent shadow-sm transition-colors group-hover:border-brand-accent/30 group-hover:bg-brand-accent/10">
                             <Icon size={20} strokeWidth={1.75} />
@@ -186,7 +220,7 @@ export function MarketingNav() {
                     </div>
                     <Link
                       to="/demonstracao"
-                      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-brand-dark transition-colors hover:bg-white/90"
+                      className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-brand-dark transition-colors hover:bg-white/90"
                     >
                       Ver demonstração
                       <ArrowRight className="h-4 w-4" />
