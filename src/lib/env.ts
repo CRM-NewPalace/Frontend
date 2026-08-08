@@ -7,6 +7,7 @@ const WHATSAPP_SITES_NUMBER = "5581989877451";
 export const env = {
   apiUrl: import.meta.env.VITE_API_URL,
   appName: import.meta.env.VITE_APP_NAME ?? "Zone Connection",
+  siteUrl: import.meta.env.VITE_SITE_URL as string | undefined,
   whatsappNumber: WHATSAPP_NUMBER,
   whatsappSitesNumber: WHATSAPP_SITES_NUMBER,
 } as const;

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { HiCheck, HiSparkles } from "react-icons/hi2";
 import { getSitesWhatsAppUrl } from "@/lib/env";
 import { cn } from "@/lib/utils";
@@ -174,9 +175,15 @@ export function PlansSection() {
             Landing pages com condição especial para parceiros do CRM.
           </h2>
           <p className="text-base leading-relaxed text-text-muted sm:text-lg">
-            Corretores de imobiliárias que já têm um plano do CRM Zone
-            Connection pagam menos na landing page — com hospedagem e domínio
-            inclusos. Sites institucionais são cotados sob consulta.
+            Corretores de imobiliárias que já têm um plano do{" "}
+            <Link
+              to="/produtos/crm-imobiliario"
+              className="font-medium text-brand-dark underline-offset-2 hover:text-brand-accent hover:underline"
+            >
+              CRM Imobiliário
+            </Link>{" "}
+            Zone Connection pagam menos na landing page — com hospedagem e
+            domínio inclusos. Sites institucionais são cotados sob consulta.
           </p>
         </div>
 

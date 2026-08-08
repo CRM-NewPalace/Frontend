@@ -1,5 +1,6 @@
 export { ScrollReveal } from "./ScrollReveal";
 export { Logo } from "./Logo";
+export { JsonLd } from "./JsonLd";
 export { HeroSection } from "./HeroSection";
 export { HeroDiagram } from "./HeroDiagram";
 export { MarketingNav } from "./MarketingNav";

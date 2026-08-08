@@ -19,7 +19,7 @@ const FLOW = [
   },
   {
     icon: HiUserGroup,
-    label: "CRM Zone",
+    label: "CRM Imobiliário",
     detail: "Lead + distribuição",
   },
 ] as const;

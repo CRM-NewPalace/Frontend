@@ -56,7 +56,7 @@ const PRODUCTS = [
     icon: MessageSquareText,
   },
   {
-    title: "Sites Institucionais e Landing Pages",
+    title: "Sites e Landing Pages",
     text: "Desenvolvimento de sites para imobiliárias e landing pages profissionais para corretores captarem mais clientes.",
     href: PRODUCT_ROUTES.sites,
     icon: LayoutTemplate,

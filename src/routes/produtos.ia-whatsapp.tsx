@@ -1,28 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import WhatsAppAiPage from "@/marketing/pages/WhatsAppAiPage";
+import { marketingHead } from "@/marketing/seo";
 
 export const Route = createFileRoute("/produtos/ia-whatsapp")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      {
-        title: "IA para WhatsApp | Zone Connection",
-      },
-      {
-        name: "description",
-        content:
-          "IA de WhatsApp que automatiza o atendimento da imobiliária, integra com o CRM e distribui leads para os corretores.",
-      },
-      {
-        property: "og:title",
-        content: "IA para WhatsApp | Zone Connection",
-      },
-      {
-        property: "og:description",
-        content:
-          "Automatize o atendimento no WhatsApp, envie leads ao CRM e distribua oportunidades com inteligência artificial.",
-      },
-    ],
-  }),
+  ssr: true,
+  head: () =>
+    marketingHead({
+      title:
+        "IA para WhatsApp Imobiliário | Qualifique e Distribua Leads",
+      description:
+        "IA de WhatsApp que atende 24h, qualifica leads, agenda visitas e integra com o CRM Zone Connection. Planos IA SDR e IA Comercial.",
+      path: "/produtos/ia-whatsapp",
+    }),
   component: WhatsAppAiPage,
 });

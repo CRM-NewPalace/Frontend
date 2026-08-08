@@ -2,6 +2,7 @@ import {
   MarketingNav,
   MarketingFooter,
   ScrollReveal,
+  JsonLd,
 } from "@/marketing/components";
 import {
   HeroSection,
@@ -12,6 +13,11 @@ import {
   PlansSection,
   CtaSection,
 } from "@/marketing/whatsapp-ai";
+import { softwareApplicationJsonLd } from "@/marketing/seo";
+
+const PATH = "/produtos/ia-whatsapp";
+const DESCRIPTION =
+  "IA de WhatsApp que atende 24h, qualifica leads, agenda visitas e integra com o CRM Zone Connection. Planos IA SDR e IA Comercial.";
 
 const SECTIONS = [
   { id: "problem", Component: ProblemSection },
@@ -25,15 +31,23 @@ const SECTIONS = [
 export default function WhatsAppAiPage() {
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd
+        data={softwareApplicationJsonLd({
+          name: "IA para WhatsApp Zone Connection",
+          description: DESCRIPTION,
+          path: PATH,
+        })}
+      />
       <MarketingNav />
-      <HeroSection />
+      <main>
+        <HeroSection />
 
-      {SECTIONS.map(({ id, Component }) => (
-        <ScrollReveal key={id}>
-          <Component />
-        </ScrollReveal>
-      ))}
-
+        {SECTIONS.map(({ id, Component }) => (
+          <ScrollReveal key={id}>
+            <Component />
+          </ScrollReveal>
+        ))}
+      </main>
       <MarketingFooter />
     </div>
   );

@@ -11,7 +11,7 @@ export function HeroSection() {
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-brand-accent" />
             <span className="text-sm font-medium text-brand-dark">
-              Zone Connection - CRM
+              Zone Connection — CRM Imobiliário
             </span>
           </div>
 

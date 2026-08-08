@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+
+# Área autenticada do CRM — não indexar
+Disallow: /login
+Disallow: /dashboard
+Disallow: /vendas
+Disallow: /leads
+Disallow: /funil
+Disallow: /agenda
+Disallow: /imoveis
+Disallow: /clientes
+Disallow: /financeiro
+Disallow: /usuarios
+Disallow: /equipes
+Disallow: /documentacao
+Disallow: /triagem
+Disallow: /metas
+Disallow: /propostas
+Disallow: /contratos
+Disallow: /resultado
+Disallow: /taxa-conversao
+Disallow: /corretores
+Disallow: /construtoras
+
+Sitemap: https://zoneconnection.com.br/sitemap.xml

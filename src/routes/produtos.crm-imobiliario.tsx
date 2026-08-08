@@ -1,28 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import LeadingPage from "@/marketing/pages/LeadingPage";
+import { marketingHead } from "@/marketing/seo";
 
 export const Route = createFileRoute("/produtos/crm-imobiliario")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      {
-        title: "CRM Imobiliário | Zone Connection",
-      },
-      {
-        name: "description",
-        content:
-          "Conheça o CRM Imobiliário da Zone Connection: gestão completa, módulos conectados e planos para imobiliárias.",
-      },
-      {
-        property: "og:title",
-        content: "CRM Imobiliário | Zone Connection",
-      },
-      {
-        property: "og:description",
-        content:
-          "Plataforma completa para gestão de imobiliárias — conheça o produto e os planos.",
-      },
-    ],
-  }),
+  ssr: true,
+  head: () =>
+    marketingHead({
+      title: "CRM Imobiliário para Imobiliárias | Zone Connection",
+      description:
+        "CRM imobiliário com funil, leads, agenda, imóveis, financeiro e automações. Centralize a operação da imobiliária em uma plataforma.",
+      path: "/produtos/crm-imobiliario",
+    }),
   component: LeadingPage,
 });
