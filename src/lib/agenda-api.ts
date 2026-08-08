@@ -69,12 +69,17 @@ export const AGENDAMENTO_ALVO_LABEL: Record<AgendamentoAlvo, string> = {
 };
 
 /** Origem visual no calendário: quem criou o compromisso. */
-export type AgendamentoOrigem = "admin" | "gerente" | "corretor";
+export type AgendamentoOrigem =
+  | "admin"
+  | "gerente"
+  | "corretor"
+  | "aniversario";
 
 export const AGENDAMENTO_ORIGEM_LABEL: Record<AgendamentoOrigem, string> = {
   admin: "Administrador",
   gerente: "Gerente",
   corretor: "Corretor (lead/cliente)",
+  aniversario: "Aniversário",
 };
 
 /** Blocos sólidos (calendário semana/mês). */
@@ -82,6 +87,7 @@ export const AGENDAMENTO_ORIGEM_BLOCK: Record<AgendamentoOrigem, string> = {
   admin: "bg-indigo-500 border-indigo-600 text-white",
   gerente: "bg-teal-500 border-teal-600 text-white",
   corretor: "bg-amber-500 border-amber-600 text-white",
+  aniversario: "bg-rose-500 border-rose-600 text-white",
 };
 
 /** Badges suaves (tabela do dia). */
@@ -89,17 +95,29 @@ export const AGENDAMENTO_ORIGEM_SOFT: Record<AgendamentoOrigem, string> = {
   admin: "bg-indigo-100 text-indigo-900 border-indigo-200",
   gerente: "bg-teal-100 text-teal-900 border-teal-200",
   corretor: "bg-amber-100 text-amber-900 border-amber-200",
+  aniversario: "bg-rose-100 text-rose-900 border-rose-200",
 };
 
 export const AGENDAMENTO_ORIGEM_DOT: Record<AgendamentoOrigem, string> = {
   admin: "bg-indigo-500",
   gerente: "bg-teal-500",
   corretor: "bg-amber-500",
+  aniversario: "bg-rose-500",
 };
 
+export function isAgendamentoAniversario(item: {
+  id: string;
+  isAniversario?: boolean;
+}) {
+  return Boolean(item.isAniversario) || item.id.startsWith("aniversario:");
+}
+
 export function getAgendamentoOrigem(item: {
+  id: string;
+  isAniversario?: boolean;
   autor: { role: Role };
 }): AgendamentoOrigem {
+  if (isAgendamentoAniversario(item)) return "aniversario";
   if (item.autor.role === "admin") return "admin";
   if (item.autor.role === "gerente") return "gerente";
   return "corretor";
@@ -124,6 +142,8 @@ export interface Agendamento {
   aprovadoAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Evento virtual (aniversário de corretor) — somente leitura. */
+  isAniversario?: boolean;
   autor: { id: string; name: string; role: Role };
   aprovadoPor: { id: string; name: string } | null;
   alvoEquipe: { id: string; name: string } | null;

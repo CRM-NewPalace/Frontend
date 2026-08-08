@@ -57,6 +57,7 @@ import {
   AGENDAMENTO_ESCOPO_LABEL,
   AGENDAMENTO_ORIGEM_DOT,
   AGENDAMENTO_ORIGEM_LABEL,
+  isAgendamentoAniversario,
   AGENDAMENTO_STATUS,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPOS,
@@ -382,6 +383,12 @@ function AgendaPage() {
   }
 
   function openEdit(item: Agendamento) {
+    if (isAgendamentoAniversario(item)) {
+      toast.message("Aniversário do corretor", {
+        description: "Evento automático — somente leitura na agenda.",
+      });
+      return;
+    }
     if (item.autor.role === "admin" && user?.role !== "admin") {
       toast.error(
         "Apenas administradores podem editar compromissos da equipe.",
@@ -551,6 +558,7 @@ function AgendaPage() {
   }
 
   async function handleComplete(item: Agendamento) {
+    if (isAgendamentoAniversario(item)) return;
     if (item.status !== "agendado") return;
     setCompletingId(item.id);
     try {
@@ -569,6 +577,7 @@ function AgendaPage() {
   }
 
   async function handleCancelStatus(item: Agendamento) {
+    if (isAgendamentoAniversario(item)) return;
     if (item.status !== "agendado") return;
     setCancelingId(item.id);
     try {

@@ -15,6 +15,7 @@ import {
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_LABEL,
   getAgendamentoOrigem,
+  isAgendamentoAniversario,
   type Agendamento,
   type AgendamentoStatus,
 } from "@/lib/agenda-api";
@@ -122,6 +123,7 @@ type Props = {
 };
 
 function canMutateItem(item: Agendamento, role?: Role) {
+  if (isAgendamentoAniversario(item)) return false;
   if (item.autor.role === "admin") return role === "admin";
   return true;
 }
