@@ -70,6 +70,8 @@ import {
   FileText,
   Loader2,
   Share2,
+  Inbox,
+  UserCheck,
 } from "lucide-react";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
@@ -271,6 +273,10 @@ function LeadsPage() {
   const [interesseFilter, setInteresseFilter] = useState<string>("all");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
   const [showExtraFilters, setShowExtraFilters] = useState(false);
+  /** Separação pool (chegaram) × já atribuídos a equipe/corretor. */
+  const [distribuicaoFilter, setDistribuicaoFilter] = useState<
+    "all" | "chegaram" | "distribuidos"
+  >("all");
 
   /** Filtro de corretor: gerente só vê a própria equipe (não outras). */
   const corretorFilterOptions = useMemo(() => {
@@ -354,7 +360,11 @@ function LeadsPage() {
     (canFilterEquipe && equipeFilter !== "all") ||
     prioridadeFilter !== "all" ||
     interesseFilter !== "all" ||
-    origemFilter !== "all";
+    origemFilter !== "all" ||
+    (!isCorretor && distribuicaoFilter !== "all");
+
+  const isLeadChegou = (l: Lead) => !l.corretorId && !l.equipeId;
+  const isLeadDistribuido = (l: Lead) => Boolean(l.corretorId || l.equipeId);
 
   const extraFiltersActive =
     prioridadeFilter !== "all" ||
@@ -416,6 +426,14 @@ function LeadsPage() {
       if (interesseFilter !== "all" && l.interesse !== interesseFilter)
         return false;
       if (origemFilter !== "all" && l.origem !== origemFilter) return false;
+      if (!isCorretor && distribuicaoFilter === "chegaram" && !isLeadChegou(l))
+        return false;
+      if (
+        !isCorretor &&
+        distribuicaoFilter === "distribuidos" &&
+        !isLeadDistribuido(l)
+      )
+        return false;
       return true;
     });
   }, [
@@ -429,9 +447,20 @@ function LeadsPage() {
     prioridadeFilter,
     interesseFilter,
     origemFilter,
+    distribuicaoFilter,
     isCorretor,
     canFilterEquipe,
   ]);
+
+  const distribuicaoCounts = useMemo(() => {
+    let chegaram = 0;
+    let distribuidos = 0;
+    for (const l of leads) {
+      if (isLeadChegou(l)) chegaram += 1;
+      else if (isLeadDistribuido(l)) distribuidos += 1;
+    }
+    return { chegaram, distribuidos, todos: leads.length };
+  }, [leads]);
 
   /** Contagem de leads ativos por corretor (respeita demais filtros, ignora filtro de corretor). */
   const leadsAtivosPorCorretor = useMemo(() => {
@@ -541,6 +570,7 @@ function LeadsPage() {
     setPrioridadeFilter("all");
     setInteresseFilter("all");
     setOrigemFilter("all");
+    setDistribuicaoFilter("all");
   }
 
   function equipeLabel(lead: Lead): string {
@@ -1756,6 +1786,7 @@ function LeadsPage() {
             stageFilter !== "all" ||
             corretorFilter !== "all" ||
             (canFilterEquipe && equipeFilter !== "all") ||
+            distribuicaoFilter !== "all" ||
             extraFiltersActive) && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="w-4 h-4 mr-1" />
@@ -1822,6 +1853,71 @@ function LeadsPage() {
           )}
         </CardContent>
       </Card>
+
+      {!isCorretor && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-border/60 bg-card p-1">
+            {(
+              [
+                {
+                  id: "all" as const,
+                  label: "Todos",
+                  count: distribuicaoCounts.todos,
+                  icon: null,
+                },
+                {
+                  id: "chegaram" as const,
+                  label: "Chegaram",
+                  count: distribuicaoCounts.chegaram,
+                  icon: Inbox,
+                },
+                {
+                  id: "distribuidos" as const,
+                  label: "Distribuídos",
+                  count: distribuicaoCounts.distribuidos,
+                  icon: UserCheck,
+                },
+              ] as const
+            ).map((opt) => {
+              const Icon = opt.icon;
+              const selected = distribuicaoFilter === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setDistribuicaoFilter(opt.id)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    selected
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
+                  {opt.label}
+                  <Badge
+                    variant={selected ? "secondary" : "outline"}
+                    className={cn(
+                      "h-5 px-1.5 tabular-nums text-[10px]",
+                      selected &&
+                        "border-transparent bg-primary-foreground/20 text-primary-foreground",
+                    )}
+                  >
+                    {opt.count}
+                  </Badge>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {distribuicaoFilter === "chegaram"
+              ? "Leads no pool, ainda sem equipe nem corretor."
+              : distribuicaoFilter === "distribuidos"
+                ? "Leads já atribuídos a uma equipe ou corretor."
+                : "Visão completa do funil."}
+          </p>
+        </div>
+      )}
 
       <Card>
         <Table>
