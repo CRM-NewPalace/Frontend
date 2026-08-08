@@ -731,8 +731,8 @@ function Page() {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Apenas vendas sem comissão. Após salvar, a venda sai desta
-                    lista e a comissão aparece na tabela.
+                    Todas as vendas ficam disponíveis e podem receber mais de
+                    um lançamento de comissão.
                   </p>
                   <Popover
                     open={salePickerOpen}
