@@ -15,21 +15,37 @@ import {
   type PropostaSimplesKey,
 } from "@/lib/propostas-api";
 
-/** Paleta New Palace — proposta comercial. */
-const C = {
-  navy: [13, 27, 42] as [number, number, number],
-  navySoft: [27, 42, 58] as [number, number, number],
-  gold: [197, 160, 89] as [number, number, number],
-  goldSoft: [245, 236, 214] as [number, number, number],
-  ink: [22, 28, 36] as [number, number, number],
-  muted: [110, 118, 128] as [number, number, number],
-  line: [220, 224, 230] as [number, number, number],
-  band: [241, 243, 245] as [number, number, number],
-  white: [255, 255, 255] as [number, number, number],
+type Rgb = [number, number, number];
+
+type PdfPalette = {
+  navy: Rgb;
+  navySoft: Rgb;
+  gold: Rgb;
+  goldSoft: Rgb;
+  ink: Rgb;
+  muted: Rgb;
+  line: Rgb;
+  band: Rgb;
+  white: Rgb;
+};
+
+/** Fallback quando a logo não carrega / não tem cor útil. */
+const DEFAULT_PALETTE: PdfPalette = {
+  navy: [13, 27, 42],
+  navySoft: [27, 42, 58],
+  gold: [197, 160, 89],
+  goldSoft: [245, 236, 214],
+  ink: [22, 28, 36],
+  muted: [110, 118, 128],
+  line: [220, 224, 230],
+  band: [241, 243, 245],
+  white: [255, 255, 255],
 };
 
 export type PropostaPdfBrand = {
   logoUrl?: string | null;
+  /** Hex opcional do tenant (#RRGGBB) — reforça a paleta se a logo for monocromática. */
+  primaryColor?: string | null;
   company?: Pick<
     TenantBranding,
     "name" | "documento" | "creci" | "email" | "telefone" | "endereco" | "cidade"
@@ -47,7 +63,198 @@ type LoadedLogo = {
   format: "PNG" | "JPEG";
   width: number;
   height: number;
+  /** Cores amostradas da própria logo. */
+  dark: Rgb | null;
+  accent: Rgb | null;
 };
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  switch (max) {
+    case rn:
+      h = (gn - bn) / d + (gn < bn ? 6 : 0);
+      break;
+    case gn:
+      h = (bn - rn) / d + 2;
+      break;
+    default:
+      h = (rn - gn) / d + 4;
+  }
+  return [(h / 6) * 360, s, l];
+}
+
+function hslToRgb(h: number, s: number, l: number): Rgb {
+  const hh = ((h % 360) + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+  const m = l - c / 2;
+  let rp = 0;
+  let gp = 0;
+  let bp = 0;
+  if (hh < 60) [rp, gp, bp] = [c, x, 0];
+  else if (hh < 120) [rp, gp, bp] = [x, c, 0];
+  else if (hh < 180) [rp, gp, bp] = [0, c, x];
+  else if (hh < 240) [rp, gp, bp] = [0, x, c];
+  else if (hh < 300) [rp, gp, bp] = [x, 0, c];
+  else [rp, gp, bp] = [c, 0, x];
+  return [
+    Math.round((rp + m) * 255),
+    Math.round((gp + m) * 255),
+    Math.round((bp + m) * 255),
+  ];
+}
+
+function parseHexColor(hex: string | null | undefined): Rgb | null {
+  if (!hex) return null;
+  const raw = hex.trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return null;
+  return [
+    Number.parseInt(raw.slice(0, 2), 16),
+    Number.parseInt(raw.slice(2, 4), 16),
+    Number.parseInt(raw.slice(4, 6), 16),
+  ];
+}
+
+function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+/** Amostra pixels da logo e elege uma cor escura (fundo) + uma de destaque. */
+function extractLogoColors(
+  source: HTMLCanvasElement,
+): { dark: Rgb | null; accent: Rgb | null } {
+  const sample = document.createElement("canvas");
+  const size = 48;
+  sample.width = size;
+  sample.height = size;
+  const ctx = sample.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return { dark: null, accent: null };
+  ctx.drawImage(source, 0, 0, size, size);
+  const { data } = ctx.getImageData(0, 0, size, size);
+
+  type Bucket = {
+    r: number;
+    g: number;
+    b: number;
+    count: number;
+    sat: number;
+    light: number;
+  };
+  const buckets = new Map<string, Bucket>();
+
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3]!;
+    if (a < 140) continue;
+    const r = data[i]!;
+    const g = data[i + 1]!;
+    const b = data[i + 2]!;
+    // Ignora branco / quase branco (fundo da logo).
+    if (r > 242 && g > 242 && b > 242) continue;
+    const qr = Math.round(r / 20) * 20;
+    const qg = Math.round(g / 20) * 20;
+    const qb = Math.round(b / 20) * 20;
+    const key = `${qr},${qg},${qb}`;
+    const [, sat, light] = rgbToHsl(qr, qg, qb);
+    const cur = buckets.get(key);
+    if (cur) cur.count += 1;
+    else buckets.set(key, { r: qr, g: qg, b: qb, count: 1, sat, light });
+  }
+
+  const entries = [...buckets.values()].filter((e) => e.count >= 2);
+  if (!entries.length) return { dark: null, accent: null };
+
+  // Escura: prioriza baixa luminosidade e presença.
+  const darkScore = (e: Bucket) =>
+    e.count * (1.2 - e.light) * (0.5 + e.sat);
+  const dark = [...entries]
+    .filter((e) => e.light < 0.55)
+    .sort((a, b) => darkScore(b) - darkScore(a))[0];
+
+  // Destaque: saturada / média-clara, diferente da escura.
+  const accentScore = (e: Bucket) =>
+    e.count * (0.4 + e.sat) * (1 - Math.abs(e.light - 0.5));
+  const accent = [...entries]
+    .filter((e) => {
+      if (e.light < 0.18 || e.light > 0.88) return false;
+      if (e.sat < 0.12) return false;
+      if (!dark) return true;
+      const dr = e.r - dark.r;
+      const dg = e.g - dark.g;
+      const db = e.b - dark.b;
+      return dr * dr + dg * dg + db * db > 40 * 40;
+    })
+    .sort((a, b) => accentScore(b) - accentScore(a))[0];
+
+  return {
+    dark: dark ? [dark.r, dark.g, dark.b] : null,
+    accent: accent ? [accent.r, accent.g, accent.b] : null,
+  };
+}
+
+function buildPaletteFromLogo(
+  dark: Rgb | null,
+  accent: Rgb | null,
+  primaryHex?: string | null,
+): PdfPalette {
+  const fallbackPrimary = parseHexColor(primaryHex);
+  const seed = dark ?? fallbackPrimary ?? DEFAULT_PALETTE.navy;
+
+  let [h, s] = rgbToHsl(...seed);
+  // Cabeçalho sempre escuro o bastante para texto branco.
+  const navy = hslToRgb(h, clamp(Math.max(s, 0.28), 0, 0.75), 0.16);
+  const navySoft = hslToRgb(h, clamp(Math.max(s, 0.22), 0, 0.65), 0.26);
+
+  let accentRgb = accent;
+  if (!accentRgb && fallbackPrimary) {
+    const [ph, ps, pl] = rgbToHsl(...fallbackPrimary);
+    // Se a primária for clara/média, usa como destaque; se for escura, deriva.
+    accentRgb =
+      pl > 0.35
+        ? fallbackPrimary
+        : hslToRgb((ph + 35) % 360, clamp(Math.max(ps, 0.45), 0, 0.8), 0.55);
+  }
+  if (!accentRgb) {
+    accentRgb = hslToRgb((h + 42) % 360, 0.55, 0.55);
+  }
+
+  let [ah, as, al] = rgbToHsl(...accentRgb);
+  // Garante destaque visível (evita cinza / quase preto).
+  const gold = hslToRgb(
+    ah,
+    clamp(Math.max(as, 0.42), 0, 0.85),
+    clamp(al < 0.35 ? 0.52 : al > 0.72 ? 0.58 : al, 0.4, 0.68),
+  );
+  const goldSoft = mixRgb(gold, DEFAULT_PALETTE.white, 0.86);
+
+  return {
+    navy,
+    navySoft,
+    gold,
+    goldSoft,
+    ink: DEFAULT_PALETTE.ink,
+    muted: DEFAULT_PALETTE.muted,
+    line: DEFAULT_PALETTE.line,
+    band: DEFAULT_PALETTE.band,
+    white: DEFAULT_PALETTE.white,
+  };
+}
 
 function compositionLines(p: Proposta): CompositionLine[] {
   const lines: CompositionLine[] = [];
@@ -122,11 +329,14 @@ async function loadLogoForPdf(src: string): Promise<LoadedLogo | null> {
     if (!ctx) return null;
     ctx.drawImage(img, 0, 0);
     const jpeg = /\.jpe?g($|\?)/i.test(url) || url.startsWith("data:image/jpeg");
+    const { dark, accent } = extractLogoColors(canvas);
     return {
       dataUrl: canvas.toDataURL(jpeg ? "image/jpeg" : "image/png"),
       format: jpeg ? "JPEG" : "PNG",
       width: w,
       height: h,
+      dark,
+      accent,
     };
   } catch {
     return null;
@@ -215,13 +425,18 @@ async function buildPropostaPdfDescritivo(
   const logo = brand?.logoUrl
     ? await loadLogoForPdf(brand.logoUrl)
     : null;
+  const C = buildPaletteFromLogo(
+    logo?.dark ?? null,
+    logo?.accent ?? null,
+    brand?.primaryColor,
+  );
 
-  // ─── Cabeçalho escuro ───
+  // ─── Cabeçalho (cor escura da logo) ───
   const headerH = 118;
   doc.setFillColor(...C.navy);
   doc.rect(0, 0, pageW, headerH, "F");
 
-  // Faixa/diagonais douradas (canto inferior direito do header)
+  // Faixa/diagonais de destaque (canto inferior direito do header)
   doc.setFillColor(...C.gold);
   doc.triangle(pageW - 120, headerH, pageW, headerH - 28, pageW, headerH, "F");
   doc.setFillColor(...C.navySoft);

@@ -438,6 +438,7 @@ function Page() {
   const pdfBrand = useMemo<PropostaPdfBrand>(
     () => ({
       logoUrl,
+      primaryColor: tenant?.primaryColor ?? null,
       company: tenant
         ? {
             name: tenant.name,
