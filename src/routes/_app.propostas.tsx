@@ -308,12 +308,16 @@ function shareToast() {
 function PropostaActionMenus({
   proposta,
   onView,
+  onEdit,
+  onDelete,
   onRequestWhatsAppPhone,
   brand,
   compact = false,
 }: {
   proposta: Proposta;
   onView?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onRequestWhatsAppPhone: (proposta: Proposta) => void;
   brand: PropostaPdfBrand;
   compact?: boolean;
@@ -414,6 +418,54 @@ function PropostaActionMenus({
           <DropdownMenuItem onClick={handleEmail}>E-mail</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {onEdit && (
+        compact ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onEdit}
+            aria-label="Editar"
+            title="Editar"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="outline" onClick={onEdit}>
+            <Pencil className="h-4 w-4 mr-1" />
+            Editar
+          </Button>
+        )
+      )}
+
+      {onDelete && (
+        compact ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={onDelete}
+            aria-label="Excluir"
+            title="Excluir"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Excluir
+          </Button>
+        )
+      )}
 
       {onView && compact && (
         <Button
@@ -887,7 +939,7 @@ function Page() {
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Validade</TableHead>
-              <TableHead className="text-right w-28">Ações</TableHead>
+              <TableHead className="text-right w-44">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -959,6 +1011,8 @@ function Page() {
                       brand={pdfBrand}
                       compact
                       onView={() => setSelected(p)}
+                      onEdit={() => openEdit(p)}
+                      onDelete={() => setDeleteId(p.id)}
                       onRequestWhatsAppPhone={(item) => {
                         setWhatsAppTarget(item);
                         setWhatsAppPhone(
