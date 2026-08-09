@@ -342,7 +342,7 @@ export function FinanceiroTitulosPanel({
       const [titulos, pars, tipos] = await Promise.all([
         fetchTitulos(tipo),
         fetchParceiros(),
-        fetchDespesaTipos(),
+        tipo === "pagar" ? fetchDespesaTipos() : Promise.resolve([]),
       ]);
       setItems(titulos);
       setParceiros(pars.filter((p) => p.ativo));
@@ -751,10 +751,11 @@ export function FinanceiroTitulosPanel({
       toast.error("Informe a descrição.");
       return;
     }
-    if (!form.centro.trim()) {
+    if (tipo === "pagar" && !form.centro.trim()) {
       toast.error("Selecione o centro de custo.");
       return;
     }
+    const centroValor = tipo === "pagar" ? form.centro.trim() : "";
 
     if (formMode === "create" && parcelado) {
       if (parcelasDraft.length < 2) {
@@ -782,7 +783,7 @@ export function FinanceiroTitulosPanel({
           parceiroId:
             form.parceiroId === NONE ? undefined : form.parceiroId,
           categoria: form.categoria,
-          centro: form.centro,
+          ...(centroValor ? { centro: centroValor } : {}),
           parcelas,
         });
         toast.success(`${parcelas.length} parcelas criadas.`);
@@ -831,7 +832,7 @@ export function FinanceiroTitulosPanel({
           descricao,
           parceiroId: form.parceiroId === NONE ? null : form.parceiroId,
           categoria: form.categoria,
-          centro: form.centro,
+          ...(tipo === "pagar" ? { centro: centroValor } : {}),
           parcelas,
         });
         toast.success(`${result.updated} parcela(s) atualizada(s).`);
@@ -865,7 +866,7 @@ export function FinanceiroTitulosPanel({
         parceiroId:
           form.parceiroId === NONE ? undefined : form.parceiroId,
         categoria: form.categoria,
-        centro: form.centro,
+        ...(tipo === "pagar" ? { centro: centroValor } : { centro: "" }),
         vencimento: form.vencimento,
         valor,
         status,
@@ -1031,7 +1032,9 @@ export function FinanceiroTitulosPanel({
               <TableHead>Descrição</TableHead>
               <TableHead>Parceiro</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Centro de custo</TableHead>
+              {tipo === "pagar" ? (
+                <TableHead>Centro de custo</TableHead>
+              ) : null}
               <TableHead>Vencimento</TableHead>
               <TableHead>Parcela</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -1043,7 +1046,7 @@ export function FinanceiroTitulosPanel({
             {displayRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={tipo === "pagar" ? 9 : 8}
                   className="text-center text-muted-foreground py-10"
                 >
                   Nenhum título no filtro.
@@ -1064,9 +1067,11 @@ export function FinanceiroTitulosPanel({
                       <TableCell className="truncate max-w-[120px]">
                         {t.categoria || "—"}
                       </TableCell>
-                      <TableCell className="truncate max-w-[120px]">
-                        {t.centro || "—"}
-                      </TableCell>
+                      {tipo === "pagar" ? (
+                        <TableCell className="truncate max-w-[120px]">
+                          {t.centro || "—"}
+                        </TableCell>
+                      ) : null}
                       <TableCell>{formatDate(t.vencimento)}</TableCell>
                       <TableCell>{t.parcela || "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -1110,9 +1115,11 @@ export function FinanceiroTitulosPanel({
                       <TableCell className="truncate max-w-[120px]">
                         {summary.categoria || "—"}
                       </TableCell>
-                      <TableCell className="truncate max-w-[120px]">
-                        {summary.centro || "—"}
-                      </TableCell>
+                      {tipo === "pagar" ? (
+                        <TableCell className="truncate max-w-[120px]">
+                          {summary.centro || "—"}
+                        </TableCell>
+                      ) : null}
                       <TableCell>
                         {summary.vencimento
                           ? formatDate(summary.vencimento)
@@ -1201,9 +1208,11 @@ export function FinanceiroTitulosPanel({
                             <TableCell className="truncate max-w-[120px]">
                               {t.categoria || "—"}
                             </TableCell>
-                            <TableCell className="truncate max-w-[120px]">
-                              {t.centro || "—"}
-                            </TableCell>
+                            {tipo === "pagar" ? (
+                              <TableCell className="truncate max-w-[120px]">
+                                {t.centro || "—"}
+                              </TableCell>
+                            ) : null}
                             <TableCell>{formatDate(t.vencimento)}</TableCell>
                             <TableCell>{t.parcela || "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">
@@ -1490,7 +1499,11 @@ export function FinanceiroTitulosPanel({
                     </p>
                   </div>
                 ) : null}
-                <div className="space-y-1.5">
+                <div
+                  className={
+                    tipo === "pagar" ? "space-y-1.5" : "sm:col-span-2 space-y-1.5"
+                  }
+                >
                   <div className="flex items-center justify-between gap-2">
                     <Label>Categoria</Label>
                     <Button
@@ -1520,45 +1533,47 @@ export function FinanceiroTitulosPanel({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>Centro de custo *</Label>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => openQuick("centro")}
+                {tipo === "pagar" ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Centro de custo *</Label>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => openQuick("centro")}
+                      >
+                        + Novo centro
+                      </Button>
+                    </div>
+                    <Select
+                      value={form.centro || undefined}
+                      onValueChange={(v) =>
+                        setForm((f) => ({ ...f, centro: v }))
+                      }
                     >
-                      + Novo centro
-                    </Button>
-                  </div>
-                  <Select
-                    value={form.centro || undefined}
-                    onValueChange={(v) =>
-                      setForm((f) => ({ ...f, centro: v }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o centro de custo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {centros.length === 0 ? (
-                        <SelectItem value="__empty" disabled>
-                          Cadastre em Centro de despesas
-                        </SelectItem>
-                      ) : (
-                        centros.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o centro de custo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {centros.length === 0 ? (
+                          <SelectItem value="__empty" disabled>
+                            Cadastre em Centro de despesas
                           </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground">
-                    Vinculado às categorias do Centro de despesas.
-                  </p>
-                </div>
+                        ) : (
+                          centros.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Vinculado às categorias do Centro de despesas.
+                    </p>
+                  </div>
+                ) : null}
                 {formMode !== "edit-grupo" &&
                 !(parcelado && formMode === "create") ? (
                   <div className="space-y-1.5">
