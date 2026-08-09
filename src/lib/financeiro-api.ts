@@ -303,6 +303,14 @@ export async function deleteTitulo(id: string): Promise<void> {
   });
 }
 
+export async function deleteTitulosGrupo(
+  grupoParcelasId: string,
+): Promise<{ ok: boolean; deleted: number }> {
+  return apiFetch(`/financeiro/titulos/grupo/${grupoParcelasId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchComissoes(): Promise<Comissao[]> {
   return apiFetch<Comissao[]>("/financeiro/comissoes");
 }

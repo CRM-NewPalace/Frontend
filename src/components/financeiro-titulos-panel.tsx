@@ -52,6 +52,7 @@ import {
   createTitulo,
   createTitulosParcelado,
   deleteTitulo,
+  deleteTitulosGrupo,
   fetchDespesaTipos,
   fetchParceiros,
   fetchTitulos,
@@ -284,6 +285,12 @@ export function FinanceiroTitulosPanel({
   const [deleteTarget, setDeleteTarget] = useState<TituloFinanceiro | null>(
     null,
   );
+  const [deleteGrupoTarget, setDeleteGrupoTarget] = useState<{
+    grupoId: string;
+    descricao: string;
+    n: number;
+    pagas: number;
+  } | null>(null);
   const [baixarTarget, setBaixarTarget] = useState<TituloFinanceiro | null>(
     null,
   );
@@ -928,6 +935,30 @@ export function FinanceiroTitulosPanel({
     }
   }
 
+  async function onDeleteGrupo() {
+    if (!deleteGrupoTarget) return;
+    setBusy(true);
+    try {
+      const result = await deleteTitulosGrupo(deleteGrupoTarget.grupoId);
+      toast.success(
+        `${result.deleted} parcela${result.deleted === 1 ? "" : "s"} excluída${result.deleted === 1 ? "" : "s"}.`,
+      );
+      setDeleteGrupoTarget(null);
+      setGrupoOpen(false);
+      setGrupoTitulos([]);
+      setGrupoMeta(null);
+      await load();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível excluir o parcelamento.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const hasActive = Boolean(
     search ||
       periodo !== "tudo" ||
@@ -1135,6 +1166,22 @@ export function FinanceiroTitulosPanel({
                             onClick={() => void openEditGrupo(row.titulos)}
                           >
                             <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
+                            title="Excluir todas as parcelas"
+                            onClick={() =>
+                              setDeleteGrupoTarget({
+                                grupoId: row.grupoId,
+                                descricao: summary.descricao,
+                                n: summary.n,
+                                pagas: summary.pagas,
+                              })
+                            }
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </TableCell>
@@ -1745,6 +1792,26 @@ export function FinanceiroTitulosPanel({
                 Editar todas
               </Button>
             ) : null}
+            {grupoTitulos[0]?.grupoParcelasId ? (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  const pagas = grupoTitulos.filter(
+                    (t) => t.status === "pago",
+                  ).length;
+                  setDeleteGrupoTarget({
+                    grupoId: grupoTitulos[0].grupoParcelasId!,
+                    descricao: grupoMeta?.descricao || grupoTitulos[0].descricao,
+                    n: grupoTitulos.length,
+                    pagas,
+                  });
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                Excluir todas
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -1868,6 +1935,38 @@ export function FinanceiroTitulosPanel({
               }}
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!deleteGrupoTarget}
+        onOpenChange={(o) => !o && setDeleteGrupoTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir todas as parcelas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteGrupoTarget
+                ? `${deleteGrupoTarget.descricao} — ${deleteGrupoTarget.n} parcela${deleteGrupoTarget.n === 1 ? "" : "s"}${
+                    deleteGrupoTarget.pagas > 0
+                      ? ` (${deleteGrupoTarget.pagas} já paga${deleteGrupoTarget.pagas === 1 ? "" : "s"})`
+                      : ""
+                  }. Remove o parcelamento inteiro, inclusive baixas no fluxo de caixa.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(e) => {
+                e.preventDefault();
+                void onDeleteGrupo();
+              }}
+            >
+              Excluir todas
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
