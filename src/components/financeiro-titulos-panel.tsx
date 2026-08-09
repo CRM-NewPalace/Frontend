@@ -593,17 +593,15 @@ export function FinanceiroTitulosPanel({
             <Layers className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {t.status !== "pago" ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive"
-            title="Excluir"
-            onClick={() => setDeleteTarget(t)}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        ) : null}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-destructive"
+          title="Excluir"
+          onClick={() => setDeleteTarget(t)}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
       </div>
     );
   }
@@ -1854,7 +1852,10 @@ export function FinanceiroTitulosPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir título?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget?.descricao}. Esta ação não pode ser desfeita.
+              {deleteTarget?.descricao}.
+              {deleteTarget?.status === "pago"
+                ? " O lançamento no fluxo de caixa também será removido e os totais do dashboard serão atualizados."
+                : " Esta ação não pode ser desfeita."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

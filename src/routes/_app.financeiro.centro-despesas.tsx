@@ -76,6 +76,7 @@ import {
 } from "@/lib/money-input";
 import {
   FolderKanban,
+  Layers,
   Loader2,
   Pencil,
   Plus,
@@ -194,6 +195,7 @@ function Page() {
     nextCompetencia(competenciaAtual()),
   );
   const [renovando, setRenovando] = useState(false);
+  const [todasCategoriasOpen, setTodasCategoriasOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,6 +236,16 @@ function Page() {
     () => tipos.filter((t) => t.natureza === naturezaTab),
     [tipos, naturezaTab],
   );
+
+  const todasCategorias = useMemo(() => {
+    const ordem: NaturezaDespesa[] = ["fixa", "fixa_variavel", "variavel"];
+    return [...tipos].sort((a, b) => {
+      const na = ordem.indexOf(a.natureza);
+      const nb = ordem.indexOf(b.natureza);
+      if (na !== nb) return na - nb;
+      return a.nome.localeCompare(b.nome, "pt-BR");
+    });
+  }, [tipos]);
 
   const despesasDaAba = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -531,6 +543,14 @@ function Page() {
                 Renovar mês
               </Button>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTodasCategoriasOpen(true)}
+            >
+              <Layers className="w-4 h-4 mr-1" />
+              Todas as categorias
+            </Button>
             <Button type="button" variant="outline" onClick={openCreateTipo}>
               <Plus className="w-4 h-4 mr-1" />
               Nova categoria
@@ -897,6 +917,121 @@ function Page() {
           )}
         </TabsContent>
       </Tabs>
+
+      <FormDialogShell
+        open={todasCategoriasOpen}
+        onOpenChange={setTodasCategoriasOpen}
+        icon={<Layers className="w-5 h-5" />}
+        title="Todas as categorias"
+        description="Nome e natureza (fixa, fixa variável ou variável) de cada centro de custo."
+        className="max-w-2xl"
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTodasCategoriasOpen(false)}
+            >
+              Fechar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setTodasCategoriasOpen(false);
+                openCreateTipo();
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Nova categoria
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody className="space-y-3">
+          <div className="rounded-xl border border-border/60 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Natureza</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Orçado/mês</TableHead>
+                  <TableHead className="w-[72px] text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {todasCategorias.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center text-muted-foreground py-10"
+                    >
+                      Nenhuma categoria cadastrada.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  todasCategorias.map((t) => (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-medium">{t.nome}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {NATUREZA_LABEL[t.natureza]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            t.ativo
+                              ? "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {t.ativo ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {brl(t.orcadoMensal)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title="Editar"
+                          onClick={() => {
+                            setTodasCategoriasOpen(false);
+                            openEditTipo(t);
+                          }}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {todasCategorias.length} categoria
+            {todasCategorias.length === 1 ? "" : "s"} ·{" "}
+            {
+              todasCategorias.filter((t) => t.natureza === "fixa").length
+            }{" "}
+            fixa(s) ·{" "}
+            {
+              todasCategorias.filter((t) => t.natureza === "fixa_variavel")
+                .length
+            }{" "}
+            fixa(s) variável(is) ·{" "}
+            {
+              todasCategorias.filter((t) => t.natureza === "variavel").length
+            }{" "}
+            variável(is)
+          </p>
+        </FormDialogBody>
+      </FormDialogShell>
 
       <FormDialogShell
         open={tipoOpen}
