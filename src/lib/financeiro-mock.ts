@@ -99,6 +99,7 @@ export interface TituloFinanceiro {
   status: StatusTitulo;
   parcela: string;
   grupoParcelasId?: string | null;
+  platformContratoId?: string | null;
   formaPagamento?: string;
 }
 
@@ -204,6 +205,11 @@ export interface DespesaLancamento {
   ativo: boolean;
   createdAt: string;
 }
+
+/** Alias do centro de recebimentos (mesmo shape do centro de despesas). */
+export type CentroRecebimentoResumo = CentroDespesaResumo;
+export type RecebimentoTipo = DespesaTipo & { qtdRecebimentos?: number };
+export type RecebimentoLancamento = DespesaLancamento;
 
 /** Coleções vazias até a API do financeiro existir. */
 export const MOCK_PARCEIROS: ParceiroFinanceiro[] = [];

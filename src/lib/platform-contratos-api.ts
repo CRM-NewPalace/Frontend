@@ -33,6 +33,8 @@ export type PlatformContrato = {
   tipo: PlatformContratoTipo;
   plano: TenantPlano | null;
   valor: number;
+  valorAdesao?: number;
+  valorMensalidade?: number;
   dataInicio: string;
   vencimento: string | null;
   status: PlatformContratoStatus;
@@ -47,6 +49,7 @@ export type PlatformContrato = {
   valorAberto: number;
   createdAt: string;
   updatedAt: string;
+  grupoParcelasId?: string;
 };
 
 export type PlatformContratoParcelaInput = {
@@ -78,6 +81,32 @@ export async function createPlatformContrato(
   input: CreatePlatformContratoInput,
 ): Promise<PlatformContrato> {
   return apiFetch<PlatformContrato>("/platform-contratos", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export type CreatePlatformContratoComTitulosInput = {
+  tenantId: string;
+  titulo: string;
+  tipo: PlatformContratoTipo;
+  plano?: TenantPlano | null;
+  valorAdesao: number;
+  valorMensalidade: number;
+  qtdMensalidades: number;
+  dataInicio: string;
+  vencimento: string;
+  status?: PlatformContratoStatus;
+  observacao?: string;
+  categoria?: string;
+  parceiroId?: string;
+  parceiroNome?: string;
+};
+
+export async function createPlatformContratoComTitulos(
+  input: CreatePlatformContratoComTitulosInput,
+): Promise<PlatformContrato> {
+  return apiFetch<PlatformContrato>("/platform-contratos/com-titulos", {
     method: "POST",
     body: input,
   });

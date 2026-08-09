@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { getSession } from "@/lib/auth";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -44,10 +45,12 @@ import {
   createDespesaTipo,
   createMovimento,
   createParceiro,
+  createRecebimentoTipo,
   deleteMovimento,
   fetchDespesaTipos,
   fetchMovimentos,
   fetchParceiros,
+  fetchRecebimentoTipos,
   updateMovimento,
 } from "@/lib/financeiro-api";
 import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
@@ -190,6 +193,7 @@ function Page() {
   );
   const [deleting, setDeleting] = useState(false);
   const [despesaTipos, setDespesaTipos] = useState<DespesaTipo[]>([]);
+  const [recebimentoTipos, setRecebimentoTipos] = useState<DespesaTipo[]>([]);
   const [quickKind, setQuickKind] = useState<QuickKind>(null);
   const [quickNome, setQuickNome] = useState("");
   const [quickDocumento, setQuickDocumento] = useState("");
@@ -198,14 +202,16 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [movs, pars, tipos] = await Promise.all([
+      const [movs, pars, desp, rec] = await Promise.all([
         fetchMovimentos(),
         fetchParceiros(),
         fetchDespesaTipos(),
+        fetchRecebimentoTipos(),
       ]);
       setItems(movs);
       setParceiros(pars.filter((p) => p.ativo));
-      setDespesaTipos(tipos);
+      setDespesaTipos(desp);
+      setRecebimentoTipos(rec);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -221,13 +227,21 @@ function Page() {
     void load();
   }, [load]);
 
+  const catalogTipos =
+    form.tipo === "entrada" ? recebimentoTipos : despesaTipos;
+  const catalogLabel =
+    form.tipo === "entrada" ? "Categoria" : "Centro de custo";
+
   const categorias: string[] = useMemo(() => {
-    const fromTipos = despesaTipos
+    const fromTipos = catalogTipos
       .filter((t) => t.ativo)
       .map((t) => t.nome.trim())
       .filter(Boolean);
     const fromItems = items
-      .map((m) => m.categoria || m.centro)
+      .filter((m) => m.tipo === form.tipo)
+      .map((m) =>
+        form.tipo === "saida" ? m.centro || m.categoria : m.categoria || m.centro,
+      )
       .filter((c) => c && c.trim());
     const current = form.categoria.trim();
     return Array.from(
@@ -239,7 +253,7 @@ function Page() {
         ].filter(Boolean),
       ),
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [despesaTipos, items, form.categoria]);
+  }, [catalogTipos, items, form.categoria, form.tipo]);
 
   useEffect(() => {
     if (categorias.length === 0) return;
@@ -301,7 +315,7 @@ function Page() {
     }
 
     if (quickKind === "categoria") {
-      const existing = despesaTipos.find(
+      const existing = catalogTipos.find(
         (t) => t.nome.toLowerCase() === nome.toLowerCase(),
       );
       if (existing) {
@@ -311,24 +325,43 @@ function Page() {
       }
       setQuickSaving(true);
       try {
-        const created = await createDespesaTipo({
-          nome,
-          natureza: "variavel",
-          ativo: true,
-        });
-        setDespesaTipos((prev) =>
-          [...prev, created].sort((a, b) =>
-            a.nome.localeCompare(b.nome, "pt-BR"),
-          ),
-        );
+        const created =
+          form.tipo === "entrada"
+            ? await createRecebimentoTipo({
+                nome,
+                natureza: "variavel",
+                ativo: true,
+              })
+            : await createDespesaTipo({
+                nome,
+                natureza: "variavel",
+                ativo: true,
+              });
+        if (form.tipo === "entrada") {
+          setRecebimentoTipos((prev) =>
+            [...prev, created].sort((a, b) =>
+              a.nome.localeCompare(b.nome, "pt-BR"),
+            ),
+          );
+        } else {
+          setDespesaTipos((prev) =>
+            [...prev, created].sort((a, b) =>
+              a.nome.localeCompare(b.nome, "pt-BR"),
+            ),
+          );
+        }
         setField("categoria", created.nome);
         setQuickKind(null);
-        toast.success("Categoria cadastrada no Centro de despesas.");
+        toast.success(
+          form.tipo === "entrada"
+            ? "Categoria cadastrada no Centro de recebimentos."
+            : "Centro cadastrado no Centro de despesas.",
+        );
       } catch (err) {
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Não foi possível criar a categoria.",
+            : "Não foi possível criar o cadastro.",
         );
       } finally {
         setQuickSaving(false);
@@ -409,7 +442,11 @@ function Page() {
       return;
     }
     if (!form.categoria.trim()) {
-      toast.error("Informe a categoria.");
+      toast.error(
+        form.tipo === "entrada"
+          ? "Informe a categoria."
+          : "Informe o centro de custo.",
+      );
       return;
     }
     const valor = parseValor(form.valor);
@@ -418,14 +455,14 @@ function Page() {
       return;
     }
 
-    const categoria = form.categoria.trim();
+    const label = form.categoria.trim();
     const payload = {
       data: form.data,
       descricao,
       parceiroId:
         form.parceiroId !== NONE ? form.parceiroId : undefined,
-      categoria,
-      centro: categoria,
+      categoria: label,
+      centro: form.tipo === "saida" ? label : "",
       tipo: form.tipo,
       valor,
       status: form.status,
@@ -728,39 +765,33 @@ function Page() {
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <div className="flex items-center justify-between gap-2">
-                    <Label>Categoria *</Label>
+                    <Label>{catalogLabel} *</Label>
                     <Button
                       type="button"
                       variant="link"
                       className="h-auto p-0 text-xs"
                       onClick={() => openQuick("categoria")}
                     >
-                      + Nova categoria
+                      +{" "}
+                      {form.tipo === "entrada"
+                        ? "Nova categoria"
+                        : "Novo centro"}
                     </Button>
                   </div>
-                  <Select
-                    value={form.categoria || undefined}
-                    onValueChange={(v) => setField("categoria", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Centro de despesas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categorias.length === 0 ? (
-                        <SelectItem value="__empty" disabled>
-                          Cadastre no Centro de despesas
-                        </SelectItem>
-                      ) : (
-                        categorias.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <CategoriaSearchSelect
+                    value={form.categoria}
+                    options={categorias}
+                    onChange={(v) => setField("categoria", v)}
+                    placeholder={
+                      form.tipo === "entrada"
+                        ? "Buscar categoria…"
+                        : "Buscar centro de custo…"
+                    }
+                  />
                   <p className="text-[11px] text-muted-foreground">
-                    Mesmo cadastro do Centro de despesas.
+                    {form.tipo === "entrada"
+                      ? "Cadastro do Centro de recebimentos."
+                      : "Cadastro do Centro de despesas."}
                   </p>
                 </div>
                 <div className="space-y-2">

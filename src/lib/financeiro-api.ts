@@ -518,3 +518,93 @@ export async function renovarDespesasMes(
     body: { competencia },
   });
 }
+
+// ─── Centro de recebimentos ────────────────────────────────────
+
+export type CreateRecebimentoTipoInput = CreateDespesaTipoInput;
+export type UpdateRecebimentoTipoInput = UpdateDespesaTipoInput;
+export type CreateRecebimentoInput = CreateDespesaInput;
+export type UpdateRecebimentoInput = UpdateDespesaInput;
+
+export type RenovarRecebimentosResult = {
+  competencia: string;
+  criadas: number;
+  ignoradas: number;
+  recebimentos: DespesaLancamento[];
+};
+
+export async function fetchRecebimentoTipos(
+  natureza?: NaturezaDespesa,
+): Promise<DespesaTipo[]> {
+  const qs = natureza ? `?natureza=${natureza}` : "";
+  return apiFetch<DespesaTipo[]>(`/financeiro/recebimento-tipos${qs}`);
+}
+
+export async function createRecebimentoTipo(
+  input: CreateRecebimentoTipoInput,
+): Promise<DespesaTipo> {
+  return apiFetch<DespesaTipo>("/financeiro/recebimento-tipos", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateRecebimentoTipo(
+  id: string,
+  input: UpdateRecebimentoTipoInput,
+): Promise<DespesaTipo> {
+  return apiFetch<DespesaTipo>(`/financeiro/recebimento-tipos/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteRecebimentoTipo(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/recebimento-tipos/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function fetchRecebimentos(
+  natureza?: NaturezaDespesa,
+): Promise<DespesaLancamento[]> {
+  const qs = natureza ? `?natureza=${natureza}` : "";
+  return apiFetch<DespesaLancamento[]>(`/financeiro/recebimentos${qs}`);
+}
+
+export async function createRecebimento(
+  input: CreateRecebimentoInput,
+): Promise<DespesaLancamento> {
+  return apiFetch<DespesaLancamento>("/financeiro/recebimentos", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateRecebimento(
+  id: string,
+  input: UpdateRecebimentoInput,
+): Promise<DespesaLancamento> {
+  return apiFetch<DespesaLancamento>(`/financeiro/recebimentos/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteRecebimento(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/recebimentos/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function renovarRecebimentosMes(
+  competencia: string,
+): Promise<RenovarRecebimentosResult> {
+  return apiFetch<RenovarRecebimentosResult>(
+    "/financeiro/recebimentos/renovar-mes",
+    {
+      method: "POST",
+      body: { competencia },
+    },
+  );
+}

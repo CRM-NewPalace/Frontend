@@ -7,7 +7,6 @@ import {
   Building2,
   UserCircle2,
   UsersRound,
-  FileText,
   FileSignature,
   DollarSign,
   Settings,
@@ -158,8 +157,8 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
     icon: ArrowDownRight,
   },
   {
-    to: "/financeiro/categorias",
-    label: "Categorias",
+    to: "/financeiro/centro-recebimentos",
+    label: "Centro de recebimentos",
     icon: Tags,
   },
   {
@@ -203,19 +202,14 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     icon: Banknote,
   },
   {
-    to: "/financeiro/categorias",
-    label: "Categorias",
+    to: "/financeiro/centro-recebimentos",
+    label: "Centro de recebimentos",
     icon: Tags,
   },
   {
     to: "/financeiro/centro-despesas",
     label: "Centro de despesas",
     icon: FolderKanban,
-  },
-  {
-    to: "/financeiro/contratos",
-    label: "Contratos",
-    icon: FileText,
   },
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
 ];

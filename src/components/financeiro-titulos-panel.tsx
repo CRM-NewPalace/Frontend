@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import {
@@ -45,20 +46,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import {
   baixarTitulo,
   createDespesaTipo,
   createParceiro,
+  createRecebimentoTipo,
   createTitulo,
   createTitulosParcelado,
   deleteTitulo,
   deleteTitulosGrupo,
   fetchDespesaTipos,
   fetchParceiros,
+  fetchRecebimentoTipos,
   fetchTitulos,
   updateTitulo,
   updateTitulosGrupo,
 } from "@/lib/financeiro-api";
+import {
+  createPlatformContratoComTitulos,
+  type PlatformContratoStatus,
+  type PlatformContratoTipo,
+} from "@/lib/platform-contratos-api";
+import { PLANO_LABELS, type TenantPlano } from "@/lib/tenant-modules";
+import { fetchTenants, type Tenant } from "@/lib/tenants-api";
 import {
   getVistaParcelas,
   VISTA_PARCELAS_EVENT,
@@ -116,6 +127,32 @@ type FormState = {
   status: StatusTitulo;
   parcela: string;
 };
+
+type ContratoFormState = {
+  tenantId: string;
+  titulo: string;
+  tipo: PlatformContratoTipo;
+  plano: TenantPlano;
+  status: PlatformContratoStatus;
+  dataInicio: string;
+  vencimento: string;
+  valorAdesao: string;
+  valorMensalidade: string;
+  observacao: string;
+};
+
+const emptyContratoForm = (tenantId = ""): ContratoFormState => ({
+  tenantId,
+  titulo: "",
+  tipo: "assinatura",
+  plano: "ouro",
+  status: "ativo",
+  dataInicio: new Date().toISOString().slice(0, 10),
+  vencimento: new Date().toISOString().slice(0, 10),
+  valorAdesao: "",
+  valorMensalidade: "",
+  observacao: "",
+});
 
 function todayIso() {
   const d = new Date();
@@ -244,11 +281,16 @@ export function FinanceiroTitulosPanel({
 }) {
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
-  const [despesaTipos, setDespesaTipos] = useState<DespesaTipo[]>([]);
+  const [catalogTipos, setCatalogTipos] = useState<DespesaTipo[]>([]);
   const [search, setSearch] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("tudo");
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
   const [categoriaFiltro, setCategoriaFiltro] = useState("todos");
+  const catalogLabel = tipo === "receber" ? "Categoria" : "Centro de custo";
+  const catalogHint =
+    tipo === "receber"
+      ? "Cadastro do Centro de recebimentos."
+      : "Cadastro do Centro de despesas.";
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "edit-grupo">(
     "create",
@@ -279,6 +321,16 @@ export function FinanceiroTitulosPanel({
   const [parcelado, setParcelado] = useState(false);
   const [qtdParcelas, setQtdParcelas] = useState("2");
   const [parcelasDraft, setParcelasDraft] = useState<ParcelaDraft[]>([]);
+  const isPlatformAdmin = getSession()?.role === "super_admin";
+  const canUseContrato = tipo === "receber" && isPlatformAdmin;
+  const [comoContrato, setComoContrato] = useState(false);
+  const [contratoForm, setContratoForm] = useState<ContratoFormState>(() =>
+    emptyContratoForm(),
+  );
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [origemFiltro, setOrigemFiltro] = useState<"todos" | "normal" | "contrato">(
+    "todos",
+  );
   const [grupoOpen, setGrupoOpen] = useState(false);
   const [grupoTitulos, setGrupoTitulos] = useState<TituloFinanceiro[]>([]);
   const [grupoMeta, setGrupoMeta] = useState<{
@@ -293,13 +345,15 @@ export function FinanceiroTitulosPanel({
   );
 
   const categorias = useMemo(() => {
-    const fromTipos = despesaTipos
+    const fromTipos = catalogTipos
       .filter((t) => t.ativo)
       .map((t) => t.nome.trim())
       .filter(Boolean);
     const current = form.categoria.trim();
     const fromItems = items
-      .map((t) => t.categoria || t.centro)
+      .map((t) =>
+        tipo === "pagar" ? t.centro || t.categoria : t.categoria || t.centro,
+      )
       .filter((c) => c && c.trim());
     return Array.from(
       new Set(
@@ -310,18 +364,23 @@ export function FinanceiroTitulosPanel({
         ].filter(Boolean),
       ),
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [despesaTipos, items, form.categoria]);
+  }, [catalogTipos, items, form.categoria, tipo]);
 
   const load = useCallback(async () => {
     try {
-      const [titulos, pars, tipos] = await Promise.all([
+      const platform = getSession()?.role === "super_admin";
+      const [titulos, pars, tipos, tenantList] = await Promise.all([
         fetchTitulos(tipo),
         fetchParceiros(),
-        fetchDespesaTipos(),
+        tipo === "receber" ? fetchRecebimentoTipos() : fetchDespesaTipos(),
+        platform && tipo === "receber" ? fetchTenants() : Promise.resolve([]),
       ]);
       setItems(titulos);
       setParceiros(pars.filter((p) => p.ativo));
-      setDespesaTipos(tipos);
+      setCatalogTipos(tipos);
+      if (platform && tipo === "receber") {
+        setTenants(tenantList);
+      }
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -349,11 +408,24 @@ export function FinanceiroTitulosPanel({
 
   const categoriaOptions = useMemo(
     () => [
-      { value: "todos", label: "Todas as categorias" },
+      {
+        value: "todos",
+        label:
+          tipo === "receber"
+            ? "Todas as categorias"
+            : "Todos os centros de custo",
+      },
       ...categorias.map((c) => ({ value: c, label: c })),
     ],
-    [categorias],
+    [categorias, tipo],
   );
+
+  function catalogFields(nome: string) {
+    const label = nome.trim();
+    return tipo === "pagar"
+      ? { categoria: label, centro: label }
+      : { categoria: label, centro: "" };
+  }
 
   function openQuick(kind: Exclude<QuickKind, null>) {
     setQuickKind(kind);
@@ -405,42 +477,45 @@ export function FinanceiroTitulosPanel({
     }
 
     if (quickKind === "categoria") {
-      const existing = despesaTipos.find(
+      const existing = catalogTipos.find(
         (t) => t.nome.toLowerCase() === nome.toLowerCase(),
       );
       if (existing) {
-        setForm((f) => ({
-          ...f,
-          categoria: existing.nome,
-          centro: existing.nome,
-        }));
+        setForm((f) => ({ ...f, ...catalogFields(existing.nome) }));
         setQuickKind(null);
         return;
       }
       setQuickSaving(true);
       try {
-        const created = await createDespesaTipo({
-          nome,
-          natureza: "variavel",
-          ativo: true,
-        });
-        setDespesaTipos((prev) =>
+        const created =
+          tipo === "receber"
+            ? await createRecebimentoTipo({
+                nome,
+                natureza: "variavel",
+                ativo: true,
+              })
+            : await createDespesaTipo({
+                nome,
+                natureza: "variavel",
+                ativo: true,
+              });
+        setCatalogTipos((prev) =>
           [...prev, created].sort((a, b) =>
             a.nome.localeCompare(b.nome, "pt-BR"),
           ),
         );
-        setForm((f) => ({
-          ...f,
-          categoria: created.nome,
-          centro: created.nome,
-        }));
+        setForm((f) => ({ ...f, ...catalogFields(created.nome) }));
         setQuickKind(null);
-        toast.success("Categoria cadastrada no Centro de despesas.");
+        toast.success(
+          tipo === "receber"
+            ? "Categoria cadastrada no Centro de recebimentos."
+            : "Centro de custo cadastrado no Centro de despesas.",
+        );
       } catch (err) {
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Não foi possível criar a categoria.",
+            : `Não foi possível criar ${tipo === "receber" ? "a categoria" : "o centro"}.`,
         );
       } finally {
         setQuickSaving(false);
@@ -453,11 +528,16 @@ export function FinanceiroTitulosPanel({
     const now = new Date();
     return items.filter((t) => {
       if (status !== "todos" && t.status !== status) return false;
-      if (
-        categoriaFiltro !== "todos" &&
-        (t.categoria || t.centro) !== categoriaFiltro
-      )
-        return false;
+      if (categoriaFiltro !== "todos") {
+        const label =
+          tipo === "pagar" ? t.centro || t.categoria : t.categoria || t.centro;
+        if (label !== categoriaFiltro) return false;
+      }
+      if (canUseContrato && origemFiltro !== "todos") {
+        const isContrato = Boolean(t.platformContratoId);
+        if (origemFiltro === "contrato" && !isContrato) return false;
+        if (origemFiltro === "normal" && isContrato) return false;
+      }
       if (periodo !== "tudo") {
         const d = new Date(t.vencimento + "T12:00:00");
         if (periodo === "mes") {
@@ -483,7 +563,16 @@ export function FinanceiroTitulosPanel({
         t.categoria.toLowerCase().includes(q)
       );
     });
-  }, [items, search, periodo, status, categoriaFiltro]);
+  }, [
+    items,
+    search,
+    periodo,
+    status,
+    categoriaFiltro,
+    canUseContrato,
+    origemFiltro,
+    tipo,
+  ]);
 
   const kpis = useMemo(() => {
     const aberto = rows
@@ -609,8 +698,10 @@ export function FinanceiroTitulosPanel({
     const next = emptyForm(tipo, defaultCat, defaultCat);
     setForm(next);
     setParcelado(false);
-    setQtdParcelas("2");
+    setQtdParcelas(canUseContrato ? "1" : "2");
     setParcelasDraft([]);
+    setComoContrato(false);
+    setContratoForm(emptyContratoForm(tenants[0]?.id ?? ""));
     setOpen(true);
   }
 
@@ -722,16 +813,92 @@ export function FinanceiroTitulosPanel({
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+
+    if (formMode === "create" && comoContrato && canUseContrato) {
+      const titulo = contratoForm.titulo.trim();
+      if (!contratoForm.tenantId) {
+        toast.error("Selecione a imobiliária.");
+        return;
+      }
+      if (titulo.length < 2) {
+        toast.error("Informe o título do contrato.");
+        return;
+      }
+      if (contratoForm.tipo === "assinatura" && !contratoForm.plano) {
+        toast.error("Informe o plano da assinatura.");
+        return;
+      }
+      if (!contratoForm.vencimento) {
+        toast.error("Informe o vencimento.");
+        return;
+      }
+      if (!form.categoria.trim()) {
+        toast.error("Selecione a categoria.");
+        return;
+      }
+      const valorAdesao = parseValor(contratoForm.valorAdesao);
+      const valorMensalidade = parseValor(contratoForm.valorMensalidade);
+      if (!Number.isFinite(valorAdesao) || valorAdesao <= 0) {
+        toast.error("Informe o valor de adesão.");
+        return;
+      }
+      if (!Number.isFinite(valorMensalidade) || valorMensalidade <= 0) {
+        toast.error("Informe o valor da mensalidade.");
+        return;
+      }
+      const qtd = parcelado ? Number(qtdParcelas) : 1;
+      if (!Number.isFinite(qtd) || qtd < 1) {
+        toast.error("Informe a quantidade de mensalidades.");
+        return;
+      }
+      setSaving(true);
+      try {
+        await createPlatformContratoComTitulos({
+          tenantId: contratoForm.tenantId,
+          titulo,
+          tipo: contratoForm.tipo,
+          plano:
+            contratoForm.tipo === "assinatura" ? contratoForm.plano : null,
+          valorAdesao,
+          valorMensalidade,
+          qtdMensalidades: qtd,
+          dataInicio: contratoForm.dataInicio,
+          vencimento: contratoForm.vencimento,
+          status: contratoForm.status,
+          observacao: contratoForm.observacao.trim() || undefined,
+          categoria: form.categoria.trim(),
+          parceiroId:
+            form.parceiroId === NONE ? undefined : form.parceiroId,
+        });
+        toast.success(
+          `Contrato criado com adesão + ${qtd} mensalidade${qtd === 1 ? "" : "s"}.`,
+        );
+        setOpen(false);
+        await load();
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError ? err.message : "Não foi possível salvar.",
+        );
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     const descricao = form.descricao.trim();
     if (descricao.length < 2) {
       toast.error("Informe a descrição.");
       return;
     }
     if (!form.categoria.trim()) {
-      toast.error("Selecione a categoria.");
+      toast.error(
+        tipo === "receber"
+          ? "Selecione a categoria."
+          : "Selecione o centro de custo.",
+      );
       return;
     }
-    const categoriaValor = form.categoria.trim();
+    const catalog = catalogFields(form.categoria);
 
     if (formMode === "create" && parcelado) {
       if (parcelasDraft.length < 2) {
@@ -758,8 +925,8 @@ export function FinanceiroTitulosPanel({
           descricao,
           parceiroId:
             form.parceiroId === NONE ? undefined : form.parceiroId,
-          categoria: categoriaValor,
-          centro: categoriaValor,
+          categoria: catalog.categoria,
+          centro: catalog.centro,
           parcelas,
         });
         toast.success(`${parcelas.length} parcelas criadas.`);
@@ -807,8 +974,8 @@ export function FinanceiroTitulosPanel({
         const result = await updateTitulosGrupo(editingGrupoId, {
           descricao,
           parceiroId: form.parceiroId === NONE ? null : form.parceiroId,
-          categoria: categoriaValor,
-          centro: categoriaValor,
+          categoria: catalog.categoria,
+          centro: catalog.centro,
           parcelas,
         });
         toast.success(`${result.updated} parcela(s) atualizada(s).`);
@@ -837,8 +1004,8 @@ export function FinanceiroTitulosPanel({
         descricao,
         parceiroId:
           form.parceiroId === NONE ? undefined : form.parceiroId,
-        categoria: categoriaValor,
-        centro: categoriaValor,
+        categoria: catalog.categoria,
+        centro: catalog.centro,
         vencimento: form.vencimento,
         valor,
         status: form.status,
@@ -943,7 +1110,8 @@ export function FinanceiroTitulosPanel({
     search ||
       periodo !== "tudo" ||
       status !== "todos" ||
-      categoriaFiltro !== "todos",
+      categoriaFiltro !== "todos" ||
+      (canUseContrato && origemFiltro !== "todos"),
   );
 
   return (
@@ -997,7 +1165,27 @@ export function FinanceiroTitulosPanel({
           setPeriodo("tudo");
           setStatus("todos");
           setCategoriaFiltro("todos");
+          setOrigemFiltro("todos");
         }}
+        extra={
+          canUseContrato ? (
+            <Select
+              value={origemFiltro}
+              onValueChange={(v) =>
+                setOrigemFiltro(v as "todos" | "normal" | "contrato")
+              }
+            >
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="Origem" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="contrato">Contrato</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : undefined
+        }
       />
 
       <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
@@ -1006,7 +1194,9 @@ export function FinanceiroTitulosPanel({
             <TableRow>
               <TableHead>Descrição</TableHead>
               <TableHead>Parceiro</TableHead>
-              <TableHead>Categoria</TableHead>
+              <TableHead>
+                {tipo === "pagar" ? "Centro" : "Categoria"}
+              </TableHead>
               <TableHead>Vencimento</TableHead>
               <TableHead>Parcela</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -1030,8 +1220,15 @@ export function FinanceiroTitulosPanel({
                   const t = row.titulo;
                   return (
                     <TableRow key={t.id}>
-                      <TableCell className="font-medium max-w-[200px] truncate">
-                        {t.descricao}
+                      <TableCell className="font-medium max-w-[200px]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{t.descricao}</span>
+                          {t.platformContratoId ? (
+                            <Badge variant="outline" className="shrink-0 text-[10px]">
+                              Contrato
+                            </Badge>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell className="truncate max-w-[140px]">
                         {t.parceiro || "—"}
@@ -1254,16 +1451,18 @@ export function FinanceiroTitulosPanel({
           <form id="titulo-form" className="space-y-4" onSubmit={onSubmit}>
             <FormSection title="Dados">
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label>Descrição *</Label>
-                  <Input
-                    value={form.descricao}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, descricao: e.target.value }))
-                    }
-                    required
-                  />
-                </div>
+                {!comoContrato ? (
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label>Descrição *</Label>
+                    <Input
+                      value={form.descricao}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, descricao: e.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                ) : null}
                 <div className="sm:col-span-2 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <Label>Parceiro</Label>
@@ -1297,7 +1496,255 @@ export function FinanceiroTitulosPanel({
                     </SelectContent>
                   </Select>
                 </div>
-                {formMode === "create" || formMode === "edit" ? (
+                {canUseContrato && formMode === "create" ? (
+                  <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                    <Checkbox
+                      id="titulo-contrato"
+                      className="mt-0.5"
+                      checked={comoContrato}
+                      onCheckedChange={(checked) => {
+                        const on = checked === true;
+                        setComoContrato(on);
+                        if (on) {
+                          setParcelado(false);
+                          setParcelasDraft([]);
+                          setQtdParcelas("1");
+                          setContratoForm((f) => ({
+                            ...f,
+                            titulo: form.descricao || f.titulo,
+                            tenantId: f.tenantId || tenants[0]?.id || "",
+                            vencimento: form.vencimento || f.vencimento,
+                          }));
+                        } else {
+                          setQtdParcelas("2");
+                        }
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <Label
+                        htmlFor="titulo-contrato"
+                        className="cursor-pointer"
+                      >
+                        Contrato
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Gera adesão + mensalidades vinculadas à imobiliária.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+                {comoContrato && canUseContrato && formMode === "create" ? (
+                  <>
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label>Imobiliária *</Label>
+                      <Select
+                        value={contratoForm.tenantId || undefined}
+                        onValueChange={(v) =>
+                          setContratoForm((f) => ({ ...f, tenantId: v }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tenants.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.name} ({PLANO_LABELS[t.plano]})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label>Título do contrato *</Label>
+                      <Input
+                        value={contratoForm.titulo}
+                        onChange={(e) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            titulo: e.target.value,
+                          }))
+                        }
+                        placeholder="Ex.: Assinatura anual Ouro"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Tipo</Label>
+                      <Select
+                        value={contratoForm.tipo}
+                        onValueChange={(v) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            tipo: v as PlatformContratoTipo,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="assinatura">Assinatura</SelectItem>
+                          <SelectItem value="financeiro">Financeiro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Status</Label>
+                      <Select
+                        value={contratoForm.status}
+                        onValueChange={(v) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            status: v as PlatformContratoStatus,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="proposta">Proposta</SelectItem>
+                          <SelectItem value="ativo">Ativo</SelectItem>
+                          <SelectItem value="atrasado">Atrasado</SelectItem>
+                          <SelectItem value="suspenso">Suspenso</SelectItem>
+                          <SelectItem value="cancelado">Cancelado</SelectItem>
+                          <SelectItem value="encerrado">Encerrado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {contratoForm.tipo === "assinatura" ? (
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <Label>Plano</Label>
+                        <Select
+                          value={contratoForm.plano}
+                          onValueChange={(v) =>
+                            setContratoForm((f) => ({
+                              ...f,
+                              plano: v as TenantPlano,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(Object.keys(PLANO_LABELS) as TenantPlano[]).map(
+                              (p) => (
+                                <SelectItem key={p} value={p}>
+                                  {PLANO_LABELS[p]}
+                                </SelectItem>
+                              ),
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
+                    <div className="space-y-1.5">
+                      <Label>Início *</Label>
+                      <Input
+                        type="date"
+                        value={contratoForm.dataInicio}
+                        onChange={(e) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            dataInicio: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Vencimento / próximo *</Label>
+                      <Input
+                        type="date"
+                        value={contratoForm.vencimento}
+                        onChange={(e) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            vencimento: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Valor adesão (R$) *</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={contratoForm.valorAdesao}
+                        onChange={(e) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            valorAdesao: maskMoneyInput(e.target.value),
+                          }))
+                        }
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Valor mensalidade (R$) *</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={contratoForm.valorMensalidade}
+                        onChange={(e) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            valorMensalidade: maskMoneyInput(e.target.value),
+                          }))
+                        }
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                      <Checkbox
+                        id="contrato-parcelado"
+                        className="mt-0.5"
+                        checked={parcelado}
+                        onCheckedChange={(checked) => {
+                          const on = checked === true;
+                          setParcelado(on);
+                          setQtdParcelas(on ? "3" : "1");
+                        }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <Label
+                          htmlFor="contrato-parcelado"
+                          className="cursor-pointer"
+                        >
+                          Parcelar mensalidades
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Sem parcelar: adesão + 1 mensalidade no vencimento.
+                        </p>
+                      </div>
+                    </div>
+                    {parcelado ? (
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <Label>Qtd. mensalidades *</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={120}
+                          value={qtdParcelas}
+                          onChange={(e) => setQtdParcelas(e.target.value)}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label>Observação</Label>
+                      <Input
+                        value={contratoForm.observacao}
+                        onChange={(e) =>
+                          setContratoForm((f) => ({
+                            ...f,
+                            observacao: e.target.value,
+                          }))
+                        }
+                        placeholder="Opcional"
+                      />
+                    </div>
+                  </>
+                ) : null}
+                {!comoContrato &&
+                (formMode === "create" || formMode === "edit") ? (
                   <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
                     <Checkbox
                       id="titulo-parcelado"
@@ -1337,7 +1784,7 @@ export function FinanceiroTitulosPanel({
                     </div>
                   </div>
                 ) : null}
-                {formMode !== "edit-grupo" ? (
+                {!comoContrato && formMode !== "edit-grupo" ? (
                   <>
                     <div className="space-y-1.5">
                       <Label>
@@ -1387,7 +1834,7 @@ export function FinanceiroTitulosPanel({
                     </div>
                   </>
                 ) : null}
-                {parcelado && formMode === "create" ? (
+                {!comoContrato && parcelado && formMode === "create" ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <Label>Quantidade de parcelas *</Label>
                     <Input
@@ -1403,7 +1850,7 @@ export function FinanceiroTitulosPanel({
                     />
                   </div>
                 ) : null}
-                {parcelado && formMode === "edit" ? (
+                {!comoContrato && parcelado && formMode === "edit" ? (
                   <div className="space-y-1.5">
                     <Label>Parcela</Label>
                     <Input
@@ -1415,7 +1862,10 @@ export function FinanceiroTitulosPanel({
                     />
                   </div>
                 ) : null}
-                {(parcelado && formMode === "create" && parcelasDraft.length > 0) ||
+                {(!comoContrato &&
+                  parcelado &&
+                  formMode === "create" &&
+                  parcelasDraft.length > 0) ||
                 formMode === "edit-grupo" ? (
                   <div className="sm:col-span-2 space-y-2">
                     <Label>
@@ -1473,44 +1923,34 @@ export function FinanceiroTitulosPanel({
                 ) : null}
                 <div className="sm:col-span-2 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label>Categoria *</Label>
+                    <Label>{catalogLabel} *</Label>
                     <Button
                       type="button"
                       variant="link"
                       className="h-auto p-0 text-xs"
                       onClick={() => openQuick("categoria")}
                     >
-                      + Nova categoria
+                      + {tipo === "receber" ? "Nova categoria" : "Novo centro"}
                     </Button>
                   </div>
-                  <Select
-                    value={form.categoria || undefined}
-                    onValueChange={(v) =>
-                      setForm((f) => ({ ...f, categoria: v, centro: v }))
+                  <CategoriaSearchSelect
+                    value={form.categoria}
+                    options={categorias}
+                    onChange={(v) =>
+                      setForm((f) => ({ ...f, ...catalogFields(v) }))
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Centro de despesas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categorias.length === 0 ? (
-                        <SelectItem value="__empty" disabled>
-                          Cadastre no Centro de despesas
-                        </SelectItem>
-                      ) : (
-                        categorias.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder={
+                      tipo === "receber"
+                        ? "Buscar categoria…"
+                        : "Buscar centro de custo…"
+                    }
+                  />
                   <p className="text-[11px] text-muted-foreground">
-                    Mesmo cadastro do Centro de despesas.
+                    {catalogHint}
                   </p>
                 </div>
                 {formMode !== "edit-grupo" &&
+                !comoContrato &&
                 !(parcelado && formMode === "create") ? (
                   <div className="space-y-1.5">
                     <Label>Status</Label>
@@ -1565,11 +2005,15 @@ export function FinanceiroTitulosPanel({
             ? tipo === "pagar"
               ? "Novo fornecedor"
               : "Novo parceiro"
-            : "Nova categoria"
+            : tipo === "receber"
+              ? "Nova categoria"
+              : "Novo centro de custo"
         }
         description={
           quickKind === "categoria"
-            ? "Cadastra no Centro de despesas e fica disponível em títulos e movimentação."
+            ? tipo === "receber"
+              ? "Cadastra no Centro de recebimentos e fica disponível em Contas a receber."
+              : "Cadastra no Centro de despesas e fica disponível em Contas a pagar."
             : "Criação rápida para usar neste título."
         }
         footer={

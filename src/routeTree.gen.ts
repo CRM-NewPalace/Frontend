@@ -1,4 +1,4 @@
-/* eslint-disable */
+﻿/* eslint-disable */
 
 // @ts-nocheck
 
@@ -45,6 +45,7 @@ import { Route as ProdutosIaWhatsappRouteImport } from './routes/produtos.ia-wha
 import { Route as ProdutosSitesInstitucionaisRouteImport } from './routes/produtos.sites-institucionais'
 import { Route as AppFinanceiroCategoriasRouteImport } from './routes/_app.financeiro.categorias'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
+import { Route as AppFinanceiroCentroRecebimentosRouteImport } from './routes/_app.financeiro.centro-recebimentos'
 import { Route as AppFinanceiroClientesFornecedoresRouteImport } from './routes/_app.financeiro.clientes-fornecedores'
 import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.financeiro.comissao'
 import { Route as AppFinanceiroContasAPagarRouteImport } from './routes/_app.financeiro.contas-a-pagar'
@@ -235,6 +236,12 @@ const AppFinanceiroCentroDespesasRoute =
     path: '/centro-despesas',
     getParentRoute: () => AppFinanceiroRoute,
   } as any)
+const AppFinanceiroCentroRecebimentosRoute =
+  AppFinanceiroCentroRecebimentosRouteImport.update({
+    id: '/centro-recebimentos',
+    path: '/centro-recebimentos',
+    getParentRoute: () => AppFinanceiroRoute,
+  } as any)
 const AppFinanceiroClientesFornecedoresRoute =
   AppFinanceiroClientesFornecedoresRouteImport.update({
     id: '/clientes-fornecedores',
@@ -316,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
+  '/financeiro/centro-recebimentos': typeof AppFinanceiroCentroRecebimentosRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
   '/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
@@ -361,6 +369,7 @@ export interface FileRoutesByTo {
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
+  '/financeiro/centro-recebimentos': typeof AppFinanceiroCentroRecebimentosRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
   '/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
@@ -408,6 +417,7 @@ export interface FileRoutesById {
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
   '/_app/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
+  '/_app/financeiro/centro-recebimentos': typeof AppFinanceiroCentroRecebimentosRoute
   '/_app/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/_app/financeiro/comissao': typeof AppFinanceiroComissaoRoute
   '/_app/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
@@ -455,6 +465,7 @@ export interface FileRouteTypes {
     | '/produtos/sites-institucionais'
     | '/financeiro/categorias'
     | '/financeiro/centro-despesas'
+    | '/financeiro/centro-recebimentos'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
     | '/financeiro/contas-a-pagar'
@@ -500,6 +511,7 @@ export interface FileRouteTypes {
     | '/produtos/sites-institucionais'
     | '/financeiro/categorias'
     | '/financeiro/centro-despesas'
+    | '/financeiro/centro-recebimentos'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
     | '/financeiro/contas-a-pagar'
@@ -546,6 +558,7 @@ export interface FileRouteTypes {
     | '/produtos/sites-institucionais'
     | '/_app/financeiro/categorias'
     | '/_app/financeiro/centro-despesas'
+    | '/_app/financeiro/centro-recebimentos'
     | '/_app/financeiro/clientes-fornecedores'
     | '/_app/financeiro/comissao'
     | '/_app/financeiro/contas-a-pagar'
@@ -822,6 +835,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinanceiroCentroDespesasRouteImport
       parentRoute: typeof AppFinanceiroRoute
     }
+    '/_app/financeiro/centro-recebimentos': {
+      id: '/_app/financeiro/centro-recebimentos'
+      path: '/centro-recebimentos'
+      fullPath: '/financeiro/centro-recebimentos'
+      preLoaderRoute: typeof AppFinanceiroCentroRecebimentosRouteImport
+      parentRoute: typeof AppFinanceiroRoute
+    }
     '/_app/financeiro/clientes-fornecedores': {
       id: '/_app/financeiro/clientes-fornecedores'
       path: '/clientes-fornecedores'
@@ -884,6 +904,7 @@ declare module '@tanstack/react-router' {
 interface AppFinanceiroRouteChildren {
   AppFinanceiroCategoriasRoute: typeof AppFinanceiroCategoriasRoute
   AppFinanceiroCentroDespesasRoute: typeof AppFinanceiroCentroDespesasRoute
+  AppFinanceiroCentroRecebimentosRoute: typeof AppFinanceiroCentroRecebimentosRoute
   AppFinanceiroClientesFornecedoresRoute: typeof AppFinanceiroClientesFornecedoresRoute
   AppFinanceiroComissaoRoute: typeof AppFinanceiroComissaoRoute
   AppFinanceiroContasAPagarRoute: typeof AppFinanceiroContasAPagarRoute
@@ -897,6 +918,7 @@ interface AppFinanceiroRouteChildren {
 const AppFinanceiroRouteChildren: AppFinanceiroRouteChildren = {
   AppFinanceiroCategoriasRoute: AppFinanceiroCategoriasRoute,
   AppFinanceiroCentroDespesasRoute: AppFinanceiroCentroDespesasRoute,
+  AppFinanceiroCentroRecebimentosRoute: AppFinanceiroCentroRecebimentosRoute,
   AppFinanceiroClientesFornecedoresRoute:
     AppFinanceiroClientesFornecedoresRoute,
   AppFinanceiroComissaoRoute: AppFinanceiroComissaoRoute,
