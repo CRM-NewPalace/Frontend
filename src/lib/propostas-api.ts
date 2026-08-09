@@ -58,6 +58,8 @@ export type Proposta = {
   mcmv: number | null;
   parcelaCaixa: number | null;
   financiamento: number | null;
+  /** Desconto do empreendimento (R$). */
+  desconto: number | null;
   status: PropostaStatus;
   validade: string | null;
   enviadaEm: string | null;
@@ -138,10 +140,20 @@ export function propostaComposicaoTotal(
   return simples + listas;
 }
 
-export function propostaDiferenca(
-  p: Pick<Proposta, "valor" | PropostaSimplesKey | PropostaListaKey>,
+/** Valor de venda menos desconto do empreendimento. */
+export function propostaValorLiquido(
+  p: Pick<Proposta, "valor" | "desconto">,
 ): number {
-  return p.valor - propostaComposicaoTotal(p);
+  return Math.max(0, p.valor - (p.desconto ?? 0));
+}
+
+export function propostaDiferenca(
+  p: Pick<
+    Proposta,
+    "valor" | "desconto" | PropostaSimplesKey | PropostaListaKey
+  >,
+): number {
+  return propostaValorLiquido(p) - propostaComposicaoTotal(p);
 }
 
 export type CreatePropostaInput = {
@@ -163,6 +175,7 @@ export type CreatePropostaInput = {
   mcmv?: number | null;
   parcelaCaixa?: number | null;
   financiamento?: number | null;
+  desconto?: number | null;
   status?: PropostaStatus;
   validade?: string | null;
   observacao?: string | null;

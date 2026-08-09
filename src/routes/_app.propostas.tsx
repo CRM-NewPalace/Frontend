@@ -185,6 +185,7 @@ type FormState = {
   mcmv: string;
   parcelaCaixa: string;
   financiamento: string;
+  desconto: string;
   status: PropostaStatus;
   validade: string;
   observacao: string;
@@ -214,6 +215,7 @@ const emptyForm = (): FormState => ({
   mcmv: "",
   parcelaCaixa: "",
   financiamento: "",
+  desconto: "",
   status: "rascunho",
   validade: "",
   observacao: "",
@@ -607,9 +609,13 @@ function Page() {
   );
 
   const formTotal = useMemo(() => formComposicaoTotal(form), [form]);
+  const formValorLiquido = useMemo(
+    () => Math.max(0, moneyOrZero(form.valor) - moneyOrZero(form.desconto)),
+    [form.valor, form.desconto],
+  );
   const formDiferenca = useMemo(
-    () => moneyOrZero(form.valor) - formTotal,
-    [form.valor, formTotal],
+    () => formValorLiquido - formTotal,
+    [formValorLiquido, formTotal],
   );
 
   function openCreate() {
@@ -643,6 +649,7 @@ function Page() {
         p.parcelaCaixa != null ? formatMoneyInput(p.parcelaCaixa) : "",
       financiamento:
         p.financiamento != null ? formatMoneyInput(p.financiamento) : "",
+      desconto: p.desconto != null ? formatMoneyInput(p.desconto) : "",
       status: p.status,
       validade: toDateInput(p.validade),
       observacao: p.observacao ?? "",
@@ -695,6 +702,7 @@ function Page() {
       mcmv: parseMoney(form.mcmv),
       parcelaCaixa: parseMoney(form.parcelaCaixa),
       financiamento: parseMoney(form.financiamento),
+      desconto: parseMoney(form.desconto),
       status: form.status,
       validade: form.validade || null,
       observacao: form.observacao.trim() || null,
@@ -1109,13 +1117,31 @@ function Page() {
             </FormSection>
 
             <FormSection title="Valores">
-              <div className="rounded-lg border border-border/60 bg-muted/25 px-4 py-3">
-                <div className="text-xs text-muted-foreground">
-                  Valor de venda
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border/60 bg-muted/25 px-4 py-3">
+                  <div className="text-xs text-muted-foreground">
+                    Valor de venda
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+                    {brl(selected.valor)}
+                  </div>
                 </div>
-                <div className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-                  {brl(selected.valor)}
-                </div>
+                {selected.desconto != null && selected.desconto > 0 ? (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                    <div className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                      Desconto do empreendimento
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-amber-900 dark:text-amber-200">
+                      {brl(selected.desconto)}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Valor com desconto:{" "}
+                      <span className="font-medium tabular-nums text-foreground">
+                        {brl(Math.max(0, selected.valor - selected.desconto))}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -1557,6 +1583,39 @@ function Page() {
                   />
                 </div>
 
+                <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3 space-y-2">
+                  <div>
+                    <Label
+                      htmlFor="desconto"
+                      className="text-amber-900 dark:text-amber-200"
+                    >
+                      Desconto do empreendimento (R$)
+                    </Label>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Valor de destaque no relatório. A composição deve fechar
+                      no valor com desconto.
+                    </p>
+                  </div>
+                  <Input
+                    id="desconto"
+                    inputMode="numeric"
+                    value={form.desconto}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        desconto: maskMoneyInput(e.target.value),
+                      }))
+                    }
+                    placeholder="0,00"
+                    className="border-amber-500/40 bg-background"
+                  />
+                  {moneyOrZero(form.desconto) > 0 ? (
+                    <p className="text-xs text-amber-900/80 dark:text-amber-200/80 tabular-nums">
+                      Valor com desconto: {brl(formValorLiquido)}
+                    </p>
+                  ) : null}
+                </div>
+
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {PROPOSTA_SIMPLES_KEYS.map((key) => (
                     <MoneyField
@@ -1611,7 +1670,7 @@ function Page() {
                   </div>
                   <p className="sm:col-span-2 text-[11px] text-muted-foreground">
                     Total = soma dos campos + (quantidade × valor) das parcelas.
-                    Diferença = valor de venda − total.
+                    Diferença = (valor de venda − desconto) − total.
                   </p>
                 </div>
 

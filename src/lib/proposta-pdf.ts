@@ -10,6 +10,7 @@ import {
   PROPOSTA_SIMPLES_KEYS,
   propostaComposicaoTotal,
   propostaDiferenca,
+  propostaValorLiquido,
   type Proposta,
   type PropostaListaKey,
   type PropostaSimplesKey,
@@ -606,7 +607,10 @@ async function buildPropostaPdfDescritivo(
 
   y += cardH + 16;
 
-  // Faixa valor total
+  const desconto = p.desconto ?? 0;
+  const valorLiquido = propostaValorLiquido(p);
+
+  // Faixa valor de venda / total
   const valorH = 58;
   y = ensureSpace(doc, y, valorH + 16, margin);
   doc.setFillColor(...C.navy);
@@ -614,7 +618,11 @@ async function buildPropostaPdfDescritivo(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(...C.white);
-  doc.text("VALOR TOTAL DA PROPOSTA", margin + 18, y + 20);
+  doc.text(
+    desconto > 0 ? "VALOR DE VENDA" : "VALOR TOTAL DA PROPOSTA",
+    margin + 18,
+    y + 20,
+  );
   doc.setFontSize(20);
   doc.text(brl(p.valor), margin + 18, y + 44);
 
@@ -632,7 +640,64 @@ async function buildPropostaPdfDescritivo(
     doc.setTextColor(...C.white);
     doc.text(formatPropostaDate(p.validade), splitX + 14, y + 42);
   }
-  y += valorH + 22;
+  y += valorH + 14;
+
+  // Destaque do desconto do empreendimento
+  if (desconto > 0) {
+    const discH = 64;
+    y = ensureSpace(doc, y, discH + valorH + 20, margin);
+    doc.setFillColor(...C.goldSoft);
+    roundedRect(doc, margin, y, contentW, discH, 10, "F");
+    doc.setDrawColor(...C.gold);
+    doc.setLineWidth(2);
+    doc.line(margin, y, margin + contentW, y);
+    doc.setLineWidth(1);
+    doc.line(
+      margin + contentW * 0.58,
+      y + 14,
+      margin + contentW * 0.58,
+      y + discH - 14,
+    );
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...C.navy);
+    doc.text("CONDIÇÃO ESPECIAL DO EMPREENDIMENTO", margin + 16, y + 22);
+    doc.setFontSize(15);
+    doc.text("DESCONTO DO EMPREENDIMENTO", margin + 16, y + 44);
+
+    doc.setFontSize(8);
+    doc.setTextColor(...C.muted);
+    doc.text("VOCÊ ECONOMIZA:", margin + contentW * 0.58 + 14, y + 22);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(...C.navy);
+    doc.text(brl(desconto), margin + contentW * 0.58 + 14, y + 46);
+    y += discH + 12;
+
+    // Valor total com desconto
+    doc.setFillColor(...C.navy);
+    roundedRect(doc, margin, y, contentW, valorH, 10, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...C.gold);
+    doc.text("VALOR TOTAL DA PROPOSTA", margin + 18, y + 20);
+    doc.setFontSize(20);
+    doc.setTextColor(...C.white);
+    doc.text(brl(valorLiquido), margin + 18, y + 44);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...C.gold);
+    doc.text(
+      `já com desconto de ${brl(desconto)}`,
+      margin + contentW - 16,
+      y + 34,
+      { align: "right" },
+    );
+    y += valorH + 22;
+  } else {
+    y += 8;
+  }
 
   // Composição
   doc.setFont("helvetica", "bold");
@@ -710,7 +775,9 @@ async function buildPropostaPdfDescritivo(
   doc.setFontSize(7.5);
   doc.setTextColor(...C.muted);
   doc.text(
-    "DIFERENÇA EM RELAÇÃO AO VALOR DE VENDA",
+    desconto > 0
+      ? "DIFERENÇA EM RELAÇÃO AO VALOR COM DESCONTO"
+      : "DIFERENÇA EM RELAÇÃO AO VALOR DE VENDA",
     margin + contentW / 2 + 16,
     y + 18,
   );
@@ -718,33 +785,6 @@ async function buildPropostaPdfDescritivo(
   doc.setTextColor(...C.navy);
   doc.text(brl(diff), margin + contentW / 2 + 16, y + 38);
   y += totH + 14;
-
-  // Desconto especial (quando a composição fica abaixo do valor de venda)
-  if (diff > 0) {
-    const discH = 56;
-    y = ensureSpace(doc, y, discH + 12, margin);
-    doc.setFillColor(...C.goldSoft);
-    roundedRect(doc, margin, y, contentW, discH, 10, "F");
-    doc.setDrawColor(...C.gold);
-    doc.setLineWidth(1);
-    doc.line(margin + contentW * 0.58, y + 12, margin + contentW * 0.58, y + discH - 12);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...C.navy);
-    doc.text("DESCONTO ESPECIAL PARA VOCÊ!", margin + 16, y + 20);
-    doc.setFontSize(16);
-    doc.text("DESCONTO ESPECIAL", margin + 16, y + 40);
-
-    doc.setFontSize(8);
-    doc.setTextColor(...C.muted);
-    doc.text("VOCÊ ECONOMIZA:", margin + contentW * 0.58 + 14, y + 20);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(...C.navy);
-    doc.text(brl(diff), margin + contentW * 0.58 + 14, y + 40);
-    y += discH + 14;
-  }
 
   if (p.observacao?.trim()) {
     y = ensureSpace(doc, y, 50, margin);
