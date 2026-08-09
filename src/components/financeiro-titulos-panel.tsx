@@ -544,20 +544,16 @@ export function FinanceiroTitulosPanel({
             <Banknote className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {t.status !== "pago" ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            title={t.grupoParcelasId ? "Editar parcela" : "Editar"}
-            onClick={() => openEdit(t)}
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-        ) : null}
-        {!opts?.hideGrupoEdit &&
-        t.status !== "pago" &&
-        t.grupoParcelasId ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          title={t.grupoParcelasId ? "Editar parcela" : "Editar"}
+          onClick={() => openEdit(t)}
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+        {!opts?.hideGrupoEdit && t.grupoParcelasId ? (
           <Button
             variant="ghost"
             size="icon"
@@ -612,10 +608,6 @@ export function FinanceiroTitulosPanel({
   }
 
   function openEdit(t: TituloFinanceiro) {
-    if (t.status === "pago") {
-      toast.error("Título baixado não pode ser editado.");
-      return;
-    }
     setFormMode("edit");
     setEditingId(t.id);
     setEditingGrupoId(null);
@@ -659,13 +651,12 @@ export function FinanceiroTitulosPanel({
         return;
       }
     }
-    const editaveis = rows.filter((t) => t.status !== "pago");
-    if (editaveis.length === 0) {
-      toast.error("Todas as parcelas já estão baixadas.");
+    if (rows.length === 0) {
+      toast.error("Nenhuma parcela encontrada neste grupo.");
       return;
     }
 
-    const base = editaveis[0] ?? rows[0];
+    const base = rows[0];
     setFormMode("edit-grupo");
     setEditingId(null);
     setEditingGrupoId(grupoId);
@@ -677,9 +668,7 @@ export function FinanceiroTitulosPanel({
       categoria: base.categoria || categorias[0],
       centro: base.centro || CENTROS_DESPESA[0],
       vencimento: base.vencimento.slice(0, 10),
-      valor: formatValorInput(
-        editaveis.reduce((s, t) => s + t.valor, 0),
-      ),
+      valor: formatValorInput(rows.reduce((s, t) => s + t.valor, 0)),
       status: "aberto",
       parcela: "",
     });
@@ -689,7 +678,7 @@ export function FinanceiroTitulosPanel({
         vencimento: t.vencimento.slice(0, 10),
         valor: formatValorInput(t.valor),
         label: t.parcela || "",
-        locked: t.status === "pago",
+        locked: false,
       })),
     );
     setOpen(true);
@@ -782,20 +771,20 @@ export function FinanceiroTitulosPanel({
         valor: number;
       }[] = [];
       for (const p of parcelasDraft) {
-        if (p.locked || !p.id) continue;
+        if (!p.id) continue;
         const v = parseValor(p.valor);
         if (!Number.isFinite(v) || v <= 0) {
-          toast.error("Informe um valor válido em todas as parcelas abertas.");
+          toast.error("Informe um valor válido em todas as parcelas.");
           return;
         }
         if (!p.vencimento) {
-          toast.error("Informe o vencimento de todas as parcelas abertas.");
+          toast.error("Informe o vencimento de todas as parcelas.");
           return;
         }
         parcelas.push({ id: p.id, vencimento: p.vencimento, valor: v });
       }
       if (parcelas.length === 0) {
-        toast.error("Nenhuma parcela aberta para editar.");
+        toast.error("Nenhuma parcela para editar.");
         return;
       }
       setSaving(true);
@@ -807,11 +796,7 @@ export function FinanceiroTitulosPanel({
           centro: form.centro,
           parcelas,
         });
-        toast.success(
-          result.skippedPago > 0
-            ? `${result.updated} parcela(s) atualizada(s); ${result.skippedPago} paga(s) mantida(s).`
-            : `${result.updated} parcela(s) atualizada(s).`,
-        );
+        toast.success(`${result.updated} parcela(s) atualizada(s).`);
         setOpen(false);
         setEditingGrupoId(null);
         await load();
@@ -832,6 +817,10 @@ export function FinanceiroTitulosPanel({
     }
     setSaving(true);
     try {
+      const status =
+        formMode === "create" && form.status === "pago"
+          ? ("aberto" as const)
+          : form.status;
       const payload = {
         tipo,
         descricao,
@@ -841,7 +830,7 @@ export function FinanceiroTitulosPanel({
         centro: form.centro,
         vencimento: form.vencimento,
         valor,
-        status: form.status === "pago" ? ("aberto" as const) : form.status,
+        status,
         parcela: form.parcela.trim() || undefined,
       };
       if (formMode === "create") {
@@ -1107,17 +1096,15 @@ export function FinanceiroTitulosPanel({
                           >
                             <ListOrdered className="w-3.5 h-3.5" />
                           </Button>
-                          {row.titulos.some((t) => t.status !== "pago") ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Editar todas as parcelas"
-                              onClick={() => void openEditGrupo(row.titulos)}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                          ) : null}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Editar todas as parcelas"
+                            onClick={() => void openEditGrupo(row.titulos)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1196,10 +1183,12 @@ export function FinanceiroTitulosPanel({
         }
         description={
           formMode === "edit-grupo"
-            ? "Altere os dados comuns e o vencimento/valor de todas as parcelas em aberto."
-            : tipo === "receber"
-              ? "Conta a receber vinculada ao fluxo de caixa."
-              : "Conta a pagar vinculada ao fluxo de caixa."
+            ? "Altere os dados comuns e o vencimento/valor de todas as parcelas, inclusive as pagas."
+            : formMode === "edit" && form.status === "pago"
+              ? "Título pago: alterações sincronizam o lançamento no fluxo de caixa."
+              : tipo === "receber"
+                ? "Conta a receber vinculada ao fluxo de caixa."
+                : "Conta a pagar vinculada ao fluxo de caixa."
         }
         footer={
           <FormDialogActions>
@@ -1371,9 +1360,7 @@ export function FinanceiroTitulosPanel({
                 formMode === "edit-grupo" ? (
                   <div className="sm:col-span-2 space-y-2">
                     <Label>
-                      {formMode === "edit-grupo"
-                        ? "Parcelas (em aberto editáveis)"
-                        : "Parcelas"}
+                      {formMode === "edit-grupo" ? "Todas as parcelas" : "Parcelas"}
                     </Label>
                     <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/50">
                       {parcelasDraft.map((p, idx) => (
@@ -1383,12 +1370,10 @@ export function FinanceiroTitulosPanel({
                         >
                           <span className="text-xs text-muted-foreground w-12">
                             {p.label || `${idx + 1}/${parcelasDraft.length}`}
-                            {p.locked ? " · paga" : ""}
                           </span>
                           <Input
                             type="date"
                             value={p.vencimento}
-                            disabled={p.locked}
                             onChange={(e) => {
                               const vencimento = e.target.value;
                               setParcelasDraft((prev) =>
@@ -1401,7 +1386,6 @@ export function FinanceiroTitulosPanel({
                           <Input
                             inputMode="decimal"
                             value={p.valor}
-                            disabled={p.locked}
                             onChange={(e) => {
                               const valor = maskMoneyInput(e.target.value);
                               setParcelasDraft((prev) =>
@@ -1423,7 +1407,7 @@ export function FinanceiroTitulosPanel({
                         ),
                       )}
                       {formMode === "edit-grupo"
-                        ? " · Parcelas pagas não são alteradas."
+                        ? " · Alterações em parcelas pagas atualizam o lançamento no fluxo."
                         : ""}
                     </p>
                   </div>
@@ -1508,8 +1492,17 @@ export function FinanceiroTitulosPanel({
                         <SelectItem value="aberto">Aberto</SelectItem>
                         <SelectItem value="atrasado">Atrasado</SelectItem>
                         <SelectItem value="cancelado">Cancelado</SelectItem>
+                        {form.status === "pago" ? (
+                          <SelectItem value="pago">Pago</SelectItem>
+                        ) : null}
                       </SelectContent>
                     </Select>
+                    {form.status === "pago" ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        Mudar para Aberto/Atrasado/Cancelado estorna a baixa no
+                        fluxo de caixa.
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -1698,7 +1691,7 @@ export function FinanceiroTitulosPanel({
         }
         footer={
           <FormDialogActions>
-            {grupoTitulos.some((t) => t.status !== "pago") ? (
+            {grupoTitulos.length > 0 ? (
               <Button
                 type="button"
                 variant="secondary"
