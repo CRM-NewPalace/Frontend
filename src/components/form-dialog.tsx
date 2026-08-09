@@ -34,9 +34,12 @@ export function FormDialogShell({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          // !flex sobrescreve o `grid` padrão do DialogContent (necessário pro scroll interno).
-          // min-h-0 + max-h faz o Firefox/Chromium limitar altura e liberar overflow no corpo.
-          "w-[calc(100vw-1.5rem)] max-w-xl sm:w-full p-0 gap-0 overflow-hidden max-h-[min(90dvh,900px)] min-h-0 !flex !flex-col",
+          // !flex sobrescreve o `grid` padrão do DialogContent.
+          // top fixo (sem translateY(-50%)): no Firefox o centro+max-height corta o modal sem scroll.
+          "w-[calc(100vw-1.5rem)] max-w-xl sm:w-full p-0 gap-0",
+          "!flex !flex-col overflow-hidden",
+          "!top-[max(0.75rem,2dvh)] !translate-y-0",
+          "max-h-[calc(100dvh-1.5rem)]",
           className,
         )}
       >
@@ -57,9 +60,8 @@ export function FormDialogShell({
         </DialogHeader>
         <div
           className={cn(
-            // form filho precisa ser coluna flex; senão FormDialogBody não encolhe e o scroll some.
-            "flex min-h-0 flex-1 flex-col overflow-hidden",
-            "[&>form]:flex [&>form]:min-h-0 [&>form]:flex-1 [&>form]:flex-col [&>form]:overflow-hidden",
+            // Área rolável do modal (funciona com <form> + FormDialogBody/Actions dentro).
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] [scrollbar-width:thin]",
             contentClassName,
           )}
         >
@@ -107,10 +109,7 @@ export function FormDialogBody({
 }) {
   return (
     <div
-      className={cn(
-        "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 sm:px-6 py-4 sm:py-5 space-y-5 [scrollbar-gutter:stable] [scrollbar-width:thin] touch-pan-y",
-        className,
-      )}
+      className={cn("px-4 sm:px-6 py-4 sm:py-5 space-y-5", className)}
     >
       {children}
     </div>
