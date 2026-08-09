@@ -16,11 +16,12 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    // Desligado: com "intent", preload em voo pode crashar com
-    // TypeError "_nonReactive" quando o match é evicted (TanStack #7759).
-    defaultPreload: false,
-    // Evita “piscar” loading em beforeLoads curtos.
-    defaultPendingMs: 500,
+    // Preload no hover/touch — troca de módulo fica quase instantânea.
+    // (#7759 corrigido nas versões atuais do router-core.)
+    defaultPreload: "intent",
+    defaultPreloadStaleTime: 30_000,
+    // Não segura a tela anterior esperando pendingMs (padrão do TanStack = 1000ms).
+    defaultPendingMs: 0,
     defaultPendingMinMs: 0,
   });
 
