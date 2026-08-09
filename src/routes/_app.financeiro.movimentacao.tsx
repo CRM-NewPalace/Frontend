@@ -41,9 +41,11 @@ import {
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
+  createCategoria,
   createMovimento,
   createParceiro,
   deleteMovimento,
+  fetchCategorias,
   fetchMovimentos,
   fetchParceiros,
   updateMovimento,
@@ -56,13 +58,12 @@ import {
 } from "@/lib/money-input";
 import {
   brl,
-  CATEGORIAS_ENTRADA,
-  CATEGORIAS_SAIDA,
   CENTROS_DESPESA,
   filterByPeriodo,
   formatDate,
   statusBadgeClass,
   statusLabel,
+  type CategoriaFinanceiro,
   type MovimentoFinanceiro,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
@@ -116,7 +117,6 @@ const FORMAS_PAGAMENTO = [
 ] as const;
 
 const NONE = "__none__";
-const EXTRA_CAT_KEY = "financeiro.extraCategorias";
 const EXTRA_CENTRO_KEY = "financeiro.extraCentros";
 
 type QuickKind = "parceiro" | "categoria" | "centro" | null;
@@ -160,12 +160,12 @@ function todayIso() {
   return `${y}-${m}-${day}`;
 }
 
-function emptyForm(): FormState {
+function emptyForm(defaultCategoria = ""): FormState {
   return {
     data: todayIso(),
     descricao: "",
     parceiroId: NONE,
-    categoria: CATEGORIAS_ENTRADA[0],
+    categoria: defaultCategoria,
     centro: CENTROS_DESPESA[0],
     tipo: "entrada",
     valor: "",
@@ -213,9 +213,7 @@ function Page() {
     null,
   );
   const [deleting, setDeleting] = useState(false);
-  const [extraCategorias, setExtraCategorias] = useState<string[]>(() =>
-    loadExtras(EXTRA_CAT_KEY),
-  );
+  const [categoriasApi, setCategoriasApi] = useState<CategoriaFinanceiro[]>([]);
   const [extraCentros, setExtraCentros] = useState<string[]>(() =>
     loadExtras(EXTRA_CENTRO_KEY),
   );
@@ -227,12 +225,14 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [movs, pars] = await Promise.all([
+      const [movs, pars, cats] = await Promise.all([
         fetchMovimentos(),
         fetchParceiros(),
+        fetchCategorias(),
       ]);
       setItems(movs);
       setParceiros(pars.filter((p) => p.ativo));
+      setCategoriasApi(cats);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -249,17 +249,17 @@ function Page() {
   }, [load]);
 
   const categorias: string[] = useMemo(() => {
-    const base =
-      form.tipo === "entrada"
-        ? [...CATEGORIAS_ENTRADA]
-        : [...CATEGORIAS_SAIDA];
-    const fromItems = items
-      .map((m) => m.categoria)
-      .filter((c) => c && c.trim());
+    const fromApi = categoriasApi
+      .filter((c) => c.ativo && c.tipo === form.tipo)
+      .map((c) => c.nome.trim())
+      .filter(Boolean);
+    const current = form.categoria.trim();
     return Array.from(
-      new Set([...base, ...extraCategorias, ...fromItems]),
+      new Set(
+        current && !fromApi.includes(current) ? [...fromApi, current] : fromApi,
+      ),
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [form.tipo, extraCategorias, items]);
+  }, [categoriasApi, form.tipo, form.categoria]);
 
   const centros: string[] = useMemo(() => {
     const fromItems = items.map((m) => m.centro).filter((c) => c && c.trim());
@@ -269,6 +269,7 @@ function Page() {
   }, [extraCentros, items]);
 
   useEffect(() => {
+    if (categorias.length === 0) return;
     if (!categorias.includes(form.categoria)) {
       setForm((prev) => ({ ...prev, categoria: categorias[0] ?? "" }));
     }
@@ -327,17 +328,40 @@ function Page() {
     }
 
     if (quickKind === "categoria") {
-      if (categorias.some((c) => c.toLowerCase() === nome.toLowerCase())) {
-        setField("categoria", nome);
+      const existing = categoriasApi.find(
+        (c) =>
+          c.tipo === form.tipo &&
+          c.nome.toLowerCase() === nome.toLowerCase(),
+      );
+      if (existing) {
+        setField("categoria", existing.nome);
         setQuickKind(null);
         return;
       }
-      const next = [...extraCategorias, nome];
-      setExtraCategorias(next);
-      saveExtras(EXTRA_CAT_KEY, next);
-      setField("categoria", nome);
-      setQuickKind(null);
-      toast.success("Categoria adicionada.");
+      setQuickSaving(true);
+      try {
+        const created = await createCategoria({
+          nome,
+          tipo: form.tipo,
+          ativo: true,
+        });
+        setCategoriasApi((prev) =>
+          [...prev, created].sort((a, b) =>
+            a.nome.localeCompare(b.nome, "pt-BR"),
+          ),
+        );
+        setField("categoria", created.nome);
+        setQuickKind(null);
+        toast.success("Categoria cadastrada.");
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível criar a categoria.",
+        );
+      } finally {
+        setQuickSaving(false);
+      }
       return;
     }
 
@@ -392,7 +416,9 @@ function Page() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    setForm(emptyForm());
+    const defaultCat =
+      categoriasApi.find((c) => c.ativo && c.tipo === "entrada")?.nome || "";
+    setForm(emptyForm(defaultCat));
     setOpen(true);
   }
 

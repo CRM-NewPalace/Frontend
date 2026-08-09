@@ -5,6 +5,14 @@ export type StatusTitulo = "aberto" | "pago" | "atrasado" | "cancelado";
 export type TipoParceiro = "cliente" | "fornecedor" | "ambos";
 export type TipoMovimento = "entrada" | "saida";
 
+export type CategoriaFinanceiro = {
+  id: string;
+  nome: string;
+  tipo: TipoMovimento;
+  ativo: boolean;
+  createdAt: string;
+};
+
 export function brl(n: number) {
   return n.toLocaleString("pt-BR", {
     style: "currency",

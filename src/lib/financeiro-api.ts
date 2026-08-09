@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type {
+  CategoriaFinanceiro,
   CentroDespesaResumo,
   DespesaLancamento,
   DespesaTipo,
@@ -10,6 +11,7 @@ import type {
   MovimentoFinanceiro,
   NaturezaDespesa,
   ParceiroFinanceiro,
+  TipoMovimento,
   TipoParceiro,
   TituloFinanceiro,
 } from "@/lib/financeiro-mock";
@@ -27,6 +29,46 @@ export type CreateParceiroInput = {
 };
 
 export type UpdateParceiroInput = Partial<CreateParceiroInput>;
+
+export type CreateCategoriaInput = {
+  nome: string;
+  tipo: TipoMovimento;
+  ativo?: boolean;
+};
+
+export type UpdateCategoriaInput = Partial<CreateCategoriaInput>;
+
+export async function fetchCategorias(
+  tipo?: TipoMovimento,
+): Promise<CategoriaFinanceiro[]> {
+  const qs = tipo ? `?tipo=${tipo}` : "";
+  return apiFetch<CategoriaFinanceiro[]>(`/financeiro/categorias${qs}`);
+}
+
+export async function createCategoria(
+  input: CreateCategoriaInput,
+): Promise<CategoriaFinanceiro> {
+  return apiFetch<CategoriaFinanceiro>("/financeiro/categorias", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateCategoria(
+  id: string,
+  input: UpdateCategoriaInput,
+): Promise<CategoriaFinanceiro> {
+  return apiFetch<CategoriaFinanceiro>(`/financeiro/categorias/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteCategoria(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/financeiro/categorias/${id}`, {
+    method: "DELETE",
+  });
+}
 
 export type ComissaoStatus = "pendente" | "liberada" | "paga";
 

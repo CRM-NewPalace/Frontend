@@ -47,12 +47,14 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   baixarTitulo,
+  createCategoria,
   createDespesaTipo,
   createParceiro,
   createTitulo,
   createTitulosParcelado,
   deleteTitulo,
   deleteTitulosGrupo,
+  fetchCategorias,
   fetchDespesaTipos,
   fetchParceiros,
   fetchTitulos,
@@ -72,11 +74,10 @@ import {
 } from "@/lib/money-input";
 import {
   brl,
-  CATEGORIAS_ENTRADA,
-  CATEGORIAS_SAIDA,
   formatDate,
   statusBadgeClass,
   statusLabel,
+  type CategoriaFinanceiro,
   type DespesaTipo,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
@@ -105,24 +106,6 @@ import { toast } from "sonner";
 
 const NONE = "__none__";
 const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const;
-const EXTRA_CAT_KEY = "financeiro.extraCategorias";
-
-function loadExtras(key: string): string[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveExtras(key: string, values: string[]) {
-  localStorage.setItem(key, JSON.stringify(values));
-}
 
 type QuickKind = "parceiro" | "categoria" | "centro" | null;
 
@@ -185,12 +168,12 @@ function buildParcelasDraft(
 function emptyForm(
   tipo: "receber" | "pagar",
   defaultCentro = "",
+  defaultCategoria = "",
 ): FormState {
-  const cats = tipo === "receber" ? CATEGORIAS_ENTRADA : CATEGORIAS_SAIDA;
   return {
     descricao: "",
     parceiroId: NONE,
-    categoria: cats[0],
+    categoria: defaultCategoria,
     centro: defaultCentro,
     vencimento: todayIso(),
     valor: "",
@@ -262,13 +245,10 @@ export function FinanceiroTitulosPanel({
   title: string;
   description: string;
 }) {
-  const baseCategorias =
-    tipo === "receber" ? CATEGORIAS_ENTRADA : CATEGORIAS_SAIDA;
+  const categoriaTipo = tipo === "receber" ? "entrada" : "saida";
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
-  const [extraCategorias, setExtraCategorias] = useState<string[]>(() =>
-    loadExtras(EXTRA_CAT_KEY),
-  );
+  const [categoriasApi, setCategoriasApi] = useState<CategoriaFinanceiro[]>([]);
   const [despesaTipos, setDespesaTipos] = useState<DespesaTipo[]>([]);
   const [search, setSearch] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("tudo");
@@ -318,13 +298,15 @@ export function FinanceiroTitulosPanel({
   );
 
   const categorias = useMemo(() => {
-    const fromItems = items
-      .map((t) => t.categoria)
-      .filter((c) => c && c.trim());
+    const fromApi = categoriasApi
+      .filter((c) => c.ativo)
+      .map((c) => c.nome.trim())
+      .filter(Boolean);
+    const current = form.categoria.trim();
     return Array.from(
-      new Set([...baseCategorias, ...extraCategorias, ...fromItems]),
+      new Set(current && !fromApi.includes(current) ? [...fromApi, current] : fromApi),
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [baseCategorias, extraCategorias, items]);
+  }, [categoriasApi, form.categoria]);
 
   const centros = useMemo(() => {
     const fromTipos = despesaTipos
@@ -339,13 +321,15 @@ export function FinanceiroTitulosPanel({
 
   const load = useCallback(async () => {
     try {
-      const [titulos, pars, tipos] = await Promise.all([
+      const [titulos, pars, cats, tipos] = await Promise.all([
         fetchTitulos(tipo),
         fetchParceiros(),
+        fetchCategorias(categoriaTipo),
         tipo === "pagar" ? fetchDespesaTipos() : Promise.resolve([]),
       ]);
       setItems(titulos);
       setParceiros(pars.filter((p) => p.ativo));
+      setCategoriasApi(cats);
       setDespesaTipos(tipos);
     } catch (err) {
       toast.error(
@@ -354,7 +338,7 @@ export function FinanceiroTitulosPanel({
           : "Não foi possível carregar os títulos.",
       );
     }
-  }, [tipo]);
+  }, [tipo, categoriaTipo]);
 
   useEffect(() => {
     void load();
@@ -430,17 +414,38 @@ export function FinanceiroTitulosPanel({
     }
 
     if (quickKind === "categoria") {
-      if (categorias.some((c) => c.toLowerCase() === nome.toLowerCase())) {
-        setForm((f) => ({ ...f, categoria: nome }));
+      const existing = categoriasApi.find(
+        (c) => c.nome.toLowerCase() === nome.toLowerCase(),
+      );
+      if (existing) {
+        setForm((f) => ({ ...f, categoria: existing.nome }));
         setQuickKind(null);
         return;
       }
-      const next = [...extraCategorias, nome];
-      setExtraCategorias(next);
-      saveExtras(EXTRA_CAT_KEY, next);
-      setForm((f) => ({ ...f, categoria: nome }));
-      setQuickKind(null);
-      toast.success("Categoria adicionada.");
+      setQuickSaving(true);
+      try {
+        const created = await createCategoria({
+          nome,
+          tipo: categoriaTipo,
+          ativo: true,
+        });
+        setCategoriasApi((prev) =>
+          [...prev, created].sort((a, b) =>
+            a.nome.localeCompare(b.nome, "pt-BR"),
+          ),
+        );
+        setForm((f) => ({ ...f, categoria: created.nome }));
+        setQuickKind(null);
+        toast.success("Categoria cadastrada.");
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível criar a categoria.",
+        );
+      } finally {
+        setQuickSaving(false);
+      }
       return;
     }
 
@@ -633,7 +638,9 @@ export function FinanceiroTitulosPanel({
     setFormMode("create");
     setEditingId(null);
     setEditingGrupoId(null);
-    const next = emptyForm(tipo, centros[0] || "");
+    const defaultCat =
+      categoriasApi.find((c) => c.ativo)?.nome || categorias[0] || "";
+    const next = emptyForm(tipo, centros[0] || "", defaultCat);
     setForm(next);
     setParcelado(false);
     setQtdParcelas("2");
@@ -650,7 +657,11 @@ export function FinanceiroTitulosPanel({
     setForm({
       descricao: t.descricao,
       parceiroId: t.parceiroId || NONE,
-      categoria: t.categoria || categorias[0],
+      categoria:
+        t.categoria ||
+        categoriasApi.find((c) => c.ativo)?.nome ||
+        categorias[0] ||
+        "",
       centro: t.centro || centros[0] || "",
       vencimento: t.vencimento.slice(0, 10),
       valor: formatValorInput(t.valor),
@@ -699,7 +710,11 @@ export function FinanceiroTitulosPanel({
     setForm({
       descricao: base.descricao,
       parceiroId: base.parceiroId || NONE,
-      categoria: base.categoria || categorias[0],
+      categoria:
+        base.categoria ||
+        categoriasApi.find((c) => c.ativo)?.nome ||
+        categorias[0] ||
+        "",
       centro: base.centro || centros[0] || "",
       vencimento: base.vencimento.slice(0, 10),
       valor: formatValorInput(rows.reduce((s, t) => s + t.valor, 0)),
@@ -749,6 +764,10 @@ export function FinanceiroTitulosPanel({
     const descricao = form.descricao.trim();
     if (descricao.length < 2) {
       toast.error("Informe a descrição.");
+      return;
+    }
+    if (!form.categoria.trim()) {
+      toast.error("Selecione a categoria.");
       return;
     }
     if (tipo === "pagar" && !form.centro.trim()) {
@@ -1634,9 +1653,11 @@ export function FinanceiroTitulosPanel({
               : "Novo centro de custo"
         }
         description={
-          quickKind === "centro"
-            ? "Cria a categoria no Centro de despesas para vincular neste título."
-            : "Criação rápida para usar neste título."
+          quickKind === "categoria"
+            ? "Cadastrada na API e disponível em Contas a receber/pagar e movimentação."
+            : quickKind === "centro"
+              ? "Cria a categoria no Centro de despesas para vincular neste título."
+              : "Criação rápida para usar neste título."
         }
         footer={
           <FormDialogActions>
