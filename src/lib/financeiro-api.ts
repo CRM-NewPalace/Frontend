@@ -1,6 +1,5 @@
 import { apiFetch } from "@/lib/api";
 import type {
-  CategoriaFinanceiro,
   CentroDespesaResumo,
   DespesaLancamento,
   DespesaTipo,
@@ -31,23 +30,16 @@ export type CreateParceiroInput = {
 
 export type UpdateParceiroInput = Partial<CreateParceiroInput>;
 
-export type CreateCategoriaInput = {
+export type CategoriaResumoItem = {
+  id: string;
   nome: string;
-  tipo: TipoMovimento;
-  ativo?: boolean;
-};
-
-export type UpdateCategoriaInput = Partial<CreateCategoriaInput>;
-
-export async function fetchCategorias(
-  tipo?: TipoMovimento,
-): Promise<CategoriaFinanceiro[]> {
-  const qs = tipo ? `?tipo=${tipo}` : "";
-  return apiFetch<CategoriaFinanceiro[]>(`/financeiro/categorias${qs}`);
-}
-
-export type CategoriaResumoItem = CategoriaFinanceiro & {
+  tipo: TipoMovimento | null;
+  natureza?: NaturezaDespesa;
+  ativo: boolean;
+  createdAt: string;
   total: number;
+  totalEntradas: number;
+  totalSaidas: number;
   quantidade: number;
   emAberto: number;
   qtdAberto: number;
@@ -61,6 +53,7 @@ export type CategoriasResumo = {
   categorias: CategoriaResumoItem[];
 };
 
+/** Resumo analítico — categorias = nomes do Centro de despesas (despesa-tipos). */
 export async function fetchCategoriasResumo(params?: {
   periodo?: PeriodoFiltro;
   tipo?: TipoMovimento;
@@ -70,31 +63,6 @@ export async function fetchCategoriasResumo(params?: {
   if (params?.tipo) qs.set("tipo", params.tipo);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<CategoriasResumo>(`/financeiro/categorias/resumo${suffix}`);
-}
-
-export async function createCategoria(
-  input: CreateCategoriaInput,
-): Promise<CategoriaFinanceiro> {
-  return apiFetch<CategoriaFinanceiro>("/financeiro/categorias", {
-    method: "POST",
-    body: input,
-  });
-}
-
-export async function updateCategoria(
-  id: string,
-  input: UpdateCategoriaInput,
-): Promise<CategoriaFinanceiro> {
-  return apiFetch<CategoriaFinanceiro>(`/financeiro/categorias/${id}`, {
-    method: "PATCH",
-    body: input,
-  });
-}
-
-export async function deleteCategoria(id: string): Promise<void> {
-  await apiFetch<{ ok: boolean }>(`/financeiro/categorias/${id}`, {
-    method: "DELETE",
-  });
 }
 
 export type ComissaoStatus = "pendente" | "liberada" | "paga";

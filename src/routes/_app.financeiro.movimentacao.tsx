@@ -41,12 +41,10 @@ import {
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
-  createCategoria,
   createDespesaTipo,
   createMovimento,
   createParceiro,
   deleteMovimento,
-  fetchCategorias,
   fetchDespesaTipos,
   fetchMovimentos,
   fetchParceiros,
@@ -64,7 +62,6 @@ import {
   formatDate,
   statusBadgeClass,
   statusLabel,
-  type CategoriaFinanceiro,
   type DespesaTipo,
   type MovimentoFinanceiro,
   type ParceiroFinanceiro,
@@ -120,14 +117,13 @@ const FORMAS_PAGAMENTO = [
 
 const NONE = "__none__";
 
-type QuickKind = "parceiro" | "categoria" | "centro" | null;
+type QuickKind = "parceiro" | "categoria" | null;
 
 type FormState = {
   data: string;
   descricao: string;
   parceiroId: string;
   categoria: string;
-  centro: string;
   tipo: TipoMovimento;
   valor: string;
   status: StatusTitulo;
@@ -142,13 +138,12 @@ function todayIso() {
   return `${y}-${m}-${day}`;
 }
 
-function emptyForm(defaultCategoria = "", defaultCentro = ""): FormState {
+function emptyForm(defaultCategoria = ""): FormState {
   return {
     data: todayIso(),
     descricao: "",
     parceiroId: NONE,
     categoria: defaultCategoria,
-    centro: defaultCentro,
     tipo: "entrada",
     valor: "",
     status: "pago",
@@ -160,13 +155,12 @@ function parseValor(raw: string): number {
   return parseMoneyInput(raw);
 }
 
-function toForm(m: MovimentoFinanceiro, defaultCentro = ""): FormState {
+function toForm(m: MovimentoFinanceiro, defaultCategoria = ""): FormState {
   return {
     data: m.data.slice(0, 10),
     descricao: m.descricao,
     parceiroId: m.parceiroId || NONE,
-    categoria: m.categoria,
-    centro: m.centro || defaultCentro,
+    categoria: m.categoria || m.centro || defaultCategoria,
     tipo: m.tipo,
     valor: formatMoneyInput(m.valor),
     status: m.status,
@@ -195,7 +189,6 @@ function Page() {
     null,
   );
   const [deleting, setDeleting] = useState(false);
-  const [categoriasApi, setCategoriasApi] = useState<CategoriaFinanceiro[]>([]);
   const [despesaTipos, setDespesaTipos] = useState<DespesaTipo[]>([]);
   const [quickKind, setQuickKind] = useState<QuickKind>(null);
   const [quickNome, setQuickNome] = useState("");
@@ -205,15 +198,13 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [movs, pars, cats, tipos] = await Promise.all([
+      const [movs, pars, tipos] = await Promise.all([
         fetchMovimentos(),
         fetchParceiros(),
-        fetchCategorias(),
         fetchDespesaTipos(),
       ]);
       setItems(movs);
       setParceiros(pars.filter((p) => p.ativo));
-      setCategoriasApi(cats);
       setDespesaTipos(tipos);
     } catch (err) {
       toast.error(
@@ -230,42 +221,25 @@ function Page() {
     void load();
   }, [load]);
 
-  const nomesCentroCusto = useMemo(() => {
+  const categorias: string[] = useMemo(() => {
     const fromTipos = despesaTipos
       .filter((t) => t.ativo)
       .map((t) => t.nome.trim())
       .filter(Boolean);
-    return Array.from(new Set(fromTipos)).sort((a, b) =>
-      a.localeCompare(b, "pt-BR"),
-    );
-  }, [despesaTipos]);
-
-  const categorias: string[] = useMemo(() => {
-    const fromApi = categoriasApi
-      .filter((c) => c.ativo && c.tipo === form.tipo)
-      .map((c) => c.nome.trim())
-      .filter(Boolean);
+    const fromItems = items
+      .map((m) => m.categoria || m.centro)
+      .filter((c) => c && c.trim());
     const current = form.categoria.trim();
     return Array.from(
       new Set(
-        current && !fromApi.includes(current) ? [...fromApi, current] : fromApi,
-      ),
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [categoriasApi, form.tipo, form.categoria]);
-
-  const centros: string[] = useMemo(() => {
-    const fromItems = items.map((m) => m.centro).filter((c) => c && c.trim());
-    const current = form.centro.trim();
-    return Array.from(
-      new Set(
         [
-          ...nomesCentroCusto,
+          ...fromTipos,
           ...fromItems,
-          ...(current && !nomesCentroCusto.includes(current) ? [current] : []),
+          ...(current && !fromTipos.includes(current) ? [current] : []),
         ].filter(Boolean),
       ),
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [nomesCentroCusto, items, form.centro]);
+  }, [despesaTipos, items, form.categoria]);
 
   useEffect(() => {
     if (categorias.length === 0) return;
@@ -327,49 +301,11 @@ function Page() {
     }
 
     if (quickKind === "categoria") {
-      const existing = categoriasApi.find(
-        (c) =>
-          c.tipo === form.tipo &&
-          c.nome.toLowerCase() === nome.toLowerCase(),
-      );
-      if (existing) {
-        setField("categoria", existing.nome);
-        setQuickKind(null);
-        return;
-      }
-      setQuickSaving(true);
-      try {
-        const created = await createCategoria({
-          nome,
-          tipo: form.tipo,
-          ativo: true,
-        });
-        setCategoriasApi((prev) =>
-          [...prev, created].sort((a, b) =>
-            a.nome.localeCompare(b.nome, "pt-BR"),
-          ),
-        );
-        setField("categoria", created.nome);
-        setQuickKind(null);
-        toast.success("Categoria cadastrada.");
-      } catch (err) {
-        toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Não foi possível criar a categoria.",
-        );
-      } finally {
-        setQuickSaving(false);
-      }
-      return;
-    }
-
-    if (quickKind === "centro") {
       const existing = despesaTipos.find(
         (t) => t.nome.toLowerCase() === nome.toLowerCase(),
       );
       if (existing) {
-        setField("centro", existing.nome);
+        setField("categoria", existing.nome);
         setQuickKind(null);
         return;
       }
@@ -385,14 +321,14 @@ function Page() {
             a.nome.localeCompare(b.nome, "pt-BR"),
           ),
         );
-        setField("centro", created.nome);
+        setField("categoria", created.nome);
         setQuickKind(null);
-        toast.success("Centro cadastrado no Centro de despesas.");
+        toast.success("Categoria cadastrada no Centro de despesas.");
       } catch (err) {
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Não foi possível criar o centro.",
+            : "Não foi possível criar a categoria.",
         );
       } finally {
         setQuickSaving(false);
@@ -436,9 +372,7 @@ function Page() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
-    const defaultCat =
-      categoriasApi.find((c) => c.ativo && c.tipo === "entrada")?.nome || "";
-    setForm(emptyForm(defaultCat, nomesCentroCusto[0] || ""));
+    setForm(emptyForm(categorias[0] || ""));
     setOpen(true);
   }
 
@@ -455,7 +389,7 @@ function Page() {
   function openEdit(m: MovimentoFinanceiro) {
     setFormMode("edit");
     setEditingId(m.id);
-    setForm(toForm(m, nomesCentroCusto[0] || ""));
+    setForm(toForm(m, categorias[0] || ""));
     setOpen(true);
   }
 
@@ -484,13 +418,14 @@ function Page() {
       return;
     }
 
+    const categoria = form.categoria.trim();
     const payload = {
       data: form.data,
       descricao,
       parceiroId:
         form.parceiroId !== NONE ? form.parceiroId : undefined,
-      categoria: form.categoria.trim(),
-      centro: form.centro.trim() || undefined,
+      categoria,
+      centro: categoria,
       tipo: form.tipo,
       valor,
       status: form.status,
@@ -613,7 +548,6 @@ function Page() {
                 <TableHead>Descrição</TableHead>
                 <TableHead>{parceiroLabel}</TableHead>
                 <TableHead>Categoria</TableHead>
-                <TableHead>Centro</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Status</TableHead>
@@ -624,7 +558,7 @@ function Page() {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={8}
                     className="text-center text-muted-foreground py-10"
                   >
                     Nenhum lançamento para os filtros selecionados.
@@ -641,9 +575,8 @@ function Page() {
                     </TableCell>
                     <TableCell>{m.parceiro || "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {m.categoria}
+                      {m.categoria || m.centro || "—"}
                     </TableCell>
-                    <TableCell>{m.centro || "—"}</TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -793,7 +726,7 @@ function Page() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label>Categoria *</Label>
                     <Button
@@ -806,54 +739,29 @@ function Page() {
                     </Button>
                   </div>
                   <Select
-                    value={form.categoria}
+                    value={form.categoria || undefined}
                     onValueChange={(v) => setField("categoria", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categorias.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>Centro</Label>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => openQuick("centro")}
-                    >
-                      + Novo centro
-                    </Button>
-                  </div>
-                  <Select
-                    value={form.centro || undefined}
-                    onValueChange={(v) => setField("centro", v)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Centro de despesas" />
                     </SelectTrigger>
                     <SelectContent>
-                      {centros.length === 0 ? (
+                      {categorias.length === 0 ? (
                         <SelectItem value="__empty" disabled>
                           Cadastre no Centro de despesas
                         </SelectItem>
                       ) : (
-                        centros.map((centro) => (
-                          <SelectItem key={centro} value={centro}>
-                            {centro}
+                        categorias.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
                           </SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Mesmo cadastro do Centro de despesas.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="mov-valor">Valor *</Label>
@@ -939,16 +847,12 @@ function Page() {
         title={
           quickKind === "parceiro"
             ? `Novo ${parceiroLabel.toLowerCase()}`
-            : quickKind === "categoria"
-              ? "Nova categoria"
-              : "Novo centro"
+            : "Nova categoria"
         }
         description={
           quickKind === "categoria"
-            ? "Cadastrada na API e disponível em Contas a receber/pagar e Categorias."
-            : quickKind === "centro"
-              ? "Cria no Centro de despesas (API) para vincular neste lançamento."
-              : "Criação rápida para usar neste lançamento."
+            ? "Cadastra no Centro de despesas e fica disponível em títulos e movimentação."
+            : "Criação rápida para usar neste lançamento."
         }
         footer={
           <FormDialogActions>

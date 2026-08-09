@@ -518,7 +518,7 @@ function Page() {
     <div>
       <PageHeader
         title="Centro de despesas"
-        description="Categorias (Estrutural, Marketing…), natureza e renovação mensal das fixas"
+        description="Gestão das categorias (orçamento, natureza e despesas) usadas em todo o financeiro"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">

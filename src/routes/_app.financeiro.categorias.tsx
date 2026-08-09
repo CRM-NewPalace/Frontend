@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -40,14 +40,15 @@ import {
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api";
 import {
-  createCategoria,
-  deleteCategoria,
+  createDespesaTipo,
+  deleteDespesaTipo,
   fetchCategoriasResumo,
-  updateCategoria,
+  updateDespesaTipo,
   type CategoriaResumoItem,
 } from "@/lib/financeiro-api";
 import {
   brl,
+  type NaturezaDespesa,
   type PeriodoFiltro,
   type TipoMovimento,
 } from "@/lib/financeiro-mock";
@@ -73,14 +74,20 @@ const TIPO_OPTIONS = [
   { value: "saida", label: "Saídas" },
 ];
 
+const NATUREZA_LABEL: Record<NaturezaDespesa, string> = {
+  fixa: "Fixa",
+  fixa_variavel: "Fixa variável",
+  variavel: "Variável",
+};
+
 type FormState = {
   nome: string;
-  tipo: TipoMovimento;
+  natureza: NaturezaDespesa;
   ativo: boolean;
 };
 
 function emptyForm(): FormState {
-  return { nome: "", tipo: "entrada", ativo: true };
+  return { nome: "", natureza: "variavel", ativo: true };
 }
 
 function Page() {
@@ -143,12 +150,18 @@ function Page() {
 
   function openEdit(c: CategoriaResumoItem) {
     if (!c.id) {
-      toast.error("Esta categoria só existe em lançamentos. Cadastre-a para editar.");
+      toast.error(
+        "Esta categoria só existe em lançamentos. Cadastre-a para editar.",
+      );
       return;
     }
     setFormMode("edit");
     setEditingId(c.id);
-    setForm({ nome: c.nome, tipo: c.tipo, ativo: c.ativo });
+    setForm({
+      nome: c.nome,
+      natureza: c.natureza || "variavel",
+      ativo: c.ativo,
+    });
     setOpen(true);
   }
 
@@ -162,16 +175,16 @@ function Page() {
     setSaving(true);
     try {
       if (formMode === "create") {
-        await createCategoria({
+        await createDespesaTipo({
           nome,
-          tipo: form.tipo,
+          natureza: form.natureza,
           ativo: form.ativo,
         });
-        toast.success("Categoria cadastrada.");
+        toast.success("Categoria cadastrada no Centro de despesas.");
       } else if (editingId) {
-        await updateCategoria(editingId, {
+        await updateDespesaTipo(editingId, {
           nome,
-          tipo: form.tipo,
+          natureza: form.natureza,
           ativo: form.ativo,
         });
         toast.success("Categoria atualizada.");
@@ -191,7 +204,7 @@ function Page() {
     if (!deleteTarget?.id) return;
     setDeleting(true);
     try {
-      await deleteCategoria(deleteTarget.id);
+      await deleteDespesaTipo(deleteTarget.id);
       toast.success("Categoria removida.");
       setDeleteTarget(null);
       await load();
@@ -208,12 +221,17 @@ function Page() {
     <div>
       <PageHeader
         title="Categorias"
-        description="Cadastro e totais por categoria financeira (entradas e saídas)"
+        description="Totais por categoria — o cadastro é o mesmo do Centro de despesas"
         actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            Nova categoria
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" asChild>
+              <Link to="/financeiro/centro-despesas">Centro de despesas</Link>
+            </Button>
+            <Button type="button" onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              Nova categoria
+            </Button>
+          </div>
         }
       />
 
@@ -261,18 +279,19 @@ function Page() {
           <TableHeader>
             <TableRow>
               <TableHead>Categoria</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>Natureza</TableHead>
+              <TableHead className="text-right">Entradas</TableHead>
+              <TableHead className="text-right">Saídas</TableHead>
               <TableHead className="text-right">Realizado</TableHead>
-              <TableHead className="text-right">% do tipo</TableHead>
+              <TableHead className="text-right">%</TableHead>
               <TableHead className="text-right">Em aberto</TableHead>
-              <TableHead className="text-right">Lançamentos</TableHead>
               <TableHead className="w-[100px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   <Loader2 className="w-5 h-5 animate-spin inline-block mr-2" />
                   Carregando…
                 </TableCell>
@@ -280,7 +299,7 @@ function Page() {
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="h-24 text-center text-muted-foreground"
                 >
                   Nenhuma categoria encontrada.
@@ -288,7 +307,7 @@ function Page() {
               </TableRow>
             ) : (
               rows.map((c) => (
-                <TableRow key={c.id || `${c.tipo}-${c.nome}`}>
+                <TableRow key={c.id || c.nome}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {c.nome}
@@ -300,16 +319,14 @@ function Page() {
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    {c.tipo === "entrada" ? (
-                      <Badge className="bg-emerald-600/15 text-emerald-700 hover:bg-emerald-600/15">
-                        Entrada
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-rose-600/15 text-rose-700 hover:bg-rose-600/15">
-                        Saída
-                      </Badge>
-                    )}
+                  <TableCell className="text-muted-foreground">
+                    {c.natureza ? NATUREZA_LABEL[c.natureza] : "—"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-emerald-700">
+                    {c.totalEntradas > 0 ? brl(c.totalEntradas) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-rose-700">
+                    {c.totalSaidas > 0 ? brl(c.totalSaidas) : "—"}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {brl(c.total)}
@@ -322,10 +339,6 @@ function Page() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {c.emAberto > 0 ? brl(c.emAberto) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {c.quantidade}
-                    {c.qtdAberto > 0 ? ` · ${c.qtdAberto} abertos` : ""}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -363,7 +376,7 @@ function Page() {
         onOpenChange={setOpen}
         icon={<Tags className="w-5 h-5" />}
         title={formMode === "edit" ? "Editar categoria" : "Nova categoria"}
-        description="Usada em Contas a receber/pagar e Movimentação financeira."
+        description="Salva no Centro de despesas e aparece em títulos e movimentação."
         footer={
           <FormDialogActions>
             <Button
@@ -391,23 +404,27 @@ function Page() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, nome: e.target.value }))
                     }
-                    placeholder="Ex.: Consultoria"
+                    placeholder="Ex.: Marketing"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Tipo</Label>
+                  <Label>Natureza</Label>
                   <Select
-                    value={form.tipo}
+                    value={form.natureza}
                     onValueChange={(v) =>
-                      setForm((f) => ({ ...f, tipo: v as TipoMovimento }))
+                      setForm((f) => ({
+                        ...f,
+                        natureza: v as NaturezaDespesa,
+                      }))
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="entrada">Entrada</SelectItem>
-                      <SelectItem value="saida">Saída</SelectItem>
+                      <SelectItem value="fixa">Fixa</SelectItem>
+                      <SelectItem value="fixa_variavel">Fixa variável</SelectItem>
+                      <SelectItem value="variavel">Variável</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -442,8 +459,8 @@ function Page() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
             <AlertDialogDescription>
-              Isso remove "{deleteTarget?.nome}" do cadastro. Lançamentos
-              existentes mantêm o nome da categoria.
+              Isso remove "{deleteTarget?.nome}" do Centro de despesas.
+              Lançamentos existentes mantêm o nome da categoria.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

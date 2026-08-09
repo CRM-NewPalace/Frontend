@@ -47,14 +47,12 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   baixarTitulo,
-  createCategoria,
   createDespesaTipo,
   createParceiro,
   createTitulo,
   createTitulosParcelado,
   deleteTitulo,
   deleteTitulosGrupo,
-  fetchCategorias,
   fetchDespesaTipos,
   fetchParceiros,
   fetchTitulos,
@@ -77,7 +75,6 @@ import {
   formatDate,
   statusBadgeClass,
   statusLabel,
-  type CategoriaFinanceiro,
   type DespesaTipo,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
@@ -107,7 +104,7 @@ import { toast } from "sonner";
 const NONE = "__none__";
 const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const;
 
-type QuickKind = "parceiro" | "categoria" | "centro" | null;
+type QuickKind = "parceiro" | "categoria" | null;
 
 type FormState = {
   descricao: string;
@@ -226,8 +223,8 @@ function groupSummary(titulos: TituloFinanceiro[]) {
   return {
     descricao: first?.descricao ?? "",
     parceiro: first?.parceiro ?? "",
-    categoria: first?.categoria ?? "",
-    centro: first?.centro ?? "",
+    categoria: first?.categoria || first?.centro || "",
+    centro: first?.centro || first?.categoria || "",
     vencimento: proxima?.vencimento ?? first?.vencimento ?? "",
     total,
     n: titulos.length,
@@ -245,15 +242,13 @@ export function FinanceiroTitulosPanel({
   title: string;
   description: string;
 }) {
-  const categoriaTipo = tipo === "receber" ? "entrada" : "saida";
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
-  const [categoriasApi, setCategoriasApi] = useState<CategoriaFinanceiro[]>([]);
   const [despesaTipos, setDespesaTipos] = useState<DespesaTipo[]>([]);
   const [search, setSearch] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("tudo");
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
-  const [centro, setCentro] = useState("todos");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("todos");
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "edit-grupo">(
     "create",
@@ -298,38 +293,34 @@ export function FinanceiroTitulosPanel({
   );
 
   const categorias = useMemo(() => {
-    const fromApi = categoriasApi
-      .filter((c) => c.ativo)
-      .map((c) => c.nome.trim())
-      .filter(Boolean);
-    const current = form.categoria.trim();
-    return Array.from(
-      new Set(current && !fromApi.includes(current) ? [...fromApi, current] : fromApi),
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [categoriasApi, form.categoria]);
-
-  const centros = useMemo(() => {
     const fromTipos = despesaTipos
       .filter((t) => t.ativo)
       .map((t) => t.nome.trim())
       .filter(Boolean);
-    const fromItems = items.map((t) => t.centro).filter((c) => c && c.trim());
-    return Array.from(new Set([...fromTipos, ...fromItems])).sort((a, b) =>
-      a.localeCompare(b, "pt-BR"),
-    );
-  }, [despesaTipos, items]);
+    const current = form.categoria.trim();
+    const fromItems = items
+      .map((t) => t.categoria || t.centro)
+      .filter((c) => c && c.trim());
+    return Array.from(
+      new Set(
+        [
+          ...fromTipos,
+          ...fromItems,
+          ...(current && !fromTipos.includes(current) ? [current] : []),
+        ].filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [despesaTipos, items, form.categoria]);
 
   const load = useCallback(async () => {
     try {
-      const [titulos, pars, cats, tipos] = await Promise.all([
+      const [titulos, pars, tipos] = await Promise.all([
         fetchTitulos(tipo),
         fetchParceiros(),
-        fetchCategorias(categoriaTipo),
-        tipo === "pagar" ? fetchDespesaTipos() : Promise.resolve([]),
+        fetchDespesaTipos(),
       ]);
       setItems(titulos);
       setParceiros(pars.filter((p) => p.ativo));
-      setCategoriasApi(cats);
       setDespesaTipos(tipos);
     } catch (err) {
       toast.error(
@@ -338,7 +329,7 @@ export function FinanceiroTitulosPanel({
           : "Não foi possível carregar os títulos.",
       );
     }
-  }, [tipo, categoriaTipo]);
+  }, [tipo]);
 
   useEffect(() => {
     void load();
@@ -356,12 +347,12 @@ export function FinanceiroTitulosPanel({
     };
   }, []);
 
-  const centroOptions = useMemo(
+  const categoriaOptions = useMemo(
     () => [
-      { value: "todos", label: "Todos os centros de custo" },
-      ...centros.map((c) => ({ value: c, label: c })),
+      { value: "todos", label: "Todas as categorias" },
+      ...categorias.map((c) => ({ value: c, label: c })),
     ],
-    [centros],
+    [categorias],
   );
 
   function openQuick(kind: Exclude<QuickKind, null>) {
@@ -414,47 +405,15 @@ export function FinanceiroTitulosPanel({
     }
 
     if (quickKind === "categoria") {
-      const existing = categoriasApi.find(
-        (c) => c.nome.toLowerCase() === nome.toLowerCase(),
-      );
-      if (existing) {
-        setForm((f) => ({ ...f, categoria: existing.nome }));
-        setQuickKind(null);
-        return;
-      }
-      setQuickSaving(true);
-      try {
-        const created = await createCategoria({
-          nome,
-          tipo: categoriaTipo,
-          ativo: true,
-        });
-        setCategoriasApi((prev) =>
-          [...prev, created].sort((a, b) =>
-            a.nome.localeCompare(b.nome, "pt-BR"),
-          ),
-        );
-        setForm((f) => ({ ...f, categoria: created.nome }));
-        setQuickKind(null);
-        toast.success("Categoria cadastrada.");
-      } catch (err) {
-        toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Não foi possível criar a categoria.",
-        );
-      } finally {
-        setQuickSaving(false);
-      }
-      return;
-    }
-
-    if (quickKind === "centro") {
       const existing = despesaTipos.find(
         (t) => t.nome.toLowerCase() === nome.toLowerCase(),
       );
       if (existing) {
-        setForm((f) => ({ ...f, centro: existing.nome }));
+        setForm((f) => ({
+          ...f,
+          categoria: existing.nome,
+          centro: existing.nome,
+        }));
         setQuickKind(null);
         return;
       }
@@ -470,9 +429,13 @@ export function FinanceiroTitulosPanel({
             a.nome.localeCompare(b.nome, "pt-BR"),
           ),
         );
-        setForm((f) => ({ ...f, centro: created.nome }));
+        setForm((f) => ({
+          ...f,
+          categoria: created.nome,
+          centro: created.nome,
+        }));
         setQuickKind(null);
-        toast.success("Categoria criada no Centro de despesas.");
+        toast.success("Categoria cadastrada no Centro de despesas.");
       } catch (err) {
         toast.error(
           err instanceof ApiError
@@ -490,7 +453,11 @@ export function FinanceiroTitulosPanel({
     const now = new Date();
     return items.filter((t) => {
       if (status !== "todos" && t.status !== status) return false;
-      if (centro !== "todos" && t.centro !== centro) return false;
+      if (
+        categoriaFiltro !== "todos" &&
+        (t.categoria || t.centro) !== categoriaFiltro
+      )
+        return false;
       if (periodo !== "tudo") {
         const d = new Date(t.vencimento + "T12:00:00");
         if (periodo === "mes") {
@@ -516,7 +483,7 @@ export function FinanceiroTitulosPanel({
         t.categoria.toLowerCase().includes(q)
       );
     });
-  }, [items, search, periodo, status, centro]);
+  }, [items, search, periodo, status, categoriaFiltro]);
 
   const kpis = useMemo(() => {
     const aberto = rows
@@ -638,9 +605,8 @@ export function FinanceiroTitulosPanel({
     setFormMode("create");
     setEditingId(null);
     setEditingGrupoId(null);
-    const defaultCat =
-      categoriasApi.find((c) => c.ativo)?.nome || categorias[0] || "";
-    const next = emptyForm(tipo, centros[0] || "", defaultCat);
+    const defaultCat = categorias[0] || "";
+    const next = emptyForm(tipo, defaultCat, defaultCat);
     setForm(next);
     setParcelado(false);
     setQtdParcelas("2");
@@ -655,15 +621,12 @@ export function FinanceiroTitulosPanel({
     const temParcela = Boolean(t.parcela?.trim());
     setParcelado(temParcela);
     setParcelasDraft([]);
+    const cat = t.categoria || t.centro || categorias[0] || "";
     setForm({
       descricao: t.descricao,
       parceiroId: t.parceiroId || NONE,
-      categoria:
-        t.categoria ||
-        categoriasApi.find((c) => c.ativo)?.nome ||
-        categorias[0] ||
-        "",
-      centro: t.centro || centros[0] || "",
+      categoria: cat,
+      centro: cat,
       vencimento: t.vencimento.slice(0, 10),
       valor: formatValorInput(t.valor),
       status: t.status,
@@ -708,15 +671,12 @@ export function FinanceiroTitulosPanel({
     setEditingGrupoId(grupoId);
     setParcelado(false);
     setGrupoOpen(false);
+    const cat = base.categoria || base.centro || categorias[0] || "";
     setForm({
       descricao: base.descricao,
       parceiroId: base.parceiroId || NONE,
-      categoria:
-        base.categoria ||
-        categoriasApi.find((c) => c.ativo)?.nome ||
-        categorias[0] ||
-        "",
-      centro: base.centro || centros[0] || "",
+      categoria: cat,
+      centro: cat,
       vencimento: base.vencimento.slice(0, 10),
       valor: formatValorInput(rows.reduce((s, t) => s + t.valor, 0)),
       status: "aberto",
@@ -771,11 +731,7 @@ export function FinanceiroTitulosPanel({
       toast.error("Selecione a categoria.");
       return;
     }
-    if (tipo === "pagar" && !form.centro.trim()) {
-      toast.error("Selecione o centro de custo.");
-      return;
-    }
-    const centroValor = tipo === "pagar" ? form.centro.trim() : "";
+    const categoriaValor = form.categoria.trim();
 
     if (formMode === "create" && parcelado) {
       if (parcelasDraft.length < 2) {
@@ -802,8 +758,8 @@ export function FinanceiroTitulosPanel({
           descricao,
           parceiroId:
             form.parceiroId === NONE ? undefined : form.parceiroId,
-          categoria: form.categoria,
-          ...(centroValor ? { centro: centroValor } : {}),
+          categoria: categoriaValor,
+          centro: categoriaValor,
           parcelas,
         });
         toast.success(`${parcelas.length} parcelas criadas.`);
@@ -851,8 +807,8 @@ export function FinanceiroTitulosPanel({
         const result = await updateTitulosGrupo(editingGrupoId, {
           descricao,
           parceiroId: form.parceiroId === NONE ? null : form.parceiroId,
-          categoria: form.categoria,
-          ...(tipo === "pagar" ? { centro: centroValor } : {}),
+          categoria: categoriaValor,
+          centro: categoriaValor,
           parcelas,
         });
         toast.success(`${result.updated} parcela(s) atualizada(s).`);
@@ -881,8 +837,8 @@ export function FinanceiroTitulosPanel({
         descricao,
         parceiroId:
           form.parceiroId === NONE ? undefined : form.parceiroId,
-        categoria: form.categoria,
-        ...(tipo === "pagar" ? { centro: centroValor } : { centro: "" }),
+        categoria: categoriaValor,
+        centro: categoriaValor,
         vencimento: form.vencimento,
         valor,
         status: form.status,
@@ -987,7 +943,7 @@ export function FinanceiroTitulosPanel({
     search ||
       periodo !== "tudo" ||
       status !== "todos" ||
-      (tipo === "pagar" && centro !== "todos"),
+      categoriaFiltro !== "todos",
   );
 
   return (
@@ -1032,19 +988,15 @@ export function FinanceiroTitulosPanel({
         onPeriodoChange={setPeriodo}
         status={status}
         onStatusChange={setStatus}
-        {...(tipo === "pagar"
-          ? {
-              tipo: centro,
-              onTipoChange: setCentro,
-              tipoOptions: centroOptions,
-            }
-          : {})}
+        tipo={categoriaFiltro}
+        onTipoChange={setCategoriaFiltro}
+        tipoOptions={categoriaOptions}
         hasActive={hasActive}
         onClear={() => {
           setSearch("");
           setPeriodo("tudo");
           setStatus("todos");
-          setCentro("todos");
+          setCategoriaFiltro("todos");
         }}
       />
 
@@ -1055,9 +1007,6 @@ export function FinanceiroTitulosPanel({
               <TableHead>Descrição</TableHead>
               <TableHead>Parceiro</TableHead>
               <TableHead>Categoria</TableHead>
-              {tipo === "pagar" ? (
-                <TableHead>Centro de custo</TableHead>
-              ) : null}
               <TableHead>Vencimento</TableHead>
               <TableHead>Parcela</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -1069,7 +1018,7 @@ export function FinanceiroTitulosPanel({
             {displayRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={tipo === "pagar" ? 9 : 8}
+                  colSpan={8}
                   className="text-center text-muted-foreground py-10"
                 >
                   Nenhum título no filtro.
@@ -1088,13 +1037,8 @@ export function FinanceiroTitulosPanel({
                         {t.parceiro || "—"}
                       </TableCell>
                       <TableCell className="truncate max-w-[120px]">
-                        {t.categoria || "—"}
+                        {t.categoria || t.centro || "—"}
                       </TableCell>
-                      {tipo === "pagar" ? (
-                        <TableCell className="truncate max-w-[120px]">
-                          {t.centro || "—"}
-                        </TableCell>
-                      ) : null}
                       <TableCell>{formatDate(t.vencimento)}</TableCell>
                       <TableCell>{t.parcela || "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -1136,13 +1080,8 @@ export function FinanceiroTitulosPanel({
                         {summary.parceiro || "—"}
                       </TableCell>
                       <TableCell className="truncate max-w-[120px]">
-                        {summary.categoria || "—"}
+                        {summary.categoria || summary.centro || "—"}
                       </TableCell>
-                      {tipo === "pagar" ? (
-                        <TableCell className="truncate max-w-[120px]">
-                          {summary.centro || "—"}
-                        </TableCell>
-                      ) : null}
                       <TableCell>
                         {summary.vencimento
                           ? formatDate(summary.vencimento)
@@ -1229,13 +1168,8 @@ export function FinanceiroTitulosPanel({
                               {t.parceiro || "—"}
                             </TableCell>
                             <TableCell className="truncate max-w-[120px]">
-                              {t.categoria || "—"}
+                              {t.categoria || t.centro || "—"}
                             </TableCell>
-                            {tipo === "pagar" ? (
-                              <TableCell className="truncate max-w-[120px]">
-                                {t.centro || "—"}
-                              </TableCell>
-                            ) : null}
                             <TableCell>{formatDate(t.vencimento)}</TableCell>
                             <TableCell>{t.parcela || "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">
@@ -1537,13 +1471,9 @@ export function FinanceiroTitulosPanel({
                     </p>
                   </div>
                 ) : null}
-                <div
-                  className={
-                    tipo === "pagar" ? "space-y-1.5" : "sm:col-span-2 space-y-1.5"
-                  }
-                >
+                <div className="sm:col-span-2 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label>Categoria</Label>
+                    <Label>Categoria *</Label>
                     <Button
                       type="button"
                       variant="link"
@@ -1554,64 +1484,32 @@ export function FinanceiroTitulosPanel({
                     </Button>
                   </div>
                   <Select
-                    value={form.categoria}
+                    value={form.categoria || undefined}
                     onValueChange={(v) =>
-                      setForm((f) => ({ ...f, categoria: v }))
+                      setForm((f) => ({ ...f, categoria: v, centro: v }))
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Centro de despesas" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categorias.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
+                      {categorias.length === 0 ? (
+                        <SelectItem value="__empty" disabled>
+                          Cadastre no Centro de despesas
                         </SelectItem>
-                      ))}
+                      ) : (
+                        categorias.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Mesmo cadastro do Centro de despesas.
+                  </p>
                 </div>
-                {tipo === "pagar" ? (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label>Centro de custo *</Label>
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="h-auto p-0 text-xs"
-                        onClick={() => openQuick("centro")}
-                      >
-                        + Novo centro
-                      </Button>
-                    </div>
-                    <Select
-                      value={form.centro || undefined}
-                      onValueChange={(v) =>
-                        setForm((f) => ({ ...f, centro: v }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o centro de custo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {centros.length === 0 ? (
-                          <SelectItem value="__empty" disabled>
-                            Cadastre em Centro de despesas
-                          </SelectItem>
-                        ) : (
-                          centros.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      Vinculado às categorias do Centro de despesas.
-                    </p>
-                  </div>
-                ) : null}
                 {formMode !== "edit-grupo" &&
                 !(parcelado && formMode === "create") ? (
                   <div className="space-y-1.5">
@@ -1667,16 +1565,12 @@ export function FinanceiroTitulosPanel({
             ? tipo === "pagar"
               ? "Novo fornecedor"
               : "Novo parceiro"
-            : quickKind === "categoria"
-              ? "Nova categoria"
-              : "Novo centro de custo"
+            : "Nova categoria"
         }
         description={
           quickKind === "categoria"
-            ? "Cadastrada na API e disponível em Contas a receber/pagar e movimentação."
-            : quickKind === "centro"
-              ? "Cria a categoria no Centro de despesas para vincular neste título."
-              : "Criação rápida para usar neste título."
+            ? "Cadastra no Centro de despesas e fica disponível em títulos e movimentação."
+            : "Criação rápida para usar neste título."
         }
         footer={
           <FormDialogActions>
