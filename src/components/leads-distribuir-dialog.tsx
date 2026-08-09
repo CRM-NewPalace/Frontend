@@ -137,7 +137,9 @@ export function LeadsDistribuirDialog({
             quantidade: Number(qtdEquipes[eq.equipeId]) || 0,
           })),
         );
-        toast.success(`${result.total} lead(s) enviados às equipes.`);
+        toast.success(
+          `${result.total} lead(s) enviados às equipes (ainda sem corretor individual).`,
+        );
       } else {
         const result = await distribuirLeadsCorretores({
           alocacoes: resumo.corretores.map((c) => ({
@@ -179,8 +181,9 @@ export function LeadsDistribuirDialog({
         <DialogHeader>
           <DialogTitle>Distribuir leads</DialogTitle>
           <DialogDescription>
-            Envie leads do pool do admin para equipes ou diretamente para
-            corretores.
+            Envie leads do pool do admin (sem equipe e sem corretor). Por
+            equipes: o lead vai para o pool da equipe; por corretores: já fica
+            com um corretor.
           </DialogDescription>
         </DialogHeader>
 

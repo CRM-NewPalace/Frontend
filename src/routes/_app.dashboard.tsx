@@ -394,12 +394,12 @@ function DashboardAdminView() {
 
       <section className="mt-5 grid gap-3 grid-cols-2 xl:grid-cols-4">
         <FinanceKpiCard
-          label="Sem corretor"
+          label="Sem corretor atribuído"
           value={summary.atencao.semDono}
           icon={UserX}
           tone="orange"
           format="number"
-          href="/leads"
+          href="/leads?distribuicao=chegaram"
         />
         <FinanceKpiCard
           label={`Parados (${summary.atencao.diasParado}d)`}

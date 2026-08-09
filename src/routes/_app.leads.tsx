@@ -113,8 +113,19 @@ import {
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
 
+type LeadsSearch = {
+  distribuicao?: "all" | "chegaram" | "distribuidos";
+};
+
 export const Route = createFileRoute("/_app/leads")({
   head: () => ({ meta: [{ title: "Leads — Zone Connection" }] }),
+  validateSearch: (search: Record<string, unknown>): LeadsSearch => {
+    const d = search.distribuicao;
+    if (d === "chegaram" || d === "distribuidos" || d === "all") {
+      return { distribuicao: d };
+    }
+    return {};
+  },
   component: LeadsPage,
 });
 
@@ -273,10 +284,17 @@ function LeadsPage() {
   const [interesseFilter, setInteresseFilter] = useState<string>("all");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
   const [showExtraFilters, setShowExtraFilters] = useState(false);
+  const routeSearch = Route.useSearch();
   /** Separação pool (chegaram) × já atribuídos a equipe/corretor. */
   const [distribuicaoFilter, setDistribuicaoFilter] = useState<
     "all" | "chegaram" | "distribuidos"
-  >("all");
+  >(routeSearch.distribuicao ?? "all");
+
+  useEffect(() => {
+    if (routeSearch.distribuicao) {
+      setDistribuicaoFilter(routeSearch.distribuicao);
+    }
+  }, [routeSearch.distribuicao]);
 
   /** Filtro de corretor: gerente só vê a própria equipe (não outras). */
   const corretorFilterOptions = useMemo(() => {
@@ -399,7 +417,11 @@ function LeadsPage() {
       if (stageFilter !== "all" && l.stage !== stageFilter) return false;
       if (!isCorretor && corretorFilter !== "all") {
         if (corretorFilter === "__none__") {
-          if (l.corretorId) return false;
+          // Pool admin: sem equipe e sem corretor (igual "Chegaram").
+          if (l.corretorId || l.equipeId) return false;
+        } else if (corretorFilter === "__equipe_pool__") {
+          // Já na equipe, ainda sem corretor individual.
+          if (l.corretorId || !l.equipeId) return false;
         } else if (l.corretorId !== corretorFilter) {
           return false;
         }
@@ -515,10 +537,12 @@ function LeadsPage() {
       byId.set(a.id, { id: a.id, name: a.name, count: 0 });
     }
 
-    let semCorretor = 0;
+    let naoDistribuidos = 0;
+    let equipeSemCorretor = 0;
     for (const l of scoped) {
       if (!l.corretorId) {
-        semCorretor += 1;
+        if (!l.equipeId) naoDistribuidos += 1;
+        else equipeSemCorretor += 1;
         continue;
       }
       const existing = byId.get(l.corretorId);
@@ -537,8 +561,19 @@ function LeadsPage() {
     const rows = [...byId.values()].sort(
       (a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"),
     );
-    if (semCorretor > 0) {
-      rows.push({ id: "__none__", name: "Sem corretor", count: semCorretor });
+    if (naoDistribuidos > 0) {
+      rows.push({
+        id: "__none__",
+        name: "Sem corretor atribuído",
+        count: naoDistribuidos,
+      });
+    }
+    if (equipeSemCorretor > 0) {
+      rows.push({
+        id: "__equipe_pool__",
+        name: "Na equipe sem corretor",
+        count: equipeSemCorretor,
+      });
     }
     return rows;
   }, [
@@ -1659,22 +1694,13 @@ function LeadsPage() {
                 </Badge>
               </button>
               {leadsAtivosPorCorretor.map((row) => {
-                const selected =
-                  row.id === "__none__"
-                    ? corretorFilter === "__none__"
-                    : corretorFilter === row.id;
+                const selected = corretorFilter === row.id;
                 return (
                   <button
                     key={row.id}
                     type="button"
                     onClick={() =>
-                      setCorretorFilter(
-                        selected
-                          ? "all"
-                          : row.id === "__none__"
-                            ? "__none__"
-                            : row.id,
-                      )
+                      setCorretorFilter(selected ? "all" : row.id)
                     }
                     className={cn(
                       "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
@@ -1746,7 +1772,15 @@ function LeadsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos corretores</SelectItem>
-                <SelectItem value="__none__">Sem corretor</SelectItem>
+                {leadsAtivosPorCorretor
+                  .filter(
+                    (r) => r.id === "__none__" || r.id === "__equipe_pool__",
+                  )
+                  .map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name} ({r.count})
+                    </SelectItem>
+                  ))}
                 {corretorFilterOptions.map((a) => {
                   const count =
                     leadsAtivosPorCorretor.find((r) => r.id === a.id)?.count ??
