@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -127,10 +127,12 @@ function Page() {
 
   const pieData = useMemo(
     () =>
-      centros.map((c) => ({
-        name: c.centro,
-        value: Math.round(c.realizado * fator),
-      })),
+      centros
+        .map((c) => ({
+          name: c.centro,
+          value: Math.round(c.realizado * fator),
+        }))
+        .filter((c) => c.value > 0),
     [centros, fator],
   );
 
@@ -280,9 +282,14 @@ function Page() {
           </CardHeader>
           <CardContent className="min-w-0">
             {pieData.length === 0 ? (
-              <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
-                Sem dados no periodo.
-              </p>
+              <div className="flex h-70 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+                <p>Sem despesas por centro neste mês.</p>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/financeiro/centro-despesas">
+                    Abrir centro de despesas
+                  </Link>
+                </Button>
+              </div>
             ) : (
               <ResponsiveChartShell>
                 <ChartContainer

@@ -187,7 +187,7 @@ export interface MesResumo {
   despesas: number;
 }
 
-export type NaturezaDespesa = "fixa" | "variavel";
+export type NaturezaDespesa = "fixa" | "fixa_variavel" | "variavel";
 
 export interface CentroDespesaResumo {
   centro: string;
@@ -216,6 +216,9 @@ export interface DespesaLancamento {
   descricao: string;
   valor: number;
   data: string;
+  competencia: string;
+  recorrente: boolean;
+  origemId: string | null;
   observacao: string;
   ativo: boolean;
   createdAt: string;

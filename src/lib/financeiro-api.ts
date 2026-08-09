@@ -358,11 +358,20 @@ export type CreateDespesaInput = {
   descricao: string;
   valor: number;
   data: string;
+  competencia?: string;
+  recorrente?: boolean;
   observacao?: string;
   ativo?: boolean;
 };
 
 export type UpdateDespesaInput = Partial<CreateDespesaInput>;
+
+export type RenovarDespesasResult = {
+  competencia: string;
+  criadas: number;
+  ignoradas: number;
+  despesas: DespesaLancamento[];
+};
 
 export async function fetchDespesaTipos(
   natureza?: NaturezaDespesa,
@@ -425,5 +434,14 @@ export async function updateDespesa(
 export async function deleteDespesa(id: string): Promise<void> {
   await apiFetch<{ ok: boolean }>(`/financeiro/despesas/${id}`, {
     method: "DELETE",
+  });
+}
+
+export async function renovarDespesasMes(
+  competencia: string,
+): Promise<RenovarDespesasResult> {
+  return apiFetch<RenovarDespesasResult>("/financeiro/despesas/renovar-mes", {
+    method: "POST",
+    body: { competencia },
   });
 }

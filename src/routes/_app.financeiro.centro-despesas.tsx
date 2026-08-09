@@ -9,6 +9,7 @@ import {
   fetchCentrosDespesa,
   fetchDespesas,
   fetchDespesaTipos,
+  renovarDespesasMes,
   updateDespesa,
   updateDespesaTipo,
 } from "@/lib/financeiro-api";
@@ -78,6 +79,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RefreshCw,
   Target,
   Trash2,
 } from "lucide-react";
@@ -96,8 +98,21 @@ const chartConfig = {
 
 const NATUREZA_LABEL: Record<NaturezaDespesa, string> = {
   fixa: "Fixa",
+  fixa_variavel: "Fixa variável",
   variavel: "Variável",
 };
+
+function competenciaAtual(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function nextCompetencia(comp: string): string {
+  const [y, m] = comp.split("-").map(Number);
+  const nm = m === 12 ? 1 : m + 1;
+  const ny = m === 12 ? y + 1 : y;
+  return `${ny}-${String(nm).padStart(2, "0")}`;
+}
 
 type TipoForm = {
   nome: string;
@@ -111,6 +126,8 @@ type DespesaForm = {
   descricao: string;
   valor: string;
   data: string;
+  competencia: string;
+  recorrente: boolean;
   observacao: string;
   ativo: boolean;
 };
@@ -122,11 +139,16 @@ const emptyTipoForm = (natureza: NaturezaDespesa): TipoForm => ({
   ativo: true,
 });
 
-const emptyDespesaForm = (tipoId = ""): DespesaForm => ({
+const emptyDespesaForm = (
+  tipoId = "",
+  natureza: NaturezaDespesa = "fixa",
+): DespesaForm => ({
   tipoId,
   descricao: "",
   valor: "",
   data: new Date().toISOString().slice(0, 10),
+  competencia: competenciaAtual(),
+  recorrente: natureza === "fixa" || natureza === "fixa_variavel",
   observacao: "",
   ativo: true,
 });
@@ -168,6 +190,10 @@ function Page() {
   const [deleteDespesaTarget, setDeleteDespesaTarget] =
     useState<DespesaLancamento | null>(null);
   const [deletingDespesa, setDeletingDespesa] = useState(false);
+  const [renovarCompetencia, setRenovarCompetencia] = useState(() =>
+    nextCompetencia(competenciaAtual()),
+  );
+  const [renovando, setRenovando] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -236,18 +262,20 @@ function Page() {
   }, [centros, naturezaTab, search, fator]);
 
   const totais = useMemo(() => {
-    const fixas = despesas
-      .filter((d) => d.natureza === "fixa" && d.ativo)
-      .reduce((s, d) => s + d.valor, 0);
-    const variaveis = despesas
-      .filter((d) => d.natureza === "variavel" && d.ativo)
-      .reduce((s, d) => s + d.valor, 0);
+    const sumNat = (n: NaturezaDespesa) =>
+      despesas
+        .filter((d) => d.natureza === n && d.ativo)
+        .reduce((s, d) => s + d.valor, 0);
+    const fixas = sumNat("fixa");
+    const fixasVariaveis = sumNat("fixa_variavel");
+    const variaveis = sumNat("variavel");
     const orcado = chartRows.reduce((s, r) => s + r.orcado, 0);
     const realizado = chartRows.reduce((s, r) => s + r.realizado, 0);
     return {
       fixas,
+      fixasVariaveis,
       variaveis,
-      total: fixas + variaveis,
+      total: fixas + fixasVariaveis + variaveis,
       orcado,
       realizado,
       saldo: orcado - realizado,
@@ -278,7 +306,7 @@ function Page() {
     const firstTipo = tiposDaAba.find((t) => t.ativo)?.id ?? "";
     setDespesaMode("create");
     setEditingDespesaId(null);
-    setDespesaForm(emptyDespesaForm(firstTipo));
+    setDespesaForm(emptyDespesaForm(firstTipo, naturezaTab));
     setDespesaOpen(true);
   }
 
@@ -290,17 +318,48 @@ function Page() {
       descricao: d.descricao,
       valor: formatMoneyInput(d.valor),
       data: d.data.slice(0, 10),
+      competencia: d.competencia || d.data.slice(0, 7),
+      recorrente: d.recorrente,
       observacao: d.observacao || "",
       ativo: d.ativo,
     });
     setDespesaOpen(true);
   }
 
+  async function handleRenovarMes() {
+    if (!/^\d{4}-\d{2}$/.test(renovarCompetencia)) {
+      toast.error("Informe a competência no formato AAAA-MM.");
+      return;
+    }
+    setRenovando(true);
+    try {
+      const result = await renovarDespesasMes(renovarCompetencia);
+      if (result.criadas === 0) {
+        toast.message("Nada para renovar", {
+          description: `${result.ignoradas} despesa(s) já existiam ou não eram elegíveis em ${renovarCompetencia}.`,
+        });
+      } else {
+        toast.success(
+          `${result.criadas} despesa(s) renovada(s) para ${renovarCompetencia}.`,
+        );
+      }
+      await load();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível renovar as despesas.",
+      );
+    } finally {
+      setRenovando(false);
+    }
+  }
+
   async function handleSubmitTipo(e: FormEvent) {
     e.preventDefault();
     const nome = tipoForm.nome.trim();
     if (!nome) {
-      toast.error("Informe o nome do tipo.");
+      toast.error("Informe o nome da categoria.");
       return;
     }
     const orcadoMensal = tipoForm.orcadoMensal.trim()
@@ -320,7 +379,7 @@ function Page() {
           orcadoMensal,
           ativo: tipoForm.ativo,
         });
-        toast.success("Tipo atualizado.");
+        toast.success("Categoria atualizada.");
       } else {
         await createDespesaTipo({
           nome,
@@ -328,7 +387,7 @@ function Page() {
           orcadoMensal,
           ativo: tipoForm.ativo,
         });
-        toast.success("Tipo cadastrado.");
+        toast.success("Categoria cadastrada.");
       }
       setTipoOpen(false);
       await load();
@@ -348,7 +407,7 @@ function Page() {
     const descricao = despesaForm.descricao.trim();
     const valor = parseMoney(despesaForm.valor);
     if (!despesaForm.tipoId) {
-      toast.error("Selecione um tipo de despesa.");
+      toast.error("Selecione uma categoria de despesa.");
       return;
     }
     if (!descricao) {
@@ -371,6 +430,9 @@ function Page() {
         descricao,
         valor,
         data: despesaForm.data,
+        competencia:
+          despesaForm.competencia.trim() || despesaForm.data.slice(0, 7),
+        recorrente: despesaForm.recorrente,
         observacao: despesaForm.observacao.trim() || undefined,
         ativo: despesaForm.ativo,
       };
@@ -399,7 +461,7 @@ function Page() {
     setDeletingTipo(true);
     try {
       await deleteDespesaTipo(deleteTipo.id);
-      toast.success(`Tipo "${deleteTipo.nome}" removido.`);
+      toast.success(`Categoria "${deleteTipo.nome}" removida.`);
       setDeleteTipo(null);
       await load();
     } catch (err) {
@@ -444,18 +506,40 @@ function Page() {
     <div>
       <PageHeader
         title="Centro de despesas"
-        description="Cadastre tipos fixos e variáveis e lance despesas por centro de custo"
+        description="Categorias (Estrutural, Marketing…), natureza e renovação mensal das fixas"
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="month"
+                value={renovarCompetencia}
+                onChange={(e) => setRenovarCompetencia(e.target.value)}
+                className="h-9 w-[150px]"
+                aria-label="Competência para renovar"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={renovando}
+                onClick={() => void handleRenovarMes()}
+              >
+                {renovando ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                )}
+                Renovar mês
+              </Button>
+            </div>
             <Button type="button" variant="outline" onClick={openCreateTipo}>
               <Plus className="w-4 h-4 mr-1" />
-              Novo tipo
+              Nova categoria
             </Button>
             <Button type="button" onClick={openCreateDespesa}>
               <Plus className="w-4 h-4 mr-1" />
               Nova despesa
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -472,15 +556,21 @@ function Page() {
         }}
       />
 
-      <section className="grid gap-3 sm:grid-cols-3 mb-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
         <FinanceKpiCard
-          label="Despesas fixas"
+          label="Fixas"
           value={totais.fixas}
           icon={Target}
           tone="blue"
         />
         <FinanceKpiCard
-          label="Despesas variáveis"
+          label="Fixas variáveis"
+          value={totais.fixasVariaveis}
+          icon={RefreshCw}
+          tone="orange"
+        />
+        <FinanceKpiCard
+          label="Variáveis"
           value={totais.variaveis}
           icon={FolderKanban}
           tone="violet"
@@ -505,6 +595,7 @@ function Page() {
       >
         <TabsList>
           <TabsTrigger value="fixa">Fixa</TabsTrigger>
+          <TabsTrigger value="fixa_variavel">Fixa variável</TabsTrigger>
           <TabsTrigger value="variavel">Variável</TabsTrigger>
         </TabsList>
 
@@ -525,8 +616,9 @@ function Page() {
                 <CardContent>
                   {chartRows.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-10 text-center">
-                      Cadastre um tipo {NATUREZA_LABEL[naturezaTab].toLowerCase()}{" "}
-                      para ver o comparativo orçado × realizado.
+                      Cadastre uma categoria{" "}
+                      {NATUREZA_LABEL[naturezaTab].toLowerCase()} para ver o
+                      comparativo orçado × realizado.
                     </p>
                   ) : (
                     <ChartContainer
@@ -574,7 +666,7 @@ function Page() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-sm font-semibold text-foreground">
-                    Tipos {NATUREZA_LABEL[naturezaTab].toLowerCase()}s
+                    Categorias {NATUREZA_LABEL[naturezaTab].toLowerCase()}s
                   </h2>
                   <Button
                     type="button"
@@ -583,14 +675,14 @@ function Page() {
                     onClick={openCreateTipo}
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" />
-                    Novo tipo
+                    Nova categoria
                   </Button>
                 </div>
                 <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Tipo</TableHead>
+                        <TableHead>Categoria</TableHead>
                         <TableHead>Natureza</TableHead>
                         <TableHead className="text-right">Orçado/mês</TableHead>
                         <TableHead className="text-right">Realizado</TableHead>
@@ -608,8 +700,9 @@ function Page() {
                             colSpan={7}
                             className="text-center text-muted-foreground py-10"
                           >
-                            Nenhum tipo {NATUREZA_LABEL[naturezaTab].toLowerCase()}{" "}
-                            cadastrado.
+                            Nenhuma categoria{" "}
+                            {NATUREZA_LABEL[naturezaTab].toLowerCase()}{" "}
+                            cadastrada.
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -712,10 +805,11 @@ function Page() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Descrição</TableHead>
-                        <TableHead>Tipo</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Competência</TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Recorrente</TableHead>
                         <TableHead className="w-[88px] text-right">
                           Ações
                         </TableHead>
@@ -725,7 +819,7 @@ function Page() {
                       {despesasDaAba.length === 0 ? (
                         <TableRow>
                           <TableCell
-                            colSpan={6}
+                            colSpan={7}
                             className="text-center text-muted-foreground py-10"
                           >
                             Nenhuma despesa nesta aba.
@@ -746,6 +840,9 @@ function Page() {
                               <Badge variant="secondary">{d.tipoNome}</Badge>
                             </TableCell>
                             <TableCell className="tabular-nums text-muted-foreground">
+                              {d.competencia || "—"}
+                            </TableCell>
+                            <TableCell className="tabular-nums text-muted-foreground">
                               {formatDateBr(d.data)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums font-medium">
@@ -755,12 +852,12 @@ function Page() {
                               <Badge
                                 variant="outline"
                                 className={
-                                  d.ativo
-                                    ? "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                                  d.recorrente
+                                    ? "border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300"
                                     : "text-muted-foreground"
                                 }
                               >
-                                {d.ativo ? "Ativo" : "Inativo"}
+                                {d.recorrente ? "Sim" : "Não"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
@@ -805,21 +902,23 @@ function Page() {
         open={tipoOpen}
         onOpenChange={setTipoOpen}
         icon={<FolderKanban className="w-5 h-5" />}
-        title={tipoMode === "edit" ? "Editar tipo" : "Novo tipo de despesa"}
-        description="Classifique como fixa ou variável e defina o orçamento mensal."
+        title={
+          tipoMode === "edit" ? "Editar categoria" : "Nova categoria de despesa"
+        }
+        description="Ex.: Estrutural, Marketing. Informe a natureza e o orçamento mensal."
       >
         <form onSubmit={handleSubmitTipo}>
           <FormDialogBody className="space-y-4">
             <FormSection>
               <div className="space-y-2">
-                <Label htmlFor="tipo-nome">Nome</Label>
+                <Label htmlFor="tipo-nome">Categoria</Label>
                 <Input
                   id="tipo-nome"
                   value={tipoForm.nome}
                   onChange={(e) =>
                     setTipoForm((f) => ({ ...f, nome: e.target.value }))
                   }
-                  placeholder="Ex.: Aluguel, Marketing…"
+                  placeholder="Ex.: Estrutural, Marketing…"
                   autoFocus
                 />
               </div>
@@ -839,6 +938,7 @@ function Page() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fixa">Fixa</SelectItem>
+                    <SelectItem value="fixa_variavel">Fixa variável</SelectItem>
                     <SelectItem value="variavel">Variável</SelectItem>
                   </SelectContent>
                 </Select>
@@ -893,21 +993,30 @@ function Page() {
         onOpenChange={setDespesaOpen}
         icon={<Target className="w-5 h-5" />}
         title={despesaMode === "edit" ? "Editar despesa" : "Nova despesa"}
-        description="Lance o valor vinculado a um tipo fixo ou variável."
+        description="Informe categoria, competência e se a despesa deve renovar todo mês."
       >
         <form onSubmit={handleSubmitDespesa}>
           <FormDialogBody className="space-y-4">
             <FormSection>
               <div className="space-y-2">
-                <Label>Tipo</Label>
+                <Label>Categoria</Label>
                 <Select
                   value={despesaForm.tipoId || undefined}
-                  onValueChange={(v) =>
-                    setDespesaForm((f) => ({ ...f, tipoId: v }))
-                  }
+                  onValueChange={(v) => {
+                    const tipo = tipos.find((t) => t.id === v);
+                    setDespesaForm((f) => ({
+                      ...f,
+                      tipoId: v,
+                      recorrente:
+                        tipo?.natureza === "fixa" ||
+                        tipo?.natureza === "fixa_variavel"
+                          ? true
+                          : false,
+                    }));
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
+                    <SelectValue placeholder="Selecione a categoria" />
                   </SelectTrigger>
                   <SelectContent>
                     {tiposParaSelect.map((t) => (
@@ -919,7 +1028,7 @@ function Page() {
                 </Select>
                 {tiposParaSelect.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    Cadastre um tipo nesta aba antes de lançar a despesa.
+                    Cadastre uma categoria nesta aba antes de lançar a despesa.
                   </p>
                 ) : null}
               </div>
@@ -934,7 +1043,7 @@ function Page() {
                       descricao: e.target.value,
                     }))
                   }
-                  placeholder="Ex.: Aluguel março"
+                  placeholder="Ex.: Aluguel do escritório"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -950,21 +1059,43 @@ function Page() {
                       }))
                     }
                     placeholder="0,00"
-                    inputMode="numeric"
                     inputMode="decimal"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="desp-data">Data</Label>
+                  <Label htmlFor="desp-comp">Competência</Label>
                   <Input
-                    id="desp-data"
-                    type="date"
-                    value={despesaForm.data}
+                    id="desp-comp"
+                    type="month"
+                    value={despesaForm.competencia}
                     onChange={(e) =>
-                      setDespesaForm((f) => ({ ...f, data: e.target.value }))
+                      setDespesaForm((f) => ({
+                        ...f,
+                        competencia: e.target.value,
+                        data: e.target.value
+                          ? `${e.target.value}-01`
+                          : f.data,
+                      }))
                     }
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="desp-data">Data</Label>
+                <Input
+                  id="desp-data"
+                  type="date"
+                  value={despesaForm.data}
+                  onChange={(e) =>
+                    setDespesaForm((f) => ({
+                      ...f,
+                      data: e.target.value,
+                      competencia: e.target.value
+                        ? e.target.value.slice(0, 7)
+                        : f.competencia,
+                    }))
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="desp-obs">Observação</Label>
@@ -980,6 +1111,24 @@ function Page() {
                   placeholder="Opcional"
                 />
               </div>
+              {(naturezaTab === "fixa" ||
+                naturezaTab === "fixa_variavel") && (
+                <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                  <div>
+                    <Label htmlFor="desp-recorrente">Renovar todo mês</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Entra no botão Renovar mês da listagem.
+                    </p>
+                  </div>
+                  <Switch
+                    id="desp-recorrente"
+                    checked={despesaForm.recorrente}
+                    onCheckedChange={(v) =>
+                      setDespesaForm((f) => ({ ...f, recorrente: v }))
+                    }
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
                 <Label htmlFor="desp-ativo">Ativo</Label>
                 <Switch
@@ -1019,7 +1168,7 @@ function Page() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir tipo?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
             <AlertDialogDescription>
               Ao excluir &quot;{deleteTipo?.nome}&quot;, todas as despesas
               vinculadas também serão removidas.

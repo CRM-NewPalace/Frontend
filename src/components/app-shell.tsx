@@ -197,6 +197,11 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     icon: Banknote,
   },
   {
+    to: "/financeiro/centro-despesas",
+    label: "Centro de despesas",
+    icon: FolderKanban,
+  },
+  {
     to: "/financeiro/contratos",
     label: "Contratos",
     icon: FileText,
