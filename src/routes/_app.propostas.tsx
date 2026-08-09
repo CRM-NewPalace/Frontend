@@ -109,7 +109,9 @@ import {
   getPropostaMailtoUrl,
   getPropostaWhatsAppUrl,
   propostaWhatsAppDigits,
+  type PropostaPdfBrand,
 } from "@/lib/proposta-pdf";
+import { useTenantTheme } from "@/lib/tenant-theme";
 import {
   formatPhone,
   isValidPhone,
@@ -305,21 +307,25 @@ function PropostaActionMenus({
   proposta,
   onView,
   onRequestWhatsAppPhone,
+  brand,
   compact = false,
 }: {
   proposta: Proposta;
   onView?: () => void;
   onRequestWhatsAppPhone: (proposta: Proposta) => void;
+  brand: PropostaPdfBrand;
   compact?: boolean;
 }) {
   const handlePdfCliente = () => {
-    downloadPropostaPdfCliente(proposta);
-    toast.success("PDF para cliente baixado");
+    void downloadPropostaPdfCliente(proposta, brand).then(() => {
+      toast.success("PDF para cliente baixado");
+    });
   };
 
   const handlePdfCorretor = () => {
-    downloadPropostaPdfCorretor(proposta);
-    toast.success("PDF para corretor baixado");
+    void downloadPropostaPdfCorretor(proposta, brand).then(() => {
+      toast.success("PDF para corretor baixado");
+    });
   };
 
   const handleWhatsApp = () => {
@@ -327,16 +333,18 @@ function PropostaActionMenus({
       onRequestWhatsAppPhone(proposta);
       return;
     }
-    downloadPropostaPdfCliente(proposta);
-    const url = getPropostaWhatsAppUrl(proposta);
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
-    shareToast();
+    void downloadPropostaPdfCliente(proposta, brand).then(() => {
+      const url = getPropostaWhatsAppUrl(proposta);
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+      shareToast();
+    });
   };
 
   const handleEmail = () => {
-    downloadPropostaPdfCliente(proposta);
-    window.location.href = getPropostaMailtoUrl(proposta);
-    shareToast();
+    void downloadPropostaPdfCliente(proposta, brand).then(() => {
+      window.location.href = getPropostaMailtoUrl(proposta);
+      shareToast();
+    });
   };
 
   return (
@@ -426,6 +434,24 @@ function Page() {
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isGerente = user?.role === "gerente";
+  const { logoUrl, tenant } = useTenantTheme();
+  const pdfBrand = useMemo<PropostaPdfBrand>(
+    () => ({
+      logoUrl,
+      company: tenant
+        ? {
+            name: tenant.name,
+            documento: tenant.documento,
+            creci: tenant.creci,
+            email: tenant.email,
+            telefone: tenant.telefone,
+            endereco: tenant.endereco,
+            cidade: tenant.cidade,
+          }
+        : null,
+    }),
+    [logoUrl, tenant],
+  );
   const { leads, assignees } = useLeads();
 
   const [items, setItems] = useState<Proposta[]>([]);
@@ -921,6 +947,7 @@ function Page() {
                   <TableCell className="text-right">
                     <PropostaActionMenus
                       proposta={p}
+                      brand={pdfBrand}
                       compact
                       onView={() => setSelected(p)}
                       onRequestWhatsAppPhone={(item) => {
@@ -1033,6 +1060,7 @@ function Page() {
               </span>
               <PropostaActionMenus
                 proposta={selected}
+                brand={pdfBrand}
                 onRequestWhatsAppPhone={(item) => {
                   setWhatsAppTarget(item);
                   setWhatsAppPhone(
@@ -1251,15 +1279,18 @@ function Page() {
               disabled={!whatsAppTarget || !isValidPhone(whatsAppPhone)}
               onClick={() => {
                 if (!whatsAppTarget || !isValidPhone(whatsAppPhone)) return;
-                downloadPropostaPdfCliente(whatsAppTarget);
-                const url = getPropostaWhatsAppUrl(
-                  whatsAppTarget,
-                  phoneDigits(whatsAppPhone),
+                void downloadPropostaPdfCliente(whatsAppTarget, pdfBrand).then(
+                  () => {
+                    const url = getPropostaWhatsAppUrl(
+                      whatsAppTarget,
+                      phoneDigits(whatsAppPhone),
+                    );
+                    if (url) window.open(url, "_blank", "noopener,noreferrer");
+                    shareToast();
+                    setWhatsAppTarget(null);
+                    setWhatsAppPhone("");
+                  },
                 );
-                if (url) window.open(url, "_blank", "noopener,noreferrer");
-                shareToast();
-                setWhatsAppTarget(null);
-                setWhatsAppPhone("");
               }}
             >
               Abrir WhatsApp
