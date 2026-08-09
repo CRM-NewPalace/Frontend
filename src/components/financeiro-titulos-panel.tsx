@@ -54,6 +54,7 @@ import {
   fetchParceiros,
   fetchTitulos,
   updateTitulo,
+  updateTitulosGrupo,
 } from "@/lib/financeiro-api";
 import {
   getVistaParcelas,
@@ -89,6 +90,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  Layers,
   ListOrdered,
   Loader2,
   Pencil,
@@ -155,7 +157,13 @@ function addMonthsIso(iso: string, months: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-type ParcelaDraft = { vencimento: string; valor: string };
+type ParcelaDraft = {
+  id?: string;
+  vencimento: string;
+  valor: string;
+  label?: string;
+  locked?: boolean;
+};
 
 function buildParcelasDraft(
   total: number,
@@ -264,8 +272,11 @@ export function FinanceiroTitulosPanel({
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
   const [centro, setCentro] = useState("todos");
   const [open, setOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [formMode, setFormMode] = useState<"create" | "edit" | "edit-grupo">(
+    "create",
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingGrupoId, setEditingGrupoId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm(tipo));
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TituloFinanceiro | null>(
@@ -501,7 +512,11 @@ export function FinanceiroTitulosPanel({
 
   function renderTituloActions(
     t: TituloFinanceiro,
-    opts?: { hideGrupo?: boolean; hideBaixar?: boolean },
+    opts?: {
+      hideGrupo?: boolean;
+      hideGrupoEdit?: boolean;
+      hideBaixar?: boolean;
+    },
   ) {
     return (
       <div className="flex justify-end gap-0.5">
@@ -534,9 +549,23 @@ export function FinanceiroTitulosPanel({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
+            title={t.grupoParcelasId ? "Editar parcela" : "Editar"}
             onClick={() => openEdit(t)}
           >
             <Pencil className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
+        {!opts?.hideGrupoEdit &&
+        t.status !== "pago" &&
+        t.grupoParcelasId ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Editar todas as parcelas"
+            onClick={() => void openEditGrupo(t)}
+          >
+            <Layers className="w-3.5 h-3.5" />
           </Button>
         ) : null}
         {t.status !== "pago" ? (
@@ -544,6 +573,7 @@ export function FinanceiroTitulosPanel({
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-destructive"
+            title="Excluir"
             onClick={() => setDeleteTarget(t)}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -572,6 +602,7 @@ export function FinanceiroTitulosPanel({
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
+    setEditingGrupoId(null);
     const next = emptyForm(tipo);
     setForm(next);
     setParcelado(false);
@@ -587,6 +618,7 @@ export function FinanceiroTitulosPanel({
     }
     setFormMode("edit");
     setEditingId(t.id);
+    setEditingGrupoId(null);
     setParcelado(false);
     setParcelasDraft([]);
     setForm({
@@ -599,6 +631,67 @@ export function FinanceiroTitulosPanel({
       status: t.status,
       parcela: t.parcela || "",
     });
+    setOpen(true);
+  }
+
+  async function openEditGrupo(seed: TituloFinanceiro | TituloFinanceiro[]) {
+    const seedList = Array.isArray(seed) ? seed : [seed];
+    const grupoId = seedList[0]?.grupoParcelasId;
+    if (!grupoId) {
+      toast.error("Este título não faz parte de um parcelamento.");
+      return;
+    }
+
+    let rows = items
+      .filter((t) => t.grupoParcelasId === grupoId)
+      .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+    if (rows.length === 0) {
+      try {
+        rows = [...(await fetchTitulos(tipo, grupoId))].sort((a, b) =>
+          a.vencimento.localeCompare(b.vencimento),
+        );
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar as parcelas.",
+        );
+        return;
+      }
+    }
+    const editaveis = rows.filter((t) => t.status !== "pago");
+    if (editaveis.length === 0) {
+      toast.error("Todas as parcelas já estão baixadas.");
+      return;
+    }
+
+    const base = editaveis[0] ?? rows[0];
+    setFormMode("edit-grupo");
+    setEditingId(null);
+    setEditingGrupoId(grupoId);
+    setParcelado(false);
+    setGrupoOpen(false);
+    setForm({
+      descricao: base.descricao,
+      parceiroId: base.parceiroId || NONE,
+      categoria: base.categoria || categorias[0],
+      centro: base.centro || CENTROS_DESPESA[0],
+      vencimento: base.vencimento.slice(0, 10),
+      valor: formatValorInput(
+        editaveis.reduce((s, t) => s + t.valor, 0),
+      ),
+      status: "aberto",
+      parcela: "",
+    });
+    setParcelasDraft(
+      rows.map((t) => ({
+        id: t.id,
+        vencimento: t.vencimento.slice(0, 10),
+        valor: formatValorInput(t.valor),
+        label: t.parcela || "",
+        locked: t.status === "pago",
+      })),
+    );
     setOpen(true);
   }
 
@@ -667,6 +760,60 @@ export function FinanceiroTitulosPanel({
         });
         toast.success(`${parcelas.length} parcelas criadas.`);
         setOpen(false);
+        await load();
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError ? err.message : "Não foi possível salvar.",
+        );
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (formMode === "edit-grupo") {
+      if (!editingGrupoId) {
+        toast.error("Grupo de parcelas inválido.");
+        return;
+      }
+      const parcelas: {
+        id: string;
+        vencimento: string;
+        valor: number;
+      }[] = [];
+      for (const p of parcelasDraft) {
+        if (p.locked || !p.id) continue;
+        const v = parseValor(p.valor);
+        if (!Number.isFinite(v) || v <= 0) {
+          toast.error("Informe um valor válido em todas as parcelas abertas.");
+          return;
+        }
+        if (!p.vencimento) {
+          toast.error("Informe o vencimento de todas as parcelas abertas.");
+          return;
+        }
+        parcelas.push({ id: p.id, vencimento: p.vencimento, valor: v });
+      }
+      if (parcelas.length === 0) {
+        toast.error("Nenhuma parcela aberta para editar.");
+        return;
+      }
+      setSaving(true);
+      try {
+        const result = await updateTitulosGrupo(editingGrupoId, {
+          descricao,
+          parceiroId: form.parceiroId === NONE ? null : form.parceiroId,
+          categoria: form.categoria,
+          centro: form.centro,
+          parcelas,
+        });
+        toast.success(
+          result.skippedPago > 0
+            ? `${result.updated} parcela(s) atualizada(s); ${result.skippedPago} paga(s) mantida(s).`
+            : `${result.updated} parcela(s) atualizada(s).`,
+        );
+        setOpen(false);
+        setEditingGrupoId(null);
         await load();
       } catch (err) {
         toast.error(
@@ -838,7 +985,7 @@ export function FinanceiroTitulosPanel({
               <TableHead>Parcela</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[120px]" />
+              <TableHead className="w-[168px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -960,6 +1107,17 @@ export function FinanceiroTitulosPanel({
                           >
                             <ListOrdered className="w-3.5 h-3.5" />
                           </Button>
+                          {row.titulos.some((t) => t.status !== "pago") ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Editar todas as parcelas"
+                              onClick={() => void openEditGrupo(row.titulos)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1009,6 +1167,7 @@ export function FinanceiroTitulosPanel({
                                 ) : null}
                                 {renderTituloActions(t, {
                                   hideGrupo: true,
+                                  hideGrupoEdit: true,
                                   hideBaixar: true,
                                 })}
                               </div>
@@ -1028,11 +1187,19 @@ export function FinanceiroTitulosPanel({
         open={open}
         onOpenChange={setOpen}
         icon={<Banknote className="w-5 h-5" />}
-        title={formMode === "create" ? "Novo título" : "Editar título"}
+        title={
+          formMode === "create"
+            ? "Novo título"
+            : formMode === "edit-grupo"
+              ? "Editar parcelas"
+              : "Editar título"
+        }
         description={
-          tipo === "receber"
-            ? "Conta a receber vinculada ao fluxo de caixa."
-            : "Conta a pagar vinculada ao fluxo de caixa."
+          formMode === "edit-grupo"
+            ? "Altere os dados comuns e o vencimento/valor de todas as parcelas em aberto."
+            : tipo === "receber"
+              ? "Conta a receber vinculada ao fluxo de caixa."
+              : "Conta a pagar vinculada ao fluxo de caixa."
         }
         footer={
           <FormDialogActions>
@@ -1123,44 +1290,56 @@ export function FinanceiroTitulosPanel({
                     />
                   </div>
                 ) : null}
-                <div className="space-y-1.5">
-                  <Label>
-                    {parcelado && formMode === "create"
-                      ? "1º vencimento *"
-                      : "Vencimento *"}
-                  </Label>
-                  <Input
-                    type="date"
-                    value={form.vencimento}
-                    onChange={(e) => {
-                      const vencimento = e.target.value;
-                      setForm((f) => ({ ...f, vencimento }));
-                      if (parcelado && formMode === "create") {
-                        regenerateParcelas(form.valor, qtdParcelas, vencimento);
-                      }
-                    }}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    {parcelado && formMode === "create"
-                      ? "Valor total (R$) *"
-                      : "Valor (R$) *"}
-                  </Label>
-                  <Input
-                    inputMode="numeric"
-                    value={form.valor}
-                    onChange={(e) => {
-                      const valor = maskMoneyInput(e.target.value);
-                      setForm((f) => ({ ...f, valor }));
-                      if (parcelado && formMode === "create") {
-                        regenerateParcelas(valor, qtdParcelas, form.vencimento);
-                      }
-                    }}
-                    required={!parcelado || formMode === "edit"}
-                  />
-                </div>
+                {formMode !== "edit-grupo" ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>
+                        {parcelado && formMode === "create"
+                          ? "1º vencimento *"
+                          : "Vencimento *"}
+                      </Label>
+                      <Input
+                        type="date"
+                        value={form.vencimento}
+                        onChange={(e) => {
+                          const vencimento = e.target.value;
+                          setForm((f) => ({ ...f, vencimento }));
+                          if (parcelado && formMode === "create") {
+                            regenerateParcelas(
+                              form.valor,
+                              qtdParcelas,
+                              vencimento,
+                            );
+                          }
+                        }}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>
+                        {parcelado && formMode === "create"
+                          ? "Valor total (R$) *"
+                          : "Valor (R$) *"}
+                      </Label>
+                      <Input
+                        inputMode="numeric"
+                        value={form.valor}
+                        onChange={(e) => {
+                          const valor = maskMoneyInput(e.target.value);
+                          setForm((f) => ({ ...f, valor }));
+                          if (parcelado && formMode === "create") {
+                            regenerateParcelas(
+                              valor,
+                              qtdParcelas,
+                              form.vencimento,
+                            );
+                          }
+                        }}
+                        required={!parcelado || formMode === "edit"}
+                      />
+                    </div>
+                  </>
+                ) : null}
                 {parcelado && formMode === "create" ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <Label>Quantidade de parcelas *</Label>
@@ -1176,7 +1355,7 @@ export function FinanceiroTitulosPanel({
                       }}
                     />
                   </div>
-                ) : (
+                ) : formMode === "edit" ? (
                   <div className="space-y-1.5">
                     <Label>Parcela</Label>
                     <Input
@@ -1187,22 +1366,29 @@ export function FinanceiroTitulosPanel({
                       placeholder="Ex.: 1/3"
                     />
                   </div>
-                )}
-                {parcelado && formMode === "create" && parcelasDraft.length > 0 ? (
+                ) : null}
+                {(parcelado && formMode === "create" && parcelasDraft.length > 0) ||
+                formMode === "edit-grupo" ? (
                   <div className="sm:col-span-2 space-y-2">
-                    <Label>Parcelas</Label>
+                    <Label>
+                      {formMode === "edit-grupo"
+                        ? "Parcelas (em aberto editáveis)"
+                        : "Parcelas"}
+                    </Label>
                     <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/50">
                       {parcelasDraft.map((p, idx) => (
                         <div
-                          key={`parcela-${idx}`}
+                          key={p.id ?? `parcela-${idx}`}
                           className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center p-2"
                         >
-                          <span className="text-xs text-muted-foreground w-10">
-                            {idx + 1}/{parcelasDraft.length}
+                          <span className="text-xs text-muted-foreground w-12">
+                            {p.label || `${idx + 1}/${parcelasDraft.length}`}
+                            {p.locked ? " · paga" : ""}
                           </span>
                           <Input
                             type="date"
                             value={p.vencimento}
+                            disabled={p.locked}
                             onChange={(e) => {
                               const vencimento = e.target.value;
                               setParcelasDraft((prev) =>
@@ -1215,8 +1401,9 @@ export function FinanceiroTitulosPanel({
                           <Input
                             inputMode="decimal"
                             value={p.valor}
+                            disabled={p.locked}
                             onChange={(e) => {
-                              const valor = e.target.value;
+                              const valor = maskMoneyInput(e.target.value);
                               setParcelasDraft((prev) =>
                                 prev.map((row, i) =>
                                   i === idx ? { ...row, valor } : row,
@@ -1235,6 +1422,9 @@ export function FinanceiroTitulosPanel({
                           0,
                         ),
                       )}
+                      {formMode === "edit-grupo"
+                        ? " · Parcelas pagas não são alteradas."
+                        : ""}
                     </p>
                   </div>
                 ) : null}
@@ -1298,27 +1488,30 @@ export function FinanceiroTitulosPanel({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select
-                    value={form.status}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        status: v as StatusTitulo,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aberto">Aberto</SelectItem>
-                      <SelectItem value="atrasado">Atrasado</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {formMode !== "edit-grupo" &&
+                !(parcelado && formMode === "create") ? (
+                  <div className="space-y-1.5">
+                    <Label>Status</Label>
+                    <Select
+                      value={form.status}
+                      onValueChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          status: v as StatusTitulo,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="aberto">Aberto</SelectItem>
+                        <SelectItem value="atrasado">Atrasado</SelectItem>
+                        <SelectItem value="cancelado">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
               </div>
             </FormSection>
           </form>
@@ -1505,6 +1698,16 @@ export function FinanceiroTitulosPanel({
         }
         footer={
           <FormDialogActions>
+            {grupoTitulos.some((t) => t.status !== "pago") ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void openEditGrupo(grupoTitulos)}
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1" />
+                Editar todas
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"

@@ -259,6 +259,34 @@ export async function updateTitulo(
   });
 }
 
+export type UpdateTitulosGrupoInput = {
+  descricao?: string;
+  parceiroId?: string | null;
+  parceiroNome?: string | null;
+  categoria?: string;
+  centro?: string;
+  parcelas?: {
+    id: string;
+    vencimento?: string;
+    valor?: number;
+    status?: "aberto" | "atrasado" | "cancelado";
+  }[];
+};
+
+export async function updateTitulosGrupo(
+  grupoParcelasId: string,
+  input: UpdateTitulosGrupoInput,
+): Promise<{
+  updated: number;
+  skippedPago: number;
+  titulos: TituloFinanceiro[];
+}> {
+  return apiFetch(`/financeiro/titulos/grupo/${grupoParcelasId}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
 export async function baixarTitulo(
   id: string,
   input: { dataPagamento: string; formaPagamento?: string },
