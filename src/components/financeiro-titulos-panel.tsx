@@ -856,10 +856,6 @@ export function FinanceiroTitulosPanel({
     }
     setSaving(true);
     try {
-      const status =
-        formMode === "create" && form.status === "pago"
-          ? ("aberto" as const)
-          : form.status;
       const payload = {
         tipo,
         descricao,
@@ -869,12 +865,16 @@ export function FinanceiroTitulosPanel({
         ...(tipo === "pagar" ? { centro: centroValor } : { centro: "" }),
         vencimento: form.vencimento,
         valor,
-        status,
+        status: form.status,
         parcela: form.parcela.trim() || undefined,
       };
       if (formMode === "create") {
         await createTitulo(payload);
-        toast.success("Título criado.");
+        toast.success(
+          form.status === "pago"
+            ? "Título criado e baixado no fluxo de caixa."
+            : "Título criado.",
+        );
       } else if (editingId) {
         await updateTitulo(editingId, {
           ...payload,
@@ -1594,15 +1594,16 @@ export function FinanceiroTitulosPanel({
                         <SelectItem value="aberto">Aberto</SelectItem>
                         <SelectItem value="atrasado">Atrasado</SelectItem>
                         <SelectItem value="cancelado">Cancelado</SelectItem>
-                        {form.status === "pago" ? (
-                          <SelectItem value="pago">Pago</SelectItem>
-                        ) : null}
+                        <SelectItem value="pago">
+                          {formMode === "create" ? "Pago já" : "Pago"}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     {form.status === "pago" ? (
                       <p className="text-[11px] text-muted-foreground">
-                        Mudar para Aberto/Atrasado/Cancelado estorna a baixa no
-                        fluxo de caixa.
+                        {formMode === "create"
+                          ? "Já entra como pago/recebido no fluxo de caixa."
+                          : "Mudar para Aberto/Atrasado/Cancelado estorna a baixa no fluxo de caixa."}
                       </p>
                     ) : null}
                   </div>
