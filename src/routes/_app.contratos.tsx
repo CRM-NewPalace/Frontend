@@ -23,6 +23,7 @@ import { formatPhone } from "@/lib/phone";
 import { maskMoneyInput } from "@/lib/money-input";
 import { formatCpfCnpj } from "@/lib/utils";
 import { useTenantTheme } from "@/lib/tenant-theme";
+import type { TenantBranding } from "@/lib/auth";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,15 +41,36 @@ function maskField(field: ContratoField, raw: string) {
   return raw;
 }
 
+/** Prefill da CONTRATADA a partir do cadastro da imobiliária. */
+function prefillFromTenant(
+  template: ContratoTemplate,
+  tenant: TenantBranding | null,
+): Record<string, string> {
+  const values = emptyContratoForm(template);
+  if (!tenant || template.id !== "intermediacao") return values;
+
+  if (tenant.name?.trim()) values.contratadaNome = tenant.name.trim();
+  if (tenant.documento?.trim()) {
+    values.contratadaCnpj = formatCpfCnpj(tenant.documento);
+  }
+  if (tenant.creci?.trim()) values.contratadaCreci = tenant.creci.trim();
+  if (tenant.email?.trim()) values.contratadaEmail = tenant.email.trim();
+  if (tenant.endereco?.trim()) {
+    values.contratadaEndereco = tenant.endereco.trim();
+  }
+  if (tenant.cidade?.trim()) values.cidade = tenant.cidade.trim();
+  return values;
+}
+
 function ContratosPage() {
-  const { logoUrl } = useTenantTheme();
+  const { logoUrl, tenant } = useTenantTheme();
   const [selected, setSelected] = useState<ContratoTemplate | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
 
   const openTemplate = (template: ContratoTemplate) => {
     setSelected(template);
-    setForm(emptyContratoForm(template));
+    setForm(prefillFromTenant(template, tenant));
   };
 
   const requiredMissing = useMemo(() => {

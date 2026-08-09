@@ -431,6 +431,16 @@ async function pdfIntermediacao(
   y = writeParagraph(doc, y, `Endereço: ${v(values, "proprietarioEndereco")}`);
   y = writeParagraph(doc, y, `Tel.: ${v(values, "proprietarioTel")}`);
 
+  y = writeParagraph(doc, y, "Denominado CONTRATADA:", true);
+  y = writeParagraph(doc, y, `Nome: ${v(values, "contratadaNome")}`);
+  y = writeParagraph(
+    doc,
+    y,
+    `CNPJ: ${v(values, "contratadaCnpj")}    CRECI: ${v(values, "contratadaCreci")}`,
+  );
+  y = writeParagraph(doc, y, `Endereço: ${v(values, "contratadaEndereco")}`);
+  y = writeParagraph(doc, y, `E-mail: ${v(values, "contratadaEmail")}`);
+
   y = writeParagraph(doc, y, "CLÁUSULA 2ª – OBJETO DO CONTRATO", true);
   y = writeParagraph(
     doc,
@@ -542,7 +552,14 @@ async function pdfIntermediacao(
     y,
     "CONTRATADO",
     v(values, "contratadaNome"),
-    `CNPJ: ${v(values, "contratadaCnpj")}`,
+    [
+      `CNPJ: ${v(values, "contratadaCnpj")}`,
+      v(values, "contratadaCreci")
+        ? `CRECI: ${v(values, "contratadaCreci")}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("  "),
   );
   y = writeSignature(
     doc,

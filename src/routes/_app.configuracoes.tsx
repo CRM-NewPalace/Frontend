@@ -37,6 +37,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfigFunisPanel } from "@/components/config-funis-panel";
+import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
 
 export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Zone Connection" }] }),
@@ -254,7 +255,7 @@ function Config() {
     <div>
       <PageHeader
         title="Configurações"
-        description="Personalize funil, documentação do analista, origens, motivos e tags."
+        description="Personalize imobiliária, funil, documentação, origens, motivos e tags."
       />
 
       {error && (
@@ -263,8 +264,9 @@ function Config() {
         </div>
       )}
 
-      <Tabs defaultValue="funil">
+      <Tabs defaultValue="empresa">
         <TabsList className="flex h-auto flex-wrap gap-1">
+          <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
           <TabsTrigger value="funil">Funil</TabsTrigger>
           <TabsTrigger value="documentacao">Documentação</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
@@ -272,6 +274,10 @@ function Config() {
           <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="empresa">
+          <ConfigEmpresaPanel />
+        </TabsContent>
 
         <TabsContent value="funil">
           <ConfigFunisPanel />

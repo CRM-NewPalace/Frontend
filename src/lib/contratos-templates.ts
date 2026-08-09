@@ -304,7 +304,6 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
         label: "Contratada (imobiliária)",
         type: "text",
         required: true,
-        defaultValue: "NEW PALACE IMOBILIÁRIA",
       },
       {
         key: "contratadaCnpj",
@@ -313,11 +312,28 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
         required: true,
       },
       {
+        key: "contratadaCreci",
+        label: "Contratada — CRECI",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "contratadaEmail",
+        label: "Contratada — e-mail",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "contratadaEndereco",
+        label: "Contratada — endereço",
+        type: "text",
+        required: true,
+      },
+      {
         key: "cidade",
         label: "Cidade do contrato",
         type: "text",
         required: true,
-        defaultValue: "Recife/PE",
       },
       { key: "data", label: "Data", type: "date", required: true },
       {

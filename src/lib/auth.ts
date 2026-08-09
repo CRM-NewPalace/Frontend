@@ -8,6 +8,12 @@ export type TenantBranding = {
   id: string;
   name: string;
   slug: string;
+  documento?: string | null;
+  creci?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  endereco?: string | null;
+  cidade?: string | null;
   logoUrl: string | null;
   primaryColor: string | null;
   sidebarStyle: "default" | "dark" | "compact" | string;
