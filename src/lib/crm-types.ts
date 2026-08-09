@@ -37,6 +37,8 @@ export interface Lead {
   prioridade: "Alta" | "Média" | "Baixa";
   /** Renda mensal do cliente (opcional). */
   renda: number | null;
+  /** Tipo de renda (CLT, autônomo, etc.) — opcional. */
+  tipoRenda: string | null;
   /** Estado civil do cliente (opcional). */
   estadoCivil: string | null;
   /** Data de cadastro (ISO). */

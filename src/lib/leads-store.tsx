@@ -104,6 +104,7 @@ function buildOptimisticLead(
     stage: input.stage ?? "novo",
     prioridade: input.prioridade ?? "Média",
     renda: input.renda ?? null,
+    tipoRenda: input.tipoRenda ?? null,
     estadoCivil: input.estadoCivil ?? null,
     updatedAt: todayLabel(),
     tags: input.tags ?? [],

@@ -141,6 +141,8 @@ type FormState = {
   temperatura: "Quente" | "Morno" | "Frio";
   /** Renda mensal do cliente (opcional); só dígitos no input. */
   renda: string;
+  /** Tipo de renda (CLT, autônomo, etc.). */
+  tipoRenda: string;
   /** Estado civil do cliente (opcional). */
   estadoCivil: string;
   /** UUID da equipe (gerente). Vazio = sem seleção. */
@@ -164,6 +166,7 @@ const emptyForm = (origemDefault = ""): FormState => ({
   prioridade: "Média",
   temperatura: "Morno",
   renda: "",
+  tipoRenda: "",
   estadoCivil: "",
   equipeId: "",
   corretorId: "",
@@ -187,12 +190,23 @@ function leadToForm(lead: Lead): FormState {
     prioridade: lead.prioridade,
     temperatura: temp,
     renda: lead.renda != null ? formatMoneyInput(lead.renda) : "",
+    tipoRenda: lead.tipoRenda ?? "",
     estadoCivil: lead.estadoCivil ?? "",
     equipeId: lead.equipeId ?? "",
     corretorId: lead.corretorId ?? (lead.equipeId ? "__pool__" : ""),
     createdAt: lead.createdAt?.slice(0, 10) || todayInput(),
   };
 }
+
+const TIPO_RENDA_OPTIONS = [
+  "CLT",
+  "Autônomo",
+  "Empresário",
+  "Funcionário público",
+  "Aposentado",
+  "Renda mista",
+  "Outros",
+] as const;
 
 function LeadsPage() {
   const user = getSession();
@@ -281,7 +295,7 @@ function LeadsPage() {
   const [equipeFilter, setEquipeFilter] = useState<string>("all");
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [prioridadeFilter, setPrioridadeFilter] = useState<string>("all");
-  const [interesseFilter, setInteresseFilter] = useState<string>("all");
+  const [tipoRendaFilter, setTipoRendaFilter] = useState<string>("all");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
   const [showExtraFilters, setShowExtraFilters] = useState(false);
   const routeSearch = Route.useSearch();
@@ -377,7 +391,7 @@ function LeadsPage() {
     corretorFilter !== "all" ||
     (canFilterEquipe && equipeFilter !== "all") ||
     prioridadeFilter !== "all" ||
-    interesseFilter !== "all" ||
+    tipoRendaFilter !== "all" ||
     origemFilter !== "all" ||
     (!isCorretor && distribuicaoFilter !== "all");
 
@@ -386,7 +400,7 @@ function LeadsPage() {
 
   const extraFiltersActive =
     prioridadeFilter !== "all" ||
-    interesseFilter !== "all" ||
+    tipoRendaFilter !== "all" ||
     origemFilter !== "all";
 
   // Filtra no cliente sobre a lista já carregada no store — evita round-trip
@@ -445,7 +459,7 @@ function LeadsPage() {
       }
       if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter)
         return false;
-      if (interesseFilter !== "all" && l.interesse !== interesseFilter)
+      if (tipoRendaFilter !== "all" && (l.tipoRenda || "") !== tipoRendaFilter)
         return false;
       if (origemFilter !== "all" && l.origem !== origemFilter) return false;
       if (!isCorretor && distribuicaoFilter === "chegaram" && !isLeadChegou(l))
@@ -467,7 +481,7 @@ function LeadsPage() {
     equipeFilter,
     equipes,
     prioridadeFilter,
-    interesseFilter,
+    tipoRendaFilter,
     origemFilter,
     distribuicaoFilter,
     isCorretor,
@@ -522,7 +536,7 @@ function LeadsPage() {
       }
       if (prioridadeFilter !== "all" && l.prioridade !== prioridadeFilter)
         return false;
-      if (interesseFilter !== "all" && l.interesse !== interesseFilter)
+      if (tipoRendaFilter !== "all" && (l.tipoRenda || "") !== tipoRendaFilter)
         return false;
       if (origemFilter !== "all" && l.origem !== origemFilter) return false;
       return true;
@@ -585,7 +599,7 @@ function LeadsPage() {
     equipeFilter,
     equipes,
     prioridadeFilter,
-    interesseFilter,
+    tipoRendaFilter,
     origemFilter,
     canFilterEquipe,
     corretorFilterOptions,
@@ -603,7 +617,7 @@ function LeadsPage() {
     setCorretorFilter("all");
     setEquipeFilter("all");
     setPrioridadeFilter("all");
-    setInteresseFilter("all");
+    setTipoRendaFilter("all");
     setOrigemFilter("all");
     setDistribuicaoFilter("all");
   }
@@ -735,6 +749,7 @@ function LeadsPage() {
           bairro: form.bairro.trim(),
           prioridade: form.prioridade,
           renda: rendaNum,
+          tipoRenda: form.tipoRenda.trim() || null,
           estadoCivil: form.estadoCivil.trim() || null,
           tags,
           ...(equipeId !== undefined ? { equipeId } : {}),
@@ -757,6 +772,9 @@ function LeadsPage() {
         bairro: form.bairro.trim(),
         prioridade: form.prioridade,
         ...(rendaNum != null ? { renda: rendaNum } : {}),
+        ...(form.tipoRenda.trim()
+          ? { tipoRenda: form.tipoRenda.trim() }
+          : {}),
         ...(form.estadoCivil.trim()
           ? { estadoCivil: form.estadoCivil.trim() }
           : {}),
@@ -1259,7 +1277,7 @@ function LeadsPage() {
 
             <FormSection
               icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
-              title="Interesse e renda"
+              title="Renda"
             >
               <div className="space-y-1.5">
                 <Label
@@ -1283,6 +1301,33 @@ function LeadsPage() {
                     className="h-10 bg-background pl-9"
                   />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="lead-tipo-renda"
+                  className="text-xs text-muted-foreground"
+                >
+                  Tipo de renda{" "}
+                  <span className="font-normal">(opcional)</span>
+                </Label>
+                <Select
+                  value={form.tipoRenda || "__none__"}
+                  onValueChange={(v) =>
+                    setField("tipoRenda", v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger id="lead-tipo-renda" className="h-10">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">—</SelectItem>
+                    {TIPO_RENDA_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label
@@ -1503,15 +1548,18 @@ function LeadsPage() {
               </FormSection>
               <FormSection
                 icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
-                title="Interesse e renda"
+                title="Renda"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField label="Interesse" value={detailLead.interesse} />
                   <DetailField
                     label="Renda mensal"
                     value={
                       detailLead.renda != null ? brl(detailLead.renda) : "—"
                     }
+                  />
+                  <DetailField
+                    label="Tipo de renda"
+                    value={detailLead.tipoRenda || "—"}
                   />
                   <DetailField
                     label="Estado civil"
@@ -1809,7 +1857,7 @@ function LeadsPage() {
                 variant="secondary"
               >
                 {
-                  [prioridadeFilter, interesseFilter, origemFilter].filter(
+                  [prioridadeFilter, tipoRendaFilter, origemFilter].filter(
                     (v) => v !== "all",
                   ).length
                 }
@@ -1850,18 +1898,22 @@ function LeadsPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-[11px] text-muted-foreground">
-                  Interesse
+                  Tipo de renda
                 </Label>
                 <Select
-                  value={interesseFilter}
-                  onValueChange={setInteresseFilter}
+                  value={tipoRendaFilter}
+                  onValueChange={setTipoRendaFilter}
                 >
-                  <SelectTrigger className="h-9 w-40">
+                  <SelectTrigger className="h-9 w-44">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="Comprar">Comprar</SelectItem>
+                    {TIPO_RENDA_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1973,7 +2025,7 @@ function LeadsPage() {
               </TableHead>
               <TableHead>Lead</TableHead>
               <TableHead>Origem</TableHead>
-              <TableHead>Interesse</TableHead>
+              <TableHead>Tipo de renda</TableHead>
               <TableHead>Etapa</TableHead>
               {!isCorretor && <TableHead>Equipe</TableHead>}
               {!isCorretor && <TableHead>Corretor</TableHead>}
@@ -2046,8 +2098,8 @@ function LeadsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{l.origem}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{l.interesse}</Badge>
+                    <TableCell className="text-sm">
+                      {l.tipoRenda || "—"}
                     </TableCell>
                     <TableCell>
                       <Badge className={stage.color}>{stage.name}</Badge>
