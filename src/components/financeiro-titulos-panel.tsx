@@ -85,7 +85,7 @@ import {
   type TipoParceiro,
   type TituloFinanceiro,
 } from "@/lib/financeiro-mock";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertTriangle,
   Banknote,
@@ -652,7 +652,8 @@ export function FinanceiroTitulosPanel({
     setFormMode("edit");
     setEditingId(t.id);
     setEditingGrupoId(null);
-    setParcelado(false);
+    const temParcela = Boolean(t.parcela?.trim());
+    setParcelado(temParcela);
     setParcelasDraft([]);
     setForm({
       descricao: t.descricao,
@@ -885,7 +886,10 @@ export function FinanceiroTitulosPanel({
         vencimento: form.vencimento,
         valor,
         status: form.status,
-        parcela: form.parcela.trim() || undefined,
+        parcela:
+          formMode === "edit" && !parcelado
+            ? ""
+            : form.parcela.trim() || undefined,
       };
       if (formMode === "create") {
         await createTitulo(payload);
@@ -1359,30 +1363,44 @@ export function FinanceiroTitulosPanel({
                     </SelectContent>
                   </Select>
                 </div>
-                {formMode === "create" ? (
-                  <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5">
-                    <div>
-                      <Label htmlFor="titulo-parcelado">Parcelado</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Gera várias parcelas com valor e vencimento próprios.
-                      </p>
-                    </div>
-                    <Switch
+                {formMode === "create" || formMode === "edit" ? (
+                  <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                    <Checkbox
                       id="titulo-parcelado"
+                      className="mt-0.5"
                       checked={parcelado}
                       onCheckedChange={(checked) => {
-                        setParcelado(checked);
-                        if (checked) {
-                          regenerateParcelas(
-                            form.valor,
-                            qtdParcelas,
-                            form.vencimento,
-                          );
+                        const on = checked === true;
+                        setParcelado(on);
+                        if (on) {
+                          if (formMode === "create") {
+                            regenerateParcelas(
+                              form.valor,
+                              qtdParcelas,
+                              form.vencimento,
+                            );
+                          }
                         } else {
                           setParcelasDraft([]);
+                          if (formMode === "edit") {
+                            setForm((f) => ({ ...f, parcela: "" }));
+                          }
                         }
                       }}
                     />
+                    <div className="min-w-0 flex-1">
+                      <Label
+                        htmlFor="titulo-parcelado"
+                        className="cursor-pointer"
+                      >
+                        Parcelar
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {formMode === "create"
+                          ? "Ative para informar a quantidade e os campos de cada parcela."
+                          : "Ative para informar o rótulo da parcela (ex.: 1/3)."}
+                      </p>
+                    </div>
                   </div>
                 ) : null}
                 {formMode !== "edit-grupo" ? (
@@ -1450,7 +1468,8 @@ export function FinanceiroTitulosPanel({
                       }}
                     />
                   </div>
-                ) : formMode === "edit" ? (
+                ) : null}
+                {parcelado && formMode === "edit" ? (
                   <div className="space-y-1.5">
                     <Label>Parcela</Label>
                     <Input
