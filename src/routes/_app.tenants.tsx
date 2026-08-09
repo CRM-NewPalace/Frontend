@@ -619,11 +619,26 @@ function TenantsPage() {
                   return (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <div className="min-w-0">
-                        <div className="font-medium">{item.name}</div>
-                        <code className="text-[11px] text-muted-foreground">
-                          {item.slug}
-                        </code>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/40">
+                          {item.logoUrl ? (
+                            <img
+                              src={item.logoUrl}
+                              alt=""
+                              className="h-full w-full object-contain p-0.5"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{item.name}</div>
+                          <code className="text-[11px] text-muted-foreground">
+                            {item.slug}
+                          </code>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm tabular-nums">
