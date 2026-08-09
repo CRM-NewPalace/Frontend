@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { getSession } from "@/lib/auth";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import {
@@ -81,10 +82,19 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+type MovimentacaoSearch = {
+  novo?: boolean;
+};
+
 export const Route = createFileRoute("/_app/financeiro/movimentacao")({
   head: () => ({
     meta: [{ title: "Movimentação financeira — Zone Connection" }],
   }),
+  validateSearch: (search: Record<string, unknown>): MovimentacaoSearch => {
+    const raw = search.novo;
+    if (raw === true || raw === "true" || raw === "1") return { novo: true };
+    return {};
+  },
   component: Page,
 });
 
@@ -183,6 +193,10 @@ function toForm(m: MovimentoFinanceiro): FormState {
 }
 
 function Page() {
+  const navigate = useNavigate();
+  const { novo } = Route.useSearch();
+  const isPlatform = getSession()?.role === "super_admin";
+  const parceiroLabel = isPlatform ? "Fornecedor" : "Parceiro";
   const [items, setItems] = useState<MovimentoFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
   const [loading, setLoading] = useState(true);
@@ -282,8 +296,11 @@ function Page() {
       }
       setQuickSaving(true);
       try {
-        const parceiroTipo: TipoParceiro =
-          form.tipo === "entrada" ? "cliente" : "fornecedor";
+        const parceiroTipo: TipoParceiro = isPlatform
+          ? "fornecedor"
+          : form.tipo === "entrada"
+            ? "cliente"
+            : "fornecedor";
         const created = await createParceiro({
           nome,
           documento,
@@ -296,12 +313,12 @@ function Page() {
         );
         setField("parceiroId", created.id);
         setQuickKind(null);
-        toast.success("Parceiro cadastrado.");
+        toast.success(`${parceiroLabel} cadastrado.`);
       } catch (err) {
         toast.error(
           err instanceof ApiError
             ? err.message
-            : "Não foi possível criar o parceiro.",
+            : `Não foi possível criar o ${parceiroLabel.toLowerCase()}.`,
         );
       } finally {
         setQuickSaving(false);
@@ -378,6 +395,16 @@ function Page() {
     setForm(emptyForm());
     setOpen(true);
   }
+
+  useEffect(() => {
+    if (!novo) return;
+    openCreate();
+    void navigate({
+      to: "/financeiro/movimentacao",
+      search: {},
+      replace: true,
+    });
+  }, [novo, navigate]);
 
   function openEdit(m: MovimentoFinanceiro) {
     setFormMode("edit");
@@ -509,7 +536,7 @@ function Page() {
       <FinanceiroFiltrosBar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar descrição, parceiro, categoria…"
+        searchPlaceholder={`Buscar descrição, ${parceiroLabel.toLowerCase()}, categoria…`}
         periodo={periodo}
         onPeriodoChange={setPeriodo}
         status={status}
@@ -538,7 +565,7 @@ function Page() {
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Parceiro</TableHead>
+                <TableHead>{parceiroLabel}</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Centro</TableHead>
                 <TableHead>Tipo</TableHead>
@@ -691,14 +718,14 @@ function Page() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <Label>Parceiro</Label>
+                    <Label>{parceiroLabel}</Label>
                     <Button
                       type="button"
                       variant="link"
                       className="h-auto p-0 text-xs"
                       onClick={() => openQuick("parceiro")}
                     >
-                      + Novo parceiro
+                      + Novo {parceiroLabel.toLowerCase()}
                     </Button>
                   </div>
                   <Select
@@ -709,7 +736,9 @@ function Page() {
                       <SelectValue placeholder="Opcional" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE}>Sem parceiro</SelectItem>
+                      <SelectItem value={NONE}>
+                        Sem {parceiroLabel.toLowerCase()}
+                      </SelectItem>
                       {parceiros.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.nome}
@@ -857,7 +886,7 @@ function Page() {
         }
         title={
           quickKind === "parceiro"
-            ? "Novo parceiro"
+            ? `Novo ${parceiroLabel.toLowerCase()}`
             : quickKind === "categoria"
               ? "Nova categoria"
               : "Novo centro"

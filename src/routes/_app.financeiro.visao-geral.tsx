@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -81,6 +81,7 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 }
 
 function Page() {
+  const navigate = useNavigate();
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState(EMPTY_KPIS);
@@ -140,15 +141,16 @@ function Page() {
         description="Resumo financeiro — KPIs, evolução e atalhos"
         actions={
           <Button
+            type="button"
             onClick={() =>
-              toast.message("Em breve", {
-                description:
-                  "Cadastro de lancamentos pela tela de movimentacao.",
+              void navigate({
+                to: "/financeiro/movimentacao",
+                search: { novo: true },
               })
             }
           >
             <Plus className="w-4 h-4 mr-1" />
-            Novo lancamento
+            Novo lançamento
           </Button>
         }
       />
