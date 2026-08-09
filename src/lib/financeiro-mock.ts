@@ -58,33 +58,6 @@ export const STATUS_OPTIONS: { value: StatusTitulo | "todos"; label: string }[] 
     { value: "cancelado", label: "Cancelado" },
   ];
 
-export const CENTROS_DESPESA = [
-  "Comercial",
-  "Marketing",
-  "Administrativo",
-  "TI",
-  "Operações",
-  "RH",
-] as const;
-
-export const CATEGORIAS_ENTRADA = [
-  "Comissão de venda",
-  "Taxa de corretagem",
-  "Consultoria",
-  "Outras receitas",
-] as const;
-
-export const CATEGORIAS_SAIDA = [
-  "Aluguel",
-  "Folha de pagamento",
-  "Marketing digital",
-  "Software / SaaS",
-  "Impostos",
-  "Comissão corretor",
-  "Despesas gerais",
-  "Energia / utilidades",
-] as const;
-
 export interface ParceiroFinanceiro {
   id: string;
   nome: string;

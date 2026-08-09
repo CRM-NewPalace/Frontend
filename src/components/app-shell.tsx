@@ -31,6 +31,7 @@ import {
   FolderOpen,
   SearchCheck,
   Percent,
+  Tags,
   Goal,
   UserX,
   Network,
@@ -157,6 +158,11 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
     icon: ArrowDownRight,
   },
   {
+    to: "/financeiro/categorias",
+    label: "Categorias",
+    icon: Tags,
+  },
+  {
     to: "/financeiro/centro-despesas",
     label: "Centro de despesas",
     icon: FolderKanban,
@@ -195,6 +201,11 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     to: "/financeiro/fluxo-caixa",
     label: "Fluxo de caixa",
     icon: Banknote,
+  },
+  {
+    to: "/financeiro/categorias",
+    label: "Categorias",
+    icon: Tags,
   },
   {
     to: "/financeiro/centro-despesas",

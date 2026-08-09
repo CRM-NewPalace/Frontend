@@ -43,6 +43,7 @@ import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as ProdutosCrmImobiliarioRouteImport } from './routes/produtos.crm-imobiliario'
 import { Route as ProdutosIaWhatsappRouteImport } from './routes/produtos.ia-whatsapp'
 import { Route as ProdutosSitesInstitucionaisRouteImport } from './routes/produtos.sites-institucionais'
+import { Route as AppFinanceiroCategoriasRouteImport } from './routes/_app.financeiro.categorias'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
 import { Route as AppFinanceiroClientesFornecedoresRouteImport } from './routes/_app.financeiro.clientes-fornecedores'
 import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.financeiro.comissao'
@@ -223,6 +224,11 @@ const ProdutosSitesInstitucionaisRoute =
     path: '/produtos/sites-institucionais',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppFinanceiroCategoriasRoute = AppFinanceiroCategoriasRouteImport.update({
+  id: '/categorias',
+  path: '/categorias',
+  getParentRoute: () => AppFinanceiroRoute,
+} as any)
 const AppFinanceiroCentroDespesasRoute =
   AppFinanceiroCentroDespesasRouteImport.update({
     id: '/centro-despesas',
@@ -308,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
+  '/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -352,6 +359,7 @@ export interface FileRoutesByTo {
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
+  '/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -398,6 +406,7 @@ export interface FileRoutesById {
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
+  '/_app/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/_app/financeiro/clientes-fornecedores': typeof AppFinanceiroClientesFornecedoresRoute
   '/_app/financeiro/comissao': typeof AppFinanceiroComissaoRoute
@@ -444,6 +453,7 @@ export interface FileRouteTypes {
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
+    | '/financeiro/categorias'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -488,6 +498,7 @@ export interface FileRouteTypes {
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
+    | '/financeiro/categorias'
     | '/financeiro/centro-despesas'
     | '/financeiro/clientes-fornecedores'
     | '/financeiro/comissao'
@@ -533,6 +544,7 @@ export interface FileRouteTypes {
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
+    | '/_app/financeiro/categorias'
     | '/_app/financeiro/centro-despesas'
     | '/_app/financeiro/clientes-fornecedores'
     | '/_app/financeiro/comissao'
@@ -796,6 +808,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosSitesInstitucionaisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/financeiro/categorias': {
+      id: '/_app/financeiro/categorias'
+      path: '/categorias'
+      fullPath: '/financeiro/categorias'
+      preLoaderRoute: typeof AppFinanceiroCategoriasRouteImport
+      parentRoute: typeof AppFinanceiroRoute
+    }
     '/_app/financeiro/centro-despesas': {
       id: '/_app/financeiro/centro-despesas'
       path: '/centro-despesas'
@@ -863,6 +882,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppFinanceiroRouteChildren {
+  AppFinanceiroCategoriasRoute: typeof AppFinanceiroCategoriasRoute
   AppFinanceiroCentroDespesasRoute: typeof AppFinanceiroCentroDespesasRoute
   AppFinanceiroClientesFornecedoresRoute: typeof AppFinanceiroClientesFornecedoresRoute
   AppFinanceiroComissaoRoute: typeof AppFinanceiroComissaoRoute
@@ -875,6 +895,7 @@ interface AppFinanceiroRouteChildren {
 }
 
 const AppFinanceiroRouteChildren: AppFinanceiroRouteChildren = {
+  AppFinanceiroCategoriasRoute: AppFinanceiroCategoriasRoute,
   AppFinanceiroCentroDespesasRoute: AppFinanceiroCentroDespesasRoute,
   AppFinanceiroClientesFornecedoresRoute:
     AppFinanceiroClientesFornecedoresRoute,
@@ -963,13 +984,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

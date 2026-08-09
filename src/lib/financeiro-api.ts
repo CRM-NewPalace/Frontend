@@ -11,6 +11,7 @@ import type {
   MovimentoFinanceiro,
   NaturezaDespesa,
   ParceiroFinanceiro,
+  PeriodoFiltro,
   TipoMovimento,
   TipoParceiro,
   TituloFinanceiro,
@@ -43,6 +44,32 @@ export async function fetchCategorias(
 ): Promise<CategoriaFinanceiro[]> {
   const qs = tipo ? `?tipo=${tipo}` : "";
   return apiFetch<CategoriaFinanceiro[]>(`/financeiro/categorias${qs}`);
+}
+
+export type CategoriaResumoItem = CategoriaFinanceiro & {
+  total: number;
+  quantidade: number;
+  emAberto: number;
+  qtdAberto: number;
+  percentual: number;
+};
+
+export type CategoriasResumo = {
+  periodo: PeriodoFiltro;
+  totalEntradas: number;
+  totalSaidas: number;
+  categorias: CategoriaResumoItem[];
+};
+
+export async function fetchCategoriasResumo(params?: {
+  periodo?: PeriodoFiltro;
+  tipo?: TipoMovimento;
+}): Promise<CategoriasResumo> {
+  const qs = new URLSearchParams();
+  if (params?.periodo) qs.set("periodo", params.periodo);
+  if (params?.tipo) qs.set("tipo", params.tipo);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<CategoriasResumo>(`/financeiro/categorias/resumo${suffix}`);
 }
 
 export async function createCategoria(

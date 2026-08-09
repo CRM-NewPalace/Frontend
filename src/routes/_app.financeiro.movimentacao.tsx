@@ -42,10 +42,12 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   createCategoria,
+  createDespesaTipo,
   createMovimento,
   createParceiro,
   deleteMovimento,
   fetchCategorias,
+  fetchDespesaTipos,
   fetchMovimentos,
   fetchParceiros,
   updateMovimento,
@@ -58,12 +60,12 @@ import {
 } from "@/lib/money-input";
 import {
   brl,
-  CENTROS_DESPESA,
   filterByPeriodo,
   formatDate,
   statusBadgeClass,
   statusLabel,
   type CategoriaFinanceiro,
+  type DespesaTipo,
   type MovimentoFinanceiro,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
@@ -117,28 +119,8 @@ const FORMAS_PAGAMENTO = [
 ] as const;
 
 const NONE = "__none__";
-const EXTRA_CENTRO_KEY = "financeiro.extraCentros";
 
 type QuickKind = "parceiro" | "categoria" | "centro" | null;
-
-function loadExtras(key: string): string[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter(
-          (x): x is string => typeof x === "string" && x.trim().length > 0,
-        )
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveExtras(key: string, values: string[]) {
-  localStorage.setItem(key, JSON.stringify(values));
-}
 
 type FormState = {
   data: string;
@@ -160,13 +142,13 @@ function todayIso() {
   return `${y}-${m}-${day}`;
 }
 
-function emptyForm(defaultCategoria = ""): FormState {
+function emptyForm(defaultCategoria = "", defaultCentro = ""): FormState {
   return {
     data: todayIso(),
     descricao: "",
     parceiroId: NONE,
     categoria: defaultCategoria,
-    centro: CENTROS_DESPESA[0],
+    centro: defaultCentro,
     tipo: "entrada",
     valor: "",
     status: "pago",
@@ -178,13 +160,13 @@ function parseValor(raw: string): number {
   return parseMoneyInput(raw);
 }
 
-function toForm(m: MovimentoFinanceiro): FormState {
+function toForm(m: MovimentoFinanceiro, defaultCentro = ""): FormState {
   return {
     data: m.data.slice(0, 10),
     descricao: m.descricao,
     parceiroId: m.parceiroId || NONE,
     categoria: m.categoria,
-    centro: m.centro || CENTROS_DESPESA[0],
+    centro: m.centro || defaultCentro,
     tipo: m.tipo,
     valor: formatMoneyInput(m.valor),
     status: m.status,
@@ -214,9 +196,7 @@ function Page() {
   );
   const [deleting, setDeleting] = useState(false);
   const [categoriasApi, setCategoriasApi] = useState<CategoriaFinanceiro[]>([]);
-  const [extraCentros, setExtraCentros] = useState<string[]>(() =>
-    loadExtras(EXTRA_CENTRO_KEY),
-  );
+  const [despesaTipos, setDespesaTipos] = useState<DespesaTipo[]>([]);
   const [quickKind, setQuickKind] = useState<QuickKind>(null);
   const [quickNome, setQuickNome] = useState("");
   const [quickDocumento, setQuickDocumento] = useState("");
@@ -225,14 +205,16 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [movs, pars, cats] = await Promise.all([
+      const [movs, pars, cats, tipos] = await Promise.all([
         fetchMovimentos(),
         fetchParceiros(),
         fetchCategorias(),
+        fetchDespesaTipos(),
       ]);
       setItems(movs);
       setParceiros(pars.filter((p) => p.ativo));
       setCategoriasApi(cats);
+      setDespesaTipos(tipos);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -247,6 +229,16 @@ function Page() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const nomesCentroCusto = useMemo(() => {
+    const fromTipos = despesaTipos
+      .filter((t) => t.ativo)
+      .map((t) => t.nome.trim())
+      .filter(Boolean);
+    return Array.from(new Set(fromTipos)).sort((a, b) =>
+      a.localeCompare(b, "pt-BR"),
+    );
+  }, [despesaTipos]);
 
   const categorias: string[] = useMemo(() => {
     const fromApi = categoriasApi
@@ -263,10 +255,17 @@ function Page() {
 
   const centros: string[] = useMemo(() => {
     const fromItems = items.map((m) => m.centro).filter((c) => c && c.trim());
+    const current = form.centro.trim();
     return Array.from(
-      new Set([...CENTROS_DESPESA, ...extraCentros, ...fromItems]),
+      new Set(
+        [
+          ...nomesCentroCusto,
+          ...fromItems,
+          ...(current && !nomesCentroCusto.includes(current) ? [current] : []),
+        ].filter(Boolean),
+      ),
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [extraCentros, items]);
+  }, [nomesCentroCusto, items, form.centro]);
 
   useEffect(() => {
     if (categorias.length === 0) return;
@@ -366,17 +365,38 @@ function Page() {
     }
 
     if (quickKind === "centro") {
-      if (centros.some((c) => c.toLowerCase() === nome.toLowerCase())) {
-        setField("centro", nome);
+      const existing = despesaTipos.find(
+        (t) => t.nome.toLowerCase() === nome.toLowerCase(),
+      );
+      if (existing) {
+        setField("centro", existing.nome);
         setQuickKind(null);
         return;
       }
-      const next = [...extraCentros, nome];
-      setExtraCentros(next);
-      saveExtras(EXTRA_CENTRO_KEY, next);
-      setField("centro", nome);
-      setQuickKind(null);
-      toast.success("Centro adicionado.");
+      setQuickSaving(true);
+      try {
+        const created = await createDespesaTipo({
+          nome,
+          natureza: "variavel",
+          ativo: true,
+        });
+        setDespesaTipos((prev) =>
+          [...prev, created].sort((a, b) =>
+            a.nome.localeCompare(b.nome, "pt-BR"),
+          ),
+        );
+        setField("centro", created.nome);
+        setQuickKind(null);
+        toast.success("Centro cadastrado no Centro de despesas.");
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível criar o centro.",
+        );
+      } finally {
+        setQuickSaving(false);
+      }
     }
   }
 
@@ -418,7 +438,7 @@ function Page() {
     setEditingId(null);
     const defaultCat =
       categoriasApi.find((c) => c.ativo && c.tipo === "entrada")?.nome || "";
-    setForm(emptyForm(defaultCat));
+    setForm(emptyForm(defaultCat, nomesCentroCusto[0] || ""));
     setOpen(true);
   }
 
@@ -435,7 +455,7 @@ function Page() {
   function openEdit(m: MovimentoFinanceiro) {
     setFormMode("edit");
     setEditingId(m.id);
-    setForm(toForm(m));
+    setForm(toForm(m, nomesCentroCusto[0] || ""));
     setOpen(true);
   }
 
@@ -814,18 +834,24 @@ function Page() {
                     </Button>
                   </div>
                   <Select
-                    value={form.centro}
+                    value={form.centro || undefined}
                     onValueChange={(v) => setField("centro", v)}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Centro de despesas" />
                     </SelectTrigger>
                     <SelectContent>
-                      {centros.map((centro) => (
-                        <SelectItem key={centro} value={centro}>
-                          {centro}
+                      {centros.length === 0 ? (
+                        <SelectItem value="__empty" disabled>
+                          Cadastre no Centro de despesas
                         </SelectItem>
-                      ))}
+                      ) : (
+                        centros.map((centro) => (
+                          <SelectItem key={centro} value={centro}>
+                            {centro}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -917,7 +943,13 @@ function Page() {
               ? "Nova categoria"
               : "Novo centro"
         }
-        description="Criação rápida para usar neste lançamento."
+        description={
+          quickKind === "categoria"
+            ? "Cadastrada na API e disponível em Contas a receber/pagar e Categorias."
+            : quickKind === "centro"
+              ? "Cria no Centro de despesas (API) para vincular neste lançamento."
+              : "Criação rápida para usar neste lançamento."
+        }
         footer={
           <FormDialogActions>
             <Button
