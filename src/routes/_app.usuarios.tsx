@@ -63,12 +63,15 @@ import {
   Copy,
   Check,
   Clock3,
+  Kanban,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { isAnalistaAllowed } from "@/lib/tenant-modules";
 import { canViewTeamData } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import { useLeads } from "@/lib/leads-store";
+import type { Lead } from "@/lib/crm-types";
+import { fetchFunilAtivo, type FunilEtapa } from "@/lib/funis-api";
 import {
   createUser,
   deleteUser,
@@ -278,7 +281,7 @@ function Usuarios() {
     session?.tenant?.plano,
     session?.tenant?.modules ?? null,
   );
-  const { refresh: refreshLeads } = useLeads();
+  const { leads, refresh: refreshLeads } = useLeads();
 
   const cachedUsers = getUsersCache();
   const [users, setUsersState] = useState<ApiUser[]>(cachedUsers ?? []);
@@ -1176,6 +1179,9 @@ function Usuarios() {
                   </div>
                 )}
               </FormSection>
+              {detail.role === "corretor" ? (
+                <BrokerPipeline brokerId={detail.id} leads={leads} />
+              ) : null}
               <FormSection
                 icon={<Shield className="w-3.5 h-3.5 text-primary" />}
                 title="Acesso"
@@ -1331,5 +1337,143 @@ function Usuarios() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function BrokerPipeline({
+  brokerId,
+  leads,
+}: {
+  brokerId: string;
+  leads: Lead[];
+}) {
+  const [stages, setStages] = useState<FunilEtapa[]>([]);
+  const [period, setPeriod] = useState<"all" | "month" | "30d">("month");
+  const [stageFilter, setStageFilter] = useState("__all__");
+
+  useEffect(() => {
+    let active = true;
+    void fetchFunilAtivo()
+      .then((funil) => {
+        if (active) {
+          setStages(
+            funil.etapas
+              .filter((stage) => stage.active)
+              .sort((a, b) => a.sortOrder - b.sortOrder),
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setStages([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const brokerLeads = useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastThirtyDays = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    return leads.filter((lead) => {
+      if (lead.corretorId !== brokerId) return false;
+      if (stageFilter !== "__all__" && lead.stage !== stageFilter) return false;
+      if (period === "all") return true;
+      const createdAt = lead.createdAt ? new Date(lead.createdAt) : null;
+      if (!createdAt || Number.isNaN(createdAt.getTime())) return false;
+      return period === "month"
+        ? createdAt >= startOfMonth
+        : createdAt >= lastThirtyDays;
+    });
+  }, [brokerId, leads, period, stageFilter]);
+
+  const visibleStages = useMemo(() => {
+    if (stages.length) return stages;
+    return Array.from(new Set(brokerLeads.map((lead) => lead.stage))).map(
+      (slug, sortOrder) => ({
+        id: slug,
+        slug,
+        label: slug,
+        color: "bg-muted",
+        sortOrder,
+      }),
+    );
+  }, [brokerLeads, stages]);
+
+  return (
+    <FormSection
+      icon={<Kanban className="w-3.5 h-3.5 text-primary" />}
+      title="Esteira do corretor"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {brokerLeads.length} contato{brokerLeads.length === 1 ? "" : "s"}{" "}
+          no período selecionado.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Select value={period} onValueChange={(value) => setPeriod(value as typeof period)}>
+            <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Este mês</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="all">Todo o período</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={stageFilter} onValueChange={setStageFilter}>
+            <SelectTrigger className="h-8 w-36 text-xs">
+              <SelectValue placeholder="Todas as etapas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as etapas</SelectItem>
+              {visibleStages.map((stage) => (
+                <SelectItem key={stage.id} value={stage.slug}>
+                  {stage.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {visibleStages.map((stage) => {
+          const stageLeads = brokerLeads.filter(
+            (lead) => lead.stage === stage.slug,
+          );
+          return (
+            <div
+              key={stage.id}
+              className="w-44 shrink-0 rounded-lg border bg-muted/20 p-2.5"
+            >
+              <div className="flex items-center justify-between gap-2 border-b pb-2">
+                <span className="truncate text-xs font-semibold">{stage.label}</span>
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                  {stageLeads.length}
+                </Badge>
+              </div>
+              <div className="mt-2 space-y-2">
+                {stageLeads.length ? (
+                  stageLeads.map((lead) => (
+                    <div key={lead.id} className="rounded-md border bg-background p-2">
+                      <p className="truncate text-xs font-medium">{lead.nome}</p>
+                      <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                        {lead.empreendimento?.nome ?? lead.tipo}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-2 text-center text-[10px] text-muted-foreground">
+                    Nenhum contato
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </FormSection>
   );
 }
