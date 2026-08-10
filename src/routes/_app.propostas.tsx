@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import QRCode from "qrcode";
 import {
   useCallback,
   useEffect,
@@ -111,6 +112,7 @@ import {
   getPropostaMailtoUrl,
   getPropostaWhatsAppUrl,
   propostaWhatsAppDigits,
+  sharePropostaPdfWhatsApp,
   type PropostaPdfBrand,
 } from "@/lib/proposta-pdf";
 import { useTenantTheme } from "@/lib/tenant-theme";
@@ -496,6 +498,7 @@ function PropostaActionMenus({
   onEdit,
   onDelete,
   onRequestWhatsAppPhone,
+  onOpenQr,
   brand,
   compact = false,
 }: {
@@ -504,6 +507,7 @@ function PropostaActionMenus({
   onEdit?: () => void;
   onDelete?: () => void;
   onRequestWhatsAppPhone: (proposta: Proposta) => void;
+  onOpenQr: (proposta: Proposta) => void;
   brand: PropostaPdfBrand;
   compact?: boolean;
 }) {
@@ -524,11 +528,11 @@ function PropostaActionMenus({
       onRequestWhatsAppPhone(proposta);
       return;
     }
-    void downloadPropostaPdfCliente(proposta, brand).then(() => {
-      const url = getPropostaWhatsAppUrl(proposta);
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
-      shareToast();
-    });
+    void sharePropostaPdfWhatsApp(proposta, brand)
+      .then((mode) => {
+        if (mode === "fallback") shareToast();
+      })
+      .catch(() => toast.error("Não foi possível compartilhar o PDF."));
   };
 
   const handleEmail = () => {
@@ -598,6 +602,9 @@ function PropostaActionMenus({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={handleWhatsApp}>WhatsApp</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onOpenQr(proposta)}>
+            QR Code do WhatsApp
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleEmail}>E-mail</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -718,11 +725,30 @@ function Page() {
   const [actionLoading, setActionLoading] = useState(false);
   const [whatsAppTarget, setWhatsAppTarget] = useState<Proposta | null>(null);
   const [whatsAppPhone, setWhatsAppPhone] = useState("");
+  const [qrTarget, setQrTarget] = useState<Proposta | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
 
   const corretorOptions = useMemo(
     () => assignees.filter((a) => !a.role || a.role === "corretor"),
     [assignees],
   );
+
+  useEffect(() => {
+    if (!qrTarget) {
+      setQrCodeUrl("");
+      return;
+    }
+    const url = getPropostaWhatsAppUrl(qrTarget);
+    if (!url) {
+      setQrCodeUrl("");
+      return;
+    }
+    void QRCode.toDataURL(url, {
+      width: 320,
+      margin: 2,
+      errorCorrectionLevel: "M",
+    }).then(setQrCodeUrl);
+  }, [qrTarget]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1385,6 +1411,15 @@ function Page() {
                             : "",
                         );
                       }}
+                      onOpenQr={(item) => {
+                        if (!propostaWhatsAppDigits(item.clienteTelefone)) {
+                          toast.error(
+                            "Informe um telefone válido para gerar o QR Code.",
+                          );
+                          return;
+                        }
+                        setQrTarget(item);
+                      }}
                     />
                   </TableCell>
                 </TableRow>
@@ -1495,6 +1530,15 @@ function Page() {
                       ? formatPhone(item.clienteTelefone)
                       : "",
                   );
+                }}
+                onOpenQr={(item) => {
+                  if (!propostaWhatsAppDigits(item.clienteTelefone)) {
+                    toast.error(
+                      "Informe um telefone válido para gerar o QR Code.",
+                    );
+                    return;
+                  }
+                  setQrTarget(item);
                 }}
               />
             </div>
@@ -1714,8 +1758,8 @@ function Page() {
           <DialogHeader>
             <DialogTitle>Compartilhar no WhatsApp</DialogTitle>
             <DialogDescription>
-              Informe o telefone do cliente com DDD. O PDF para cliente será
-              baixado e a conversa abrirá com a mensagem pronta.
+              Informe o telefone do cliente com DDD. O compartilhamento tentará
+              anexar o PDF e já incluirá a mensagem pronta.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -1748,23 +1792,50 @@ function Page() {
               disabled={!whatsAppTarget || !isValidPhone(whatsAppPhone)}
               onClick={() => {
                 if (!whatsAppTarget || !isValidPhone(whatsAppPhone)) return;
-                void downloadPropostaPdfCliente(whatsAppTarget, pdfBrand).then(
-                  () => {
-                    const url = getPropostaWhatsAppUrl(
-                      whatsAppTarget,
-                      phoneDigits(whatsAppPhone),
-                    );
-                    if (url) window.open(url, "_blank", "noopener,noreferrer");
-                    shareToast();
+                void sharePropostaPdfWhatsApp(
+                  whatsAppTarget,
+                  pdfBrand,
+                  phoneDigits(whatsAppPhone),
+                )
+                  .then((mode) => {
+                    if (mode === "fallback") shareToast();
                     setWhatsAppTarget(null);
                     setWhatsAppPhone("");
-                  },
-                );
+                  })
+                  .catch(() =>
+                    toast.error("Não foi possível compartilhar o PDF."),
+                  );
               }}
             >
-              Abrir WhatsApp
+              Enviar proposta
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(qrTarget)}
+        onOpenChange={(openDialog) => !openDialog && setQrTarget(null)}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Code do WhatsApp</DialogTitle>
+            <DialogDescription>
+              Escaneie para abrir uma conversa com a mensagem da proposta
+              pronta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex min-h-72 items-center justify-center rounded-lg border bg-white p-4">
+            {qrCodeUrl ? (
+              <img
+                src={qrCodeUrl}
+                alt="QR Code para compartilhar proposta pelo WhatsApp"
+                className="h-64 w-64"
+              />
+            ) : (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

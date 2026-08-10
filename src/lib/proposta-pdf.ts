@@ -945,7 +945,6 @@ async function buildPropostaPdfDescritivo(
  */
 async function buildPropostaPdfFormulario(
   p: Proposta,
-  filename: string,
   brand?: PropostaPdfBrand,
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
@@ -1260,27 +1259,65 @@ async function buildPropostaPdfFormulario(
       );
     },
   );
-  doc.save(filename);
+  return doc.output("blob");
+}
+
+function savePdfBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function downloadPropostaPdfCliente(
   p: Proposta,
   brand?: PropostaPdfBrand,
 ) {
-  await buildPropostaPdfFormulario(
-    p,
-    `proposta-cliente-${safeFilename(p.codigo)}.pdf`,
-    brand,
-  );
+  const filename = `proposta-cliente-${safeFilename(p.codigo)}.pdf`;
+  const pdf = await buildPropostaPdfFormulario(p, brand);
+  savePdfBlob(pdf, filename);
 }
 
 export async function downloadPropostaPdfCorretor(
   p: Proposta,
   brand?: PropostaPdfBrand,
 ) {
-  await buildPropostaPdfFormulario(
-    p,
-    `proposta-corretor-${safeFilename(p.codigo)}.pdf`,
-    brand,
-  );
+  const filename = `proposta-corretor-${safeFilename(p.codigo)}.pdf`;
+  const pdf = await buildPropostaPdfFormulario(p, brand);
+  savePdfBlob(pdf, filename);
+}
+
+/**
+ * Compartilha o PDF pelo menu nativo do dispositivo. Quando anexos não são
+ * suportados pelo navegador, baixa o arquivo e abre o WhatsApp já preenchido.
+ */
+export async function sharePropostaPdfWhatsApp(
+  p: Proposta,
+  brand?: PropostaPdfBrand,
+  phoneOverride?: string | null,
+) {
+  const filename = `proposta-cliente-${safeFilename(p.codigo)}.pdf`;
+  const pdf = await buildPropostaPdfFormulario(p, brand);
+  const text = buildPropostaShareMessage(p);
+  const file = new File([pdf], filename, { type: "application/pdf" });
+
+  if (
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    (!navigator.canShare || navigator.canShare({ files: [file] }))
+  ) {
+    await navigator.share({
+      title: `Proposta ${p.codigo}`,
+      text,
+      files: [file],
+    });
+    return "native" as const;
+  }
+
+  savePdfBlob(pdf, filename);
+  const url = getPropostaWhatsAppUrl(p, phoneOverride);
+  if (url) window.open(url, "_blank", "noopener,noreferrer");
+  return "fallback" as const;
 }
