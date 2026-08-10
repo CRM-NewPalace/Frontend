@@ -163,14 +163,17 @@ const VIEW_OPTIONS: { id: AgendaViewMode; label: string }[] = [
 
 function AgendaPage() {
   const user = getSession();
+  const isPlatformAdmin = user?.role === "super_admin";
   const isManager = user ? canViewTeamData(user.role) : false;
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || isPlatformAdmin;
   const isGerente = user?.role === "gerente";
   /** Fila corretor→gerente: só gerente aprova e corretor acompanha. Admin não participa. */
   const showSolicitacoes = !isAdmin;
   const { leads, assignees, loading: leadsLoading } = useLeads();
 
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("tabela");
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>(
+    isPlatformAdmin ? "calendario" : "tabela",
+  );
   const [section, setSection] = useState<AgendaSection>("agenda");
   const [view, setView] = useState<AgendaViewMode>("semana");
   const [selectedDay, setSelectedDay] = useState<Date>(() =>

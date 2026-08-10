@@ -12,6 +12,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
   super_admin: [
     "/perfil",
     "/tenants",
+    "/agenda",
     "/financeiro/visao-geral",
     "/financeiro/clientes-fornecedores",
     "/financeiro/contas-a-receber",

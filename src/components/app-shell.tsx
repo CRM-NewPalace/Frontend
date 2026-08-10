@@ -223,7 +223,6 @@ const NAV_SECTIONS: {
       { to: "/leads", label: "Leads", icon: Users },
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/triagem", label: "Triagem", icon: ClipboardList },
-      { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/imoveis", label: "Imóveis", icon: Building2 },
       { to: "/clientes", label: "Clientes", icon: UserCircle2 },
       { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
@@ -239,6 +238,7 @@ const NAV_SECTIONS: {
     icon: Shield,
     items: [
       { to: "/tenants", label: "Clientes", icon: Building2 },
+      { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/corretores", label: "Corretores", icon: UsersRound },
       { to: "/documentacao", label: "Documentação", icon: FolderOpen },
