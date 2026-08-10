@@ -73,8 +73,8 @@ import { useLeads } from "@/lib/leads-store";
 import type { Lead } from "@/lib/crm-types";
 import { fetchFunilAtivo, type FunilEtapa } from "@/lib/funis-api";
 import {
-  fetchDashboardRanking,
-  type DashboardRankingCorretor,
+  fetchDashboardEsteiraCorretor,
+  type DashboardEsteiraCorretor,
 } from "@/lib/dashboard-api";
 import {
   createUser,
@@ -1363,7 +1363,7 @@ function BrokerPipeline({
   const [stages, setStages] = useState<FunilEtapa[]>([]);
   const [period, setPeriod] = useState<"all" | "month" | "30d">("month");
   const [stageFilter, setStageFilter] = useState("__all__");
-  const [metrics, setMetrics] = useState<DashboardRankingCorretor | null>(null);
+  const [metrics, setMetrics] = useState<DashboardEsteiraCorretor | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -1388,16 +1388,13 @@ function BrokerPipeline({
   useEffect(() => {
     const today = new Date();
     let active = true;
-    void fetchDashboardRanking({
+    void fetchDashboardEsteiraCorretor(brokerId, {
       mes: today.getMonth() + 1,
       ano: today.getFullYear(),
     })
-      .then((ranking) => {
+      .then((esteira) => {
         if (active) {
-          setMetrics(
-            ranking.corretores.find((item) => item.corretorId === brokerId) ??
-              null,
-          );
+          setMetrics(esteira);
         }
       })
       .catch(() => {
@@ -1426,6 +1423,15 @@ function BrokerPipeline({
   }, [brokerId, leads, period, stageFilter]);
 
   const visibleStages = useMemo(() => {
+    if (metrics?.etapas.length) {
+      return metrics.etapas.map((stage, sortOrder) => ({
+        id: stage.id,
+        slug: stage.slug,
+        label: stage.label,
+        color: "bg-muted",
+        sortOrder,
+      }));
+    }
     if (stages.length) return stages;
     return Array.from(new Set(brokerLeads.map((lead) => lead.stage))).map(
       (slug, sortOrder) => ({
@@ -1436,7 +1442,7 @@ function BrokerPipeline({
         sortOrder,
       }),
     );
-  }, [brokerLeads, stages]);
+  }, [brokerLeads, metrics?.etapas, stages]);
 
   const oldestLead = useMemo(
     () =>
@@ -1504,24 +1510,32 @@ function BrokerPipeline({
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <PipelineMetric
             label="VGV do mês"
-            value={money(metrics?.vgv.valor ?? 0)}
+            value={money(metrics?.indicadores.vgv ?? 0)}
           />
           <PipelineMetric
             label="Conversão"
-            value={`${(metrics?.taxaConversao.valor ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
+            value={`${(metrics?.indicadores.conversao ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
           />
           <PipelineMetric
             label="Vendas"
-            value={String(metrics?.vendas.valor ?? 0)}
+            value={String(metrics?.indicadores.vendas ?? 0)}
           />
           <PipelineMetric
             label="Mais antiga parada"
-            value={oldestLead ? `${oldestDays}d` : "—"}
+            value={
+              metrics?.indicadores.maisAntigo
+                ? `${metrics.indicadores.maisAntigo.diasParado}d`
+                : oldestLead
+                  ? `${oldestDays}d`
+                  : "—"
+            }
           />
         </div>
         <div className="mt-4 flex min-w-max items-start gap-1 overflow-x-auto pb-1">
           {visibleStages.map((stage, index) => {
-            const count = brokerLeads.filter((lead) => lead.stage === stage.slug).length;
+            const count =
+              metrics?.etapas.find((item) => item.slug === stage.slug)?.total ??
+              brokerLeads.filter((lead) => lead.stage === stage.slug).length;
             return (
               <div key={stage.id} className="flex items-center">
                 <button
@@ -1554,9 +1568,12 @@ function BrokerPipeline({
 
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
         {visibleStages.map((stage) => {
-          const stageLeads = brokerLeads.filter(
-            (lead) => lead.stage === stage.slug,
+          const pipelineStage = metrics?.etapas.find(
+            (item) => item.slug === stage.slug,
           );
+          const stageLeads =
+            pipelineStage?.contatos ??
+            brokerLeads.filter((lead) => lead.stage === stage.slug);
           return (
             <div
               key={stage.id}
@@ -1574,7 +1591,7 @@ function BrokerPipeline({
                     <div key={lead.id} className="rounded-md border bg-background p-2">
                       <p className="truncate text-xs font-medium">{lead.nome}</p>
                       <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                        {lead.empreendimento?.nome ?? lead.tipo}
+                        {lead.empreendimento?.nome ?? "Documentação"}
                       </p>
                     </div>
                   ))
