@@ -67,7 +67,7 @@ function ImoveisPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const canManage = isAdmin || user?.role === "gerente";
-  const canCreate = canManage;
+  const canCreate = canManage || user?.role === "analista";
 
   const [items, setItems] = useState<Empreendimento[]>([]);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);

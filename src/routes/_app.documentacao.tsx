@@ -314,8 +314,13 @@ function DocumentacaoPage() {
     }
     return false;
   }
-  const { leads, assignees, loading: leadsLoading, addLead, refresh: refreshLeads } =
-    useLeads();
+  const {
+    leads,
+    assignees,
+    loading: leadsLoading,
+    addLead,
+    refresh: refreshLeads,
+  } = useLeads();
   const {
     funnelStages,
     defaultStageId,
@@ -330,15 +335,13 @@ function DocumentacaoPage() {
       ? documentacaoFontes
       : [...DEFAULT_DOCUMENTACAO_FONTES];
   const status1Catalog =
-    documentacaoStatus1.length > 0
-      ? documentacaoStatus1
-      : [...DEFAULT_STATUS1];
+    documentacaoStatus1.length > 0 ? documentacaoStatus1 : [...DEFAULT_STATUS1];
   const status2Catalog =
-    documentacaoStatus2.length > 0
-      ? documentacaoStatus2
-      : [...DEFAULT_STATUS2];
+    documentacaoStatus2.length > 0 ? documentacaoStatus2 : [...DEFAULT_STATUS2];
   const canQuickCreateEmpreendimento =
-    user?.role === "admin" || user?.role === "gerente";
+    user?.role === "admin" ||
+    user?.role === "gerente" ||
+    user?.role === "analista";
   const canCreateStatus = true;
 
   const [items, setItems] = useState<Documentacao[]>([]);
@@ -609,7 +612,10 @@ function DocumentacaoPage() {
       ) {
         return false;
       }
-      if (filterFonte !== "__all__" && displayFonte(doc.fonte) !== filterFonte) {
+      if (
+        filterFonte !== "__all__" &&
+        displayFonte(doc.fonte) !== filterFonte
+      ) {
         return false;
       }
       if (
@@ -695,13 +701,22 @@ function DocumentacaoPage() {
     // VGV: mesmo critério do dashboard (status vendido + data venda ou cadastro no período)
     const vgvItems = items.filter((doc) => {
       if (!isStatusVendido(doc.status2)) return false;
-      if (filterStatus1 !== "__all__" && !statusesMatch(doc.status1, filterStatus1)) {
+      if (
+        filterStatus1 !== "__all__" &&
+        !statusesMatch(doc.status1, filterStatus1)
+      ) {
         return false;
       }
-      if (filterStatus2 !== "__all__" && !statusesMatch(doc.status2, filterStatus2)) {
+      if (
+        filterStatus2 !== "__all__" &&
+        !statusesMatch(doc.status2, filterStatus2)
+      ) {
         return false;
       }
-      if (filterFonte !== "__all__" && displayFonte(doc.fonte) !== filterFonte) {
+      if (
+        filterFonte !== "__all__" &&
+        displayFonte(doc.fonte) !== filterFonte
+      ) {
         return false;
       }
       if (
@@ -719,7 +734,10 @@ function DocumentacaoPage() {
       if (filterTipo !== "__all__" && doc.tipoContato !== filterTipo) {
         return false;
       }
-      if (filterCorretorId !== "__all__" && doc.corretorId !== filterCorretorId) {
+      if (
+        filterCorretorId !== "__all__" &&
+        doc.corretorId !== filterCorretorId
+      ) {
         return false;
       }
       if (filterGerenteId !== "__all__" && doc.gerenteId !== filterGerenteId) {
@@ -967,8 +985,7 @@ function DocumentacaoPage() {
   function applyContact(contact: Lead) {
     setForm((prev) => {
       const corretorId = contact.corretorId ?? prev.corretorId;
-      const gerenteId =
-        gerenteIdOfCorretor(corretorId) || prev.gerenteId;
+      const gerenteId = gerenteIdOfCorretor(corretorId) || prev.gerenteId;
       const dataAnalise =
         prev.dataAnalise ||
         (isStatusAnalise(prev.status1) ? todayDateInput() : "");
@@ -978,8 +995,7 @@ function DocumentacaoPage() {
         corretorId,
         gerenteId,
         construtoraId: contact.construtoraId ?? prev.construtoraId,
-        empreendimentoId:
-          contact.empreendimentoId ?? prev.empreendimentoId,
+        empreendimentoId: contact.empreendimentoId ?? prev.empreendimentoId,
         dataAnalise,
       };
     });
@@ -1034,8 +1050,7 @@ function DocumentacaoPage() {
       valorEntrada:
         doc.valorEntrada != null ? formatMoneyInput(doc.valorEntrada) : "",
       temFgts: doc.temFgts ?? false,
-      valorFgts:
-        doc.valorFgts != null ? formatMoneyInput(doc.valorFgts) : "",
+      valorFgts: doc.valorFgts != null ? formatMoneyInput(doc.valorFgts) : "",
       temDependente: doc.temDependente ?? false,
     });
   }
@@ -1084,9 +1099,7 @@ function DocumentacaoPage() {
         ? parseOptionalMoneyInput(form.valorEntrada)
         : null,
       temFgts: form.temFgts,
-      valorFgts: form.temFgts
-        ? parseOptionalMoneyInput(form.valorFgts)
-        : null,
+      valorFgts: form.temFgts ? parseOptionalMoneyInput(form.valorFgts) : null,
       temDependente: form.temDependente,
     };
   }
@@ -1099,8 +1112,7 @@ function DocumentacaoPage() {
     try {
       let leadId = form.contatoId;
       const criarClienteNovo =
-        formMode === "create" &&
-        (form.novoCliente || !leadId);
+        formMode === "create" && (form.novoCliente || !leadId);
 
       if (criarClienteNovo) {
         if (form.nome.trim().length < 2) {
@@ -1325,7 +1337,6 @@ function DocumentacaoPage() {
     toast.success("Fonte adicionada e selecionada.");
   }
 
-
   function findLeadForImport(
     row: ParsedImportDoc,
     leadList: typeof leads,
@@ -1368,7 +1379,6 @@ function DocumentacaoPage() {
   function importTempPassword() {
     return `Import${Date.now().toString(36)}Aa1`;
   }
-
 
   async function handleImportFile(file: File) {
     setImportParsing(true);
@@ -1568,10 +1578,7 @@ function DocumentacaoPage() {
             const emp = localEmpreendimentos.find(
               (e) => e.id === empreendimentoId,
             );
-            if (
-              emp?.construtoraId &&
-              emp.construtoraId !== construtoraId
-            ) {
+            if (emp?.construtoraId && emp.construtoraId !== construtoraId) {
               empreendimentoId = null;
             }
           }
@@ -1620,7 +1627,11 @@ function DocumentacaoPage() {
 
       setImportOpen(false);
       setImportRows([]);
-      await Promise.all([loadItems(), loadLookups(), refreshLeads({ silent: true })]);
+      await Promise.all([
+        loadItems(),
+        loadLookups(),
+        refreshLeads({ silent: true }),
+      ]);
       if (ok > 0) {
         const extras =
           createdExtras > 0
@@ -1818,8 +1829,7 @@ function DocumentacaoPage() {
                     type="button"
                     variant="outline"
                     className={cn(
-                      advancedFiltersCount > 0 &&
-                        "border-primary text-primary",
+                      advancedFiltersCount > 0 && "border-primary text-primary",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />
@@ -2175,7 +2185,12 @@ function DocumentacaoPage() {
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
               <Filter className="w-8 h-8 opacity-40" />
               <p>Nenhuma documentação para os filtros selecionados.</p>
-              <Button type="button" variant="outline" size="sm" onClick={clearAllFilters}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearAllFilters}
+              >
                 Limpar filtros
               </Button>
             </div>
@@ -2183,12 +2198,20 @@ function DocumentacaoPage() {
             <Table className="text-xs [&_th]:h-8 [&_th]:px-1.5 [&_th]:py-1 [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px] max-w-[160px]">Nome</TableHead>
+                  <TableHead className="min-w-[120px] max-w-[160px]">
+                    Nome
+                  </TableHead>
                   <TableHead className="min-w-[72px]">Construtora</TableHead>
-                  <TableHead className="min-w-[88px] max-w-[120px]">Empreend.</TableHead>
+                  <TableHead className="min-w-[88px] max-w-[120px]">
+                    Empreend.
+                  </TableHead>
                   <TableHead className="min-w-[100px]">Status</TableHead>
-                  <TableHead className="min-w-[72px] max-w-[96px]">Corretor</TableHead>
-                  <TableHead className="min-w-[72px] max-w-[96px]">Gerente</TableHead>
+                  <TableHead className="min-w-[72px] max-w-[96px]">
+                    Corretor
+                  </TableHead>
+                  <TableHead className="min-w-[72px] max-w-[96px]">
+                    Gerente
+                  </TableHead>
                   <TableHead className="min-w-[72px]">Fonte</TableHead>
                   {(!isAnalista || showCondicoesCliente) && (
                     <>
@@ -2208,7 +2231,9 @@ function DocumentacaoPage() {
                         {doc.nome}
                       </div>
                       <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-0.5 mt-0.5">
-                        <span>{doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}</span>
+                        <span>
+                          {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}
+                        </span>
                         {isStatusParecerFinal(doc.status1) ? (
                           <Badge
                             variant="secondary"
@@ -2410,8 +2435,8 @@ function DocumentacaoPage() {
                     <span className="text-sm leading-snug">
                       <span className="font-medium">Cliente novo</span>
                       <span className="block text-muted-foreground text-xs">
-                        Marque se o cliente ainda não está no banco — ao
-                        salvar, o cadastro é criado junto com a documentação.
+                        Marque se o cliente ainda não está no banco — ao salvar,
+                        o cadastro é criado junto com a documentação.
                       </span>
                     </span>
                   </label>
@@ -2441,7 +2466,8 @@ function DocumentacaoPage() {
                         <SelectItem value="__none__">—</SelectItem>
                         {contatoOptions.map((l) => (
                           <SelectItem key={l.id} value={l.id}>
-                            {l.nome} · {l.tipo === "cliente" ? "Cliente" : "Lead"}
+                            {l.nome} ·{" "}
+                            {l.tipo === "cliente" ? "Cliente" : "Lead"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -3027,9 +3053,7 @@ function DocumentacaoPage() {
         open={statusOpen !== null}
         onOpenChange={(o) => !o && setStatusOpen(null)}
         icon={<FolderOpen className="w-5 h-5" />}
-        title={
-          statusOpen === "status2" ? "Novo status 2" : "Novo status 1"
-        }
+        title={statusOpen === "status2" ? "Novo status 2" : "Novo status 1"}
       >
         <form
           onSubmit={handleQuickCreateStatus}
@@ -3055,9 +3079,7 @@ function DocumentacaoPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">
-              Criar
-            </Button>
+            <Button type="submit">Criar</Button>
           </FormDialogActions>
         </form>
       </FormDialogShell>
@@ -3190,8 +3212,8 @@ function DocumentacaoPage() {
                 </li>
                 <li>
                   Construtora, empreendimento, fonte e status são vinculados
-                  pelo nome e podem ser cadastrados automaticamente, conforme
-                  a permissão do usuário
+                  pelo nome e podem ser cadastrados automaticamente, conforme a
+                  permissão do usuário
                 </li>
                 <li>
                   Se um corretor ou gerente ainda não existir, somente um{" "}

@@ -92,7 +92,8 @@ const emptyForm = (): FormState => ({
 function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
-  const canCreate = isAdmin || user?.role === "gerente";
+  const canCreate =
+    isAdmin || user?.role === "gerente" || user?.role === "analista";
 
   const [items, setItems] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);

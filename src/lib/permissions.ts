@@ -90,6 +90,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/documentacao",
     "/contratos",
     "/imoveis",
+    "/construtoras",
     "/perfil",
   ],
 };

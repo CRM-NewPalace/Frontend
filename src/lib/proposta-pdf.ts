@@ -49,7 +49,13 @@ export type PropostaPdfBrand = {
   primaryColor?: string | null;
   company?: Pick<
     TenantBranding,
-    "name" | "documento" | "creci" | "email" | "telefone" | "endereco" | "cidade"
+    | "name"
+    | "documento"
+    | "creci"
+    | "email"
+    | "telefone"
+    | "endereco"
+    | "cidade"
   > | null;
 };
 
@@ -138,9 +144,10 @@ function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
 }
 
 /** Amostra pixels da logo e elege uma cor escura (fundo) + uma de destaque. */
-function extractLogoColors(
-  source: HTMLCanvasElement,
-): { dark: Rgb | null; accent: Rgb | null } {
+function extractLogoColors(source: HTMLCanvasElement): {
+  dark: Rgb | null;
+  accent: Rgb | null;
+} {
   const sample = document.createElement("canvas");
   const size = 48;
   sample.width = size;
@@ -182,8 +189,7 @@ function extractLogoColors(
   if (!entries.length) return { dark: null, accent: null };
 
   // Escura: prioriza baixa luminosidade e presença.
-  const darkScore = (e: Bucket) =>
-    e.count * (1.2 - e.light) * (0.5 + e.sat);
+  const darkScore = (e: Bucket) => e.count * (1.2 - e.light) * (0.5 + e.sat);
   const dark = [...entries]
     .filter((e) => e.light < 0.55)
     .sort((a, b) => darkScore(b) - darkScore(a))[0];
@@ -329,7 +335,8 @@ async function loadLogoForPdf(src: string): Promise<LoadedLogo | null> {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(img, 0, 0);
-    const jpeg = /\.jpe?g($|\?)/i.test(url) || url.startsWith("data:image/jpeg");
+    const jpeg =
+      /\.jpe?g($|\?)/i.test(url) || url.startsWith("data:image/jpeg");
     const { dark, accent } = extractLogoColors(canvas);
     return {
       dataUrl: canvas.toDataURL(jpeg ? "image/jpeg" : "image/png"),
@@ -423,9 +430,7 @@ async function buildPropostaPdfDescritivo(
   const contentW = pageW - margin * 2;
   const company = brand?.company;
   const companyName = (company?.name ?? "").trim() || "Imobiliária";
-  const logo = brand?.logoUrl
-    ? await loadLogoForPdf(brand.logoUrl)
-    : null;
+  const logo = brand?.logoUrl ? await loadLogoForPdf(brand.logoUrl) : null;
   const C = buildPaletteFromLogo(
     logo?.dark ?? null,
     logo?.accent ?? null,
@@ -433,7 +438,7 @@ async function buildPropostaPdfDescritivo(
   );
 
   // ─── Cabeçalho (cor escura da logo) ───
-  const headerH = 118;
+  const headerH = 92;
   doc.setFillColor(...C.navy);
   doc.rect(0, 0, pageW, headerH, "F");
 
@@ -501,7 +506,7 @@ async function buildPropostaPdfDescritivo(
     if (infoY > headerH - 14) break;
   }
 
-  let y = headerH + 28;
+  let y = headerH + 18;
 
   // Título + código + data
   doc.setFont("helvetica", "bold");
@@ -509,7 +514,7 @@ async function buildPropostaPdfDescritivo(
   doc.setTextColor(...C.gold);
   doc.text("PROPOSTA COMERCIAL", margin, y);
 
-  y += 20;
+  y += 16;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...C.ink);
@@ -529,23 +534,23 @@ async function buildPropostaPdfDescritivo(
   doc.setTextColor(...C.white);
   doc.text(badgeText, badgeX + 11, badgeY + 14);
 
-  y += 26;
+  y += 20;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...C.ink);
   doc.text(`Prezado(a) ${p.clienteNome},`, margin, y);
-  y += 16;
+  y += 12;
   doc.setFontSize(10);
   doc.setTextColor(...C.muted);
   const intro =
     "Apresentamos a composição financeira desta proposta de aquisição. Os valores abaixo descrevem de forma clara cada etapa do pagamento.";
   const introLines = doc.splitTextToSize(intro, contentW);
   doc.text(introLines, margin, y);
-  y += introLines.length * 13 + 18;
+  y += introLines.length * 11 + 12;
 
   // Card empreendimento / partes
-  const cardH = 72;
-  y = ensureSpace(doc, y, cardH + 16, margin);
+  const cardH = 64;
+  y = ensureSpace(doc, y, cardH + 10, margin);
   doc.setFillColor(...C.white);
   doc.setDrawColor(...C.line);
   doc.setLineWidth(1);
@@ -572,7 +577,11 @@ async function buildPropostaPdfDescritivo(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...C.muted);
-    doc.text(`Unidade ${p.unidade}`, margin + 16, y + 38 + empLines.slice(0, 2).length * 13);
+    doc.text(
+      `Unidade ${p.unidade}`,
+      margin + 16,
+      y + 38 + empLines.slice(0, 2).length * 13,
+    );
   }
 
   doc.setFont("helvetica", "bold");
@@ -589,7 +598,11 @@ async function buildPropostaPdfDescritivo(
     doc.text("CONSTRUTORA:", midX + 16, rightY);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...C.muted);
-    doc.text(p.construtora.nome, midX + 16 + doc.getTextWidth("CONSTRUTORA: "), rightY);
+    doc.text(
+      p.construtora.nome,
+      midX + 16 + doc.getTextWidth("CONSTRUTORA: "),
+      rightY,
+    );
     rightY += 14;
   }
   if (p.corretor?.name) {
@@ -605,14 +618,14 @@ async function buildPropostaPdfDescritivo(
     );
   }
 
-  y += cardH + 16;
+  y += cardH + 10;
 
   const desconto = p.desconto ?? 0;
   const valorLiquido = propostaValorLiquido(p);
 
   // Faixa valor de venda / total
-  const valorH = 58;
-  y = ensureSpace(doc, y, valorH + 16, margin);
+  const valorH = 48;
+  y = ensureSpace(doc, y, valorH + 10, margin);
   doc.setFillColor(...C.navy);
   roundedRect(doc, margin, y, contentW, valorH, 10, "F");
   doc.setFont("helvetica", "bold");
@@ -621,10 +634,10 @@ async function buildPropostaPdfDescritivo(
   doc.text(
     desconto > 0 ? "VALOR DE VENDA" : "VALOR TOTAL DA PROPOSTA",
     margin + 18,
-    y + 20,
+    y + 16,
   );
   doc.setFontSize(20);
-  doc.text(brl(p.valor), margin + 18, y + 44);
+  doc.text(brl(p.valor), margin + 36);
 
   if (p.validade) {
     doc.setDrawColor(...C.white);
@@ -640,12 +653,12 @@ async function buildPropostaPdfDescritivo(
     doc.setTextColor(...C.white);
     doc.text(formatPropostaDate(p.validade), splitX + 14, y + 42);
   }
-  y += valorH + 14;
+  y += valorH + 10;
 
   // Destaque do desconto do empreendimento
   if (desconto > 0) {
-    const discH = 64;
-    y = ensureSpace(doc, y, discH + valorH + 20, margin);
+    const discH = 52;
+    y = ensureSpace(doc, y, discH + valorH + 12, margin);
     doc.setFillColor(...C.goldSoft);
     roundedRect(doc, margin, y, contentW, discH, 10, "F");
     doc.setDrawColor(...C.gold);
@@ -662,18 +675,18 @@ async function buildPropostaPdfDescritivo(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(...C.navy);
-    doc.text("CONDIÇÃO ESPECIAL DO EMPREENDIMENTO", margin + 16, y + 22);
+    doc.text("CONDIÇÃO ESPECIAL DO EMPREENDIMENTO", margin + 16, y + 18);
     doc.setFontSize(15);
-    doc.text("DESCONTO DO EMPREENDIMENTO", margin + 16, y + 44);
+    doc.text("DESCONTO DO EMPREENDIMENTO", margin + 16, y + 38);
 
     doc.setFontSize(8);
     doc.setTextColor(...C.muted);
-    doc.text("VOCÊ ECONOMIZA:", margin + contentW * 0.58 + 14, y + 22);
+    doc.text("VOCÊ ECONOMIZA:", margin + contentW * 0.58 + 14, y + 18);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(...C.navy);
-    doc.text(brl(desconto), margin + contentW * 0.58 + 14, y + 46);
-    y += discH + 12;
+    doc.text(brl(desconto), margin + contentW * 0.58 + 14, y + 38);
+    y += discH + 8;
 
     // Valor total com desconto
     doc.setFillColor(...C.navy);
@@ -681,20 +694,20 @@ async function buildPropostaPdfDescritivo(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(...C.gold);
-    doc.text("VALOR TOTAL DA PROPOSTA", margin + 18, y + 20);
+    doc.text("VALOR TOTAL DA PROPOSTA", margin + 18, y + 16);
     doc.setFontSize(20);
     doc.setTextColor(...C.white);
-    doc.text(brl(valorLiquido), margin + 18, y + 44);
+    doc.text(brl(valorLiquido), margin + 18, y + 36);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...C.gold);
     doc.text(
       `já com desconto de ${brl(desconto)}`,
       margin + contentW - 16,
-      y + 34,
+      y + 30,
       { align: "right" },
     );
-    y += valorH + 22;
+    y += valorH + 10;
   } else {
     y += 8;
   }
@@ -714,12 +727,14 @@ async function buildPropostaPdfDescritivo(
     doc.text("Nenhuma composição de pagamento informada.", margin, y + 10);
     y += 28;
   } else {
-    const gap = 10;
+    const gap = 6;
     const colW = (contentW - gap) / 2;
-    const rowH = 44;
+    const rowH = 36;
     for (let i = 0; i < lines.length; i += 2) {
       y = ensureSpace(doc, y, rowH + 10, margin);
-      const pair = [lines[i], lines[i + 1]].filter(Boolean) as CompositionLine[];
+      const pair = [lines[i], lines[i + 1]].filter(
+        Boolean,
+      ) as CompositionLine[];
       pair.forEach((line, col) => {
         const x = margin + col * (colW + gap);
         doc.setFillColor(...C.band);
@@ -727,26 +742,26 @@ async function buildPropostaPdfDescritivo(
 
         // Ícone/marcador dourado
         doc.setFillColor(...C.navy);
-        roundedRect(doc, x + 10, y + 12, 18, 18, 4, "F");
+        roundedRect(doc, x + 10, y + 9, 16, 16, 4, "F");
         doc.setFillColor(...C.gold);
-        doc.circle(x + 19, y + 21, 3, "F");
+        doc.circle(x + 18, y + 17, 3, "F");
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         doc.setTextColor(...C.gold);
-        doc.text(line.label, x + 36, y + 18);
+        doc.text(line.label, x + 34, y + 15);
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.setTextColor(...C.ink);
-        doc.text(brl(line.value), x + colW - 12, y + 18, { align: "right" });
+        doc.text(brl(line.value), x + colW - 12, y + 15, { align: "right" });
 
         if (line.detail) {
           doc.setFont("helvetica", "normal");
           doc.setFontSize(8);
           doc.setTextColor(...C.muted);
           const d = doc.splitTextToSize(line.detail, colW - 48);
-          doc.text(d.slice(0, 1), x + 36, y + 32);
+          doc.text(d.slice(0, 1), x + 34, y + 27);
         }
       });
       y += rowH + gap;
@@ -754,23 +769,23 @@ async function buildPropostaPdfDescritivo(
   }
 
   // Totais
-  const totH = 52;
-  y = ensureSpace(doc, y, totH + 12, margin);
+  const totH = 42;
+  y = ensureSpace(doc, y, totH + 8, margin);
   const totalComp = propostaComposicaoTotal(p);
   const diff = propostaDiferenca(p);
   doc.setFillColor(...C.band);
   roundedRect(doc, margin, y, contentW, totH, 10, "F");
   doc.setDrawColor(...C.gold);
   doc.setLineWidth(1);
-  doc.line(margin + contentW / 2, y + 12, margin + contentW / 2, y + totH - 12);
+  doc.line(margin + contentW / 2, y + 9, margin + contentW / 2, y + totH - 9);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(...C.muted);
-  doc.text("TOTAL DA COMPOSIÇÃO", margin + 16, y + 18);
+  doc.text("TOTAL DA COMPOSIÇÃO", margin + 16, y + 14);
   doc.setFontSize(14);
   doc.setTextColor(...C.navy);
-  doc.text(brl(totalComp), margin + 16, y + 38);
+  doc.text(brl(totalComp), margin + 16, y + 30);
 
   doc.setFontSize(7.5);
   doc.setTextColor(...C.muted);
@@ -779,12 +794,12 @@ async function buildPropostaPdfDescritivo(
       ? "DIFERENÇA EM RELAÇÃO AO VALOR COM DESCONTO"
       : "DIFERENÇA EM RELAÇÃO AO VALOR DE VENDA",
     margin + contentW / 2 + 16,
-    y + 18,
+    y + 14,
   );
   doc.setFontSize(14);
   doc.setTextColor(...C.navy);
-  doc.text(brl(diff), margin + contentW / 2 + 16, y + 38);
-  y += totH + 14;
+  doc.text(brl(diff), margin + contentW / 2 + 16, y + 30);
+  y += totH + 8;
 
   if (p.observacao?.trim()) {
     y = ensureSpace(doc, y, 50, margin);
@@ -829,9 +844,14 @@ async function buildPropostaPdfDescritivo(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...C.gold);
-    doc.text(contactBits.join("  ·  "), pageW - margin - 16, pageH - footH + 8, {
-      align: "right",
-    });
+    doc.text(
+      contactBits.join("  ·  "),
+      pageW - margin - 16,
+      pageH - footH + 8,
+      {
+        align: "right",
+      },
+    );
   }
 
   doc.save(filename);
