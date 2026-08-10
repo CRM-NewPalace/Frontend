@@ -242,7 +242,9 @@ function TimeGridBoard({
                       itemBlockClass(item),
                     )}
                     style={{ top, height }}
-                    title={`${item.descricao} · ${sign}${brl(item.valor)} · ${item.natureza}`}
+                    title={`${item.descricao} · ${sign}${brl(item.valor)} · ${item.natureza}${
+                      item.contrato ? " · Contrato" : ""
+                    }`}
                   >
                     <div className="truncate text-[11px] font-semibold leading-tight">
                       {sign}
@@ -368,10 +370,13 @@ function MonthBoard({
                         "truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-tight border",
                         itemBlockClass(item),
                       )}
-                      title={`${item.descricao} · ${sign}${brl(item.valor)}`}
+                      title={`${item.descricao} · ${sign}${brl(item.valor)}${
+                        item.contrato ? " · Contrato" : ""
+                      }`}
                     >
                       {sign}
                       {brl(item.valor)} {item.descricao}
+                      {item.contrato ? " · Contrato" : ""}
                     </button>
                   );
                 })}

@@ -203,14 +203,14 @@ function Page() {
           evolucaoPct={k.evolucaoResultado}
         />
         <FinanceKpiCard
-          label="A receber"
+          label="A receber neste mês"
           value={k.aReceber}
           icon={Banknote}
           tone="violet"
           href="/financeiro/contas-a-receber"
         />
         <FinanceKpiCard
-          label="A pagar"
+          label="A pagar neste mês"
           value={k.aPagar}
           icon={ArrowDownRight}
           tone="orange"

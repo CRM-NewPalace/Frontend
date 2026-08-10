@@ -29,7 +29,9 @@ export function brlCompact(n: number) {
 }
 
 /** Interpreta YYYY-MM-DD (ou ISO) ao meio-dia local — evita dia anterior em BRT. */
-export function parseFinanceiroDay(iso: string | null | undefined): Date | null {
+export function parseFinanceiroDay(
+  iso: string | null | undefined,
+): Date | null {
   if (!iso) return null;
   const day = String(iso).slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
@@ -49,14 +51,16 @@ export const PERIODO_OPTIONS: { value: PeriodoFiltro; label: string }[] = [
   { value: "tudo", label: "Todo o período" },
 ];
 
-export const STATUS_OPTIONS: { value: StatusTitulo | "todos"; label: string }[] =
-  [
-    { value: "todos", label: "Todos os status" },
-    { value: "aberto", label: "Aberto" },
-    { value: "pago", label: "Pago" },
-    { value: "atrasado", label: "Atrasado" },
-    { value: "cancelado", label: "Cancelado" },
-  ];
+export const STATUS_OPTIONS: {
+  value: StatusTitulo | "todos";
+  label: string;
+}[] = [
+  { value: "todos", label: "Todos os status" },
+  { value: "aberto", label: "Aberto" },
+  { value: "pago", label: "Pago" },
+  { value: "atrasado", label: "Atrasado" },
+  { value: "cancelado", label: "Cancelado" },
+];
 
 export interface ParceiroFinanceiro {
   id: string;
@@ -151,6 +155,7 @@ export interface FluxoItem {
   categoria: string;
   centro: string;
   status: string;
+  contrato?: boolean;
 }
 
 export const FLUXO_GRANULARIDADE_OPTIONS: {
@@ -233,7 +238,9 @@ export const VISAO_GERAL_KPIS = {
   evolucaoResultado: null as number | null,
 };
 
-export function statusBadgeClass(status: StatusTitulo | ComissaoItem["status"]) {
+export function statusBadgeClass(
+  status: StatusTitulo | ComissaoItem["status"],
+) {
   switch (status) {
     case "pago":
     case "paga":

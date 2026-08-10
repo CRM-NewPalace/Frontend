@@ -297,7 +297,7 @@ export function FinanceiroTitulosPanel({
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
   const [catalogTipos, setCatalogTipos] = useState<DespesaTipo[]>([]);
   const [search, setSearch] = useState("");
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>("tudo");
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [status, setStatus] = useState<StatusTitulo | "todos">("todos");
   const [categoriaFiltro, setCategoriaFiltro] = useState("todos");
   const catalogLabel = tipo === "receber" ? "Categoria" : "Centro de custo";
@@ -1227,7 +1227,7 @@ export function FinanceiroTitulosPanel({
 
   const hasActive = Boolean(
     search ||
-    periodo !== "tudo" ||
+    periodo !== "mes" ||
     status !== "todos" ||
     categoriaFiltro !== "todos" ||
     (canUseContrato && origemFiltro !== "todos"),
@@ -1248,19 +1248,21 @@ export function FinanceiroTitulosPanel({
 
       <section className="grid gap-3 sm:grid-cols-3 mb-4">
         <FinanceKpiCard
-          label="Em aberto"
+          label={
+            tipo === "receber" ? "A receber neste mês" : "A pagar neste mês"
+          }
           value={kpis.aberto}
           icon={Clock3}
           tone={tipo === "receber" ? "blue" : "orange"}
         />
         <FinanceKpiCard
-          label="Atrasado"
+          label="Atrasado neste mês"
           value={kpis.atrasado}
           icon={AlertTriangle}
           tone="red"
         />
         <FinanceKpiCard
-          label={tipo === "receber" ? "Recebido (filtro)" : "Pago (filtro)"}
+          label={tipo === "receber" ? "Recebido neste mês" : "Pago neste mês"}
           value={kpis.pago}
           icon={CheckCircle2}
           tone="emerald"
@@ -1281,7 +1283,7 @@ export function FinanceiroTitulosPanel({
         hasActive={hasActive}
         onClear={() => {
           setSearch("");
-          setPeriodo("tudo");
+          setPeriodo("mes");
           setStatus("todos");
           setCategoriaFiltro("todos");
           setOrigemFiltro("todos");

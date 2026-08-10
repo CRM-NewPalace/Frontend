@@ -18,7 +18,6 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/financeiro/contas-a-pagar",
     "/financeiro/fluxo-caixa",
     "/financeiro/movimentacao",
-    "/financeiro/comissao",
   ],
   admin: [
     "/dashboard",

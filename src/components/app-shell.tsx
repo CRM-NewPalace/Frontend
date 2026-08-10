@@ -201,7 +201,6 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     label: "Fluxo de caixa",
     icon: Banknote,
   },
-  { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
 ];
 
 const NAV_SECTIONS: {
@@ -486,9 +485,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     if (n.tipo === "analise_resultado") {
       void navigate({
-        to: user?.role === "gerente" || user?.role === "admin"
-          ? "/documentacao"
-          : "/resultado",
+        to:
+          user?.role === "gerente" || user?.role === "admin"
+            ? "/documentacao"
+            : "/resultado",
       });
       return;
     }

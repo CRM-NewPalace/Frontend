@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   addDays,
   formatRangeLabel,
@@ -107,6 +113,10 @@ function viewToGranularidade(view: AgendaViewMode): FluxoGranularidade {
   return "mes";
 }
 
+function monthInputValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function ResponsiveChartShell({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
@@ -117,7 +127,7 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 
 function Page() {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("calendario");
-  const [view, setView] = useState<AgendaViewMode>("semana");
+  const [view, setView] = useState<AgendaViewMode>("mes");
   const [selectedDay, setSelectedDay] = useState<Date>(() =>
     startOfDay(new Date()),
   );
@@ -256,9 +266,7 @@ function Page() {
     setDetailOpen(true);
     setDetailLoading(true);
     try {
-      setDetailItems(
-        await fetchFluxoCaixaItens({ from: b.inicio, to: b.fim }),
-      );
+      setDetailItems(await fetchFluxoCaixaItens({ from: b.inicio, to: b.fim }));
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -358,6 +366,30 @@ function Page() {
           <h2 className="text-base font-semibold capitalize min-w-0">
             {rangeTitle}
           </h2>
+          {layoutMode === "calendario" ? (
+            <div className="flex items-center gap-1.5">
+              <Label
+                htmlFor="fluxo-mes"
+                className="text-xs text-muted-foreground whitespace-nowrap"
+              >
+                Mês:
+              </Label>
+              <Input
+                id="fluxo-mes"
+                type="month"
+                className="h-8 w-[150px]"
+                value={monthInputValue(selectedDay)}
+                onChange={(event) => {
+                  const [year, month] = event.target.value
+                    .split("-")
+                    .map(Number);
+                  if (!year || !month) return;
+                  setSelectedDay(startOfDay(new Date(year, month - 1, 1)));
+                  setView("mes");
+                }}
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -365,9 +397,7 @@ function Page() {
             variant={layoutMode === "calendario" ? "default" : "outline"}
             size="sm"
             onClick={() =>
-              setLayoutMode((m) =>
-                m === "tabela" ? "calendario" : "tabela",
-              )
+              setLayoutMode((m) => (m === "tabela" ? "calendario" : "tabela"))
             }
           >
             {layoutMode === "tabela" ? (
@@ -417,16 +447,16 @@ function Page() {
           tone="red"
         />
         <FinanceKpiCard
-          label="Previsto líquido"
-          value={totais.entradasPrevistas - totais.saidasPrevistas}
+          label="A receber neste mês"
+          value={totais.entradasPrevistas}
           icon={ArrowUpRight}
           tone="blue"
         />
         <FinanceKpiCard
-          label="Saldo projetado"
-          value={totais.saldoProjetado}
-          icon={Wallet}
-          tone="teal"
+          label="A pagar neste mês"
+          value={totais.saidasPrevistas}
+          icon={ArrowDownRight}
+          tone="orange"
         />
       </section>
 
@@ -468,9 +498,7 @@ function Page() {
                       axisLine={false}
                       width={48}
                       tick={{ fontSize: 11 }}
-                      tickFormatter={(v) =>
-                        `${(Number(v) / 1000).toFixed(0)}k`
-                      }
+                      tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
                     />
                     <ChartTooltip
                       content={
@@ -546,9 +574,7 @@ function Page() {
                       axisLine={false}
                       width={48}
                       tick={{ fontSize: 11 }}
-                      tickFormatter={(v) =>
-                        `${(Number(v) / 1000).toFixed(0)}k`
-                      }
+                      tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
                     />
                     <ChartTooltip
                       content={
@@ -631,7 +657,9 @@ function Page() {
                     className="cursor-pointer"
                     onClick={() => onSelectItem(it)}
                   >
-                    <TableCell className="font-medium">{it.descricao}</TableCell>
+                    <TableCell className="font-medium">
+                      {it.descricao}
+                    </TableCell>
                     <TableCell>{it.parceiro || "—"}</TableCell>
                     <TableCell>
                       <Badge
