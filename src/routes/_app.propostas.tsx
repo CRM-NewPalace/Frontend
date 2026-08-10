@@ -166,6 +166,9 @@ type ParcelasForm = {
   valor: string;
 };
 
+type PropostaFormSection =
+  "usuario" | "endereco" | "profissional" | "imovel" | "valores";
+
 type FormState = {
   leadId: string;
   clienteNome: string;
@@ -689,6 +692,8 @@ function Page() {
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [formSection, setFormSection] =
+    useState<PropostaFormSection>("usuario");
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -920,12 +925,14 @@ function Page() {
     setFormMode("create");
     setEditingId(null);
     setForm(emptyForm());
+    setFormSection("usuario");
     setOpen(true);
   }
 
   function openEdit(p: Proposta) {
     setFormMode("edit");
     setEditingId(p.id);
+    setFormSection("usuario");
     setForm({
       leadId: p.leadId ?? "",
       clienteNome: p.clienteNome,
@@ -1733,638 +1740,327 @@ function Page() {
             className="min-w-0 space-y-5"
             onSubmit={onSubmit}
           >
-            <FormSection title="Cliente">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label>Lead / cliente aprovado (opcional)</Label>
-                  <Popover
-                    modal
-                    open={leadPickerOpen}
-                    onOpenChange={setLeadPickerOpen}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={leadPickerOpen}
-                        className="h-10 w-full justify-between font-normal"
+            <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-2 sm:grid-cols-5">
+              {(
+                [
+                  ["usuario", "Usuário"],
+                  ["endereco", "Endereço"],
+                  ["profissional", "Profissional"],
+                  ["imovel", "Imóvel"],
+                  ["valores", "Valores"],
+                ] as const
+              ).map(([id, label]) => (
+                <Button
+                  key={id}
+                  type="button"
+                  size="sm"
+                  variant={formSection === id ? "default" : "ghost"}
+                  className="justify-center"
+                  onClick={() => setFormSection(id)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+
+            {formSection === "usuario" ? (
+              <>
+                <FormSection title="Cliente">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label>Lead / cliente aprovado (opcional)</Label>
+                      <Popover
+                        modal
+                        open={leadPickerOpen}
+                        onOpenChange={setLeadPickerOpen}
                       >
-                        <span className="truncate">
-                          {selectedLead
-                            ? leadPickerLabel(selectedLead)
-                            : "Buscar por nome ou telefone..."}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-[var(--radix-popover-trigger-width)] p-0"
-                      align="start"
-                      onWheel={(e) => e.stopPropagation()}
-                    >
-                      <Command>
-                        <CommandInput placeholder="Nome ou telefone..." />
-                        <CommandList>
-                          <CommandEmpty>
-                            Nenhum lead/cliente aprovado encontrado.
-                          </CommandEmpty>
-                          <CommandGroup>
-                            <CommandItem
-                              value="sem vinculo"
-                              onSelect={() => {
-                                onLeadSelect("");
-                                setLeadPickerOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  !form.leadId ? "opacity-100" : "opacity-0",
-                                )}
-                              />
-                              Sem vínculo
-                            </CommandItem>
-                            {visibleLeads.map((l) => {
-                              const label = leadPickerLabel(l);
-                              const searchValue = [
-                                l.nome,
-                                l.telefone,
-                                phoneDigits(l.telefone),
-                                l.tipo,
-                              ]
-                                .filter(Boolean)
-                                .join(" ");
-                              return (
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={leadPickerOpen}
+                            className="h-10 w-full justify-between font-normal"
+                          >
+                            <span className="truncate">
+                              {selectedLead
+                                ? leadPickerLabel(selectedLead)
+                                : "Buscar por nome ou telefone..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          align="start"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
+                          <Command>
+                            <CommandInput placeholder="Nome ou telefone..." />
+                            <CommandList>
+                              <CommandEmpty>
+                                Nenhum lead/cliente aprovado encontrado.
+                              </CommandEmpty>
+                              <CommandGroup>
                                 <CommandItem
-                                  key={l.id}
-                                  value={searchValue}
+                                  value="sem vinculo"
                                   onSelect={() => {
-                                    onLeadSelect(l.id);
+                                    onLeadSelect("");
                                     setLeadPickerOpen(false);
                                   }}
                                 >
                                   <Check
                                     className={cn(
                                       "mr-2 h-4 w-4",
-                                      form.leadId === l.id
+                                      !form.leadId
                                         ? "opacity-100"
                                         : "opacity-0",
                                     )}
                                   />
-                                  <span className="truncate">{label}</span>
+                                  Sem vínculo
                                 </CommandItem>
-                              );
-                            })}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <p className="text-[11px] text-muted-foreground">
-                    Lista apenas leads e clientes com análise ou documentação
-                    aprovada.
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="clienteNome">Nome *</Label>
-                  <Input
-                    id="clienteNome"
-                    value={form.clienteNome}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, clienteNome: e.target.value }))
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="clienteTelefone">Telefone</Label>
-                  <Input
-                    id="clienteTelefone"
-                    value={form.clienteTelefone}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        clienteTelefone: formatPhone(e.target.value),
-                      }))
-                    }
-                    placeholder={PHONE_PLACEHOLDER}
-                  />
-                </div>
-              </div>
-            </FormSection>
+                                {visibleLeads.map((l) => {
+                                  const label = leadPickerLabel(l);
+                                  const searchValue = [
+                                    l.nome,
+                                    l.telefone,
+                                    phoneDigits(l.telefone),
+                                    l.tipo,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ");
+                                  return (
+                                    <CommandItem
+                                      key={l.id}
+                                      value={searchValue}
+                                      onSelect={() => {
+                                        onLeadSelect(l.id);
+                                        setLeadPickerOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          form.leadId === l.id
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                      <span className="truncate">{label}</span>
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <p className="text-[11px] text-muted-foreground">
+                        Lista apenas leads e clientes com análise ou
+                        documentação aprovada.
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="clienteNome">Nome *</Label>
+                      <Input
+                        id="clienteNome"
+                        value={form.clienteNome}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            clienteNome: e.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="clienteTelefone">Telefone</Label>
+                      <Input
+                        id="clienteTelefone"
+                        value={form.clienteTelefone}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            clienteTelefone: formatPhone(e.target.value),
+                          }))
+                        }
+                        placeholder={PHONE_PLACEHOLDER}
+                      />
+                    </div>
+                  </div>
+                </FormSection>
 
-            <FormSection title="Dados pessoais (opcional)">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <OptionalField
-                  label="CPF"
-                  value={form.clienteCpf}
-                  onChange={(clienteCpf) =>
-                    setForm((f) => ({
-                      ...f,
-                      clienteCpf: formatCpfCnpj(digitsOnly(clienteCpf, 11)),
-                    }))
-                  }
-                  placeholder="000.000.000-00"
-                />
-                <OptionalField
-                  label="Identidade (RG)"
-                  value={form.clienteRg}
-                  onChange={(clienteRg) =>
-                    setForm((f) => ({ ...f, clienteRg }))
-                  }
-                />
-                <OptionalField
-                  label="Órgão emissor"
-                  value={form.clienteRgOrgaoEmissor}
-                  onChange={(clienteRgOrgaoEmissor) =>
-                    setForm((f) => ({ ...f, clienteRgOrgaoEmissor }))
-                  }
-                />
-                <OptionalField
-                  label="Nascimento"
-                  type="date"
-                  value={form.clienteDataNascimento}
-                  onChange={(clienteDataNascimento) =>
-                    setForm((f) => ({ ...f, clienteDataNascimento }))
-                  }
-                />
-                <OptionalField
-                  label="Nacionalidade"
-                  value={form.clienteNacionalidade}
-                  onChange={(clienteNacionalidade) =>
-                    setForm((f) => ({ ...f, clienteNacionalidade }))
-                  }
-                />
-                <OptionalField
-                  label="Estado civil"
-                  value={form.clienteEstadoCivil}
-                  onChange={(clienteEstadoCivil) =>
-                    setForm((f) => ({ ...f, clienteEstadoCivil }))
-                  }
-                />
-                <OptionalField
-                  label="Regime de bens"
-                  value={form.clienteRegimeBens}
-                  onChange={(clienteRegimeBens) =>
-                    setForm((f) => ({ ...f, clienteRegimeBens }))
-                  }
-                />
-                <OptionalField
-                  label="Data do casamento"
-                  type="date"
-                  value={form.clienteDataCasamento}
-                  onChange={(clienteDataCasamento) =>
-                    setForm((f) => ({ ...f, clienteDataCasamento }))
-                  }
-                />
-                <OptionalField
-                  label="Renda mensal"
-                  value={form.clienteRenda}
-                  onChange={(clienteRenda) =>
-                    setForm((f) => ({
-                      ...f,
-                      clienteRenda: maskMoneyInput(clienteRenda),
-                    }))
-                  }
-                  placeholder="0,00"
-                />
-                <OptionalField
-                  label="Filiação — pai"
-                  value={form.clienteNomePai}
-                  onChange={(clienteNomePai) =>
-                    setForm((f) => ({ ...f, clienteNomePai }))
-                  }
-                />
-                <OptionalField
-                  label="Filiação — mãe"
-                  value={form.clienteNomeMae}
-                  onChange={(clienteNomeMae) =>
-                    setForm((f) => ({ ...f, clienteNomeMae }))
-                  }
-                />
-                <OptionalField
-                  label="Telefone fixo"
-                  value={form.clienteTelefoneFixo}
-                  onChange={(clienteTelefoneFixo) =>
-                    setForm((f) => ({
-                      ...f,
-                      clienteTelefoneFixo: formatPhone(clienteTelefoneFixo),
-                    }))
-                  }
-                />
-                <OptionalField
-                  label="E-mail"
-                  type="email"
-                  value={form.clienteEmail}
-                  onChange={(clienteEmail) =>
-                    setForm((f) => ({ ...f, clienteEmail }))
-                  }
-                />
-              </div>
-            </FormSection>
-
-            <FormSection title="Endereço residencial (opcional)">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <OptionalField
-                  label="Endereço residencial"
-                  value={form.clienteEnderecoResidencial}
-                  onChange={(clienteEnderecoResidencial) =>
-                    setForm((f) => ({ ...f, clienteEnderecoResidencial }))
-                  }
-                />
-                <OptionalField
-                  label="Bairro"
-                  value={form.clienteBairroResidencial}
-                  onChange={(clienteBairroResidencial) =>
-                    setForm((f) => ({ ...f, clienteBairroResidencial }))
-                  }
-                />
-                <OptionalField
-                  label="Cidade"
-                  value={form.clienteCidadeResidencial}
-                  onChange={(clienteCidadeResidencial) =>
-                    setForm((f) => ({ ...f, clienteCidadeResidencial }))
-                  }
-                />
-                <OptionalField
-                  label="UF"
-                  value={form.clienteUfResidencial}
-                  onChange={(clienteUfResidencial) =>
-                    setForm((f) => ({
-                      ...f,
-                      clienteUfResidencial: clienteUfResidencial
-                        .toUpperCase()
-                        .slice(0, 2),
-                    }))
-                  }
-                />
-                <OptionalField
-                  label="CEP"
-                  value={form.clienteCepResidencial}
-                  onChange={(clienteCepResidencial) =>
-                    setForm((f) => ({ ...f, clienteCepResidencial }))
-                  }
-                />
-                <div className="space-y-1.5">
-                  <Label>Cobrança neste endereço?</Label>
-                  <Select
-                    value={
-                      form.clienteCobrancaResidencial === null
-                        ? "__none__"
-                        : form.clienteCobrancaResidencial
-                          ? "sim"
-                          : "nao"
-                    }
-                    onValueChange={(value) =>
-                      setForm((f) => ({
-                        ...f,
-                        clienteCobrancaResidencial:
-                          value === "__none__" ? null : value === "sim",
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Não informado</SelectItem>
-                      <SelectItem value="sim">Sim</SelectItem>
-                      <SelectItem value="nao">Não</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </FormSection>
-
-            <FormSection title="Dados profissionais (opcional)">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <OptionalField
-                  label="Empresa onde trabalha"
-                  value={form.clienteEmpregador}
-                  onChange={(clienteEmpregador) =>
-                    setForm((f) => ({ ...f, clienteEmpregador }))
-                  }
-                />
-                <OptionalField
-                  label="Profissão"
-                  value={form.clienteProfissao}
-                  onChange={(clienteProfissao) =>
-                    setForm((f) => ({ ...f, clienteProfissao }))
-                  }
-                />
-                <OptionalField
-                  label="Endereço comercial"
-                  value={form.clienteEnderecoComercial}
-                  onChange={(clienteEnderecoComercial) =>
-                    setForm((f) => ({ ...f, clienteEnderecoComercial }))
-                  }
-                />
-                <OptionalField
-                  label="Bairro comercial"
-                  value={form.clienteBairroComercial}
-                  onChange={(clienteBairroComercial) =>
-                    setForm((f) => ({ ...f, clienteBairroComercial }))
-                  }
-                />
-                <OptionalField
-                  label="Cidade comercial"
-                  value={form.clienteCidadeComercial}
-                  onChange={(clienteCidadeComercial) =>
-                    setForm((f) => ({ ...f, clienteCidadeComercial }))
-                  }
-                />
-                <OptionalField
-                  label="UF comercial"
-                  value={form.clienteUfComercial}
-                  onChange={(clienteUfComercial) =>
-                    setForm((f) => ({
-                      ...f,
-                      clienteUfComercial: clienteUfComercial
-                        .toUpperCase()
-                        .slice(0, 2),
-                    }))
-                  }
-                />
-                <OptionalField
-                  label="CEP comercial"
-                  value={form.clienteCepComercial}
-                  onChange={(clienteCepComercial) =>
-                    setForm((f) => ({ ...f, clienteCepComercial }))
-                  }
-                />
-                <OptionalField
-                  label="Site"
-                  value={form.clienteSite}
-                  onChange={(clienteSite) =>
-                    setForm((f) => ({ ...f, clienteSite }))
-                  }
-                />
-                <OptionalField
-                  label="Telefone comercial 1"
-                  value={form.clienteTelefoneComercial1}
-                  onChange={(clienteTelefoneComercial1) =>
-                    setForm((f) => ({
-                      ...f,
-                      clienteTelefoneComercial1: formatPhone(
-                        clienteTelefoneComercial1,
-                      ),
-                    }))
-                  }
-                />
-                <OptionalField
-                  label="Telefone comercial 2"
-                  value={form.clienteTelefoneComercial2}
-                  onChange={(clienteTelefoneComercial2) =>
-                    setForm((f) => ({
-                      ...f,
-                      clienteTelefoneComercial2: formatPhone(
-                        clienteTelefoneComercial2,
-                      ),
-                    }))
-                  }
-                />
-                <div className="space-y-1.5">
-                  <Label>Cobrança neste endereço?</Label>
-                  <Select
-                    value={
-                      form.clienteCobrancaComercial === null
-                        ? "__none__"
-                        : form.clienteCobrancaComercial
-                          ? "sim"
-                          : "nao"
-                    }
-                    onValueChange={(value) =>
-                      setForm((f) => ({
-                        ...f,
-                        clienteCobrancaComercial:
-                          value === "__none__" ? null : value === "sim",
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Não informado</SelectItem>
-                      <SelectItem value="sim">Sim</SelectItem>
-                      <SelectItem value="nao">Não</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </FormSection>
-
-            <FormSection title="Imóvel">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Construtora</Label>
-                  <Select
-                    value={form.construtoraId || "__none__"}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        construtoraId: v === "__none__" ? "" : v,
-                        empreendimentoId: "",
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Construtora" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nenhuma</SelectItem>
-                      {construtoras.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Empreendimento</Label>
-                  <Select
-                    value={form.empreendimentoId || "__none__"}
-                    onValueChange={(v) =>
-                      setForm((f) => ({
-                        ...f,
-                        empreendimentoId: v === "__none__" ? "" : v,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Empreendimento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nenhum</SelectItem>
-                      {filteredEmpreendimentos.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>
-                          {e.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="unidade">Unidade</Label>
-                  <Input
-                    id="unidade"
-                    value={form.unidade}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, unidade: e.target.value }))
-                    }
-                    placeholder="Ex.: 802"
-                  />
-                </div>
-                {isManager && (
-                  <div className="space-y-1.5">
-                    <Label>Corretor</Label>
-                    <Select
-                      value={form.corretorId || "__none__"}
-                      onValueChange={(v) =>
+                <FormSection title="Dados pessoais (opcional)">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <OptionalField
+                      label="CPF"
+                      value={form.clienteCpf}
+                      onChange={(clienteCpf) =>
                         setForm((f) => ({
                           ...f,
-                          corretorId: v === "__none__" ? "" : v,
+                          clienteCpf: formatCpfCnpj(digitsOnly(clienteCpf, 11)),
                         }))
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Corretor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Não definido</SelectItem>
-                        {corretorOptions.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </FormSection>
-
-            <FormSection title="Composição financeira">
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="valor">Valor de venda (R$) *</Label>
-                  <Input
-                    id="valor"
-                    inputMode="numeric"
-                    value={form.valor}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        valor: maskMoneyInput(e.target.value),
-                      }))
-                    }
-                    placeholder="0,00"
-                    required
-                  />
-                </div>
-
-                <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3 space-y-2">
-                  <div>
-                    <Label
-                      htmlFor="desconto"
-                      className="text-amber-900 dark:text-amber-200"
-                    >
-                      Desconto do empreendimento (R$)
-                    </Label>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      Valor de destaque no relatório. A composição deve fechar
-                      no valor com desconto.
-                    </p>
-                  </div>
-                  <Input
-                    id="desconto"
-                    inputMode="numeric"
-                    value={form.desconto}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        desconto: maskMoneyInput(e.target.value),
-                      }))
-                    }
-                    placeholder="0,00"
-                    className="border-amber-500/40 bg-background"
-                  />
-                  {moneyOrZero(form.desconto) > 0 ? (
-                    <p className="text-xs text-amber-900/80 dark:text-amber-200/80 tabular-nums">
-                      Valor com desconto: {brl(formValorLiquido)}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {PROPOSTA_SIMPLES_KEYS.map((key) => (
-                    <MoneyField
-                      key={key}
-                      id={key}
-                      label={`${PROPOSTA_COMPOSICAO_LABEL[key]} (R$)`}
-                      value={form[key]}
-                      onChange={(value) =>
-                        setForm((f) => ({ ...f, [key]: value }))
+                      placeholder="000.000.000-00"
+                    />
+                    <OptionalField
+                      label="Identidade (RG)"
+                      value={form.clienteRg}
+                      onChange={(clienteRg) =>
+                        setForm((f) => ({ ...f, clienteRg }))
                       }
                     />
-                  ))}
-                </div>
-
-                <div className="grid gap-3 lg:grid-cols-3">
-                  {PROPOSTA_LISTA_KEYS.map((key) => (
-                    <ParcelasQtyValueEditor
-                      key={key}
-                      id={key}
-                      title={PROPOSTA_COMPOSICAO_LABEL[key]}
-                      value={form[key]}
-                      onChange={(next) =>
-                        setForm((f) => ({ ...f, [key]: next }))
+                    <OptionalField
+                      label="Órgão emissor"
+                      value={form.clienteRgOrgaoEmissor}
+                      onChange={(clienteRgOrgaoEmissor) =>
+                        setForm((f) => ({ ...f, clienteRgOrgaoEmissor }))
                       }
                     />
-                  ))}
-                </div>
-
-                <div className="grid gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 sm:grid-cols-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="font-semibold tabular-nums">
-                      {brl(formTotal)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">
-                      Diferença
-                    </span>
-                    <span
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        formDiferenca === 0
-                          ? "text-emerald-700 dark:text-emerald-300"
-                          : formDiferenca < 0
-                            ? "text-destructive"
-                            : "text-amber-800 dark:text-amber-300",
-                      )}
-                    >
-                      {brl(formDiferenca)}
-                    </span>
-                  </div>
-                  <p className="sm:col-span-2 text-[11px] text-muted-foreground">
-                    Total = soma dos campos + (quantidade × valor) das parcelas.
-                    Diferença = (valor de venda − desconto) − total.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>Status</Label>
-                    <Select
-                      value={form.status}
-                      onValueChange={(v) =>
+                    <OptionalField
+                      label="Nascimento"
+                      type="date"
+                      value={form.clienteDataNascimento}
+                      onChange={(clienteDataNascimento) =>
+                        setForm((f) => ({ ...f, clienteDataNascimento }))
+                      }
+                    />
+                    <OptionalField
+                      label="Nacionalidade"
+                      value={form.clienteNacionalidade}
+                      onChange={(clienteNacionalidade) =>
+                        setForm((f) => ({ ...f, clienteNacionalidade }))
+                      }
+                    />
+                    <OptionalField
+                      label="Estado civil"
+                      value={form.clienteEstadoCivil}
+                      onChange={(clienteEstadoCivil) =>
+                        setForm((f) => ({ ...f, clienteEstadoCivil }))
+                      }
+                    />
+                    <OptionalField
+                      label="Regime de bens"
+                      value={form.clienteRegimeBens}
+                      onChange={(clienteRegimeBens) =>
+                        setForm((f) => ({ ...f, clienteRegimeBens }))
+                      }
+                    />
+                    <OptionalField
+                      label="Data do casamento"
+                      type="date"
+                      value={form.clienteDataCasamento}
+                      onChange={(clienteDataCasamento) =>
+                        setForm((f) => ({ ...f, clienteDataCasamento }))
+                      }
+                    />
+                    <OptionalField
+                      label="Renda mensal"
+                      value={form.clienteRenda}
+                      onChange={(clienteRenda) =>
                         setForm((f) => ({
                           ...f,
-                          status: v as PropostaStatus,
+                          clienteRenda: maskMoneyInput(clienteRenda),
+                        }))
+                      }
+                      placeholder="0,00"
+                    />
+                    <OptionalField
+                      label="Filiação — pai"
+                      value={form.clienteNomePai}
+                      onChange={(clienteNomePai) =>
+                        setForm((f) => ({ ...f, clienteNomePai }))
+                      }
+                    />
+                    <OptionalField
+                      label="Filiação — mãe"
+                      value={form.clienteNomeMae}
+                      onChange={(clienteNomeMae) =>
+                        setForm((f) => ({ ...f, clienteNomeMae }))
+                      }
+                    />
+                    <OptionalField
+                      label="Telefone fixo"
+                      value={form.clienteTelefoneFixo}
+                      onChange={(clienteTelefoneFixo) =>
+                        setForm((f) => ({
+                          ...f,
+                          clienteTelefoneFixo: formatPhone(clienteTelefoneFixo),
+                        }))
+                      }
+                    />
+                    <OptionalField
+                      label="E-mail"
+                      type="email"
+                      value={form.clienteEmail}
+                      onChange={(clienteEmail) =>
+                        setForm((f) => ({ ...f, clienteEmail }))
+                      }
+                    />
+                  </div>
+                </FormSection>
+              </>
+            ) : null}
+
+            {formSection === "endereco" ? (
+              <FormSection title="Endereço residencial (opcional)">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <OptionalField
+                    label="Endereço residencial"
+                    value={form.clienteEnderecoResidencial}
+                    onChange={(clienteEnderecoResidencial) =>
+                      setForm((f) => ({ ...f, clienteEnderecoResidencial }))
+                    }
+                  />
+                  <OptionalField
+                    label="Bairro"
+                    value={form.clienteBairroResidencial}
+                    onChange={(clienteBairroResidencial) =>
+                      setForm((f) => ({ ...f, clienteBairroResidencial }))
+                    }
+                  />
+                  <OptionalField
+                    label="Cidade"
+                    value={form.clienteCidadeResidencial}
+                    onChange={(clienteCidadeResidencial) =>
+                      setForm((f) => ({ ...f, clienteCidadeResidencial }))
+                    }
+                  />
+                  <OptionalField
+                    label="UF"
+                    value={form.clienteUfResidencial}
+                    onChange={(clienteUfResidencial) =>
+                      setForm((f) => ({
+                        ...f,
+                        clienteUfResidencial: clienteUfResidencial
+                          .toUpperCase()
+                          .slice(0, 2),
+                      }))
+                    }
+                  />
+                  <OptionalField
+                    label="CEP"
+                    value={form.clienteCepResidencial}
+                    onChange={(clienteCepResidencial) =>
+                      setForm((f) => ({ ...f, clienteCepResidencial }))
+                    }
+                  />
+                  <div className="space-y-1.5">
+                    <Label>Cobrança neste endereço?</Label>
+                    <Select
+                      value={
+                        form.clienteCobrancaResidencial === null
+                          ? "__none__"
+                          : form.clienteCobrancaResidencial
+                            ? "sim"
+                            : "nao"
+                      }
+                      onValueChange={(value) =>
+                        setForm((f) => ({
+                          ...f,
+                          clienteCobrancaResidencial:
+                            value === "__none__" ? null : value === "sim",
                         }))
                       }
                     >
@@ -2372,43 +2068,396 @@ function Page() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {STATUS_OPTIONS.filter((o) => o.value !== "todos").map(
-                          (o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ),
-                        )}
+                        <SelectItem value="__none__">Não informado</SelectItem>
+                        <SelectItem value="sim">Sim</SelectItem>
+                        <SelectItem value="nao">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </FormSection>
+            ) : null}
+
+            {formSection === "profissional" ? (
+              <FormSection title="Dados profissionais (opcional)">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <OptionalField
+                    label="Empresa onde trabalha"
+                    value={form.clienteEmpregador}
+                    onChange={(clienteEmpregador) =>
+                      setForm((f) => ({ ...f, clienteEmpregador }))
+                    }
+                  />
+                  <OptionalField
+                    label="Profissão"
+                    value={form.clienteProfissao}
+                    onChange={(clienteProfissao) =>
+                      setForm((f) => ({ ...f, clienteProfissao }))
+                    }
+                  />
+                  <OptionalField
+                    label="Endereço comercial"
+                    value={form.clienteEnderecoComercial}
+                    onChange={(clienteEnderecoComercial) =>
+                      setForm((f) => ({ ...f, clienteEnderecoComercial }))
+                    }
+                  />
+                  <OptionalField
+                    label="Bairro comercial"
+                    value={form.clienteBairroComercial}
+                    onChange={(clienteBairroComercial) =>
+                      setForm((f) => ({ ...f, clienteBairroComercial }))
+                    }
+                  />
+                  <OptionalField
+                    label="Cidade comercial"
+                    value={form.clienteCidadeComercial}
+                    onChange={(clienteCidadeComercial) =>
+                      setForm((f) => ({ ...f, clienteCidadeComercial }))
+                    }
+                  />
+                  <OptionalField
+                    label="UF comercial"
+                    value={form.clienteUfComercial}
+                    onChange={(clienteUfComercial) =>
+                      setForm((f) => ({
+                        ...f,
+                        clienteUfComercial: clienteUfComercial
+                          .toUpperCase()
+                          .slice(0, 2),
+                      }))
+                    }
+                  />
+                  <OptionalField
+                    label="CEP comercial"
+                    value={form.clienteCepComercial}
+                    onChange={(clienteCepComercial) =>
+                      setForm((f) => ({ ...f, clienteCepComercial }))
+                    }
+                  />
+                  <OptionalField
+                    label="Site"
+                    value={form.clienteSite}
+                    onChange={(clienteSite) =>
+                      setForm((f) => ({ ...f, clienteSite }))
+                    }
+                  />
+                  <OptionalField
+                    label="Telefone comercial 1"
+                    value={form.clienteTelefoneComercial1}
+                    onChange={(clienteTelefoneComercial1) =>
+                      setForm((f) => ({
+                        ...f,
+                        clienteTelefoneComercial1: formatPhone(
+                          clienteTelefoneComercial1,
+                        ),
+                      }))
+                    }
+                  />
+                  <OptionalField
+                    label="Telefone comercial 2"
+                    value={form.clienteTelefoneComercial2}
+                    onChange={(clienteTelefoneComercial2) =>
+                      setForm((f) => ({
+                        ...f,
+                        clienteTelefoneComercial2: formatPhone(
+                          clienteTelefoneComercial2,
+                        ),
+                      }))
+                    }
+                  />
+                  <div className="space-y-1.5">
+                    <Label>Cobrança neste endereço?</Label>
+                    <Select
+                      value={
+                        form.clienteCobrancaComercial === null
+                          ? "__none__"
+                          : form.clienteCobrancaComercial
+                            ? "sim"
+                            : "nao"
+                      }
+                      onValueChange={(value) =>
+                        setForm((f) => ({
+                          ...f,
+                          clienteCobrancaComercial:
+                            value === "__none__" ? null : value === "sim",
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Não informado</SelectItem>
+                        <SelectItem value="sim">Sim</SelectItem>
+                        <SelectItem value="nao">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </FormSection>
+            ) : null}
+
+            {formSection === "imovel" ? (
+              <FormSection title="Imóvel">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Construtora</Label>
+                    <Select
+                      value={form.construtoraId || "__none__"}
+                      onValueChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          construtoraId: v === "__none__" ? "" : v,
+                          empreendimentoId: "",
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Construtora" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nenhuma</SelectItem>
+                        {construtoras.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nome}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="validade">Validade</Label>
-                    <Input
-                      id="validade"
-                      type="date"
-                      value={form.validade}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, validade: e.target.value }))
+                    <Label>Empreendimento</Label>
+                    <Select
+                      value={form.empreendimentoId || "__none__"}
+                      onValueChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          empreendimentoId: v === "__none__" ? "" : v,
+                        }))
                       }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Empreendimento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nenhum</SelectItem>
+                        {filteredEmpreendimentos.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="unidade">Unidade</Label>
+                    <Input
+                      id="unidade"
+                      value={form.unidade}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, unidade: e.target.value }))
+                      }
+                      placeholder="Ex.: 802"
                     />
                   </div>
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <Label htmlFor="observacao">Observação</Label>
-                    <Textarea
-                      id="observacao"
-                      value={form.observacao}
+                  {isManager && (
+                    <div className="space-y-1.5">
+                      <Label>Corretor</Label>
+                      <Select
+                        value={form.corretorId || "__none__"}
+                        onValueChange={(v) =>
+                          setForm((f) => ({
+                            ...f,
+                            corretorId: v === "__none__" ? "" : v,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Corretor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Não definido</SelectItem>
+                          {corretorOptions.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+            ) : null}
+
+            {formSection === "valores" ? (
+              <FormSection title="Composição financeira">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="valor">Valor de venda (R$) *</Label>
+                    <Input
+                      id="valor"
+                      inputMode="numeric"
+                      value={form.valor}
                       onChange={(e) =>
-                        setForm((f) => ({ ...f, observacao: e.target.value }))
+                        setForm((f) => ({
+                          ...f,
+                          valor: maskMoneyInput(e.target.value),
+                        }))
                       }
-                      rows={3}
+                      placeholder="0,00"
+                      required
                     />
+                  </div>
+
+                  <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3 space-y-2">
+                    <div>
+                      <Label
+                        htmlFor="desconto"
+                        className="text-amber-900 dark:text-amber-200"
+                      >
+                        Desconto do empreendimento (R$)
+                      </Label>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Valor de destaque no relatório. A composição deve fechar
+                        no valor com desconto.
+                      </p>
+                    </div>
+                    <Input
+                      id="desconto"
+                      inputMode="numeric"
+                      value={form.desconto}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          desconto: maskMoneyInput(e.target.value),
+                        }))
+                      }
+                      placeholder="0,00"
+                      className="border-amber-500/40 bg-background"
+                    />
+                    {moneyOrZero(form.desconto) > 0 ? (
+                      <p className="text-xs text-amber-900/80 dark:text-amber-200/80 tabular-nums">
+                        Valor com desconto: {brl(formValorLiquido)}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {PROPOSTA_SIMPLES_KEYS.map((key) => (
+                      <MoneyField
+                        key={key}
+                        id={key}
+                        label={`${PROPOSTA_COMPOSICAO_LABEL[key]} (R$)`}
+                        value={form[key]}
+                        onChange={(value) =>
+                          setForm((f) => ({ ...f, [key]: value }))
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    {PROPOSTA_LISTA_KEYS.map((key) => (
+                      <ParcelasQtyValueEditor
+                        key={key}
+                        id={key}
+                        title={PROPOSTA_COMPOSICAO_LABEL[key]}
+                        value={form[key]}
+                        onChange={(next) =>
+                          setForm((f) => ({ ...f, [key]: next }))
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <div className="grid gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 sm:grid-cols-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground">
+                        Total
+                      </span>
+                      <span className="font-semibold tabular-nums">
+                        {brl(formTotal)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground">
+                        Diferença
+                      </span>
+                      <span
+                        className={cn(
+                          "font-semibold tabular-nums",
+                          formDiferenca === 0
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : formDiferenca < 0
+                              ? "text-destructive"
+                              : "text-amber-800 dark:text-amber-300",
+                        )}
+                      >
+                        {brl(formDiferenca)}
+                      </span>
+                    </div>
+                    <p className="sm:col-span-2 text-[11px] text-muted-foreground">
+                      Total = soma dos campos + (quantidade × valor) das
+                      parcelas. Diferença = (valor de venda − desconto) − total.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Status</Label>
+                      <Select
+                        value={form.status}
+                        onValueChange={(v) =>
+                          setForm((f) => ({
+                            ...f,
+                            status: v as PropostaStatus,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.filter(
+                            (o) => o.value !== "todos",
+                          ).map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="validade">Validade</Label>
+                      <Input
+                        id="validade"
+                        type="date"
+                        value={form.validade}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, validade: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label htmlFor="observacao">Observação</Label>
+                      <Textarea
+                        id="observacao"
+                        value={form.observacao}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, observacao: e.target.value }))
+                        }
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </FormSection>
+              </FormSection>
+            ) : null}
           </form>
-          <div className="hidden lg:block">
+          <div className="hidden lg:block lg:self-start">
             <PropostaFormPreview form={form} total={formTotal} />
           </div>
         </FormDialogBody>
