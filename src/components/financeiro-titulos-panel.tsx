@@ -118,6 +118,7 @@ const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const
 
 type QuickKind = "parceiro" | "categoria" | null;
 type TituloFormTab = "dados" | "cobranca" | "contrato";
+type GrupoParcelaTipo = "adesao" | "mensalidade";
 
 type FormState = {
   descricao: string;
@@ -328,6 +329,9 @@ export function FinanceiroTitulosPanel({
   const [parcelado, setParcelado] = useState(false);
   const [qtdParcelas, setQtdParcelas] = useState("2");
   const [parcelasDraft, setParcelasDraft] = useState<ParcelaDraft[]>([]);
+  const [grupoParcelaSelecionada, setGrupoParcelaSelecionada] =
+    useState<GrupoParcelaTipo | null>(null);
+  const [valorGrupoParcelas, setValorGrupoParcelas] = useState("");
   const [formTab, setFormTab] = useState<TituloFormTab>("dados");
   const isPlatformAdmin = getSession()?.role === "super_admin";
   const canUseContrato = tipo === "receber" && isPlatformAdmin;
@@ -720,6 +724,40 @@ export function FinanceiroTitulosPanel({
     );
   }
 
+  function isParcelaDoContrato(parcela: ParcelaDraft, grupo: GrupoParcelaTipo) {
+    const label = parcela.label?.toLocaleLowerCase("pt-BR") ?? "";
+    return grupo === "adesao"
+      ? label.startsWith("adesão")
+      : label.startsWith("mensalidade");
+  }
+
+  function selecionarGrupoParcelas(grupo: GrupoParcelaTipo) {
+    setGrupoParcelaSelecionada(grupo);
+    setValorGrupoParcelas("");
+  }
+
+  function aplicarValorAoGrupoParcelas() {
+    if (!grupoParcelaSelecionada) return;
+    const valor = parseValor(valorGrupoParcelas);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      toast.error("Informe um valor válido para as parcelas selecionadas.");
+      return;
+    }
+
+    setParcelasDraft((prev) =>
+      prev.map((parcela) =>
+        isParcelaDoContrato(parcela, grupoParcelaSelecionada)
+          ? { ...parcela, valor: formatValorInput(valor) }
+          : parcela,
+      ),
+    );
+    toast.success(
+      `Valor aplicado às parcelas de ${
+        grupoParcelaSelecionada === "adesao" ? "adesão" : "mensalidade"
+      }.`,
+    );
+  }
+
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
@@ -730,6 +768,8 @@ export function FinanceiroTitulosPanel({
     setParcelado(false);
     setQtdParcelas(canUseContrato ? "1" : "2");
     setParcelasDraft([]);
+    setGrupoParcelaSelecionada(null);
+    setValorGrupoParcelas("");
     setComoContrato(false);
     setParcelarAdesao(false);
     setQtdParcelasAdesao("2");
@@ -745,6 +785,8 @@ export function FinanceiroTitulosPanel({
     const temParcela = Boolean(t.parcela?.trim());
     setParcelado(temParcela);
     setParcelasDraft([]);
+    setGrupoParcelaSelecionada(null);
+    setValorGrupoParcelas("");
     setFormTab("dados");
     const cat = t.categoria || t.centro || categorias[0] || "";
     setForm({
@@ -816,6 +858,8 @@ export function FinanceiroTitulosPanel({
         locked: false,
       })),
     );
+    setGrupoParcelaSelecionada(null);
+    setValorGrupoParcelas("");
     setFormTab("cobranca");
     setOpen(true);
   }
@@ -2037,11 +2081,107 @@ export function FinanceiroTitulosPanel({
                         ? "Todas as parcelas"
                         : "Parcelas"}
                     </Label>
+                    {formMode === "edit-grupo" &&
+                    (parcelasDraft.some((p) =>
+                      isParcelaDoContrato(p, "adesao"),
+                    ) ||
+                      parcelasDraft.some((p) =>
+                        isParcelaDoContrato(p, "mensalidade"),
+                      )) ? (
+                      <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3 space-y-3">
+                        <div>
+                          <p className="text-sm font-medium">
+                            Editar parcelas do contrato
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Selecione um grupo para alterar o valor de todas as
+                            suas parcelas de uma vez.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {parcelasDraft.some((p) =>
+                            isParcelaDoContrato(p, "adesao"),
+                          ) ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={
+                                grupoParcelaSelecionada === "adesao"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              onClick={() => selecionarGrupoParcelas("adesao")}
+                            >
+                              Adesão (
+                              {
+                                parcelasDraft.filter((p) =>
+                                  isParcelaDoContrato(p, "adesao"),
+                                ).length
+                              }
+                              )
+                            </Button>
+                          ) : null}
+                          {parcelasDraft.some((p) =>
+                            isParcelaDoContrato(p, "mensalidade"),
+                          ) ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={
+                                grupoParcelaSelecionada === "mensalidade"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              onClick={() =>
+                                selecionarGrupoParcelas("mensalidade")
+                              }
+                            >
+                              Mensalidades (
+                              {
+                                parcelasDraft.filter((p) =>
+                                  isParcelaDoContrato(p, "mensalidade"),
+                                ).length
+                              }
+                              )
+                            </Button>
+                          ) : null}
+                        </div>
+                        {grupoParcelaSelecionada ? (
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Input
+                              inputMode="numeric"
+                              value={valorGrupoParcelas}
+                              onChange={(e) =>
+                                setValorGrupoParcelas(
+                                  maskMoneyInput(e.target.value),
+                                )
+                              }
+                              placeholder={`Valor por parcela de ${
+                                grupoParcelaSelecionada === "adesao"
+                                  ? "adesão"
+                                  : "mensalidade"
+                              }`}
+                            />
+                            <Button
+                              type="button"
+                              onClick={aplicarValorAoGrupoParcelas}
+                            >
+                              Aplicar valor
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/50">
                       {parcelasDraft.map((p, idx) => (
                         <div
                           key={p.id ?? `parcela-${idx}`}
-                          className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center p-2"
+                          className={`grid grid-cols-[auto_1fr_1fr] gap-2 items-center p-2 ${
+                            grupoParcelaSelecionada &&
+                            isParcelaDoContrato(p, grupoParcelaSelecionada)
+                              ? "bg-primary/10"
+                              : ""
+                          }`}
                         >
                           <span className="text-xs text-muted-foreground w-12">
                             {p.label || `${idx + 1}/${parcelasDraft.length}`}
