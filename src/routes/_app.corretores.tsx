@@ -34,8 +34,6 @@ import {
 } from "lucide-react";
 import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
-import { fetchDocumentacoes, type Documentacao } from "@/lib/documentacao-api";
-import { isStatusVendido } from "@/lib/documentacao-status";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/corretores")({
@@ -87,7 +85,6 @@ function Page() {
   const [mes, setMes] = useState(agora.mes);
   const [ano, setAno] = useState(agora.ano);
   const [data, setData] = useState<DashboardRanking | null>(null);
-  const [documentacoes, setDocumentacoes] = useState<Documentacao[]>([]);
   const [loading, setLoading] = useState(true);
 
   const anosDisponiveis = useMemo(() => {
@@ -103,12 +100,7 @@ function Page() {
     }
     setLoading(true);
     try {
-      const [ranking, docs] = await Promise.all([
-        fetchDashboardRanking({ mes, ano }),
-        fetchDocumentacoes(),
-      ]);
-      setData(ranking);
-      setDocumentacoes(docs);
+      setData(await fetchDashboardRanking({ mes, ano }));
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -134,27 +126,6 @@ function Page() {
       }),
     [mes, ano],
   );
-
-  const construtorasRanking = useMemo(() => {
-    const inicio = new Date(ano, mes - 1, 1);
-    const fim = new Date(ano, mes, 1);
-    const values = new Map<string, { nome: string; vendas: number; vgv: number }>();
-    for (const doc of documentacoes) {
-      if (!isStatusVendido(doc.status2) || !doc.dataVenda) continue;
-      const dataVenda = new Date(doc.dataVenda);
-      if (dataVenda < inicio || dataVenda >= fim) continue;
-      const key = doc.construtora?.id ?? doc.construtora?.nome ?? "sem-construtora";
-      const current = values.get(key) ?? {
-        nome: doc.construtora?.nome ?? "Sem construtora",
-        vendas: 0,
-        vgv: 0,
-      };
-      current.vendas += 1;
-      current.vgv += doc.vgv ?? 0;
-      values.set(key, current);
-    }
-    return [...values.values()].sort((a, b) => b.vgv - a.vgv).slice(0, 5);
-  }, [ano, documentacoes, mes]);
 
   const filtros = (
     <div className="flex flex-wrap items-end gap-2">
@@ -281,7 +252,7 @@ function Page() {
             <PodioCorretores corretores={data.corretores} />
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
               <RankingList corretores={data.corretores} />
-              <ConstrutorasRanking items={construtorasRanking} />
+              <ConstrutorasRanking items={data.construtoras} />
             </div>
           </section>
 
@@ -360,9 +331,9 @@ function PodioCorretores({
     Boolean,
   ) as DashboardRankingCorretor[];
   return (
-    <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
+    <Card className="overflow-hidden bg-gradient-to-br from-card via-card to-muted/70 text-foreground">
       <CardContent className="p-5">
-        <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-300">
+        <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
           <Trophy className="h-4 w-4" /> Pódio de vendas · corretores
         </div>
         <div className="mt-5 flex items-end justify-center gap-3 sm:gap-8">
@@ -394,14 +365,18 @@ function PodioCorretores({
                     .join("")}
                 </div>
                 <p className="mt-2 truncate text-xs font-semibold">{row.nome}</p>
-                <p className="text-[10px] text-slate-300">
+                <p className="text-[10px] text-muted-foreground">
                   {row.vendas.valor} venda{row.vendas.valor === 1 ? "" : "s"} ·{" "}
                   {money(row.vgv.valor)}
                 </p>
                 <div
                   className={cn(
                     "mt-3 flex w-full items-center justify-center rounded-t-md text-xs font-bold",
-                    position === 1 ? "h-12 bg-amber-400 text-amber-950" : "h-8 bg-slate-700",
+                    position === 1
+                      ? "h-12 bg-amber-400 text-amber-950"
+                      : position === 2
+                        ? "h-8 bg-muted text-foreground"
+                        : "h-8 bg-orange-500 text-orange-950",
                   )}
                 >
                   #{position}

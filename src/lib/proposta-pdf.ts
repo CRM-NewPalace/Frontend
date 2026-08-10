@@ -303,6 +303,13 @@ function safeFilename(codigo: string) {
   return codigo.replace(/[^\w.-]+/g, "_");
 }
 
+/** jsPDF rejeita valores null/undefined em `text`, mesmo quando o dado é opcional. */
+function pdfText(value: unknown, fallback = "—"): string {
+  if (typeof value === "string") return value.trim() || fallback;
+  if (typeof value === "number") return String(value);
+  return fallback;
+}
+
 function absoluteAssetUrl(src: string) {
   if (
     src.startsWith("http://") ||
@@ -518,7 +525,7 @@ async function buildPropostaPdfDescritivo(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...C.ink);
-  doc.text(p.codigo, margin, y);
+  doc.text(pdfText(p.codigo, "PROPOSTA"), margin, y);
 
   // Badge "Emitida em"
   const emitted = new Date().toLocaleDateString("pt-BR");
@@ -569,7 +576,7 @@ async function buildPropostaPdfDescritivo(
   doc.setFontSize(12);
   doc.setTextColor(...C.ink);
   const empLines = doc.splitTextToSize(
-    empreendimentoNome(p),
+    pdfText(empreendimentoNome(p), "Empreendimento a definir"),
     contentW / 2 - 28,
   );
   doc.text(empLines.slice(0, 2), margin + 16, y + 38);
@@ -599,7 +606,7 @@ async function buildPropostaPdfDescritivo(
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...C.muted);
     doc.text(
-      p.construtora.nome,
+      pdfText(p.construtora.nome),
       midX + 16 + doc.getTextWidth("CONSTRUTORA: "),
       rightY,
     );
@@ -612,7 +619,7 @@ async function buildPropostaPdfDescritivo(
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...C.muted);
     doc.text(
-      p.corretor.name.toUpperCase(),
+      pdfText(p.corretor.name).toUpperCase(),
       midX + 16 + doc.getTextWidth("CORRETOR: "),
       rightY,
     );

@@ -241,6 +241,13 @@ export type DashboardRanking = {
   };
   corretores: DashboardRankingCorretor[];
   gerentes: DashboardRankingGerente[];
+  construtoras: Array<{
+    posicao: number;
+    construtoraId: string;
+    nome: string;
+    vendas: number;
+    vgv: number;
+  }>;
 };
 
 export async function fetchDashboardRanking(
