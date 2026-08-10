@@ -931,11 +931,293 @@ async function buildPropostaPdfDescritivo(
   doc.save(filename);
 }
 
+/**
+ * Versão documental da proposta: impressão limpa, sem identidade cromática
+ * ou elementos decorativos, preparada para preenchimento/assinatura.
+ */
+async function buildPropostaPdfFormulario(
+  p: Proposta,
+  filename: string,
+  brand?: PropostaPdfBrand,
+) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentW = pageW - margin * 2;
+  const companyName = brand?.company?.name?.trim() || "----";
+  const rawText = doc.text.bind(doc) as (...args: unknown[]) => unknown;
+  (
+    doc as unknown as {
+      text: (...args: unknown[]) => unknown;
+    }
+  ).text = (text, x, y, ...rest) => {
+    const normalized = Array.isArray(text)
+      ? text
+          .filter(
+            (line): line is string | number =>
+              typeof line === "string" || typeof line === "number",
+          )
+          .map((line) => pdfText(line, "----"))
+      : pdfText(text, "----");
+    return rawText(
+      Array.isArray(normalized) && normalized.length === 0
+        ? ["----"]
+        : normalized,
+      typeof x === "number" && Number.isFinite(x) ? x : margin,
+      typeof y === "number" && Number.isFinite(y) ? y : margin,
+      ...rest,
+    );
+  };
+
+  doc.setLineWidth(0.45);
+  doc.setDrawColor(0, 0, 0);
+  doc.setTextColor(0, 0, 0);
+
+  const write = (
+    value: unknown,
+    x: number,
+    y: number,
+    maxW: number,
+    size = 7.5,
+    align: "left" | "right" | "center" = "left",
+  ) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(pdfText(value, "----"), maxW);
+    doc.text(lines.slice(0, 1), x, y, { align });
+  };
+
+  const section = (title: string, top: number) => {
+    doc.setLineWidth(0.8);
+    doc.line(margin, top, pageW - margin, top);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text(title, margin, top + 10);
+    doc.setLineWidth(0.45);
+    return top + 14;
+  };
+
+  const field = (
+    label: string,
+    value: unknown,
+    x: number,
+    top: number,
+    width: number,
+    height = 27,
+  ) => {
+    doc.rect(x, top, width, height);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.2);
+    doc.text(label.toUpperCase(), x + 4, top + 7);
+    write(value, x + 4, top + height - 7, width - 8, 7.4);
+  };
+
+  const row = (
+    top: number,
+    values: Array<{ label: string; value: unknown; fraction: number }>,
+    height = 27,
+  ) => {
+    let x = margin;
+    values.forEach((item, index) => {
+      const width =
+        index === values.length - 1
+          ? pageW - margin - x
+          : Math.round(contentW * item.fraction);
+      field(item.label, item.value, x, top, width, height);
+      x += width;
+    });
+    return top + height;
+  };
+
+  let y = margin;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("PROPOSTA DE COMPRA", margin, y + 13);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text(
+    `${companyName} · ${new Date().toLocaleDateString("pt-BR")}`,
+    margin,
+    y + 25,
+  );
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.text(pdfText(p.codigo, "----"), pageW - margin, y + 13, {
+    align: "right",
+  });
+  y += 31;
+
+  y = section("IDENTIFICAÇÃO DO IMÓVEL", y);
+  y = row(y, [
+    { label: "Construtora", value: p.construtora?.nome, fraction: 0.33 },
+    {
+      label: "Empreendimento",
+      value: empreendimentoNome(p),
+      fraction: 0.45,
+    },
+    { label: "Índice de correção", value: "----", fraction: 0.22 },
+  ]);
+  y = row(y, [
+    { label: "Torre / bloco", value: "----", fraction: 0.33 },
+    { label: "Unidade (AP)", value: p.unidade, fraction: 0.22 },
+    { label: "Valor contratual", value: brl(p.valor), fraction: 0.45 },
+  ]);
+
+  y = section("PROPONENTE 01", y + 7);
+  y = row(y, [
+    { label: "Nome completo", value: p.clienteNome, fraction: 0.67 },
+    { label: "CPF", value: "----", fraction: 0.33 },
+  ]);
+  y = row(y, [
+    { label: "Identidade (RG)", value: "----", fraction: 0.3 },
+    { label: "Órgão emissor", value: "----", fraction: 0.18 },
+    { label: "Nascimento", value: "----", fraction: 0.24 },
+    { label: "Nacionalidade", value: "----", fraction: 0.28 },
+  ]);
+  y = row(y, [
+    { label: "Estado civil", value: "----", fraction: 0.33 },
+    { label: "Regime de bens", value: "----", fraction: 0.34 },
+    { label: "Data do casamento", value: "----", fraction: 0.33 },
+  ]);
+  y = row(y, [
+    { label: "Filiação — pai", value: "----", fraction: 0.5 },
+    { label: "Filiação — mãe", value: "----", fraction: 0.5 },
+  ]);
+  y = row(y, [
+    { label: "Renda", value: "----", fraction: 0.25 },
+    { label: "Celular", value: p.clienteTelefone, fraction: 0.25 },
+    { label: "Telefone", value: "----", fraction: 0.25 },
+    { label: "E-mail", value: "----", fraction: 0.25 },
+  ]);
+
+  y = section("ENDEREÇO", y + 7);
+  y = row(y, [
+    { label: "Endereço residencial", value: "----", fraction: 0.67 },
+    { label: "Bairro", value: "----", fraction: 0.33 },
+  ]);
+  y = row(y, [
+    { label: "Cidade", value: "----", fraction: 0.42 },
+    { label: "UF", value: "----", fraction: 0.12 },
+    { label: "CEP", value: "----", fraction: 0.2 },
+    { label: "Cobrança aqui?", value: "----", fraction: 0.26 },
+  ]);
+
+  y = section("DADOS DA EMPRESA", y + 7);
+  y = row(y, [
+    { label: "Empresa onde trabalha", value: "----", fraction: 0.5 },
+    { label: "Profissão", value: "----", fraction: 0.5 },
+  ]);
+  y = row(y, [
+    { label: "Endereço comercial", value: "----", fraction: 0.67 },
+    { label: "Bairro", value: "----", fraction: 0.33 },
+  ]);
+  y = row(y, [
+    { label: "Cidade", value: "----", fraction: 0.42 },
+    { label: "UF", value: "----", fraction: 0.12 },
+    { label: "CEP", value: "----", fraction: 0.2 },
+    { label: "Cobrança aqui?", value: "----", fraction: 0.26 },
+  ]);
+  y = row(y, [
+    { label: "Site", value: "----", fraction: 0.5 },
+    { label: "Fone 1", value: "----", fraction: 0.25 },
+    { label: "Fone 2", value: "----", fraction: 0.25 },
+  ]);
+
+  y = section(
+    `PLANO DE PAGAMENTO — CLIENTE: ${pdfText(p.clienteNome, "----")}`,
+    y + 7,
+  );
+  const tableColumns = [0.1, 0.35, 0.2, 0.17, 0.18];
+  const tableHeaders = ["QTD", "DESCRIÇÃO", "VALOR", "VENC. / OBS", "SUBTOTAL"];
+  let tableX = margin;
+  tableHeaders.forEach((header, index) => {
+    const width =
+      index === tableHeaders.length - 1
+        ? pageW - margin - tableX
+        : Math.round(contentW * tableColumns[index]!);
+    doc.rect(tableX, y, width, 17);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.text(header, tableX + width / 2, y + 11, { align: "center" });
+    tableX += width;
+  });
+  y += 17;
+
+  const lines = compositionLines(p);
+  if (!lines.length) {
+    lines.push({ label: "----", value: 0 });
+  }
+  for (const line of lines) {
+    tableX = margin;
+    const quantity = line.detail?.match(/^(\d+)\s×/)?.[1] ?? "1";
+    const unitValue =
+      line.detail?.match(/×\s(R\$\s[\d.,]+)/)?.[1] ?? brl(line.value);
+    const values = [quantity, line.label, unitValue, "----", brl(line.value)];
+    values.forEach((value, index) => {
+      const width =
+        index === values.length - 1
+          ? pageW - margin - tableX
+          : Math.round(contentW * tableColumns[index]!);
+      doc.rect(tableX, y, width, 17);
+      write(
+        value,
+        index === 1 ? tableX + 4 : tableX + width / 2,
+        y + 11,
+        width - 8,
+        6.8,
+        index === 1 ? "left" : "center",
+      );
+      tableX += width;
+    });
+    y += 17;
+  }
+
+  const totalComp = propostaComposicaoTotal(p);
+  const valorLiquido = propostaValorLiquido(p);
+  const summaryX = pageW - margin - 225;
+  y += 9;
+  const summary = [
+    ["VALOR DO IMÓVEL", brl(p.valor)],
+    ["TOTAL NEGOCIADO", brl(valorLiquido)],
+    ["SITUAÇÃO", "----"],
+  ];
+  summary.forEach(([label, value]) => {
+    doc.rect(summaryX, y, 225, 20);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.5);
+    doc.text(label, summaryX + 5, y + 7);
+    write(value, summaryX + 220, y + 15, 205, 7.4, "right");
+    y += 20;
+  });
+  if (Math.abs(totalComp - valorLiquido) > 0.009) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.5);
+    doc.text(`Composição informada: ${brl(totalComp)}`, summaryX, y + 8);
+  }
+
+  const signY = Math.max(y + 27, pageH - 50);
+  const signatureW = 160;
+  [margin, pageW / 2 - signatureW / 2, pageW - margin - signatureW].forEach(
+    (x, index) => {
+      doc.line(x, signY, x + signatureW, signY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6);
+      doc.text(
+        ["LOCAL E DATA", "PROPONENTE", companyName.toUpperCase()][index]!,
+        x,
+        signY + 10,
+      );
+    },
+  );
+  doc.save(filename);
+}
+
 export async function downloadPropostaPdfCliente(
   p: Proposta,
   brand?: PropostaPdfBrand,
 ) {
-  await buildPropostaPdfDescritivo(
+  await buildPropostaPdfFormulario(
     p,
     `proposta-cliente-${safeFilename(p.codigo)}.pdf`,
     brand,
@@ -946,7 +1228,7 @@ export async function downloadPropostaPdfCorretor(
   p: Proposta,
   brand?: PropostaPdfBrand,
 ) {
-  await buildPropostaPdfDescritivo(
+  await buildPropostaPdfFormulario(
     p,
     `proposta-corretor-${safeFilename(p.codigo)}.pdf`,
     brand,
