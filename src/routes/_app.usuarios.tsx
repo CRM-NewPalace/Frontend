@@ -1536,6 +1536,38 @@ function BrokerPipeline({
             const count =
               metrics?.etapas.find((item) => item.slug === stage.slug)?.total ??
               brokerLeads.filter((lead) => lead.stage === stage.slug).length;
+            const theme = [
+              {
+                circle:
+                  "border-slate-300 bg-gradient-to-br from-slate-100 to-slate-400 text-slate-950 shadow-slate-400/40",
+                line: "from-slate-300 via-amber-400 to-amber-500",
+              },
+              {
+                circle:
+                  "border-amber-300 bg-gradient-to-br from-amber-200 to-amber-500 text-amber-950 shadow-amber-400/50",
+                line: "from-amber-400 via-fuchsia-400 to-fuchsia-500",
+              },
+              {
+                circle:
+                  "border-fuchsia-300 bg-gradient-to-br from-fuchsia-200 to-purple-600 text-white shadow-fuchsia-500/50",
+                line: "from-fuchsia-500 via-sky-400 to-sky-500",
+              },
+              {
+                circle:
+                  "border-sky-300 bg-gradient-to-br from-sky-200 to-blue-600 text-white shadow-sky-500/50",
+                line: "from-sky-500 via-emerald-400 to-emerald-500",
+              },
+              {
+                circle:
+                  "border-emerald-300 bg-gradient-to-br from-emerald-200 to-emerald-500 text-emerald-950 shadow-emerald-500/50",
+                line: "from-emerald-500 via-rose-400 to-rose-500",
+              },
+              {
+                circle:
+                  "border-rose-300 bg-gradient-to-br from-rose-200 to-rose-500 text-rose-950 shadow-rose-500/50",
+                line: "from-rose-500 to-rose-500",
+              },
+            ][index % 6]!;
             return (
               <div key={stage.id} className="flex items-center">
                 <button
@@ -1546,19 +1578,32 @@ function BrokerPipeline({
                     )
                   }
                   className={cn(
-                    "flex w-20 flex-col items-center gap-1 text-center",
-                    stageFilter === stage.slug && "text-emerald-300",
+                    "group flex w-24 flex-col items-center gap-1.5 text-center",
+                    stageFilter === stage.slug && "scale-105",
                   )}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-cyan-400 bg-slate-900 text-base font-bold">
-                    {count}
+                  <span
+                    className={cn(
+                      "flex h-14 w-14 flex-col items-center justify-center rounded-full border-[3px] text-lg font-extrabold shadow-lg transition-transform group-hover:scale-110",
+                      theme.circle,
+                    )}
+                  >
+                    <span className="leading-none">{count}</span>
+                    <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider opacity-75">
+                      docs
+                    </span>
                   </span>
-                  <span className="max-w-20 truncate text-[9px] font-semibold uppercase">
+                  <span className="max-w-24 truncate text-[9px] font-bold uppercase tracking-wide text-slate-200">
                     {stage.label}
                   </span>
                 </button>
                 {index < visibleStages.length - 1 ? (
-                  <span className="mb-5 h-0.5 w-5 bg-cyan-500/70" />
+                  <span
+                    className={cn(
+                      "mb-7 h-1 w-7 rounded-full bg-gradient-to-r",
+                      theme.line,
+                    )}
+                  />
                 ) : null}
               </div>
             );
