@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -116,6 +117,7 @@ const NONE = "__none__";
 const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const;
 
 type QuickKind = "parceiro" | "categoria" | null;
+type TituloFormTab = "dados" | "cobranca" | "contrato";
 
 type FormState = {
   descricao: string;
@@ -254,7 +256,8 @@ function groupSummary(titulos: TituloFinanceiro[]) {
   const proxima = abertas[0] ?? first;
   let statusResumo: StatusTitulo = "aberto";
   if (pagas === titulos.length) statusResumo = "pago";
-  else if (titulos.some((t) => t.status === "atrasado")) statusResumo = "atrasado";
+  else if (titulos.some((t) => t.status === "atrasado"))
+    statusResumo = "atrasado";
   else if (titulos.some((t) => t.status === "cancelado") && pagas === 0)
     statusResumo = "cancelado";
   return {
@@ -325,16 +328,19 @@ export function FinanceiroTitulosPanel({
   const [parcelado, setParcelado] = useState(false);
   const [qtdParcelas, setQtdParcelas] = useState("2");
   const [parcelasDraft, setParcelasDraft] = useState<ParcelaDraft[]>([]);
+  const [formTab, setFormTab] = useState<TituloFormTab>("dados");
   const isPlatformAdmin = getSession()?.role === "super_admin";
   const canUseContrato = tipo === "receber" && isPlatformAdmin;
   const [comoContrato, setComoContrato] = useState(false);
+  const [parcelarAdesao, setParcelarAdesao] = useState(false);
+  const [qtdParcelasAdesao, setQtdParcelasAdesao] = useState("2");
   const [contratoForm, setContratoForm] = useState<ContratoFormState>(() =>
     emptyContratoForm(),
   );
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [origemFiltro, setOrigemFiltro] = useState<"todos" | "normal" | "contrato">(
-    "todos",
-  );
+  const [origemFiltro, setOrigemFiltro] = useState<
+    "todos" | "normal" | "contrato"
+  >("todos");
   const [grupoOpen, setGrupoOpen] = useState(false);
   const [grupoTitulos, setGrupoTitulos] = useState<TituloFinanceiro[]>([]);
   const [grupoMeta, setGrupoMeta] = useState<{
@@ -700,7 +706,12 @@ export function FinanceiroTitulosPanel({
   ) {
     const total = parseValor(totalRaw);
     const qtd = Number(qtdRaw);
-    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(qtd) || qtd < 2) {
+    if (
+      !Number.isFinite(total) ||
+      total <= 0 ||
+      !Number.isFinite(qtd) ||
+      qtd < 2
+    ) {
       setParcelasDraft([]);
       return;
     }
@@ -720,7 +731,10 @@ export function FinanceiroTitulosPanel({
     setQtdParcelas(canUseContrato ? "1" : "2");
     setParcelasDraft([]);
     setComoContrato(false);
+    setParcelarAdesao(false);
+    setQtdParcelasAdesao("2");
     setContratoForm(emptyContratoForm(tenants[0]?.id ?? ""));
+    setFormTab("dados");
     setOpen(true);
   }
 
@@ -731,6 +745,7 @@ export function FinanceiroTitulosPanel({
     const temParcela = Boolean(t.parcela?.trim());
     setParcelado(temParcela);
     setParcelasDraft([]);
+    setFormTab("dados");
     const cat = t.categoria || t.centro || categorias[0] || "";
     setForm({
       descricao: t.descricao,
@@ -801,6 +816,7 @@ export function FinanceiroTitulosPanel({
         locked: false,
       })),
     );
+    setFormTab("cobranca");
     setOpen(true);
   }
 
@@ -836,38 +852,52 @@ export function FinanceiroTitulosPanel({
     if (formMode === "create" && comoContrato && canUseContrato) {
       const titulo = contratoForm.titulo.trim();
       if (!contratoForm.tenantId) {
+        setFormTab("contrato");
         toast.error("Selecione a imobiliária.");
         return;
       }
       if (titulo.length < 2) {
+        setFormTab("contrato");
         toast.error("Informe o título do contrato.");
         return;
       }
       if (contratoForm.tipo === "assinatura" && !contratoForm.plano) {
+        setFormTab("contrato");
         toast.error("Informe o plano da assinatura.");
         return;
       }
       if (!contratoForm.vencimento) {
+        setFormTab("contrato");
         toast.error("Informe o vencimento.");
         return;
       }
       if (!form.categoria.trim()) {
+        setFormTab("dados");
         toast.error("Selecione a categoria.");
         return;
       }
       const valorAdesao = parseValor(contratoForm.valorAdesao);
       const valorMensalidade = parseValor(contratoForm.valorMensalidade);
       if (!Number.isFinite(valorAdesao) || valorAdesao <= 0) {
+        setFormTab("contrato");
         toast.error("Informe o valor de adesão.");
         return;
       }
       if (!Number.isFinite(valorMensalidade) || valorMensalidade <= 0) {
+        setFormTab("contrato");
         toast.error("Informe o valor da mensalidade.");
         return;
       }
       const qtd = parcelado ? Number(qtdParcelas) : 1;
       if (!Number.isFinite(qtd) || qtd < 1) {
+        setFormTab("contrato");
         toast.error("Informe a quantidade de mensalidades.");
+        return;
+      }
+      const qtdAdesao = parcelarAdesao ? Number(qtdParcelasAdesao) : 1;
+      if (!Number.isFinite(qtdAdesao) || qtdAdesao < 1) {
+        setFormTab("contrato");
+        toast.error("Informe a quantidade de parcelas da adesão.");
         return;
       }
       setSaving(true);
@@ -876,9 +906,9 @@ export function FinanceiroTitulosPanel({
           tenantId: contratoForm.tenantId,
           titulo,
           tipo: contratoForm.tipo,
-          plano:
-            contratoForm.tipo === "assinatura" ? contratoForm.plano : null,
+          plano: contratoForm.tipo === "assinatura" ? contratoForm.plano : null,
           valorAdesao,
+          qtdParcelasAdesao: qtdAdesao,
           valorMensalidade,
           qtdMensalidades: qtd,
           dataInicio: contratoForm.dataInicio,
@@ -886,11 +916,10 @@ export function FinanceiroTitulosPanel({
           status: contratoForm.status,
           observacao: contratoForm.observacao.trim() || undefined,
           categoria: form.categoria.trim(),
-          parceiroId:
-            form.parceiroId === NONE ? undefined : form.parceiroId,
+          parceiroId: form.parceiroId === NONE ? undefined : form.parceiroId,
         });
         toast.success(
-          `Contrato criado com adesão + ${qtd} mensalidade${qtd === 1 ? "" : "s"}.`,
+          `Contrato criado com ${qtdAdesao} parcela${qtdAdesao === 1 ? "" : "s"} de adesão e ${qtd} mensalidade${qtd === 1 ? "" : "s"}.`,
         );
         setOpen(false);
         await load();
@@ -906,10 +935,12 @@ export function FinanceiroTitulosPanel({
 
     const descricao = form.descricao.trim();
     if (descricao.length < 2) {
+      setFormTab("dados");
       toast.error("Informe a descrição.");
       return;
     }
     if (!form.categoria.trim()) {
+      setFormTab("dados");
       toast.error(
         tipo === "receber"
           ? "Selecione a categoria."
@@ -921,6 +952,7 @@ export function FinanceiroTitulosPanel({
 
     if (formMode === "create" && parcelado) {
       if (parcelasDraft.length < 2) {
+        setFormTab("cobranca");
         toast.error("Gere ao menos 2 parcelas.");
         return;
       }
@@ -928,6 +960,7 @@ export function FinanceiroTitulosPanel({
       for (const p of parcelasDraft) {
         const v = parseValor(p.valor);
         if (!Number.isFinite(v) || v <= 0) {
+          setFormTab("cobranca");
           toast.error("Informe um valor válido em todas as parcelas.");
           return;
         }
@@ -942,8 +975,7 @@ export function FinanceiroTitulosPanel({
         await createTitulosParcelado({
           tipo,
           descricao,
-          parceiroId:
-            form.parceiroId === NONE ? undefined : form.parceiroId,
+          parceiroId: form.parceiroId === NONE ? undefined : form.parceiroId,
           categoria: catalog.categoria,
           centro: catalog.centro,
           parcelas,
@@ -1021,8 +1053,7 @@ export function FinanceiroTitulosPanel({
       const payload = {
         tipo,
         descricao,
-        parceiroId:
-          form.parceiroId === NONE ? undefined : form.parceiroId,
+        parceiroId: form.parceiroId === NONE ? undefined : form.parceiroId,
         categoria: catalog.categoria,
         centro: catalog.centro,
         vencimento: form.vencimento,
@@ -1068,7 +1099,9 @@ export function FinanceiroTitulosPanel({
         formaPagamento: baixarForma,
       });
       toast.success(
-        tipo === "receber" ? "Recebimento registrado." : "Pagamento registrado.",
+        tipo === "receber"
+          ? "Recebimento registrado."
+          : "Pagamento registrado.",
       );
       setBaixarTarget(null);
       await load();
@@ -1127,10 +1160,10 @@ export function FinanceiroTitulosPanel({
 
   const hasActive = Boolean(
     search ||
-      periodo !== "tudo" ||
-      status !== "todos" ||
-      categoriaFiltro !== "todos" ||
-      (canUseContrato && origemFiltro !== "todos"),
+    periodo !== "tudo" ||
+    status !== "todos" ||
+    categoriaFiltro !== "todos" ||
+    (canUseContrato && origemFiltro !== "todos"),
   );
 
   return (
@@ -1213,9 +1246,7 @@ export function FinanceiroTitulosPanel({
             <TableRow>
               <TableHead>Descrição</TableHead>
               <TableHead>Parceiro</TableHead>
-              <TableHead>
-                {tipo === "pagar" ? "Centro" : "Categoria"}
-              </TableHead>
+              <TableHead>{tipo === "pagar" ? "Centro" : "Categoria"}</TableHead>
               <TableHead>Vencimento</TableHead>
               <TableHead>Parcela</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -1243,7 +1274,10 @@ export function FinanceiroTitulosPanel({
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="truncate">{t.descricao}</span>
                           {t.platformContratoId ? (
-                            <Badge variant="outline" className="shrink-0 text-[10px]">
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 text-[10px]"
+                            >
                               Contrato
                             </Badge>
                           ) : null}
@@ -1434,9 +1468,12 @@ export function FinanceiroTitulosPanel({
         open={open}
         onOpenChange={setOpen}
         icon={<Banknote className="w-5 h-5" />}
+        className={comoContrato ? "max-w-2xl" : undefined}
         title={
           formMode === "create"
-            ? "Novo título"
+            ? comoContrato
+              ? "Novo contrato"
+              : "Novo título"
             : formMode === "edit-grupo"
               ? "Editar parcelas"
               : "Editar título"
@@ -1468,9 +1505,56 @@ export function FinanceiroTitulosPanel({
       >
         <FormDialogBody>
           <form id="titulo-form" className="space-y-4" onSubmit={onSubmit}>
-            <FormSection title="Dados">
+            <div className="rounded-xl border bg-muted/30 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <Badge variant="secondary">
+                {tipo === "receber" ? "Conta a receber" : "Conta a pagar"}
+              </Badge>
+              <span className="text-sm font-medium">
+                {comoContrato
+                  ? "Contrato"
+                  : parcelado
+                    ? "Título parcelado"
+                    : "Título avulso"}
+              </span>
+              <span className="text-xs text-muted-foreground sm:ml-auto">
+                {comoContrato
+                  ? `Previsto: ${brl(
+                      (parseValor(contratoForm.valorAdesao) || 0) +
+                        (parseValor(contratoForm.valorMensalidade) || 0) *
+                          (Number(qtdParcelas) || 1),
+                    )}`
+                  : form.valor
+                    ? `Valor: ${brl(parseValor(form.valor) || 0)}`
+                    : "Preencha os dados para continuar"}
+              </span>
+            </div>
+
+            <Tabs
+              value={formTab}
+              onValueChange={(value) => setFormTab(value as TituloFormTab)}
+            >
+              <TabsList
+                className={`grid w-full ${comoContrato ? "grid-cols-3" : "grid-cols-2"}`}
+              >
+                <TabsTrigger value="dados">Dados</TabsTrigger>
+                <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
+                {comoContrato ? (
+                  <TabsTrigger value="contrato">Contrato</TabsTrigger>
+                ) : null}
+              </TabsList>
+            </Tabs>
+
+            <FormSection
+              title={
+                formTab === "dados"
+                  ? "Identificação"
+                  : formTab === "contrato"
+                    ? "Configuração do contrato"
+                    : "Cobrança e parcelas"
+              }
+            >
               <div className="grid gap-3 sm:grid-cols-2">
-                {!comoContrato ? (
+                {!comoContrato && formTab === "dados" ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <Label>Descrição *</Label>
                     <Input
@@ -1482,40 +1566,44 @@ export function FinanceiroTitulosPanel({
                     />
                   </div>
                 ) : null}
-                <div className="sm:col-span-2 space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>Parceiro</Label>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => openQuick("parceiro")}
+                {formTab === "dados" ? (
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Parceiro</Label>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => openQuick("parceiro")}
+                      >
+                        {tipo === "pagar"
+                          ? "+ Novo fornecedor"
+                          : "+ Novo parceiro"}
+                      </Button>
+                    </div>
+                    <Select
+                      value={form.parceiroId}
+                      onValueChange={(v) =>
+                        setForm((f) => ({ ...f, parceiroId: v }))
+                      }
                     >
-                      {tipo === "pagar"
-                        ? "+ Novo fornecedor"
-                        : "+ Novo parceiro"}
-                    </Button>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Opcional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>—</SelectItem>
+                        {parceiros.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select
-                    value={form.parceiroId}
-                    onValueChange={(v) =>
-                      setForm((f) => ({ ...f, parceiroId: v }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Opcional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>—</SelectItem>
-                      {parceiros.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {canUseContrato && formMode === "create" ? (
+                ) : null}
+                {canUseContrato &&
+                formMode === "create" &&
+                formTab === "dados" ? (
                   <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
                     <Checkbox
                       id="titulo-contrato"
@@ -1524,10 +1612,13 @@ export function FinanceiroTitulosPanel({
                       onCheckedChange={(checked) => {
                         const on = checked === true;
                         setComoContrato(on);
+                        setFormTab(on ? "contrato" : "dados");
                         if (on) {
                           setParcelado(false);
                           setParcelasDraft([]);
                           setQtdParcelas("1");
+                          setParcelarAdesao(false);
+                          setQtdParcelasAdesao("2");
                           setContratoForm((f) => ({
                             ...f,
                             titulo: form.descricao || f.titulo,
@@ -1536,6 +1627,7 @@ export function FinanceiroTitulosPanel({
                           }));
                         } else {
                           setQtdParcelas("2");
+                          setParcelarAdesao(false);
                         }
                       }}
                     />
@@ -1552,7 +1644,10 @@ export function FinanceiroTitulosPanel({
                     </div>
                   </div>
                 ) : null}
-                {comoContrato && canUseContrato && formMode === "create" ? (
+                {comoContrato &&
+                canUseContrato &&
+                formMode === "create" &&
+                formTab === "contrato" ? (
                   <>
                     <div className="sm:col-span-2 space-y-1.5">
                       <Label>Imobiliária *</Label>
@@ -1684,8 +1779,10 @@ export function FinanceiroTitulosPanel({
                         }
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Valor adesão (R$) *</Label>
+                    <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+                      <Label className="text-primary">
+                        Adesão · valor total (R$) *
+                      </Label>
                       <Input
                         inputMode="numeric"
                         value={contratoForm.valorAdesao}
@@ -1698,8 +1795,10 @@ export function FinanceiroTitulosPanel({
                         placeholder="0,00"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Valor mensalidade (R$) *</Label>
+                    <div className="space-y-1.5 rounded-lg border border-sky-500/20 bg-sky-500/[0.03] p-3">
+                      <Label className="text-sky-700 dark:text-sky-300">
+                        Mensalidade · valor por cobrança (R$) *
+                      </Label>
                       <Input
                         inputMode="numeric"
                         value={contratoForm.valorMensalidade}
@@ -1712,7 +1811,43 @@ export function FinanceiroTitulosPanel({
                         placeholder="0,00"
                       />
                     </div>
-                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/[0.03] px-3 py-2.5">
+                      <Checkbox
+                        id="contrato-adesao-parcelada"
+                        className="mt-0.5"
+                        checked={parcelarAdesao}
+                        onCheckedChange={(checked) => {
+                          const on = checked === true;
+                          setParcelarAdesao(on);
+                          setQtdParcelasAdesao(on ? "2" : "1");
+                        }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <Label
+                          htmlFor="contrato-adesao-parcelada"
+                          className="cursor-pointer"
+                        >
+                          Parcelar adesão
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Divide o valor total da adesão em títulos mensais
+                          separados.
+                        </p>
+                      </div>
+                    </div>
+                    {parcelarAdesao ? (
+                      <div className="sm:col-span-2 space-y-1.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+                        <Label>Qtd. parcelas da adesão *</Label>
+                        <Input
+                          type="number"
+                          min={2}
+                          max={120}
+                          value={qtdParcelasAdesao}
+                          onChange={(e) => setQtdParcelasAdesao(e.target.value)}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-sky-500/20 bg-sky-500/[0.03] px-3 py-2.5">
                       <Checkbox
                         id="contrato-parcelado"
                         className="mt-0.5"
@@ -1736,7 +1871,7 @@ export function FinanceiroTitulosPanel({
                       </div>
                     </div>
                     {parcelado ? (
-                      <div className="sm:col-span-2 space-y-1.5">
+                      <div className="sm:col-span-2 space-y-1.5 rounded-lg border border-sky-500/20 bg-sky-500/[0.03] p-3">
                         <Label>Qtd. mensalidades *</Label>
                         <Input
                           type="number"
@@ -1763,6 +1898,7 @@ export function FinanceiroTitulosPanel({
                   </>
                 ) : null}
                 {!comoContrato &&
+                formTab === "cobranca" &&
                 (formMode === "create" || formMode === "edit") ? (
                   <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
                     <Checkbox
@@ -1803,7 +1939,9 @@ export function FinanceiroTitulosPanel({
                     </div>
                   </div>
                 ) : null}
-                {!comoContrato && formMode !== "edit-grupo" ? (
+                {!comoContrato &&
+                formTab === "cobranca" &&
+                formMode !== "edit-grupo" ? (
                   <>
                     <div className="space-y-1.5">
                       <Label>
@@ -1853,7 +1991,10 @@ export function FinanceiroTitulosPanel({
                     </div>
                   </>
                 ) : null}
-                {!comoContrato && parcelado && formMode === "create" ? (
+                {!comoContrato &&
+                formTab === "cobranca" &&
+                parcelado &&
+                formMode === "create" ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <Label>Quantidade de parcelas *</Label>
                     <Input
@@ -1869,7 +2010,10 @@ export function FinanceiroTitulosPanel({
                     />
                   </div>
                 ) : null}
-                {!comoContrato && parcelado && formMode === "edit" ? (
+                {!comoContrato &&
+                formTab === "cobranca" &&
+                parcelado &&
+                formMode === "edit" ? (
                   <div className="space-y-1.5">
                     <Label>Parcela</Label>
                     <Input
@@ -1881,14 +2025,17 @@ export function FinanceiroTitulosPanel({
                     />
                   </div>
                 ) : null}
-                {(!comoContrato &&
+                {(formTab === "cobranca" &&
+                  !comoContrato &&
                   parcelado &&
                   formMode === "create" &&
                   parcelasDraft.length > 0) ||
-                formMode === "edit-grupo" ? (
+                (formTab === "cobranca" && formMode === "edit-grupo") ? (
                   <div className="sm:col-span-2 space-y-2">
                     <Label>
-                      {formMode === "edit-grupo" ? "Todas as parcelas" : "Parcelas"}
+                      {formMode === "edit-grupo"
+                        ? "Todas as parcelas"
+                        : "Parcelas"}
                     </Label>
                     <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/50">
                       {parcelasDraft.map((p, idx) => (
@@ -1940,36 +2087,41 @@ export function FinanceiroTitulosPanel({
                     </p>
                   </div>
                 ) : null}
-                <div className="sm:col-span-2 space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>{catalogLabel} *</Label>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => openQuick("categoria")}
-                    >
-                      + {tipo === "receber" ? "Nova categoria" : "Novo centro"}
-                    </Button>
+                {formTab === "dados" ||
+                (formMode === "edit-grupo" && formTab === "cobranca") ? (
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>{catalogLabel} *</Label>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => openQuick("categoria")}
+                      >
+                        +{" "}
+                        {tipo === "receber" ? "Nova categoria" : "Novo centro"}
+                      </Button>
+                    </div>
+                    <CategoriaSearchSelect
+                      value={form.categoria}
+                      options={categorias}
+                      onChange={(v) =>
+                        setForm((f) => ({ ...f, ...catalogFields(v) }))
+                      }
+                      placeholder={
+                        tipo === "receber"
+                          ? "Buscar categoria…"
+                          : "Buscar centro de custo…"
+                      }
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {catalogHint}
+                    </p>
                   </div>
-                  <CategoriaSearchSelect
-                    value={form.categoria}
-                    options={categorias}
-                    onChange={(v) =>
-                      setForm((f) => ({ ...f, ...catalogFields(v) }))
-                    }
-                    placeholder={
-                      tipo === "receber"
-                        ? "Buscar categoria…"
-                        : "Buscar centro de custo…"
-                    }
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    {catalogHint}
-                  </p>
-                </div>
+                ) : null}
                 {formMode !== "edit-grupo" &&
                 !comoContrato &&
+                formTab === "dados" &&
                 !(parcelado && formMode === "create") ? (
                   <div className="space-y-1.5">
                     <Label>Status</Label>
@@ -2049,9 +2201,7 @@ export function FinanceiroTitulosPanel({
               form="quick-financeiro-form"
               disabled={quickSaving}
             >
-              {quickSaving && (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              )}
+              {quickSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Criar
             </Button>
           </FormDialogActions>
@@ -2105,7 +2255,9 @@ export function FinanceiroTitulosPanel({
         open={!!baixarTarget}
         onOpenChange={(o) => !o && setBaixarTarget(null)}
         icon={<Banknote className="w-5 h-5" />}
-        title={tipo === "receber" ? "Registrar recebimento" : "Registrar pagamento"}
+        title={
+          tipo === "receber" ? "Registrar recebimento" : "Registrar pagamento"
+        }
         description={
           baixarTarget
             ? `${baixarTarget.descricao}${
@@ -2122,7 +2274,11 @@ export function FinanceiroTitulosPanel({
             >
               Cancelar
             </Button>
-            <Button type="button" disabled={busy} onClick={() => void onBaixar()}>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void onBaixar()}
+            >
               {busy && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Confirmar baixa
             </Button>
@@ -2215,7 +2371,8 @@ export function FinanceiroTitulosPanel({
                   ).length;
                   setDeleteGrupoTarget({
                     grupoId: grupoTitulos[0].grupoParcelasId!,
-                    descricao: grupoMeta?.descricao || grupoTitulos[0].descricao,
+                    descricao:
+                      grupoMeta?.descricao || grupoTitulos[0].descricao,
                     n: grupoTitulos.length,
                     pagas,
                   });
@@ -2309,9 +2466,7 @@ export function FinanceiroTitulosPanel({
                             {t.dataPagamento
                               ? formatDate(t.dataPagamento)
                               : "—"}
-                            {t.formaPagamento
-                              ? ` · ${t.formaPagamento}`
-                              : ""}
+                            {t.formaPagamento ? ` · ${t.formaPagamento}` : ""}
                           </p>
                         </div>
                       ))}

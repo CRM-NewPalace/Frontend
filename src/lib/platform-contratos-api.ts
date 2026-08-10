@@ -92,6 +92,7 @@ export type CreatePlatformContratoComTitulosInput = {
   tipo: PlatformContratoTipo;
   plano?: TenantPlano | null;
   valorAdesao: number;
+  qtdParcelasAdesao?: number;
   valorMensalidade: number;
   qtdMensalidades: number;
   dataInicio: string;
