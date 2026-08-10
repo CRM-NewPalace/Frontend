@@ -113,6 +113,81 @@ function writeTitle(
   return y + lines.length * 16 + 10;
 }
 
+function writeCenteredRich(
+  doc: jsPDF,
+  parts: Array<string | { b: string } | { accent: string }>,
+  startY: number,
+  color: Rgb,
+) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const maxW = pageW - 132;
+  const lineH = 19;
+  const tokens: Array<{
+    text: string;
+    bold: boolean;
+    accent: boolean;
+    width: number;
+  }> = [];
+
+  for (const part of parts) {
+    const bold = typeof part !== "string" && "b" in part;
+    const accent = typeof part !== "string" && "accent" in part;
+    const content =
+      typeof part === "string" ? part : bold ? part.b : part.accent;
+    for (const word of String(content ?? "").split(/(\s+)/)) {
+      if (!word) continue;
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(11);
+      tokens.push({
+        text: word,
+        bold,
+        accent,
+        width: doc.getTextWidth(word),
+      });
+    }
+  }
+
+  let y = startY;
+  let line: typeof tokens = [];
+  let lineW = 0;
+  const flush = () => {
+    if (!line.length) return;
+    let x = (pageW - lineW) / 2;
+    for (const token of line) {
+      doc.setFont("helvetica", token.bold ? "bold" : "normal");
+      doc.setTextColor(...(token.accent ? color : [30, 30, 30]));
+      doc.text(token.text, x, y);
+      x += token.width;
+    }
+    y += lineH;
+    line = [];
+    lineW = 0;
+  };
+
+  for (const token of tokens) {
+    if (lineW + token.width > maxW && !/^\s+$/.test(token.text)) flush();
+    if (/^\s+$/.test(token.text) && !line.length) continue;
+    line.push(token);
+    lineW += token.width;
+  }
+  flush();
+  return y + 4;
+}
+
+function drawOrnament(doc: jsPDF, y: number, color: Rgb) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const center = pageW / 2;
+  doc.setDrawColor(...color);
+  doc.setFillColor(...color);
+  doc.setLineWidth(0.7);
+  doc.line(center - 105, y, center - 13, y);
+  doc.line(center + 13, y, center + 105, y);
+  doc.circle(center - 8, y, 2, "F");
+  doc.circle(center + 8, y, 2, "F");
+  doc.triangle(center, y - 5, center + 5, y, center, y + 5, "F");
+  doc.triangle(center, y - 5, center - 5, y, center, y + 5, "F");
+}
+
 function ensureSpace(doc: jsPDF, y: number, need: number) {
   const pageH = doc.internal.pageSize.getHeight();
   if (y + need > pageH - 48) {
@@ -230,22 +305,25 @@ async function pdfCartaCancelamento(
   const pageH = doc.internal.pageSize.getHeight();
   const color = parseHexColor(opts?.primaryColor) ?? [30, 30, 30];
   doc.setDrawColor(...color);
-  doc.setLineWidth(1);
-  doc.rect(18, 18, pageW - 36, pageH - 36);
+  doc.setLineWidth(1.3);
+  doc.rect(16, 16, pageW - 32, pageH - 32);
+  doc.setLineWidth(0.55);
+  doc.rect(23, 23, pageW - 46, pageH - 46);
 
   let y = 40;
   if (opts?.logoUrl?.trim()) {
     const logo = await loadLogoForPdf(opts.logoUrl);
     if (logo) y = writeLogo(doc, logo, y);
   }
-  y = writeTitle(doc, "CARTA DE CANCELAMENTO", y, color);
-  y += 12;
+  y = writeTitle(doc, "CARTA DE CANCELAMENTO", y + 6, color);
+  drawOrnament(doc, y, color);
+  y += 38;
 
-  y = writeRich(
+  y = writeCenteredRich(
     doc,
     [
       "EU, ",
-      { b: v(values, "nome").toUpperCase() },
+      { accent: v(values, "nome").toUpperCase() },
       ", PORTADOR DO RG: ",
       { b: v(values, "rg") },
       " SDS/PE E CPF: ",
@@ -253,17 +331,31 @@ async function pdfCartaCancelamento(
       ", VENHO POR MEIO DESTA INFORMAR QUE SOLICITO O CANCELAMENTO DA AVALIAÇÃO HABITACIONAL, REALIZADA EM MEU NOME EM UMA CONSTRUTORA PARA DAR CONTINUIDADE EM OUTRA CONSTRUTORA.",
     ],
     y,
-    { fontSize: 11, lineH: 16 },
+    color,
   );
 
-  y += 24;
-  y = writeParagraph(
-    doc,
-    y,
+  y += 18;
+  drawOrnament(doc, y, color);
+  y += 40;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  doc.text(
     `${v(values, "cidade").toUpperCase()}, ${v(values, "dia")} DE ${v(values, "mes").toUpperCase()} DE 20${v(values, "ano")}`,
+    pageW / 2,
+    y,
+    { align: "center" },
   );
 
-  y = writeSignature(doc, y + 40, "ASSINATURA", undefined, undefined, color);
+  const signatureY = y + 72;
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.7);
+  doc.line(pageW / 2 - 115, signatureY, pageW / 2 + 115, signatureY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(30, 30, 30);
+  doc.text("ASSINATURA", pageW / 2, signatureY + 14, { align: "center" });
+  drawOrnament(doc, pageH - 50, color);
   doc.save(`carta-cancelamento-${safeName(v(values, "nome"))}.pdf`);
 }
 
