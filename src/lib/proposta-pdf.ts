@@ -442,7 +442,10 @@ async function buildPropostaPdfDescritivo(
   ).text = (text, x, y, ...rest) => {
     const normalizedText = Array.isArray(text)
       ? text
-          .filter((line): line is string | number => typeof line === "string" || typeof line === "number")
+          .filter(
+            (line): line is string | number =>
+              typeof line === "string" || typeof line === "number",
+          )
           .map((line) => pdfText(line))
       : pdfText(text);
     return rawText(
@@ -534,6 +537,23 @@ async function buildPropostaPdfDescritivo(
   }
 
   let y = headerH + 18;
+  const drawField = (
+    label: string,
+    value: unknown,
+    x: number,
+    top: number,
+    width: number,
+  ) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...C.gold);
+    doc.text(label.toUpperCase(), x, top);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...C.ink);
+    const lines = doc.splitTextToSize(pdfText(value, "----"), width);
+    doc.text(lines.slice(0, 2), x, top + 12);
+  };
 
   // Título + código + data
   doc.setFont("helvetica", "bold");
@@ -575,77 +595,104 @@ async function buildPropostaPdfDescritivo(
   doc.text(introLines, margin, y);
   y += introLines.length * 11 + 12;
 
-  // Card empreendimento / partes
-  const cardH = 64;
+  // Identificação do imóvel, no mesmo formato da proposta formal de referência.
+  const cardH = 92;
   y = ensureSpace(doc, y, cardH + 10, margin);
   doc.setFillColor(...C.white);
   doc.setDrawColor(...C.line);
   doc.setLineWidth(1);
   roundedRect(doc, margin, y, contentW, cardH, 10, "FD");
 
-  const midX = margin + contentW / 2;
-  doc.setDrawColor(...C.gold);
-  doc.setLineWidth(1);
-  doc.line(midX, y + 14, midX, y + cardH - 14);
-
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...C.gold);
-  doc.text("EMPREENDIMENTO", margin + 16, y + 20);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(...C.ink);
-  const empLines = doc.splitTextToSize(
-    pdfText(empreendimentoNome(p), "Empreendimento a definir"),
-    contentW / 2 - 28,
-  );
-  doc.text(empLines.slice(0, 2), margin + 16, y + 38);
-  if (p.unidade) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...C.muted);
-    doc.text(
-      `Unidade ${p.unidade}`,
-      margin + 16,
-      y + 38 + empLines.slice(0, 2).length * 13,
-    );
-  }
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...C.gold);
-  doc.text("PARTES", midX + 16, y + 20);
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(...C.muted);
-  let rightY = y + 36;
-  if (p.construtora?.nome) {
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C.ink);
-    doc.text("CONSTRUTORA:", midX + 16, rightY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C.muted);
-    doc.text(
-      pdfText(p.construtora.nome),
-      midX + 16 + doc.getTextWidth("CONSTRUTORA: "),
-      rightY,
-    );
-    rightY += 14;
-  }
-  if (p.corretor?.name) {
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C.ink);
-    doc.text("CORRETOR:", midX + 16, rightY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C.muted);
-    doc.text(
-      pdfText(p.corretor.name).toUpperCase(),
-      midX + 16 + doc.getTextWidth("CORRETOR: "),
-      rightY,
-    );
-  }
+  doc.setTextColor(...C.navy);
+  doc.text("IDENTIFICAÇÃO DO IMÓVEL", margin + 14, y + 18);
+  const propertyX = margin + 14;
+  const propertyColW = (contentW - 42) / 3;
+  drawField(
+    "Construtora",
+    p.construtora?.nome,
+    propertyX,
+    y + 34,
+    propertyColW,
+  );
+  drawField(
+    "Empreendimento",
+    empreendimentoNome(p),
+    propertyX + propertyColW + 14,
+    y + 34,
+    propertyColW,
+  );
+  drawField(
+    "Unidade (AP)",
+    p.unidade,
+    propertyX + (propertyColW + 14) * 2,
+    y + 34,
+    propertyColW,
+  );
+  drawField("Índice de correção", "----", propertyX, y + 63, propertyColW);
+  drawField(
+    "Corretor responsável",
+    p.corretor?.name,
+    propertyX + propertyColW + 14,
+    y + 63,
+    propertyColW,
+  );
+  drawField(
+    "Valor contratual",
+    brl(p.valor),
+    propertyX + (propertyColW + 14) * 2,
+    y + 63,
+    propertyColW,
+  );
 
   y += cardH + 10;
+
+  // Dados no formato de proposta formal: campos ainda não cadastrados ficam explícitos.
+  const proponenteH = 108;
+  y = ensureSpace(doc, y, proponenteH + 12, margin);
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  roundedRect(doc, margin, y, contentW, proponenteH, 10, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...C.navy);
+  doc.text("PROPONENTE 01", margin + 14, y + 18);
+  const fieldX = margin + 14;
+  const colW = (contentW - 42) / 3;
+  drawField("Nome completo", p.clienteNome, fieldX, y + 34, colW);
+  drawField("CPF", "----", fieldX + colW + 14, y + 34, colW);
+  drawField("Identidade (RG)", "----", fieldX + (colW + 14) * 2, y + 34, colW);
+  drawField("Nacionalidade", "----", fieldX, y + 68, colW);
+  drawField("Estado civil", "----", fieldX + colW + 14, y + 68, colW);
+  drawField(
+    "Celular",
+    p.clienteTelefone,
+    fieldX + (colW + 14) * 2,
+    y + 68,
+    colW,
+  );
+  y += proponenteH + 10;
+
+  const enderecoH = 74;
+  y = ensureSpace(doc, y, enderecoH + 12, margin);
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  roundedRect(doc, margin, y, contentW, enderecoH, 10, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...C.navy);
+  doc.text("ENDEREÇO E DADOS DA EMPRESA", margin + 14, y + 18);
+  drawField("Endereço residencial", "----", fieldX, y + 36, colW);
+  drawField("Cidade / UF", "----", fieldX + colW + 14, y + 36, colW);
+  drawField(
+    "Profissão / empresa",
+    "----",
+    fieldX + (colW + 14) * 2,
+    y + 36,
+    colW,
+  );
+  y += enderecoH + 12;
 
   const desconto = p.desconto ?? 0;
   const valorLiquido = propostaValorLiquido(p);
