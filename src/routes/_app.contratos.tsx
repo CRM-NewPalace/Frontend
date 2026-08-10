@@ -84,13 +84,16 @@ function ContratosPage() {
     e.preventDefault();
     if (!selected) return;
     if (requiredMissing.length) {
-      toast.error(`Preencha: ${requiredMissing.slice(0, 3).join(", ")}${requiredMissing.length > 3 ? "…" : ""}`);
+      toast.error(
+        `Preencha: ${requiredMissing.slice(0, 3).join(", ")}${requiredMissing.length > 3 ? "…" : ""}`,
+      );
       return;
     }
     setGenerating(true);
     try {
       await downloadContratoPdf(selected.id as ContratoTemplateId, form, {
         logoUrl,
+        primaryColor: tenant?.primaryColor,
       });
       toast.success("PDF gerado e baixado.");
       setSelected(null);
@@ -159,11 +162,7 @@ function ContratosPage() {
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              form="contrato-form"
-              disabled={generating}
-            >
+            <Button type="submit" form="contrato-form" disabled={generating}>
               {generating ? (
                 <Loader2 className="mr-1 size-4 animate-spin" />
               ) : (

@@ -29,6 +29,18 @@ type LoadedLogo = {
   height: number;
 };
 
+type Rgb = [number, number, number];
+
+function parseHexColor(value?: string | null): Rgb | null {
+  const hex = value?.trim().replace(/^#/, "");
+  if (!hex || !/^[\da-f]{6}$/i.test(hex)) return null;
+  return [
+    Number.parseInt(hex.slice(0, 2), 16),
+    Number.parseInt(hex.slice(2, 4), 16),
+    Number.parseInt(hex.slice(4, 6), 16),
+  ];
+}
+
 function absoluteAssetUrl(src: string) {
   if (
     src.startsWith("http://") ||
@@ -62,7 +74,8 @@ async function loadLogoForPdf(src: string): Promise<LoadedLogo | null> {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(img, 0, 0);
-    const jpeg = /\.jpe?g($|\?)/i.test(url) || url.startsWith("data:image/jpeg");
+    const jpeg =
+      /\.jpe?g($|\?)/i.test(url) || url.startsWith("data:image/jpeg");
     return {
       dataUrl: canvas.toDataURL(jpeg ? "image/jpeg" : "image/png"),
       format: jpeg ? "JPEG" : "PNG",
@@ -85,11 +98,16 @@ function writeLogo(doc: jsPDF, logo: LoadedLogo, y: number) {
   return y + h + 14;
 }
 
-function writeTitle(doc: jsPDF, title: string, y: number) {
+function writeTitle(
+  doc: jsPDF,
+  title: string,
+  y: number,
+  color: Rgb = [20, 20, 20],
+) {
   const pageW = doc.internal.pageSize.getWidth();
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.setTextColor(20, 20, 20);
+  doc.setTextColor(...color);
   const lines = doc.splitTextToSize(title, pageW - 96);
   doc.text(lines, pageW / 2, y, { align: "center" });
   return y + lines.length * 16 + 10;
@@ -152,12 +170,7 @@ function writeRich(
   return y + lineH + 4;
 }
 
-function writeParagraph(
-  doc: jsPDF,
-  y: number,
-  text: string,
-  bold = false,
-) {
+function writeParagraph(doc: jsPDF, y: number, text: string, bold = false) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 48;
   doc.setFont("helvetica", bold ? "bold" : "normal");
@@ -178,12 +191,13 @@ function writeSignature(
   label: string,
   name?: string,
   extra?: string,
+  color: Rgb = [40, 40, 40],
 ) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 48;
   y = ensureSpace(doc, y, 56);
   y += 10;
-  doc.setDrawColor(40, 40, 40);
+  doc.setDrawColor(...color);
   doc.setLineWidth(0.6);
   const lineW = Math.min(260, pageW - margin * 2);
   doc.line(margin, y, margin + lineW, y);
@@ -207,10 +221,24 @@ function writeSignature(
   return y + 8;
 }
 
-function pdfCartaCancelamento(values: Values) {
+async function pdfCartaCancelamento(
+  values: Values,
+  opts?: { logoUrl?: string | null; primaryColor?: string | null },
+) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  let y = 72;
-  y = writeTitle(doc, "CARTA DE CANCELAMENTO", y);
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const color = parseHexColor(opts?.primaryColor) ?? [30, 30, 30];
+  doc.setDrawColor(...color);
+  doc.setLineWidth(1);
+  doc.rect(18, 18, pageW - 36, pageH - 36);
+
+  let y = 40;
+  if (opts?.logoUrl?.trim()) {
+    const logo = await loadLogoForPdf(opts.logoUrl);
+    if (logo) y = writeLogo(doc, logo, y);
+  }
+  y = writeTitle(doc, "CARTA DE CANCELAMENTO", y, color);
   y += 12;
 
   y = writeRich(
@@ -235,7 +263,7 @@ function pdfCartaCancelamento(values: Values) {
     `${v(values, "cidade").toUpperCase()}, ${v(values, "dia")} DE ${v(values, "mes").toUpperCase()} DE 20${v(values, "ano")}`,
   );
 
-  y = writeSignature(doc, y + 40, "ASSINATURA");
+  y = writeSignature(doc, y + 40, "ASSINATURA", undefined, undefined, color);
   doc.save(`carta-cancelamento-${safeName(v(values, "nome"))}.pdf`);
 }
 
@@ -385,10 +413,7 @@ function pdfParentescoCom(values: Values) {
   doc.save(`parentesco-com-conjuge-${safeName(v(values, "nomeParente"))}.pdf`);
 }
 
-async function pdfIntermediacao(
-  values: Values,
-  logoUrl?: string | null,
-) {
+async function pdfIntermediacao(values: Values, logoUrl?: string | null) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   let y = 40;
   if (logoUrl?.trim()) {
@@ -451,7 +476,11 @@ async function pdfIntermediacao(
   y = writeParagraph(doc, y, `Empreendimento: ${v(values, "empreendimento")}`);
   y = writeParagraph(doc, y, `Unidade: ${v(values, "unidade")}`);
   y = writeParagraph(doc, y, `Andar: ${v(values, "andar")}`);
-  y = writeParagraph(doc, y, `Descrição do Imóvel: ${v(values, "descricaoImovel")}`);
+  y = writeParagraph(
+    doc,
+    y,
+    `Descrição do Imóvel: ${v(values, "descricaoImovel")}`,
+  );
   y = writeParagraph(doc, y, `Preço do Imóvel: R$ ${v(values, "precoImovel")}`);
   y = writeParagraph(
     doc,
@@ -510,7 +539,12 @@ async function pdfIntermediacao(
     "As partes celebram o presente contrato de forma irrevogável e irretratável, relativo ao serviço de corretagem, ainda que o CONTRATANTE se arrependa e requeira o destrato de compra e venda do imóvel do PROPRIETÁRIO.",
   );
 
-  y = writeParagraph(doc, y, "CLÁUSULA 6ª – DA PROTEÇÃO DOS DADOS PESSOAIS", true);
+  y = writeParagraph(
+    doc,
+    y,
+    "CLÁUSULA 6ª – DA PROTEÇÃO DOS DADOS PESSOAIS",
+    true,
+  );
   y = writeParagraph(
     doc,
     y,
@@ -566,18 +600,14 @@ async function pdfIntermediacao(
     y,
     "TESTEMUNHA 1",
     values.testemunha1Nome?.trim() || undefined,
-    values.testemunha1Cpf?.trim()
-      ? `CPF: ${values.testemunha1Cpf}`
-      : undefined,
+    values.testemunha1Cpf?.trim() ? `CPF: ${values.testemunha1Cpf}` : undefined,
   );
   y = writeSignature(
     doc,
     y,
     "TESTEMUNHA 2",
     values.testemunha2Nome?.trim() || undefined,
-    values.testemunha2Cpf?.trim()
-      ? `CPF: ${values.testemunha2Cpf}`
-      : undefined,
+    values.testemunha2Cpf?.trim() ? `CPF: ${values.testemunha2Cpf}` : undefined,
   );
 
   doc.save(
@@ -588,11 +618,11 @@ async function pdfIntermediacao(
 export async function downloadContratoPdf(
   id: ContratoTemplateId,
   values: Values,
-  opts?: { logoUrl?: string | null },
+  opts?: { logoUrl?: string | null; primaryColor?: string | null },
 ) {
   switch (id) {
     case "carta-cancelamento":
-      pdfCartaCancelamento(values);
+      await pdfCartaCancelamento(values, opts);
       break;
     case "parentesco-sem-conjuge":
       pdfParentescoSem(values);
