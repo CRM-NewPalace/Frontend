@@ -170,6 +170,36 @@ type FormState = {
   leadId: string;
   clienteNome: string;
   clienteTelefone: string;
+  clienteCpf: string;
+  clienteRg: string;
+  clienteRgOrgaoEmissor: string;
+  clienteDataNascimento: string;
+  clienteNacionalidade: string;
+  clienteEstadoCivil: string;
+  clienteRegimeBens: string;
+  clienteDataCasamento: string;
+  clienteNomePai: string;
+  clienteNomeMae: string;
+  clienteRenda: string;
+  clienteTelefoneFixo: string;
+  clienteEmail: string;
+  clienteEnderecoResidencial: string;
+  clienteBairroResidencial: string;
+  clienteCidadeResidencial: string;
+  clienteUfResidencial: string;
+  clienteCepResidencial: string;
+  clienteCobrancaResidencial: boolean | null;
+  clienteEmpregador: string;
+  clienteProfissao: string;
+  clienteEnderecoComercial: string;
+  clienteBairroComercial: string;
+  clienteCidadeComercial: string;
+  clienteUfComercial: string;
+  clienteCepComercial: string;
+  clienteCobrancaComercial: boolean | null;
+  clienteSite: string;
+  clienteTelefoneComercial1: string;
+  clienteTelefoneComercial2: string;
   construtoraId: string;
   empreendimentoId: string;
   unidade: string;
@@ -200,6 +230,36 @@ const emptyForm = (): FormState => ({
   leadId: "",
   clienteNome: "",
   clienteTelefone: "",
+  clienteCpf: "",
+  clienteRg: "",
+  clienteRgOrgaoEmissor: "",
+  clienteDataNascimento: "",
+  clienteNacionalidade: "",
+  clienteEstadoCivil: "",
+  clienteRegimeBens: "",
+  clienteDataCasamento: "",
+  clienteNomePai: "",
+  clienteNomeMae: "",
+  clienteRenda: "",
+  clienteTelefoneFixo: "",
+  clienteEmail: "",
+  clienteEnderecoResidencial: "",
+  clienteBairroResidencial: "",
+  clienteCidadeResidencial: "",
+  clienteUfResidencial: "",
+  clienteCepResidencial: "",
+  clienteCobrancaResidencial: null,
+  clienteEmpregador: "",
+  clienteProfissao: "",
+  clienteEnderecoComercial: "",
+  clienteBairroComercial: "",
+  clienteCidadeComercial: "",
+  clienteUfComercial: "",
+  clienteCepComercial: "",
+  clienteCobrancaComercial: null,
+  clienteSite: "",
+  clienteTelefoneComercial1: "",
+  clienteTelefoneComercial2: "",
   construtoraId: "",
   empreendimentoId: "",
   unidade: "",
@@ -220,6 +280,112 @@ const emptyForm = (): FormState => ({
   validade: "",
   observacao: "",
 });
+
+function OptionalField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: "text" | "date" | "email";
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+function PropostaFormPreview({
+  form,
+  total,
+}: {
+  form: FormState;
+  total: number;
+}) {
+  const line = (label: string, value: string) => (
+    <div className="border-b px-2 py-1.5 last:border-b-0">
+      <div className="text-[8px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="truncate text-[11px] font-medium">
+        {value.trim() || "----"}
+      </div>
+    </div>
+  );
+
+  return (
+    <aside className="sticky top-0 space-y-3 rounded-xl border bg-background p-3 shadow-sm">
+      <div className="flex items-center justify-between border-b pb-2">
+        <div>
+          <div className="text-xs font-semibold">Prévia do relatório</div>
+          <div className="text-[10px] text-muted-foreground">
+            Atualizada enquanto você preenche
+          </div>
+        </div>
+        <FileText className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="overflow-hidden rounded border bg-card text-foreground">
+        <div className="border-b px-2 py-2">
+          <div className="text-xs font-bold">PROPOSTA DE COMPRA</div>
+          <div className="text-[9px] text-muted-foreground">
+            {form.clienteNome || "Cliente não informado"}
+          </div>
+        </div>
+        <div className="border-b px-2 py-1 text-[9px] font-bold">
+          IDENTIFICAÇÃO DO IMÓVEL
+        </div>
+        <div className="grid grid-cols-2">
+          {line("Unidade", form.unidade)}
+          {line("Valor contratual", form.valor ? `R$ ${form.valor}` : "")}
+        </div>
+        <div className="border-y px-2 py-1 text-[9px] font-bold">
+          PROPONENTE 01
+        </div>
+        <div className="grid grid-cols-2">
+          {line("Nome completo", form.clienteNome)}
+          {line("CPF", form.clienteCpf)}
+          {line("Celular", form.clienteTelefone)}
+          {line("E-mail", form.clienteEmail)}
+        </div>
+        <div className="border-y px-2 py-1 text-[9px] font-bold">ENDEREÇO</div>
+        <div className="grid grid-cols-2">
+          {line("Endereço", form.clienteEnderecoResidencial)}
+          {line(
+            "Cidade / UF",
+            [form.clienteCidadeResidencial, form.clienteUfResidencial]
+              .filter(Boolean)
+              .join(" / "),
+          )}
+        </div>
+        <div className="border-y px-2 py-1 text-[9px] font-bold">
+          PLANO DE PAGAMENTO
+        </div>
+        <div className="px-2 py-2 text-[11px]">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total da composição</span>
+            <strong>{brl(total)}</strong>
+          </div>
+          <div className="mt-1 flex justify-between">
+            <span className="text-muted-foreground">Valor negociado</span>
+            <strong>{form.valor ? `R$ ${form.valor}` : "----"}</strong>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
 
 function parseMoney(raw: string): number | null {
   return parseOptionalMoneyInput(raw);
@@ -286,10 +452,7 @@ function equipeName(p: Proposta): string {
   return p.lead?.equipe?.name ?? "—";
 }
 
-function isLeadAprovado(
-  lead: Lead,
-  aprovadosPorDoc: Set<string>,
-): boolean {
+function isLeadAprovado(lead: Lead, aprovadosPorDoc: Set<string>): boolean {
   if (lead.analise?.status === "aprovado") return true;
   return aprovadosPorDoc.has(lead.id);
 }
@@ -301,7 +464,8 @@ function leadPickerLabel(lead: Lead): string {
 
 function shareToast() {
   toast.message("PDF do cliente baixado", {
-    description: "Anexe o arquivo na conversa ou no e-mail que acabou de abrir.",
+    description:
+      "Anexe o arquivo na conversa ou no e-mail que acabou de abrir.",
   });
 }
 
@@ -412,15 +576,13 @@ function PropostaActionMenus({
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleWhatsApp}>
-            WhatsApp
-          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleWhatsApp}>WhatsApp</DropdownMenuItem>
           <DropdownMenuItem onClick={handleEmail}>E-mail</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {onEdit && (
-        compact ? (
+      {onEdit &&
+        (compact ? (
           <Button
             type="button"
             variant="ghost"
@@ -437,11 +599,10 @@ function PropostaActionMenus({
             <Pencil className="h-4 w-4 mr-1" />
             Editar
           </Button>
-        )
-      )}
+        ))}
 
-      {onDelete && (
-        compact ? (
+      {onDelete &&
+        (compact ? (
           <Button
             type="button"
             variant="ghost"
@@ -464,8 +625,7 @@ function PropostaActionMenus({
             <Trash2 className="h-4 w-4 mr-1" />
             Excluir
           </Button>
-        )
-      )}
+        ))}
 
       {onView && compact && (
         <Button
@@ -669,6 +829,92 @@ function Page() {
     () => formValorLiquido - formTotal,
     [formValorLiquido, formTotal],
   );
+  const draftProposta = useMemo<Proposta>(() => {
+    const construtora = construtoras.find(
+      (item) => item.id === form.construtoraId,
+    );
+    const empreendimento = empreendimentos.find(
+      (item) => item.id === form.empreendimentoId,
+    );
+    const corretor = corretorOptions.find(
+      (item) => item.id === form.corretorId,
+    );
+    return {
+      id: "preview",
+      codigo: "PRÉVIA",
+      leadId: form.leadId || null,
+      clienteNome: form.clienteNome || "----",
+      clienteTelefone: form.clienteTelefone
+        ? phoneDigits(form.clienteTelefone)
+        : null,
+      clienteCpf: form.clienteCpf || null,
+      clienteRg: form.clienteRg || null,
+      clienteRgOrgaoEmissor: form.clienteRgOrgaoEmissor || null,
+      clienteDataNascimento: form.clienteDataNascimento || null,
+      clienteNacionalidade: form.clienteNacionalidade || null,
+      clienteEstadoCivil: form.clienteEstadoCivil || null,
+      clienteRegimeBens: form.clienteRegimeBens || null,
+      clienteDataCasamento: form.clienteDataCasamento || null,
+      clienteNomePai: form.clienteNomePai || null,
+      clienteNomeMae: form.clienteNomeMae || null,
+      clienteRenda: parseMoney(form.clienteRenda),
+      clienteTelefoneFixo: form.clienteTelefoneFixo || null,
+      clienteEmail: form.clienteEmail || null,
+      clienteEnderecoResidencial: form.clienteEnderecoResidencial || null,
+      clienteBairroResidencial: form.clienteBairroResidencial || null,
+      clienteCidadeResidencial: form.clienteCidadeResidencial || null,
+      clienteUfResidencial: form.clienteUfResidencial || null,
+      clienteCepResidencial: form.clienteCepResidencial || null,
+      clienteCobrancaResidencial: form.clienteCobrancaResidencial,
+      clienteEmpregador: form.clienteEmpregador || null,
+      clienteProfissao: form.clienteProfissao || null,
+      clienteEnderecoComercial: form.clienteEnderecoComercial || null,
+      clienteBairroComercial: form.clienteBairroComercial || null,
+      clienteCidadeComercial: form.clienteCidadeComercial || null,
+      clienteUfComercial: form.clienteUfComercial || null,
+      clienteCepComercial: form.clienteCepComercial || null,
+      clienteCobrancaComercial: form.clienteCobrancaComercial,
+      clienteSite: form.clienteSite || null,
+      clienteTelefoneComercial1: form.clienteTelefoneComercial1 || null,
+      clienteTelefoneComercial2: form.clienteTelefoneComercial2 || null,
+      construtoraId: form.construtoraId || null,
+      empreendimentoId: form.empreendimentoId || null,
+      unidade: form.unidade || null,
+      corretorId: form.corretorId || null,
+      autorId: user?.id ?? "preview",
+      valor: moneyOrZero(form.valor),
+      entrada: parseMoney(form.entrada),
+      apartado: parseMoney(form.apartado),
+      preChaves: expandParcelas(form.preChaves),
+      posChaves: expandParcelas(form.posChaves),
+      intercaladas: expandParcelas(form.intercaladas),
+      fgts: parseMoney(form.fgts),
+      moraBem: parseMoney(form.moraBem),
+      mcmv: parseMoney(form.mcmv),
+      parcelaCaixa: parseMoney(form.parcelaCaixa),
+      financiamento: parseMoney(form.financiamento),
+      desconto: parseMoney(form.desconto),
+      status: form.status,
+      validade: form.validade || null,
+      enviadaEm: null,
+      observacao: form.observacao || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      autor: { id: user?.id ?? "preview", name: user?.name ?? "----" },
+      corretor: corretor ? { id: corretor.id, name: corretor.name } : null,
+      construtora: construtora
+        ? { id: construtora.id, nome: construtora.nome, cor: construtora.cor }
+        : null,
+      empreendimento: empreendimento
+        ? {
+            id: empreendimento.id,
+            nome: empreendimento.nome,
+            cidade: empreendimento.cidade,
+          }
+        : null,
+      lead: null,
+    };
+  }, [construtoras, corretorOptions, empreendimentos, form, user]);
 
   function openCreate() {
     setFormMode("create");
@@ -684,6 +930,37 @@ function Page() {
       leadId: p.leadId ?? "",
       clienteNome: p.clienteNome,
       clienteTelefone: p.clienteTelefone ? formatPhone(p.clienteTelefone) : "",
+      clienteCpf: p.clienteCpf ?? "",
+      clienteRg: p.clienteRg ?? "",
+      clienteRgOrgaoEmissor: p.clienteRgOrgaoEmissor ?? "",
+      clienteDataNascimento: toDateInput(p.clienteDataNascimento),
+      clienteNacionalidade: p.clienteNacionalidade ?? "",
+      clienteEstadoCivil: p.clienteEstadoCivil ?? "",
+      clienteRegimeBens: p.clienteRegimeBens ?? "",
+      clienteDataCasamento: toDateInput(p.clienteDataCasamento),
+      clienteNomePai: p.clienteNomePai ?? "",
+      clienteNomeMae: p.clienteNomeMae ?? "",
+      clienteRenda:
+        p.clienteRenda != null ? formatMoneyInput(p.clienteRenda) : "",
+      clienteTelefoneFixo: p.clienteTelefoneFixo ?? "",
+      clienteEmail: p.clienteEmail ?? "",
+      clienteEnderecoResidencial: p.clienteEnderecoResidencial ?? "",
+      clienteBairroResidencial: p.clienteBairroResidencial ?? "",
+      clienteCidadeResidencial: p.clienteCidadeResidencial ?? "",
+      clienteUfResidencial: p.clienteUfResidencial ?? "",
+      clienteCepResidencial: p.clienteCepResidencial ?? "",
+      clienteCobrancaResidencial: p.clienteCobrancaResidencial,
+      clienteEmpregador: p.clienteEmpregador ?? "",
+      clienteProfissao: p.clienteProfissao ?? "",
+      clienteEnderecoComercial: p.clienteEnderecoComercial ?? "",
+      clienteBairroComercial: p.clienteBairroComercial ?? "",
+      clienteCidadeComercial: p.clienteCidadeComercial ?? "",
+      clienteUfComercial: p.clienteUfComercial ?? "",
+      clienteCepComercial: p.clienteCepComercial ?? "",
+      clienteCobrancaComercial: p.clienteCobrancaComercial,
+      clienteSite: p.clienteSite ?? "",
+      clienteTelefoneComercial1: p.clienteTelefoneComercial1 ?? "",
+      clienteTelefoneComercial2: p.clienteTelefoneComercial2 ?? "",
       construtoraId: p.construtoraId ?? "",
       empreendimentoId: p.empreendimentoId ?? "",
       unidade: p.unidade ?? "",
@@ -739,6 +1016,37 @@ function Page() {
       clienteTelefone: form.clienteTelefone
         ? phoneDigits(form.clienteTelefone)
         : null,
+      clienteCpf: form.clienteCpf.trim() || null,
+      clienteRg: form.clienteRg.trim() || null,
+      clienteRgOrgaoEmissor: form.clienteRgOrgaoEmissor.trim() || null,
+      clienteDataNascimento: form.clienteDataNascimento || null,
+      clienteNacionalidade: form.clienteNacionalidade.trim() || null,
+      clienteEstadoCivil: form.clienteEstadoCivil.trim() || null,
+      clienteRegimeBens: form.clienteRegimeBens.trim() || null,
+      clienteDataCasamento: form.clienteDataCasamento || null,
+      clienteNomePai: form.clienteNomePai.trim() || null,
+      clienteNomeMae: form.clienteNomeMae.trim() || null,
+      clienteRenda: parseMoney(form.clienteRenda),
+      clienteTelefoneFixo: form.clienteTelefoneFixo.trim() || null,
+      clienteEmail: form.clienteEmail.trim() || null,
+      clienteEnderecoResidencial:
+        form.clienteEnderecoResidencial.trim() || null,
+      clienteBairroResidencial: form.clienteBairroResidencial.trim() || null,
+      clienteCidadeResidencial: form.clienteCidadeResidencial.trim() || null,
+      clienteUfResidencial: form.clienteUfResidencial.trim() || null,
+      clienteCepResidencial: form.clienteCepResidencial.trim() || null,
+      clienteCobrancaResidencial: form.clienteCobrancaResidencial,
+      clienteEmpregador: form.clienteEmpregador.trim() || null,
+      clienteProfissao: form.clienteProfissao.trim() || null,
+      clienteEnderecoComercial: form.clienteEnderecoComercial.trim() || null,
+      clienteBairroComercial: form.clienteBairroComercial.trim() || null,
+      clienteCidadeComercial: form.clienteCidadeComercial.trim() || null,
+      clienteUfComercial: form.clienteUfComercial.trim() || null,
+      clienteCepComercial: form.clienteCepComercial.trim() || null,
+      clienteCobrancaComercial: form.clienteCobrancaComercial,
+      clienteSite: form.clienteSite.trim() || null,
+      clienteTelefoneComercial1: form.clienteTelefoneComercial1.trim() || null,
+      clienteTelefoneComercial2: form.clienteTelefoneComercial2.trim() || null,
       construtoraId: form.construtoraId || null,
       empreendimentoId: form.empreendimentoId || null,
       unidade: form.unidade.trim() || null,
@@ -1245,7 +1553,9 @@ function Page() {
                       </div>
                     );
                   })}
-                  {!PROPOSTA_SIMPLES_KEYS.some((key) => selected[key] != null) &&
+                  {!PROPOSTA_SIMPLES_KEYS.some(
+                    (key) => selected[key] != null,
+                  ) &&
                   !PROPOSTA_LISTA_KEYS.some(
                     (key) => (selected[key] ?? []).length > 0,
                   ) ? (
@@ -1341,7 +1651,9 @@ function Page() {
               onChange={(e) => setWhatsAppPhone(formatPhone(e.target.value))}
             />
             {whatsAppPhone && !isValidPhone(whatsAppPhone) ? (
-              <p className="text-xs text-destructive">{PHONE_INVALID_MESSAGE}</p>
+              <p className="text-xs text-destructive">
+                {PHONE_INVALID_MESSAGE}
+              </p>
             ) : null}
           </div>
           <DialogFooter>
@@ -1383,12 +1695,23 @@ function Page() {
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
-        className="max-w-3xl"
+        className="max-w-6xl"
         icon={<FileText className="w-5 h-5" />}
         title={formMode === "create" ? "Nova proposta" : "Editar proposta"}
         description="Preencha os dados comerciais da proposta."
         footer={
           <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                void downloadPropostaPdfCliente(draftProposta, pdfBrand)
+              }
+              disabled={saving}
+            >
+              <Download className="mr-1 h-4 w-4" />
+              Baixar prévia
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -1404,8 +1727,12 @@ function Page() {
           </FormDialogActions>
         }
       >
-        <FormDialogBody>
-          <form id="proposta-form" className="space-y-5" onSubmit={onSubmit}>
+        <FormDialogBody className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-5 lg:space-y-0">
+          <form
+            id="proposta-form"
+            className="min-w-0 space-y-5"
+            onSubmit={onSubmit}
+          >
             <FormSection title="Cliente">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2 space-y-1.5">
@@ -1523,6 +1850,303 @@ function Page() {
                     }
                     placeholder={PHONE_PLACEHOLDER}
                   />
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection title="Dados pessoais (opcional)">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <OptionalField
+                  label="CPF"
+                  value={form.clienteCpf}
+                  onChange={(clienteCpf) =>
+                    setForm((f) => ({ ...f, clienteCpf }))
+                  }
+                />
+                <OptionalField
+                  label="Identidade (RG)"
+                  value={form.clienteRg}
+                  onChange={(clienteRg) =>
+                    setForm((f) => ({ ...f, clienteRg }))
+                  }
+                />
+                <OptionalField
+                  label="Órgão emissor"
+                  value={form.clienteRgOrgaoEmissor}
+                  onChange={(clienteRgOrgaoEmissor) =>
+                    setForm((f) => ({ ...f, clienteRgOrgaoEmissor }))
+                  }
+                />
+                <OptionalField
+                  label="Nascimento"
+                  type="date"
+                  value={form.clienteDataNascimento}
+                  onChange={(clienteDataNascimento) =>
+                    setForm((f) => ({ ...f, clienteDataNascimento }))
+                  }
+                />
+                <OptionalField
+                  label="Nacionalidade"
+                  value={form.clienteNacionalidade}
+                  onChange={(clienteNacionalidade) =>
+                    setForm((f) => ({ ...f, clienteNacionalidade }))
+                  }
+                />
+                <OptionalField
+                  label="Estado civil"
+                  value={form.clienteEstadoCivil}
+                  onChange={(clienteEstadoCivil) =>
+                    setForm((f) => ({ ...f, clienteEstadoCivil }))
+                  }
+                />
+                <OptionalField
+                  label="Regime de bens"
+                  value={form.clienteRegimeBens}
+                  onChange={(clienteRegimeBens) =>
+                    setForm((f) => ({ ...f, clienteRegimeBens }))
+                  }
+                />
+                <OptionalField
+                  label="Data do casamento"
+                  type="date"
+                  value={form.clienteDataCasamento}
+                  onChange={(clienteDataCasamento) =>
+                    setForm((f) => ({ ...f, clienteDataCasamento }))
+                  }
+                />
+                <OptionalField
+                  label="Renda mensal"
+                  value={form.clienteRenda}
+                  onChange={(clienteRenda) =>
+                    setForm((f) => ({
+                      ...f,
+                      clienteRenda: maskMoneyInput(clienteRenda),
+                    }))
+                  }
+                  placeholder="0,00"
+                />
+                <OptionalField
+                  label="Filiação — pai"
+                  value={form.clienteNomePai}
+                  onChange={(clienteNomePai) =>
+                    setForm((f) => ({ ...f, clienteNomePai }))
+                  }
+                />
+                <OptionalField
+                  label="Filiação — mãe"
+                  value={form.clienteNomeMae}
+                  onChange={(clienteNomeMae) =>
+                    setForm((f) => ({ ...f, clienteNomeMae }))
+                  }
+                />
+                <OptionalField
+                  label="Telefone fixo"
+                  value={form.clienteTelefoneFixo}
+                  onChange={(clienteTelefoneFixo) =>
+                    setForm((f) => ({
+                      ...f,
+                      clienteTelefoneFixo: formatPhone(clienteTelefoneFixo),
+                    }))
+                  }
+                />
+                <OptionalField
+                  label="E-mail"
+                  type="email"
+                  value={form.clienteEmail}
+                  onChange={(clienteEmail) =>
+                    setForm((f) => ({ ...f, clienteEmail }))
+                  }
+                />
+              </div>
+            </FormSection>
+
+            <FormSection title="Endereço residencial (opcional)">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <OptionalField
+                  label="Endereço residencial"
+                  value={form.clienteEnderecoResidencial}
+                  onChange={(clienteEnderecoResidencial) =>
+                    setForm((f) => ({ ...f, clienteEnderecoResidencial }))
+                  }
+                />
+                <OptionalField
+                  label="Bairro"
+                  value={form.clienteBairroResidencial}
+                  onChange={(clienteBairroResidencial) =>
+                    setForm((f) => ({ ...f, clienteBairroResidencial }))
+                  }
+                />
+                <OptionalField
+                  label="Cidade"
+                  value={form.clienteCidadeResidencial}
+                  onChange={(clienteCidadeResidencial) =>
+                    setForm((f) => ({ ...f, clienteCidadeResidencial }))
+                  }
+                />
+                <OptionalField
+                  label="UF"
+                  value={form.clienteUfResidencial}
+                  onChange={(clienteUfResidencial) =>
+                    setForm((f) => ({
+                      ...f,
+                      clienteUfResidencial: clienteUfResidencial
+                        .toUpperCase()
+                        .slice(0, 2),
+                    }))
+                  }
+                />
+                <OptionalField
+                  label="CEP"
+                  value={form.clienteCepResidencial}
+                  onChange={(clienteCepResidencial) =>
+                    setForm((f) => ({ ...f, clienteCepResidencial }))
+                  }
+                />
+                <div className="space-y-1.5">
+                  <Label>Cobrança neste endereço?</Label>
+                  <Select
+                    value={
+                      form.clienteCobrancaResidencial === null
+                        ? "__none__"
+                        : form.clienteCobrancaResidencial
+                          ? "sim"
+                          : "nao"
+                    }
+                    onValueChange={(value) =>
+                      setForm((f) => ({
+                        ...f,
+                        clienteCobrancaResidencial:
+                          value === "__none__" ? null : value === "sim",
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Não informado</SelectItem>
+                      <SelectItem value="sim">Sim</SelectItem>
+                      <SelectItem value="nao">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection title="Dados profissionais (opcional)">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <OptionalField
+                  label="Empresa onde trabalha"
+                  value={form.clienteEmpregador}
+                  onChange={(clienteEmpregador) =>
+                    setForm((f) => ({ ...f, clienteEmpregador }))
+                  }
+                />
+                <OptionalField
+                  label="Profissão"
+                  value={form.clienteProfissao}
+                  onChange={(clienteProfissao) =>
+                    setForm((f) => ({ ...f, clienteProfissao }))
+                  }
+                />
+                <OptionalField
+                  label="Endereço comercial"
+                  value={form.clienteEnderecoComercial}
+                  onChange={(clienteEnderecoComercial) =>
+                    setForm((f) => ({ ...f, clienteEnderecoComercial }))
+                  }
+                />
+                <OptionalField
+                  label="Bairro comercial"
+                  value={form.clienteBairroComercial}
+                  onChange={(clienteBairroComercial) =>
+                    setForm((f) => ({ ...f, clienteBairroComercial }))
+                  }
+                />
+                <OptionalField
+                  label="Cidade comercial"
+                  value={form.clienteCidadeComercial}
+                  onChange={(clienteCidadeComercial) =>
+                    setForm((f) => ({ ...f, clienteCidadeComercial }))
+                  }
+                />
+                <OptionalField
+                  label="UF comercial"
+                  value={form.clienteUfComercial}
+                  onChange={(clienteUfComercial) =>
+                    setForm((f) => ({
+                      ...f,
+                      clienteUfComercial: clienteUfComercial
+                        .toUpperCase()
+                        .slice(0, 2),
+                    }))
+                  }
+                />
+                <OptionalField
+                  label="CEP comercial"
+                  value={form.clienteCepComercial}
+                  onChange={(clienteCepComercial) =>
+                    setForm((f) => ({ ...f, clienteCepComercial }))
+                  }
+                />
+                <OptionalField
+                  label="Site"
+                  value={form.clienteSite}
+                  onChange={(clienteSite) =>
+                    setForm((f) => ({ ...f, clienteSite }))
+                  }
+                />
+                <OptionalField
+                  label="Telefone comercial 1"
+                  value={form.clienteTelefoneComercial1}
+                  onChange={(clienteTelefoneComercial1) =>
+                    setForm((f) => ({
+                      ...f,
+                      clienteTelefoneComercial1: formatPhone(
+                        clienteTelefoneComercial1,
+                      ),
+                    }))
+                  }
+                />
+                <OptionalField
+                  label="Telefone comercial 2"
+                  value={form.clienteTelefoneComercial2}
+                  onChange={(clienteTelefoneComercial2) =>
+                    setForm((f) => ({
+                      ...f,
+                      clienteTelefoneComercial2: formatPhone(
+                        clienteTelefoneComercial2,
+                      ),
+                    }))
+                  }
+                />
+                <div className="space-y-1.5">
+                  <Label>Cobrança neste endereço?</Label>
+                  <Select
+                    value={
+                      form.clienteCobrancaComercial === null
+                        ? "__none__"
+                        : form.clienteCobrancaComercial
+                          ? "sim"
+                          : "nao"
+                    }
+                    onValueChange={(value) =>
+                      setForm((f) => ({
+                        ...f,
+                        clienteCobrancaComercial:
+                          value === "__none__" ? null : value === "sim",
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Não informado</SelectItem>
+                      <SelectItem value="sim">Sim</SelectItem>
+                      <SelectItem value="nao">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </FormSection>
@@ -1780,6 +2404,9 @@ function Page() {
               </div>
             </FormSection>
           </form>
+          <div className="hidden lg:block">
+            <PropostaFormPreview form={form} total={formTotal} />
+          </div>
         </FormDialogBody>
       </FormDialogShell>
 

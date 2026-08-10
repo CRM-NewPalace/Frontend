@@ -1,12 +1,7 @@
 import { apiFetch } from "@/lib/api";
 
 export type PropostaStatus =
-  | "rascunho"
-  | "enviada"
-  | "negociacao"
-  | "aceita"
-  | "recusada"
-  | "expirada";
+  "rascunho" | "enviada" | "negociacao" | "aceita" | "recusada" | "expirada";
 
 export const PROPOSTA_STATUS_LABEL: Record<PropostaStatus, string> = {
   rascunho: "Rascunho",
@@ -42,6 +37,36 @@ export type Proposta = {
   leadId: string | null;
   clienteNome: string;
   clienteTelefone: string | null;
+  clienteCpf: string | null;
+  clienteRg: string | null;
+  clienteRgOrgaoEmissor: string | null;
+  clienteDataNascimento: string | null;
+  clienteNacionalidade: string | null;
+  clienteEstadoCivil: string | null;
+  clienteRegimeBens: string | null;
+  clienteDataCasamento: string | null;
+  clienteNomePai: string | null;
+  clienteNomeMae: string | null;
+  clienteRenda: number | null;
+  clienteTelefoneFixo: string | null;
+  clienteEmail: string | null;
+  clienteEnderecoResidencial: string | null;
+  clienteBairroResidencial: string | null;
+  clienteCidadeResidencial: string | null;
+  clienteUfResidencial: string | null;
+  clienteCepResidencial: string | null;
+  clienteCobrancaResidencial: boolean | null;
+  clienteEmpregador: string | null;
+  clienteProfissao: string | null;
+  clienteEnderecoComercial: string | null;
+  clienteBairroComercial: string | null;
+  clienteCidadeComercial: string | null;
+  clienteUfComercial: string | null;
+  clienteCepComercial: string | null;
+  clienteCobrancaComercial: boolean | null;
+  clienteSite: string | null;
+  clienteTelefoneComercial1: string | null;
+  clienteTelefoneComercial2: string | null;
   construtoraId: string | null;
   empreendimentoId: string | null;
   unidade: string | null;
@@ -124,10 +149,7 @@ function sumList(values: number[] | null | undefined): number {
 }
 
 export function propostaComposicaoTotal(
-  p: Pick<
-    Proposta,
-    PropostaSimplesKey | PropostaListaKey
-  >,
+  p: Pick<Proposta, PropostaSimplesKey | PropostaListaKey>,
 ): number {
   const simples = PROPOSTA_SIMPLES_KEYS.reduce(
     (sum, key) => sum + (p[key] ?? 0),
@@ -160,6 +182,36 @@ export type CreatePropostaInput = {
   leadId?: string | null;
   clienteNome: string;
   clienteTelefone?: string | null;
+  clienteCpf?: string | null;
+  clienteRg?: string | null;
+  clienteRgOrgaoEmissor?: string | null;
+  clienteDataNascimento?: string | null;
+  clienteNacionalidade?: string | null;
+  clienteEstadoCivil?: string | null;
+  clienteRegimeBens?: string | null;
+  clienteDataCasamento?: string | null;
+  clienteNomePai?: string | null;
+  clienteNomeMae?: string | null;
+  clienteRenda?: number | null;
+  clienteTelefoneFixo?: string | null;
+  clienteEmail?: string | null;
+  clienteEnderecoResidencial?: string | null;
+  clienteBairroResidencial?: string | null;
+  clienteCidadeResidencial?: string | null;
+  clienteUfResidencial?: string | null;
+  clienteCepResidencial?: string | null;
+  clienteCobrancaResidencial?: boolean | null;
+  clienteEmpregador?: string | null;
+  clienteProfissao?: string | null;
+  clienteEnderecoComercial?: string | null;
+  clienteBairroComercial?: string | null;
+  clienteCidadeComercial?: string | null;
+  clienteUfComercial?: string | null;
+  clienteCepComercial?: string | null;
+  clienteCobrancaComercial?: boolean | null;
+  clienteSite?: string | null;
+  clienteTelefoneComercial1?: string | null;
+  clienteTelefoneComercial2?: string | null;
   construtoraId?: string | null;
   empreendimentoId?: string | null;
   unidade?: string | null;

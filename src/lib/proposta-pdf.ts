@@ -946,6 +946,8 @@ async function buildPropostaPdfFormulario(
   const margin = 14;
   const contentW = pageW - margin * 2;
   const companyName = brand?.company?.name?.trim() || "----";
+  const yesNo = (value: boolean | null) =>
+    value === null ? "----" : value ? "Sim" : "Não";
   const rawText = doc.text.bind(doc) as (...args: unknown[]) => unknown;
   (
     doc as unknown as {
@@ -1067,61 +1069,97 @@ async function buildPropostaPdfFormulario(
   y = section("PROPONENTE 01", y + 7);
   y = row(y, [
     { label: "Nome completo", value: p.clienteNome, fraction: 0.67 },
-    { label: "CPF", value: "----", fraction: 0.33 },
+    { label: "CPF", value: p.clienteCpf, fraction: 0.33 },
   ]);
   y = row(y, [
-    { label: "Identidade (RG)", value: "----", fraction: 0.3 },
-    { label: "Órgão emissor", value: "----", fraction: 0.18 },
-    { label: "Nascimento", value: "----", fraction: 0.24 },
-    { label: "Nacionalidade", value: "----", fraction: 0.28 },
+    { label: "Identidade (RG)", value: p.clienteRg, fraction: 0.3 },
+    { label: "Órgão emissor", value: p.clienteRgOrgaoEmissor, fraction: 0.18 },
+    {
+      label: "Nascimento",
+      value: p.clienteDataNascimento
+        ? formatPropostaDate(p.clienteDataNascimento)
+        : "----",
+      fraction: 0.24,
+    },
+    { label: "Nacionalidade", value: p.clienteNacionalidade, fraction: 0.28 },
   ]);
   y = row(y, [
-    { label: "Estado civil", value: "----", fraction: 0.33 },
-    { label: "Regime de bens", value: "----", fraction: 0.34 },
-    { label: "Data do casamento", value: "----", fraction: 0.33 },
+    { label: "Estado civil", value: p.clienteEstadoCivil, fraction: 0.33 },
+    { label: "Regime de bens", value: p.clienteRegimeBens, fraction: 0.34 },
+    {
+      label: "Data do casamento",
+      value: p.clienteDataCasamento
+        ? formatPropostaDate(p.clienteDataCasamento)
+        : "----",
+      fraction: 0.33,
+    },
   ]);
   y = row(y, [
-    { label: "Filiação — pai", value: "----", fraction: 0.5 },
-    { label: "Filiação — mãe", value: "----", fraction: 0.5 },
+    { label: "Filiação — pai", value: p.clienteNomePai, fraction: 0.5 },
+    { label: "Filiação — mãe", value: p.clienteNomeMae, fraction: 0.5 },
   ]);
   y = row(y, [
-    { label: "Renda", value: "----", fraction: 0.25 },
+    {
+      label: "Renda",
+      value: p.clienteRenda == null ? null : brl(p.clienteRenda),
+      fraction: 0.25,
+    },
     { label: "Celular", value: p.clienteTelefone, fraction: 0.25 },
-    { label: "Telefone", value: "----", fraction: 0.25 },
-    { label: "E-mail", value: "----", fraction: 0.25 },
+    { label: "Telefone", value: p.clienteTelefoneFixo, fraction: 0.25 },
+    { label: "E-mail", value: p.clienteEmail, fraction: 0.25 },
   ]);
 
   y = section("ENDEREÇO", y + 7);
   y = row(y, [
-    { label: "Endereço residencial", value: "----", fraction: 0.67 },
-    { label: "Bairro", value: "----", fraction: 0.33 },
+    {
+      label: "Endereço residencial",
+      value: p.clienteEnderecoResidencial,
+      fraction: 0.67,
+    },
+    { label: "Bairro", value: p.clienteBairroResidencial, fraction: 0.33 },
   ]);
   y = row(y, [
-    { label: "Cidade", value: "----", fraction: 0.42 },
-    { label: "UF", value: "----", fraction: 0.12 },
-    { label: "CEP", value: "----", fraction: 0.2 },
-    { label: "Cobrança aqui?", value: "----", fraction: 0.26 },
+    { label: "Cidade", value: p.clienteCidadeResidencial, fraction: 0.42 },
+    { label: "UF", value: p.clienteUfResidencial, fraction: 0.12 },
+    { label: "CEP", value: p.clienteCepResidencial, fraction: 0.2 },
+    {
+      label: "Cobrança aqui?",
+      value: yesNo(p.clienteCobrancaResidencial),
+      fraction: 0.26,
+    },
   ]);
 
   y = section("DADOS DA EMPRESA", y + 7);
   y = row(y, [
-    { label: "Empresa onde trabalha", value: "----", fraction: 0.5 },
-    { label: "Profissão", value: "----", fraction: 0.5 },
+    {
+      label: "Empresa onde trabalha",
+      value: p.clienteEmpregador,
+      fraction: 0.5,
+    },
+    { label: "Profissão", value: p.clienteProfissao, fraction: 0.5 },
   ]);
   y = row(y, [
-    { label: "Endereço comercial", value: "----", fraction: 0.67 },
-    { label: "Bairro", value: "----", fraction: 0.33 },
+    {
+      label: "Endereço comercial",
+      value: p.clienteEnderecoComercial,
+      fraction: 0.67,
+    },
+    { label: "Bairro", value: p.clienteBairroComercial, fraction: 0.33 },
   ]);
   y = row(y, [
-    { label: "Cidade", value: "----", fraction: 0.42 },
-    { label: "UF", value: "----", fraction: 0.12 },
-    { label: "CEP", value: "----", fraction: 0.2 },
-    { label: "Cobrança aqui?", value: "----", fraction: 0.26 },
+    { label: "Cidade", value: p.clienteCidadeComercial, fraction: 0.42 },
+    { label: "UF", value: p.clienteUfComercial, fraction: 0.12 },
+    { label: "CEP", value: p.clienteCepComercial, fraction: 0.2 },
+    {
+      label: "Cobrança aqui?",
+      value: yesNo(p.clienteCobrancaComercial),
+      fraction: 0.26,
+    },
   ]);
   y = row(y, [
-    { label: "Site", value: "----", fraction: 0.5 },
-    { label: "Fone 1", value: "----", fraction: 0.25 },
-    { label: "Fone 2", value: "----", fraction: 0.25 },
+    { label: "Site", value: p.clienteSite, fraction: 0.5 },
+    { label: "Fone 1", value: p.clienteTelefoneComercial1, fraction: 0.25 },
+    { label: "Fone 2", value: p.clienteTelefoneComercial2, fraction: 0.25 },
   ]);
 
   y = section(
