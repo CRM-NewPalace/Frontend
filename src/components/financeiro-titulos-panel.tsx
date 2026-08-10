@@ -69,6 +69,7 @@ import {
   type PlatformContratoStatus,
   type PlatformContratoTipo,
 } from "@/lib/platform-contratos-api";
+import { createPlatformFornecedorContratoComTitulos } from "@/lib/platform-fornecedor-contratos-api";
 import { PLANO_LABELS, type TenantPlano } from "@/lib/tenant-modules";
 import { fetchTenants, type Tenant } from "@/lib/tenants-api";
 import {
@@ -347,7 +348,7 @@ export function FinanceiroTitulosPanel({
   const [valorGrupoParcelas, setValorGrupoParcelas] = useState("");
   const [formTab, setFormTab] = useState<TituloFormTab>("dados");
   const isPlatformAdmin = getSession()?.role === "super_admin";
-  const canUseContrato = tipo === "receber" && isPlatformAdmin;
+  const canUseContrato = isPlatformAdmin;
   const [comoContrato, setComoContrato] = useState(false);
   const [parcelarAdesao, setParcelarAdesao] = useState(false);
   const [qtdParcelasAdesao, setQtdParcelasAdesao] = useState("2");
@@ -918,7 +919,7 @@ export function FinanceiroTitulosPanel({
 
     if (formMode === "create" && comoContrato && canUseContrato) {
       const titulo = contratoForm.titulo.trim();
-      if (!contratoForm.tenantId) {
+      if (tipo === "receber" && !contratoForm.tenantId) {
         setFormTab("contrato");
         toast.error("Selecione a imobiliária.");
         return;
@@ -928,7 +929,11 @@ export function FinanceiroTitulosPanel({
         toast.error("Informe o título do contrato.");
         return;
       }
-      if (contratoForm.tipo === "assinatura" && !contratoForm.plano) {
+      if (
+        tipo === "receber" &&
+        contratoForm.tipo === "assinatura" &&
+        !contratoForm.plano
+      ) {
         setFormTab("contrato");
         toast.error("Informe o plano da assinatura.");
         return;
@@ -940,12 +945,19 @@ export function FinanceiroTitulosPanel({
       }
       if (!form.categoria.trim()) {
         setFormTab("dados");
-        toast.error("Selecione a categoria.");
+        toast.error(
+          tipo === "receber"
+            ? "Selecione a categoria."
+            : "Selecione o centro de custo.",
+        );
         return;
       }
       const valorAdesao = parseValor(contratoForm.valorAdesao);
       const valorMensalidade = parseValor(contratoForm.valorMensalidade);
-      if (!Number.isFinite(valorAdesao) || valorAdesao <= 0) {
+      if (
+        !Number.isFinite(valorAdesao) ||
+        (tipo === "receber" ? valorAdesao <= 0 : valorAdesao < 0)
+      ) {
         setFormTab("contrato");
         toast.error("Informe o valor de adesão.");
         return;
@@ -969,22 +981,43 @@ export function FinanceiroTitulosPanel({
       }
       setSaving(true);
       try {
-        await createPlatformContratoComTitulos({
-          tenantId: contratoForm.tenantId,
-          titulo,
-          tipo: contratoForm.tipo,
-          plano: contratoForm.tipo === "assinatura" ? contratoForm.plano : null,
-          valorAdesao,
-          qtdParcelasAdesao: qtdAdesao,
-          valorMensalidade,
-          qtdMensalidades: qtd,
-          dataInicio: contratoForm.dataInicio,
-          vencimento: contratoForm.vencimento,
-          status: contratoForm.status,
-          observacao: contratoForm.observacao.trim() || undefined,
-          categoria: form.categoria.trim(),
-          parceiroId: form.parceiroId === NONE ? undefined : form.parceiroId,
-        });
+        if (tipo === "receber") {
+          await createPlatformContratoComTitulos({
+            tenantId: contratoForm.tenantId,
+            titulo,
+            tipo: contratoForm.tipo,
+            plano:
+              contratoForm.tipo === "assinatura" ? contratoForm.plano : null,
+            valorAdesao,
+            qtdParcelasAdesao: qtdAdesao,
+            valorMensalidade,
+            qtdMensalidades: qtd,
+            dataInicio: contratoForm.dataInicio,
+            vencimento: contratoForm.vencimento,
+            status: contratoForm.status,
+            observacao: contratoForm.observacao.trim() || undefined,
+            categoria: form.categoria.trim(),
+            parceiroId: form.parceiroId === NONE ? undefined : form.parceiroId,
+          });
+        } else {
+          if (form.parceiroId === NONE) {
+            setFormTab("dados");
+            toast.error("Selecione o fornecedor.");
+            return;
+          }
+          await createPlatformFornecedorContratoComTitulos({
+            parceiroId: form.parceiroId,
+            titulo,
+            centro: form.centro.trim(),
+            valorAdesao,
+            qtdParcelasAdesao: valorAdesao > 0 ? qtdAdesao : undefined,
+            valorMensalidade,
+            qtdMensalidades: qtd,
+            dataInicio: contratoForm.dataInicio,
+            vencimento: contratoForm.vencimento,
+            observacao: contratoForm.observacao.trim() || undefined,
+          });
+        }
         toast.success(
           `Contrato criado com ${qtdAdesao} parcela${qtdAdesao === 1 ? "" : "s"} de adesão e ${qtd} mensalidade${qtd === 1 ? "" : "s"}.`,
         );
@@ -1734,7 +1767,9 @@ export function FinanceiroTitulosPanel({
                         Contrato
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Gera adesão + mensalidades vinculadas à imobiliária.
+                        {tipo === "receber"
+                          ? "Gera adesão + mensalidades vinculadas à imobiliária."
+                          : "Gera adesão opcional e mensalidades para o fornecedor."}
                       </p>
                     </div>
                   </div>
@@ -1744,26 +1779,28 @@ export function FinanceiroTitulosPanel({
                 formMode === "create" &&
                 formTab === "contrato" ? (
                   <>
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <Label>Imobiliária *</Label>
-                      <Select
-                        value={contratoForm.tenantId || undefined}
-                        onValueChange={(v) =>
-                          setContratoForm((f) => ({ ...f, tenantId: v }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tenants.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name} ({PLANO_LABELS[t.plano]})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {tipo === "receber" ? (
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <Label>Imobiliária *</Label>
+                        <Select
+                          value={contratoForm.tenantId || undefined}
+                          onValueChange={(v) =>
+                            setContratoForm((f) => ({ ...f, tenantId: v }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tenants.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.name} ({PLANO_LABELS[t.plano]})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
                     <div className="sm:col-span-2 space-y-1.5">
                       <Label>Título do contrato *</Label>
                       <Input
@@ -1777,51 +1814,60 @@ export function FinanceiroTitulosPanel({
                         placeholder="Ex.: Assinatura anual Ouro"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Tipo</Label>
-                      <Select
-                        value={contratoForm.tipo}
-                        onValueChange={(v) =>
-                          setContratoForm((f) => ({
-                            ...f,
-                            tipo: v as PlatformContratoTipo,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="assinatura">Assinatura</SelectItem>
-                          <SelectItem value="financeiro">Financeiro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Status</Label>
-                      <Select
-                        value={contratoForm.status}
-                        onValueChange={(v) =>
-                          setContratoForm((f) => ({
-                            ...f,
-                            status: v as PlatformContratoStatus,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="proposta">Proposta</SelectItem>
-                          <SelectItem value="ativo">Ativo</SelectItem>
-                          <SelectItem value="atrasado">Atrasado</SelectItem>
-                          <SelectItem value="suspenso">Suspenso</SelectItem>
-                          <SelectItem value="cancelado">Cancelado</SelectItem>
-                          <SelectItem value="encerrado">Encerrado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {contratoForm.tipo === "assinatura" ? (
+                    {tipo === "receber" ? (
+                      <div className="space-y-1.5">
+                        <Label>Tipo</Label>
+                        <Select
+                          value={contratoForm.tipo}
+                          onValueChange={(v) =>
+                            setContratoForm((f) => ({
+                              ...f,
+                              tipo: v as PlatformContratoTipo,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="assinatura">
+                              Assinatura
+                            </SelectItem>
+                            <SelectItem value="financeiro">
+                              Financeiro
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
+                    {tipo === "receber" ? (
+                      <div className="space-y-1.5">
+                        <Label>Status</Label>
+                        <Select
+                          value={contratoForm.status}
+                          onValueChange={(v) =>
+                            setContratoForm((f) => ({
+                              ...f,
+                              status: v as PlatformContratoStatus,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="proposta">Proposta</SelectItem>
+                            <SelectItem value="ativo">Ativo</SelectItem>
+                            <SelectItem value="atrasado">Atrasado</SelectItem>
+                            <SelectItem value="suspenso">Suspenso</SelectItem>
+                            <SelectItem value="cancelado">Cancelado</SelectItem>
+                            <SelectItem value="encerrado">Encerrado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
+                    {tipo === "receber" &&
+                    contratoForm.tipo === "assinatura" ? (
                       <div className="sm:col-span-2 space-y-1.5">
                         <Label>Plano</Label>
                         <Select
@@ -1876,7 +1922,8 @@ export function FinanceiroTitulosPanel({
                     </div>
                     <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
                       <Label className="text-primary">
-                        Adesão · valor total (R$) *
+                        Adesão · valor total (R$){" "}
+                        {tipo === "receber" ? "*" : "(opcional)"}
                       </Label>
                       <Input
                         inputMode="numeric"
