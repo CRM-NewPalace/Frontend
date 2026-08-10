@@ -1727,7 +1727,7 @@ function Page() {
           </FormDialogActions>
         }
       >
-        <FormDialogBody className="lg:grid lg:grid-cols-[minmax(20rem,0.75fr)_minmax(32rem,1.6fr)] lg:items-start lg:gap-5 lg:space-y-0">
+        <FormDialogBody className="lg:grid lg:grid-cols-[minmax(28rem,1fr)_minmax(28rem,1.25fr)] lg:items-start lg:gap-5 lg:space-y-0">
           <form
             id="proposta-form"
             className="min-w-0 space-y-5"
@@ -1855,7 +1855,7 @@ function Page() {
             </FormSection>
 
             <FormSection title="Dados pessoais (opcional)">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <OptionalField
                   label="CPF"
                   value={form.clienteCpf}
@@ -1965,7 +1965,7 @@ function Page() {
             </FormSection>
 
             <FormSection title="Endereço residencial (opcional)">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <OptionalField
                   label="Endereço residencial"
                   value={form.clienteEnderecoResidencial}
@@ -2038,7 +2038,7 @@ function Page() {
             </FormSection>
 
             <FormSection title="Dados profissionais (opcional)">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <OptionalField
                   label="Empresa onde trabalha"
                   value={form.clienteEmpregador}
