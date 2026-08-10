@@ -22,15 +22,21 @@ import {
   type DashboardRankingGerente,
 } from "@/lib/dashboard-api";
 import {
+  Building2,
   Goal,
   Loader2,
+  Medal,
   TrendingUp,
+  Trophy,
   UsersRound,
   UserRound,
   Wallet,
 } from "lucide-react";
 import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
+import { fetchDocumentacoes, type Documentacao } from "@/lib/documentacao-api";
+import { isStatusVendido } from "@/lib/documentacao-status";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/corretores")({
   head: () => ({ meta: [{ title: "Corretores — Zone Connection" }] }),
@@ -81,6 +87,7 @@ function Page() {
   const [mes, setMes] = useState(agora.mes);
   const [ano, setAno] = useState(agora.ano);
   const [data, setData] = useState<DashboardRanking | null>(null);
+  const [documentacoes, setDocumentacoes] = useState<Documentacao[]>([]);
   const [loading, setLoading] = useState(true);
 
   const anosDisponiveis = useMemo(() => {
@@ -96,7 +103,12 @@ function Page() {
     }
     setLoading(true);
     try {
-      setData(await fetchDashboardRanking({ mes, ano }));
+      const [ranking, docs] = await Promise.all([
+        fetchDashboardRanking({ mes, ano }),
+        fetchDocumentacoes(),
+      ]);
+      setData(ranking);
+      setDocumentacoes(docs);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -122,6 +134,27 @@ function Page() {
       }),
     [mes, ano],
   );
+
+  const construtorasRanking = useMemo(() => {
+    const inicio = new Date(ano, mes - 1, 1);
+    const fim = new Date(ano, mes, 1);
+    const values = new Map<string, { nome: string; vendas: number; vgv: number }>();
+    for (const doc of documentacoes) {
+      if (!isStatusVendido(doc.status2) || !doc.dataVenda) continue;
+      const dataVenda = new Date(doc.dataVenda);
+      if (dataVenda < inicio || dataVenda >= fim) continue;
+      const key = doc.construtora?.id ?? doc.construtora?.nome ?? "sem-construtora";
+      const current = values.get(key) ?? {
+        nome: doc.construtora?.nome ?? "Sem construtora",
+        vendas: 0,
+        vgv: 0,
+      };
+      current.vendas += 1;
+      current.vgv += doc.vgv ?? 0;
+      values.set(key, current);
+    }
+    return [...values.values()].sort((a, b) => b.vgv - a.vgv).slice(0, 5);
+  }, [ano, documentacoes, mes]);
 
   const filtros = (
     <div className="flex flex-wrap items-end gap-2">
@@ -245,65 +278,11 @@ function Page() {
           </p>
 
           <section className={isGerente ? "mt-5 mb-6" : "mt-5"}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <UserRound className="h-4 w-4 text-primary" />
-                  Ranking Corretores
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {isGerente
-                    ? "Corretores da sua equipe · ordenado por VGV do mês."
-                    : "Ordenado por VGV do mês · comparação com o mês anterior."}
-                </p>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                {data.corretores.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">
-                    Nenhum corretor ativo.
-                  </p>
-                ) : (
-                  <table className="w-full min-w-240 text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-2 pr-2 font-medium w-10">#</th>
-                        <th className="pb-2 pr-2 font-medium">Corretor</th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Leads
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Entradas
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Visitas
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Docs
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Vendas
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          VGV
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Conv.
-                        </th>
-                        <th className="pb-2 pr-2 font-medium text-right">
-                          Perdidos
-                        </th>
-                        <th className="pb-2 font-medium text-right">Meta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.corretores.map((r) => (
-                        <CorretorRow key={r.corretorId} row={r} />
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </CardContent>
-            </Card>
+            <PodioCorretores corretores={data.corretores} />
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <RankingList corretores={data.corretores} />
+              <ConstrutorasRanking items={construtorasRanking} />
+            </div>
           </section>
 
           {showRankingGerentes && (
@@ -369,6 +348,120 @@ function Page() {
         </>
       )}
     </div>
+  );
+}
+
+function PodioCorretores({
+  corretores,
+}: {
+  corretores: DashboardRankingCorretor[];
+}) {
+  const podium = [corretores[1], corretores[0], corretores[2]].filter(
+    Boolean,
+  ) as DashboardRankingCorretor[];
+  return (
+    <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-300">
+          <Trophy className="h-4 w-4" /> Pódio de vendas · corretores
+        </div>
+        <div className="mt-5 flex items-end justify-center gap-3 sm:gap-8">
+          {podium.map((row, index) => {
+            const position = row.posicao;
+            const first = position === 1;
+            return (
+              <div
+                key={row.corretorId}
+                className={cn(
+                  "flex w-28 flex-col items-center text-center",
+                  first && "order-none -translate-y-3",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-bold",
+                    position === 1
+                      ? "border-amber-300 bg-amber-400 text-amber-950"
+                      : position === 2
+                        ? "border-slate-200 bg-slate-300 text-slate-800"
+                        : "border-orange-300 bg-orange-500 text-orange-950",
+                  )}
+                >
+                  {row.nome
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((name) => name[0])
+                    .join("")}
+                </div>
+                <p className="mt-2 truncate text-xs font-semibold">{row.nome}</p>
+                <p className="text-[10px] text-slate-300">
+                  {row.vendas.valor} venda{row.vendas.valor === 1 ? "" : "s"} ·{" "}
+                  {money(row.vgv.valor)}
+                </p>
+                <div
+                  className={cn(
+                    "mt-3 flex w-full items-center justify-center rounded-t-md text-xs font-bold",
+                    position === 1 ? "h-12 bg-amber-400 text-amber-950" : "h-8 bg-slate-700",
+                  )}
+                >
+                  #{position}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RankingList({ corretores }: { corretores: DashboardRankingCorretor[] }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Medal className="h-4 w-4 text-amber-500" /> Ranking geral · corretores por venda
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {corretores.slice(0, 8).map((row) => (
+          <div key={row.corretorId} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/60">
+            <span className="w-5 text-xs font-bold text-muted-foreground">#{row.posicao}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.nome}</span>
+            <span className="text-xs text-muted-foreground">{row.vendas.valor} vendas</span>
+            <span className="text-xs font-semibold tabular-nums">{money(row.vgv.valor)}</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ConstrutorasRanking({
+  items,
+}: {
+  items: Array<{ nome: string; vendas: number; vgv: number }>;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Building2 className="h-4 w-4 text-primary" /> Top construtoras · VGV
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {items.length ? items.map((item, index) => (
+          <div key={item.nome} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/60">
+            <span className="w-5 text-xs font-bold text-muted-foreground">#{index + 1}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.nome}</span>
+            <span className="text-xs text-muted-foreground">{item.vendas} vendas</span>
+            <span className="text-xs font-semibold tabular-nums">{money(item.vgv)}</span>
+          </div>
+        )) : (
+          <p className="py-5 text-center text-sm text-muted-foreground">Nenhuma venda no período.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
