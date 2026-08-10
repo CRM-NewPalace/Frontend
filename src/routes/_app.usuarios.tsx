@@ -1058,6 +1058,11 @@ function Usuarios() {
         }}
         icon={<Eye className="w-5 h-5" />}
         title={detail?.name ?? "Detalhes do usuário"}
+        className={
+          detail?.role === "corretor"
+            ? "max-w-[min(96vw,78rem)]"
+            : undefined
+        }
         description={
           detail ? (
             <span className="flex items-center gap-2 flex-wrap">
@@ -1075,7 +1080,14 @@ function Usuarios() {
       >
         {detail && (
           <>
-            <FormDialogBody>
+            <FormDialogBody
+              className={cn(
+                detail.role === "corretor" && "bg-muted/20",
+              )}
+            >
+              {detail.role === "corretor" ? (
+                <BrokerPipeline brokerId={detail.id} leads={leads} />
+              ) : null}
               <FormSection
                 icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
                 title="Contato"
@@ -1183,9 +1195,6 @@ function Usuarios() {
                   </div>
                 )}
               </FormSection>
-              {detail.role === "corretor" ? (
-                <BrokerPipeline brokerId={detail.id} leads={leads} />
-              ) : null}
               <FormSection
                 icon={<Shield className="w-3.5 h-3.5 text-primary" />}
                 title="Acesso"
