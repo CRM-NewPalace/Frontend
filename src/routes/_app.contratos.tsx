@@ -71,6 +71,72 @@ function ContratoPreview({
   values: Record<string, string>;
   logoUrl: string;
 }) {
+  const value = (key: string) => values[key]?.trim() || "----";
+  const date = value("data") === "----" ? "____/____/________" : value("data");
+  const content =
+    template.id === "carta-cancelamento" ? (
+      <>
+        <p>
+          Eu, <strong>{value("nome")}</strong>, portador do RG{" "}
+          <strong>{value("rg")}</strong> e CPF <strong>{value("cpf")}</strong>,
+          venho por meio desta informar que solicito o cancelamento da avaliação
+          habitacional realizada em meu nome em uma construtora para dar
+          continuidade em outra construtora.
+        </p>
+        <p>
+          {value("cidade")}, {date}
+        </p>
+      </>
+    ) : template.id === "parentesco-sem-conjuge" ? (
+      <>
+        <p>
+          Eu, <strong>{value("nomeParente")}</strong>, CPF{" "}
+          <strong>{value("cpfParente")}</strong>, estado civil{" "}
+          <strong>{value("estadoCivil")}</strong>, declaro que sou{" "}
+          <strong>{value("grauParentesco")}</strong> do proponente{" "}
+          <strong>{value("nomeProponente")}</strong>, CPF{" "}
+          <strong>{value("cpfProponente")}</strong>, com quem resido no mesmo
+          endereço há pelo menos 6 (seis) meses.
+        </p>
+        <p>
+          Declaro ainda que não possuo nenhum tipo de rendimento, seja renda
+          formal ou informal, e que não participo como dependente de outro
+          financiamento habitacional.
+        </p>
+        <p>Data: {date}</p>
+      </>
+    ) : template.id === "parentesco-com-conjuge" ? (
+      <>
+        <p>
+          Eu, <strong>{value("nomeParente")}</strong>, CPF{" "}
+          <strong>{value("cpfParente")}</strong>, declaro que sou{" "}
+          <strong>{value("grauParentesco")}</strong> do proponente{" "}
+          <strong>{value("nomeProponente")}</strong>, CPF{" "}
+          <strong>{value("cpfProponente")}</strong>, com quem resido no endereço{" "}
+          <strong>{value("endereco")}</strong>.
+        </p>
+        <p>
+          Eu, <strong>{value("nomeConjuge")}</strong>, declaro que também não
+          possuo nenhum tipo de rendimento, seja renda formal ou informal.
+        </p>
+        <p>Data: {date}</p>
+      </>
+    ) : (
+      <>
+        <p>
+          Contratante: <strong>{value("contratanteNome")}</strong>, CPF{" "}
+          <strong>{value("contratanteCpf")}</strong>.
+        </p>
+        <p>
+          Proprietário: <strong>{value("proprietarioNome")}</strong>.
+        </p>
+        <p>
+          Imóvel: <strong>{value("empreendimento")}</strong>, unidade{" "}
+          <strong>{value("unidade")}</strong>.
+        </p>
+      </>
+    );
+
   return (
     <aside className="sticky top-3 self-start rounded-xl border bg-background p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between border-b pb-2">
@@ -82,7 +148,7 @@ function ContratoPreview({
         </div>
         <FileText className="size-4 text-muted-foreground" />
       </div>
-      <div className="aspect-[210/297] min-h-[480px] overflow-hidden rounded border bg-card p-6 text-foreground">
+      <div className="aspect-[210/297] min-h-[480px] overflow-y-auto rounded border bg-card p-6 text-foreground">
         {logoUrl ? (
           <img
             src={logoUrl}
@@ -94,17 +160,11 @@ function ContratoPreview({
           {template.titulo}
         </h3>
         <div className="my-4 border-t" />
-        <div className="space-y-3 text-xs leading-relaxed">
-          {template.fields.map((field) => (
-            <div key={field.key}>
-              <div className="text-[10px] uppercase text-muted-foreground">
-                {field.label}
-              </div>
-              <div className="font-medium">
-                {values[field.key]?.trim() || "----"}
-              </div>
-            </div>
-          ))}
+        <div className="space-y-4 text-xs leading-relaxed text-justify">
+          {content}
+          <div className="mt-10 space-y-10 text-center text-[10px]">
+            <div className="mx-auto w-40 border-t pt-1">ASSINATURA</div>
+          </div>
         </div>
       </div>
     </aside>
