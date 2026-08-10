@@ -434,6 +434,26 @@ async function buildPropostaPdfDescritivo(
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 36;
+  const rawText = doc.text.bind(doc) as (...args: unknown[]) => unknown;
+  (
+    doc as unknown as {
+      text: (...args: unknown[]) => unknown;
+    }
+  ).text = (text, x, y, ...rest) => {
+    const normalizedText = Array.isArray(text)
+      ? text
+          .filter((line): line is string | number => typeof line === "string" || typeof line === "number")
+          .map((line) => pdfText(line))
+      : pdfText(text);
+    return rawText(
+      Array.isArray(normalizedText) && normalizedText.length === 0
+        ? ["—"]
+        : normalizedText,
+      typeof x === "number" && Number.isFinite(x) ? x : margin,
+      typeof y === "number" && Number.isFinite(y) ? y : margin,
+      ...rest,
+    );
+  };
   const contentW = pageW - margin * 2;
   const company = brand?.company;
   const companyName = (company?.name ?? "").trim() || "Imobiliária";
