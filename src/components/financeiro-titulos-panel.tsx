@@ -103,6 +103,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  Eye,
   Layers,
   ListOrdered,
   Loader2,
@@ -119,6 +120,15 @@ const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const
 type QuickKind = "parceiro" | "categoria" | null;
 type TituloFormTab = "dados" | "cobranca" | "contrato";
 type GrupoParcelaTipo = "adesao" | "mensalidade";
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium break-words">{value}</p>
+    </div>
+  );
+}
 
 type FormState = {
   descricao: string;
@@ -319,6 +329,9 @@ export function FinanceiroTitulosPanel({
   const [baixarTarget, setBaixarTarget] = useState<TituloFinanceiro | null>(
     null,
   );
+  const [detalhesTarget, setDetalhesTarget] = useState<TituloFinanceiro | null>(
+    null,
+  );
   const [baixarData, setBaixarData] = useState(todayIso());
   const [baixarForma, setBaixarForma] = useState<string>(FORMAS[0]);
   const [busy, setBusy] = useState(false);
@@ -384,7 +397,13 @@ export function FinanceiroTitulosPanel({
     try {
       const platform = getSession()?.role === "super_admin";
       const [titulos, pars, tipos, tenantList] = await Promise.all([
-        fetchTitulos(tipo),
+        fetchTitulos(
+          tipo,
+          undefined,
+          platform && tipo === "receber" && origemFiltro !== "todos"
+            ? origemFiltro
+            : undefined,
+        ),
         fetchParceiros(),
         platform
           ? Promise.resolve([] as DespesaTipo[])
@@ -406,7 +425,7 @@ export function FinanceiroTitulosPanel({
           : "Não foi possível carregar os títulos.",
       );
     }
-  }, [tipo]);
+  }, [tipo, origemFiltro]);
 
   useEffect(() => {
     void load();
@@ -562,11 +581,6 @@ export function FinanceiroTitulosPanel({
           tipo === "pagar" ? t.centro || t.categoria : t.categoria || t.centro;
         if (label !== categoriaFiltro) return false;
       }
-      if (canUseContrato && origemFiltro !== "todos") {
-        const isContrato = Boolean(t.platformContratoId);
-        if (origemFiltro === "contrato" && !isContrato) return false;
-        if (origemFiltro === "normal" && isContrato) return false;
-      }
       if (periodo !== "tudo") {
         const d = new Date(t.vencimento + "T12:00:00");
         if (periodo === "mes") {
@@ -646,6 +660,15 @@ export function FinanceiroTitulosPanel({
   ) {
     return (
       <div className="flex justify-end gap-0.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          title="Ver detalhes"
+          onClick={() => setDetalhesTarget(t)}
+        >
+          <Eye className="w-3.5 h-3.5" />
+        </Button>
         {!opts?.hideGrupo && t.grupoParcelasId ? (
           <Button
             variant="ghost"
@@ -1265,21 +1288,36 @@ export function FinanceiroTitulosPanel({
         }}
         extra={
           canUseContrato ? (
-            <Select
-              value={origemFiltro}
-              onValueChange={(v) =>
-                setOrigemFiltro(v as "todos" | "normal" | "contrato")
-              }
-            >
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder="Origem" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="contrato">Contrato</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                Tipo:
+              </span>
+              <div className="grid flex-1 grid-cols-3 rounded-lg border bg-muted/40 p-1 sm:w-[310px] sm:flex-none">
+                {[
+                  { value: "todos", label: "Todas" },
+                  { value: "normal", label: "Normais" },
+                  { value: "contrato", label: "Contratos" },
+                ].map((option) => (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    size="sm"
+                    variant={
+                      origemFiltro === option.value ? "secondary" : "ghost"
+                    }
+                    className="h-7 px-2 text-xs"
+                    aria-pressed={origemFiltro === option.value}
+                    onClick={() =>
+                      setOrigemFiltro(
+                        option.value as "todos" | "normal" | "contrato",
+                      )
+                    }
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           ) : undefined
         }
       />
@@ -1353,6 +1391,9 @@ export function FinanceiroTitulosPanel({
 
                 const summary = groupSummary(row.titulos);
                 const expanded = expandedGrupos.has(row.grupoId);
+                const isContrato = row.titulos.some((titulo) =>
+                  Boolean(titulo.platformContratoId),
+                );
                 return (
                   <Fragment key={row.grupoId}>
                     <TableRow>
@@ -1368,6 +1409,14 @@ export function FinanceiroTitulosPanel({
                             <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                           )}
                           <span className="truncate">{summary.descricao}</span>
+                          {isContrato ? (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 text-[10px]"
+                            >
+                              Contrato
+                            </Badge>
+                          ) : null}
                         </button>
                       </TableCell>
                       <TableCell className="truncate max-w-[140px]">
@@ -2468,6 +2517,99 @@ export function FinanceiroTitulosPanel({
               </div>
             ) : null}
           </div>
+        </FormDialogBody>
+      </FormDialogShell>
+
+      <FormDialogShell
+        open={!!detalhesTarget}
+        onOpenChange={(open) => !open && setDetalhesTarget(null)}
+        icon={<Eye className="w-5 h-5" />}
+        title="Detalhes da conta"
+        description={
+          detalhesTarget
+            ? detalhesTarget.platformContratoId
+              ? "Conta vinculada a contrato."
+              : "Conta financeira avulsa."
+            : undefined
+        }
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDetalhesTarget(null)}
+            >
+              Fechar
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          {detalhesTarget ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Descrição</p>
+                    <p className="font-medium">{detalhesTarget.descricao}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    {detalhesTarget.platformContratoId ? (
+                      <Badge variant="outline">Contrato</Badge>
+                    ) : (
+                      <Badge variant="secondary">Normal</Badge>
+                    )}
+                    <Badge
+                      variant="secondary"
+                      className={statusBadgeClass(detalhesTarget.status)}
+                    >
+                      {statusLabel(detalhesTarget.status)}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="mt-3 text-2xl font-semibold tabular-nums">
+                  {brl(detalhesTarget.valor)}
+                </p>
+              </div>
+
+              <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                <DetailItem
+                  label="Vencimento"
+                  value={formatDate(detalhesTarget.vencimento)}
+                />
+                <DetailItem
+                  label={tipo === "receber" ? "Parceiro" : "Fornecedor"}
+                  value={detalhesTarget.parceiro || "—"}
+                />
+                <DetailItem
+                  label={tipo === "receber" ? "Categoria" : "Centro de custo"}
+                  value={
+                    detalhesTarget.categoria || detalhesTarget.centro || "—"
+                  }
+                />
+                <DetailItem
+                  label="Parcela"
+                  value={detalhesTarget.parcela || "—"}
+                />
+                {detalhesTarget.dataPagamento ? (
+                  <>
+                    <DetailItem
+                      label={
+                        tipo === "receber"
+                          ? "Data do recebimento"
+                          : "Data do pagamento"
+                      }
+                      value={formatDate(detalhesTarget.dataPagamento)}
+                    />
+                    <DetailItem
+                      label="Forma de pagamento"
+                      value={detalhesTarget.formaPagamento || "—"}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </FormDialogBody>
       </FormDialogShell>
 

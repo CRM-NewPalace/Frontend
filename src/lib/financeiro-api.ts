@@ -227,10 +227,12 @@ export async function deleteMovimento(id: string): Promise<void> {
 export async function fetchTitulos(
   tipo?: "receber" | "pagar",
   grupoParcelasId?: string,
+  origem?: "normal" | "contrato",
 ): Promise<TituloFinanceiro[]> {
   const params = new URLSearchParams();
   if (tipo) params.set("tipo", tipo);
   if (grupoParcelasId) params.set("grupoParcelasId", grupoParcelasId);
+  if (origem) params.set("origem", origem);
   const qs = params.toString();
   return apiFetch<TituloFinanceiro[]>(
     `/financeiro/titulos${qs ? `?${qs}` : ""}`,
