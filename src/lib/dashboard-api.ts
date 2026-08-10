@@ -250,3 +250,44 @@ export async function fetchDashboardRanking(
     `/dashboard/ranking${dashboardQuery(params)}`,
   );
 }
+
+export type DashboardEsteiraCorretor = {
+  corretor: { id: string; name: string };
+  periodo: { inicio: string; fim: string };
+  indicadores: {
+    vgv: number;
+    conversao: number;
+    vendas: number;
+    contatos: number;
+    maisAntigo: { id: string; nome: string; diasParado: number } | null;
+  };
+  etapas: Array<{
+    id: string;
+    slug: string;
+    label: string;
+    color: string;
+    total: number;
+    contatos: Array<{
+      id: string;
+      nome: string;
+      stage: string;
+      prioridade: string;
+      createdAt: string;
+      updatedAt: string;
+      empreendimento: { id: string; nome: string } | null;
+    }>;
+  }>;
+};
+
+export async function fetchDashboardEsteiraCorretor(
+  corretorId: string,
+  params?: { mes?: number; ano?: number; origem?: string },
+) {
+  const query = new URLSearchParams();
+  if (params?.mes) query.set("mes", String(params.mes));
+  if (params?.ano) query.set("ano", String(params.ano));
+  if (params?.origem) query.set("origem", params.origem);
+  return apiFetch<DashboardEsteiraCorretor>(
+    `/dashboard/corretor/${corretorId}/esteira${query.size ? `?${query}` : ""}`,
+  );
+}

@@ -73,6 +73,10 @@ import { useLeads } from "@/lib/leads-store";
 import type { Lead } from "@/lib/crm-types";
 import { fetchFunilAtivo, type FunilEtapa } from "@/lib/funis-api";
 import {
+  fetchDashboardRanking,
+  type DashboardRankingCorretor,
+} from "@/lib/dashboard-api";
+import {
   createUser,
   deleteUser,
   fetchUserPresenceWeek,
@@ -1350,6 +1354,7 @@ function BrokerPipeline({
   const [stages, setStages] = useState<FunilEtapa[]>([]);
   const [period, setPeriod] = useState<"all" | "month" | "30d">("month");
   const [stageFilter, setStageFilter] = useState("__all__");
+  const [metrics, setMetrics] = useState<DashboardRankingCorretor | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -1370,6 +1375,29 @@ function BrokerPipeline({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const today = new Date();
+    let active = true;
+    void fetchDashboardRanking({
+      mes: today.getMonth() + 1,
+      ano: today.getFullYear(),
+    })
+      .then((ranking) => {
+        if (active) {
+          setMetrics(
+            ranking.corretores.find((item) => item.corretorId === brokerId) ??
+              null,
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setMetrics(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [brokerId]);
 
   const brokerLeads = useMemo(() => {
     const now = new Date();
@@ -1401,19 +1429,46 @@ function BrokerPipeline({
     );
   }, [brokerLeads, stages]);
 
+  const oldestLead = useMemo(
+    () =>
+      brokerLeads.reduce<Lead | null>((oldest, lead) => {
+        if (!oldest) return lead;
+        return new Date(lead.updatedAt) < new Date(oldest.updatedAt)
+          ? lead
+          : oldest;
+      }, null),
+    [brokerLeads],
+  );
+  const oldestDays = oldestLead
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - new Date(oldestLead.updatedAt).getTime()) /
+            (24 * 60 * 60 * 1000),
+        ),
+      )
+    : 0;
+  const money = (value: number) =>
+    value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
   return (
     <FormSection
       icon={<Kanban className="w-3.5 h-3.5 text-primary" />}
       title="Esteira do corretor"
     >
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          {brokerLeads.length} contato{brokerLeads.length === 1 ? "" : "s"}{" "}
-          no período selecionado.
-        </p>
-        <div className="flex flex-wrap gap-2">
+      <div className="rounded-xl bg-slate-950 p-3 text-slate-50">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide">
+              Minha esteira
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Visão comercial do corretor no período selecionado
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
           <Select value={period} onValueChange={(value) => setPeriod(value as typeof period)}>
-            <SelectTrigger className="h-8 w-32 text-xs">
+            <SelectTrigger className="h-8 w-32 border-slate-700 bg-slate-900 text-xs text-slate-50">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1423,7 +1478,7 @@ function BrokerPipeline({
             </SelectContent>
           </Select>
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="h-8 w-36 text-xs">
+            <SelectTrigger className="h-8 w-36 border-slate-700 bg-slate-900 text-xs text-slate-50">
               <SelectValue placeholder="Todas as etapas" />
             </SelectTrigger>
             <SelectContent>
@@ -1435,6 +1490,56 @@ function BrokerPipeline({
               ))}
             </SelectContent>
           </Select>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <PipelineMetric
+            label="VGV do mês"
+            value={money(metrics?.vgv.valor ?? 0)}
+          />
+          <PipelineMetric
+            label="Conversão"
+            value={`${(metrics?.taxaConversao.valor ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
+          />
+          <PipelineMetric
+            label="Vendas"
+            value={String(metrics?.vendas.valor ?? 0)}
+          />
+          <PipelineMetric
+            label="Mais antiga parada"
+            value={oldestLead ? `${oldestDays}d` : "—"}
+          />
+        </div>
+        <div className="mt-4 flex min-w-max items-start gap-1 overflow-x-auto pb-1">
+          {visibleStages.map((stage, index) => {
+            const count = brokerLeads.filter((lead) => lead.stage === stage.slug).length;
+            return (
+              <div key={stage.id} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setStageFilter((current) =>
+                      current === stage.slug ? "__all__" : stage.slug,
+                    )
+                  }
+                  className={cn(
+                    "flex w-20 flex-col items-center gap-1 text-center",
+                    stageFilter === stage.slug && "text-emerald-300",
+                  )}
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-cyan-400 bg-slate-900 text-base font-bold">
+                    {count}
+                  </span>
+                  <span className="max-w-20 truncate text-[9px] font-semibold uppercase">
+                    {stage.label}
+                  </span>
+                </button>
+                {index < visibleStages.length - 1 ? (
+                  <span className="mb-5 h-0.5 w-5 bg-cyan-500/70" />
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -1475,5 +1580,16 @@ function BrokerPipeline({
         })}
       </div>
     </FormSection>
+  );
+}
+
+function PipelineMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2">
+      <p className="text-[9px] uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-sm font-bold text-amber-300">{value}</p>
+    </div>
   );
 }
