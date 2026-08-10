@@ -1475,19 +1475,19 @@ function BrokerPipeline({
       icon={<Kanban className="w-3.5 h-3.5 text-primary" />}
       title="Esteira do corretor"
     >
-      <div className="rounded-xl bg-slate-950 p-3 text-slate-50">
+      <div className="rounded-xl border bg-card p-2.5 text-foreground shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold uppercase tracking-wide">
               Minha esteira
             </p>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[10px] text-muted-foreground">
               Visão comercial do corretor no período selecionado
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
           <Select value={period} onValueChange={(value) => setPeriod(value as typeof period)}>
-            <SelectTrigger className="h-8 w-32 border-slate-700 bg-slate-900 text-xs text-slate-50">
+            <SelectTrigger className="h-7 w-28 bg-background text-[11px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1497,7 +1497,7 @@ function BrokerPipeline({
             </SelectContent>
           </Select>
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="h-8 w-36 border-slate-700 bg-slate-900 text-xs text-slate-50">
+            <SelectTrigger className="h-7 w-32 bg-background text-[11px]">
               <SelectValue placeholder="Todas as etapas" />
             </SelectTrigger>
             <SelectContent>
@@ -1511,7 +1511,7 @@ function BrokerPipeline({
           </Select>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
           <PipelineMetric
             label="VGV do mês"
             value={money(metrics?.indicadores.vgv ?? 0)}
@@ -1535,7 +1535,7 @@ function BrokerPipeline({
             }
           />
         </div>
-        <div className="mt-4 flex min-w-max items-start gap-1 overflow-x-auto pb-1">
+        <div className="mt-3 flex w-full items-start justify-between gap-0">
           {visibleStages.map((stage, index) => {
             const count =
               metrics?.etapas.find((item) => item.slug === stage.slug)?.total ??
@@ -1573,7 +1573,7 @@ function BrokerPipeline({
               },
             ][index % 6]!;
             return (
-              <div key={stage.id} className="flex items-center">
+              <div key={stage.id} className="flex flex-1 items-center last:flex-none">
                 <button
                   type="button"
                   onClick={() =>
@@ -1582,29 +1582,29 @@ function BrokerPipeline({
                     )
                   }
                   className={cn(
-                    "group flex w-24 flex-col items-center gap-1.5 text-center",
+                    "group flex w-20 shrink-0 flex-col items-center gap-1 text-center",
                     stageFilter === stage.slug && "scale-105",
                   )}
                 >
                   <span
                     className={cn(
-                      "flex h-14 w-14 flex-col items-center justify-center rounded-full border-[3px] text-lg font-extrabold shadow-lg transition-transform group-hover:scale-110",
+                      "flex h-10 w-10 flex-col items-center justify-center rounded-full border-2 text-sm font-extrabold shadow-md transition-transform group-hover:scale-110",
                       theme.circle,
                     )}
                   >
                     <span className="leading-none">{count}</span>
-                    <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider opacity-75">
+                    <span className="text-[7px] font-bold uppercase tracking-wider opacity-75">
                       docs
                     </span>
                   </span>
-                  <span className="max-w-24 truncate text-[9px] font-bold uppercase tracking-wide text-slate-200">
+                  <span className="max-w-20 truncate text-[8px] font-bold uppercase tracking-wide text-muted-foreground">
                     {stage.label}
                   </span>
                 </button>
                 {index < visibleStages.length - 1 ? (
                   <span
                     className={cn(
-                      "mb-7 h-1 w-7 rounded-full bg-gradient-to-r",
+                      "mb-5 h-0.5 min-w-2 flex-1 rounded-full bg-gradient-to-r",
                       theme.line,
                     )}
                   />
@@ -1656,11 +1656,11 @@ function BrokerPipeline({
 
 function PipelineMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2">
-      <p className="text-[9px] uppercase tracking-wide text-slate-400">
+    <div className="rounded-md border bg-muted/40 px-2 py-1.5">
+      <p className="text-[8px] uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-0.5 truncate text-sm font-bold text-amber-300">{value}</p>
+      <p className="mt-0.5 truncate text-xs font-bold text-primary">{value}</p>
     </div>
   );
 }
