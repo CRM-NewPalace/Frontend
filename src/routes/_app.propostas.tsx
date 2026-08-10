@@ -88,9 +88,11 @@ import { isStatusAprovadoDoc } from "@/lib/documentacao-status";
 import {
   createProposta,
   deleteProposta,
+  fetchEnderecoPorCep,
   fetchPropostas,
   formatPropostaDate,
   PROPOSTA_COMPOSICAO_LABEL,
+  PROPOSTA_INFORMATIVA_KEYS,
   PROPOSTA_LISTA_KEYS,
   PROPOSTA_SIMPLES_KEYS,
   PROPOSTA_STATUS_LABEL,
@@ -290,12 +292,14 @@ function OptionalField({
   onChange,
   type = "text",
   placeholder,
+  onBlur,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: "text" | "date" | "email";
   placeholder?: string;
+  onBlur?: () => void;
 }) {
   return (
     <div className="space-y-1.5">
@@ -304,6 +308,7 @@ function OptionalField({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder}
       />
     </div>
@@ -384,6 +389,14 @@ function PropostaFormPreview({
             <span className="text-muted-foreground">Valor negociado</span>
             <strong>{form.valor ? `R$ ${form.valor}` : "----"}</strong>
           </div>
+          {form.parcelaCaixa ? (
+            <div className="mt-2 flex justify-between border-t pt-2 text-xs">
+              <span className="text-muted-foreground">
+                Parcela Caixa (informativo)
+              </span>
+              <strong>R$ {form.parcelaCaixa}</strong>
+            </div>
+          ) : null}
         </div>
       </div>
     </aside>
@@ -417,7 +430,12 @@ function expandParcelas(p: ParcelasForm): number[] {
 
 function formComposicaoTotal(form: FormState): number {
   const simples = PROPOSTA_SIMPLES_KEYS.reduce(
-    (sum, key) => sum + moneyOrZero(form[key]),
+    (sum, key) =>
+      PROPOSTA_INFORMATIVA_KEYS.includes(
+        key as (typeof PROPOSTA_INFORMATIVA_KEYS)[number],
+      )
+        ? sum
+        : sum + moneyOrZero(form[key]),
     0,
   );
   const listas = PROPOSTA_LISTA_KEYS.reduce(
@@ -695,6 +713,7 @@ function Page() {
   const [formSection, setFormSection] =
     useState<PropostaFormSection>("usuario");
   const [saving, setSaving] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [whatsAppTarget, setWhatsAppTarget] = useState<Proposta | null>(null);
@@ -1007,6 +1026,36 @@ function Page() {
       construtoraId: lead?.construtoraId || f.construtoraId,
       empreendimentoId: lead?.empreendimentoId || f.empreendimentoId,
     }));
+  }
+
+  async function buscarCepResidencial() {
+    const digits = form.clienteCepResidencial.replace(/\D/g, "");
+    if (digits.length !== 8 || cepLoading) return;
+
+    setCepLoading(true);
+    try {
+      const endereco = await fetchEnderecoPorCep(digits);
+      setForm((current) => ({
+        ...current,
+        clienteCepResidencial: endereco.cep || current.clienteCepResidencial,
+        clienteEnderecoResidencial:
+          endereco.endereco || current.clienteEnderecoResidencial,
+        clienteBairroResidencial:
+          endereco.bairro || current.clienteBairroResidencial,
+        clienteCidadeResidencial:
+          endereco.cidade || current.clienteCidadeResidencial,
+        clienteUfResidencial: endereco.uf || current.clienteUfResidencial,
+      }));
+      toast.success("Endereço preenchido a partir do CEP.");
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "Não foi possível consultar o CEP.",
+      );
+    } finally {
+      setCepLoading(false);
+    }
   }
 
   async function onSubmit(e: FormEvent) {
@@ -1519,6 +1568,13 @@ function Page() {
                 </div>
                 <div className="divide-y divide-border/60 rounded-lg border border-border/60">
                   {PROPOSTA_SIMPLES_KEYS.map((key) => {
+                    if (
+                      PROPOSTA_INFORMATIVA_KEYS.includes(
+                        key as (typeof PROPOSTA_INFORMATIVA_KEYS)[number],
+                      )
+                    ) {
+                      return null;
+                    }
                     const value = selected[key];
                     if (value == null) return null;
                     return (
@@ -1560,8 +1616,21 @@ function Page() {
                       </div>
                     );
                   })}
+                  {selected.parcelaCaixa != null ? (
+                    <div className="flex items-center justify-between gap-3 bg-muted/30 px-3 py-2.5">
+                      <span className="text-sm text-muted-foreground">
+                        Parcela Caixa (informativo)
+                      </span>
+                      <span className="text-sm font-medium tabular-nums">
+                        {brl(selected.parcelaCaixa)}
+                      </span>
+                    </div>
+                  ) : null}
                   {!PROPOSTA_SIMPLES_KEYS.some(
-                    (key) => selected[key] != null,
+                    (key) =>
+                      !PROPOSTA_INFORMATIVA_KEYS.includes(
+                        key as (typeof PROPOSTA_INFORMATIVA_KEYS)[number],
+                      ) && selected[key] != null,
                   ) &&
                   !PROPOSTA_LISTA_KEYS.some(
                     (key) => (selected[key] ?? []).length > 0,
@@ -2040,11 +2109,19 @@ function Page() {
                     }
                   />
                   <OptionalField
-                    label="CEP"
+                    label={cepLoading ? "CEP — consultando..." : "CEP"}
                     value={form.clienteCepResidencial}
                     onChange={(clienteCepResidencial) =>
-                      setForm((f) => ({ ...f, clienteCepResidencial }))
+                      setForm((f) => ({
+                        ...f,
+                        clienteCepResidencial: digitsOnly(
+                          clienteCepResidencial,
+                          8,
+                        ).replace(/^(\d{5})(\d)/, "$1-$2"),
+                      }))
                     }
+                    onBlur={() => void buscarCepResidencial()}
+                    placeholder="00000-000"
                   />
                   <div className="space-y-1.5">
                     <Label>Cobrança neste endereço?</Label>

@@ -117,6 +117,8 @@ export const PROPOSTA_SIMPLES_KEYS = [
 ] as const;
 
 export type PropostaSimplesKey = (typeof PROPOSTA_SIMPLES_KEYS)[number];
+/** Campos exibidos na composição financeira, mas fora do valor negociado. */
+export const PROPOSTA_INFORMATIVA_KEYS = ["parcelaCaixa"] as const;
 
 /** Campos com várias parcelas. */
 export const PROPOSTA_LISTA_KEYS = [
@@ -139,7 +141,7 @@ export const PROPOSTA_COMPOSICAO_LABEL: Record<
   fgts: "FGTS",
   moraBem: "Mora Bem",
   mcmv: "MCMV",
-  parcelaCaixa: "Parcela Caixa",
+  parcelaCaixa: "Parcela Caixa (informativo)",
   financiamento: "Financiamento",
 };
 
@@ -152,7 +154,12 @@ export function propostaComposicaoTotal(
   p: Pick<Proposta, PropostaSimplesKey | PropostaListaKey>,
 ): number {
   const simples = PROPOSTA_SIMPLES_KEYS.reduce(
-    (sum, key) => sum + (p[key] ?? 0),
+    (sum, key) =>
+      PROPOSTA_INFORMATIVA_KEYS.includes(
+        key as (typeof PROPOSTA_INFORMATIVA_KEYS)[number],
+      )
+        ? sum
+        : sum + (p[key] ?? 0),
     0,
   );
   const listas = PROPOSTA_LISTA_KEYS.reduce(
@@ -234,6 +241,20 @@ export type CreatePropostaInput = {
 };
 
 export type UpdatePropostaInput = Partial<CreatePropostaInput>;
+
+export type EnderecoCep = {
+  cep: string;
+  endereco: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+};
+
+export async function fetchEnderecoPorCep(cep: string): Promise<EnderecoCep> {
+  const digits = cep.replace(/\D/g, "");
+  return apiFetch<EnderecoCep>(`/propostas/cep/${digits}`);
+}
 
 export async function fetchPropostas(params?: {
   corretorId?: string;
