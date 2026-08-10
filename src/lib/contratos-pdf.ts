@@ -27,6 +27,8 @@ type LoadedLogo = {
   format: "PNG" | "JPEG";
   width: number;
   height: number;
+  /** HEX predominante obtido dos pixels da própria logo. */
+  primaryHex: string | null;
 };
 
 type Rgb = [number, number, number];
@@ -39,6 +41,75 @@ function parseHexColor(value?: string | null): Rgb | null {
     Number.parseInt(hex.slice(2, 4), 16),
     Number.parseInt(hex.slice(4, 6), 16),
   ];
+}
+
+function rgbToHex([r, g, b]: Rgb) {
+  return `#${[r, g, b]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase()}`;
+}
+
+/**
+ * Ignora transparência, branco/preto e tons pouco saturados para encontrar
+ * a cor de identidade visual predominante da imagem da logo.
+ */
+function extractLogoPrimaryHex(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+) {
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const buckets = new Map<
+    string,
+    { score: number; red: number; green: number; blue: number; count: number }
+  >();
+
+  for (let index = 0; index < data.length; index += 4) {
+    const red = data[index] ?? 0;
+    const green = data[index + 1] ?? 0;
+    const blue = data[index + 2] ?? 0;
+    const alpha = data[index + 3] ?? 0;
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    const saturation = max ? (max - min) / max : 0;
+    const luminance = (red * 0.2126 + green * 0.7152 + blue * 0.0722) / 255;
+
+    if (
+      alpha < 96 ||
+      saturation < 0.22 ||
+      luminance < 0.12 ||
+      luminance > 0.94
+    ) {
+      continue;
+    }
+
+    const key = [red, green, blue]
+      .map((value) => Math.round(value / 24) * 24)
+      .join("-");
+    const score = saturation * (alpha / 255);
+    const bucket = buckets.get(key) ?? {
+      score: 0,
+      red: 0,
+      green: 0,
+      blue: 0,
+      count: 0,
+    };
+    bucket.score += score;
+    bucket.red += red * score;
+    bucket.green += green * score;
+    bucket.blue += blue * score;
+    bucket.count += score;
+    buckets.set(key, bucket);
+  }
+
+  const primary = [...buckets.values()].sort((a, b) => b.score - a.score)[0];
+  if (!primary || !primary.count) return null;
+  return rgbToHex([
+    Math.round(primary.red / primary.count),
+    Math.round(primary.green / primary.count),
+    Math.round(primary.blue / primary.count),
+  ]);
 }
 
 function absoluteAssetUrl(src: string) {
@@ -74,6 +145,7 @@ async function loadLogoForPdf(src: string): Promise<LoadedLogo | null> {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(img, 0, 0);
+    const primaryHex = extractLogoPrimaryHex(ctx, w, h);
     const jpeg =
       /\.jpe?g($|\?)/i.test(url) || url.startsWith("data:image/jpeg");
     return {
@@ -81,6 +153,7 @@ async function loadLogoForPdf(src: string): Promise<LoadedLogo | null> {
       format: jpeg ? "JPEG" : "PNG",
       width: w,
       height: h,
+      primaryHex,
     };
   } catch {
     return null;
@@ -303,7 +376,10 @@ async function pdfCartaCancelamento(
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const color = parseHexColor(opts?.primaryColor) ?? [30, 30, 30];
+  const logo = opts?.logoUrl?.trim()
+    ? await loadLogoForPdf(opts.logoUrl)
+    : null;
+  const color = parseHexColor(logo?.primaryHex) ?? [30, 30, 30];
   doc.setDrawColor(...color);
   doc.setLineWidth(1.3);
   doc.rect(16, 16, pageW - 32, pageH - 32);
@@ -311,10 +387,7 @@ async function pdfCartaCancelamento(
   doc.rect(23, 23, pageW - 46, pageH - 46);
 
   let y = 40;
-  if (opts?.logoUrl?.trim()) {
-    const logo = await loadLogoForPdf(opts.logoUrl);
-    if (logo) y = writeLogo(doc, logo, y);
-  }
+  if (logo) y = writeLogo(doc, logo, y);
   y = writeTitle(doc, "CARTA DE CANCELAMENTO", y + 6, color);
   drawOrnament(doc, y, color);
   y += 38;
