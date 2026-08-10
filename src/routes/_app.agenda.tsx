@@ -165,10 +165,10 @@ function AgendaPage() {
   const user = getSession();
   const isPlatformAdmin = user?.role === "super_admin";
   const isManager = user ? canViewTeamData(user.role) : false;
-  const isAdmin = user?.role === "admin" || isPlatformAdmin;
+  const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
   /** Fila corretor→gerente: só gerente aprova e corretor acompanha. Admin não participa. */
-  const showSolicitacoes = !isAdmin;
+  const showSolicitacoes = !isAdmin && !isPlatformAdmin;
   const { leads, assignees, loading: leadsLoading } = useLeads();
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(
@@ -424,9 +424,18 @@ function AgendaPage() {
 
   function validateForm(): CreateAgendamentoInput | null {
     const isAdminEvent = user?.role === "admin";
-    const leadId = isAdminEvent ? null : form.leadId || form.clienteId || null;
+    const isPersonalPlatformAgenda = user?.role === "super_admin";
+    const leadId =
+      isAdminEvent || isPersonalPlatformAgenda
+        ? null
+        : form.leadId || form.clienteId || null;
 
-    if (!isAdminEvent && form.escopo === "com_gerente" && !leadId) {
+    if (
+      !isAdminEvent &&
+      !isPersonalPlatformAgenda &&
+      form.escopo === "com_gerente" &&
+      !leadId
+    ) {
       toast.error(
         "Selecione um lead ou cliente para compromissos com o gerente.",
       );
@@ -463,7 +472,8 @@ function AgendaPage() {
       leadId,
       titulo: form.titulo.trim(),
       tipo: form.tipo,
-      escopo: isAdminEvent ? "pessoal" : form.escopo,
+      escopo:
+        isAdminEvent || isPersonalPlatformAgenda ? "pessoal" : form.escopo,
       ...(isAdminEvent
         ? {
             alvoTipo: form.alvoTipo === "nenhum" ? "todos" : form.alvoTipo,
@@ -1190,7 +1200,7 @@ function AgendaPage() {
                   ) : null}
                 </div>
               </FormSection>
-            ) : (
+            ) : !isPlatformAdmin ? (
               <FormSection
                 title="Contato (opcional)"
                 icon={<User className="w-4 h-4 text-primary" />}
@@ -1246,7 +1256,7 @@ function AgendaPage() {
                   </div>
                 </div>
               </FormSection>
-            )}
+            ) : null}
 
             <FormSection
               title="Detalhes"
@@ -1264,7 +1274,10 @@ function AgendaPage() {
               </div>
 
               <div
-                className={cn("grid gap-4", isAdmin ? "" : "sm:grid-cols-2")}
+                className={cn(
+                  "grid gap-4",
+                  isAdmin || isPlatformAdmin ? "" : "sm:grid-cols-2",
+                )}
               >
                 <div className="space-y-2">
                   <Label>Tipo</Label>
@@ -1275,14 +1288,15 @@ function AgendaPage() {
                       setForm((prev) => ({
                         ...prev,
                         tipo,
-                        escopo: isAdmin
-                          ? prev.escopo
-                          : tipo === "visita" || tipo === "reuniao"
-                            ? "com_gerente"
-                            : prev.escopo === "com_gerente" &&
-                                (tipo === "tarefa" || tipo === "ligacao")
-                              ? "pessoal"
-                              : prev.escopo,
+                        escopo:
+                          isAdmin || isPlatformAdmin
+                            ? prev.escopo
+                            : tipo === "visita" || tipo === "reuniao"
+                              ? "com_gerente"
+                              : prev.escopo === "com_gerente" &&
+                                  (tipo === "tarefa" || tipo === "ligacao")
+                                ? "pessoal"
+                                : prev.escopo,
                       }));
                     }}
                   >
@@ -1298,7 +1312,7 @@ function AgendaPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {!isAdmin ? (
+                {!isAdmin && !isPlatformAdmin ? (
                   <div className="space-y-2">
                     <Label>Participação</Label>
                     <Select
