@@ -21,7 +21,7 @@ export function CategoriaSearchSelect({
   options,
   onChange,
   placeholder = "Buscar categoria…",
-  emptyLabel = "Cadastre no Centro de despesas",
+  emptyLabel = "Nenhum item cadastrado",
   disabled,
 }: {
   value: string;

@@ -201,16 +201,6 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     label: "Fluxo de caixa",
     icon: Banknote,
   },
-  {
-    to: "/financeiro/centro-recebimentos",
-    label: "Centro de recebimentos",
-    icon: Tags,
-  },
-  {
-    to: "/financeiro/centro-despesas",
-    label: "Centro de despesas",
-    icon: FolderKanban,
-  },
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
 ];
 

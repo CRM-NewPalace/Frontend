@@ -11,6 +11,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import { fetchVisaoGeral } from "@/lib/financeiro-api";
 import {
   brl,
@@ -82,6 +83,7 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 
 function Page() {
   const navigate = useNavigate();
+  const isPlatformAdmin = getSession()?.role === "super_admin";
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState(EMPTY_KPIS);
@@ -284,11 +286,13 @@ function Page() {
             {pieData.length === 0 ? (
               <div className="flex h-70 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <p>Sem despesas por centro neste mês.</p>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/financeiro/centro-despesas">
-                    Abrir centro de despesas
-                  </Link>
-                </Button>
+                {!isPlatformAdmin ? (
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/financeiro/centro-despesas">
+                      Abrir centro de despesas
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
             ) : (
               <ResponsiveChartShell>

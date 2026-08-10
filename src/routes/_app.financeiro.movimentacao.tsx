@@ -202,11 +202,14 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const isPlatform = getSession()?.role === "super_admin";
       const [movs, pars, desp, rec] = await Promise.all([
         fetchMovimentos(),
         fetchParceiros(),
-        fetchDespesaTipos(),
-        fetchRecebimentoTipos(),
+        isPlatform ? Promise.resolve([] as DespesaTipo[]) : fetchDespesaTipos(),
+        isPlatform
+          ? Promise.resolve([] as DespesaTipo[])
+          : fetchRecebimentoTipos(),
       ]);
       setItems(movs);
       setParceiros(pars.filter((p) => p.ativo));
@@ -323,6 +326,16 @@ function Page() {
         setQuickKind(null);
         return;
       }
+      if (isPlatform) {
+        setField("categoria", nome);
+        setQuickKind(null);
+        toast.success(
+          form.tipo === "entrada"
+            ? "Categoria aplicada ao lançamento."
+            : "Centro de custo aplicado ao lançamento.",
+        );
+        return;
+      }
       setQuickSaving(true);
       try {
         const created =
@@ -354,8 +367,8 @@ function Page() {
         setQuickKind(null);
         toast.success(
           form.tipo === "entrada"
-            ? "Categoria cadastrada no Centro de recebimentos."
-            : "Centro cadastrado no Centro de despesas.",
+            ? "Categoria cadastrada."
+            : "Centro de custo cadastrado.",
         );
       } catch (err) {
         toast.error(
@@ -789,9 +802,13 @@ function Page() {
                     }
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    {form.tipo === "entrada"
-                      ? "Cadastro do Centro de recebimentos."
-                      : "Cadastro do Centro de despesas."}
+                    {isPlatform
+                      ? form.tipo === "entrada"
+                        ? "Categoria usada nas entradas."
+                        : "Centro de custo usado nas saídas."
+                      : form.tipo === "entrada"
+                        ? "Cadastro do Centro de recebimentos."
+                        : "Cadastro do Centro de despesas."}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -882,7 +899,11 @@ function Page() {
         }
         description={
           quickKind === "categoria"
-            ? "Cadastra no Centro de despesas e fica disponível em títulos e movimentação."
+            ? isPlatform
+              ? "Fica disponível em títulos e movimentação."
+              : form.tipo === "entrada"
+                ? "Cadastra no Centro de recebimentos e fica disponível em títulos e movimentação."
+                : "Cadastra no Centro de despesas e fica disponível em títulos e movimentação."
             : "Criação rápida para usar neste lançamento."
         }
         footer={

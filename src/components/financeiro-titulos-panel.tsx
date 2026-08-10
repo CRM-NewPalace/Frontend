@@ -288,9 +288,13 @@ export function FinanceiroTitulosPanel({
   const [categoriaFiltro, setCategoriaFiltro] = useState("todos");
   const catalogLabel = tipo === "receber" ? "Categoria" : "Centro de custo";
   const catalogHint =
-    tipo === "receber"
-      ? "Cadastro do Centro de recebimentos."
-      : "Cadastro do Centro de despesas.";
+    getSession()?.role === "super_admin"
+      ? tipo === "receber"
+        ? "Categoria usada nos títulos a receber."
+        : "Centro de custo usado nos títulos a pagar."
+      : tipo === "receber"
+        ? "Cadastro do Centro de recebimentos."
+        : "Cadastro do Centro de despesas.";
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "edit-grupo">(
     "create",
@@ -372,7 +376,11 @@ export function FinanceiroTitulosPanel({
       const [titulos, pars, tipos, tenantList] = await Promise.all([
         fetchTitulos(tipo),
         fetchParceiros(),
-        tipo === "receber" ? fetchRecebimentoTipos() : fetchDespesaTipos(),
+        platform
+          ? Promise.resolve([] as DespesaTipo[])
+          : tipo === "receber"
+            ? fetchRecebimentoTipos()
+            : fetchDespesaTipos(),
         platform && tipo === "receber" ? fetchTenants() : Promise.resolve([]),
       ]);
       setItems(titulos);
@@ -485,6 +493,17 @@ export function FinanceiroTitulosPanel({
         setQuickKind(null);
         return;
       }
+      // Plataforma não usa módulos de centro: só aplica o rótulo no título.
+      if (isPlatformAdmin) {
+        setForm((f) => ({ ...f, ...catalogFields(nome) }));
+        setQuickKind(null);
+        toast.success(
+          tipo === "receber"
+            ? "Categoria aplicada ao título."
+            : "Centro de custo aplicado ao título.",
+        );
+        return;
+      }
       setQuickSaving(true);
       try {
         const created =
@@ -508,8 +527,8 @@ export function FinanceiroTitulosPanel({
         setQuickKind(null);
         toast.success(
           tipo === "receber"
-            ? "Categoria cadastrada no Centro de recebimentos."
-            : "Centro de custo cadastrado no Centro de despesas.",
+            ? "Categoria cadastrada."
+            : "Centro de custo cadastrado.",
         );
       } catch (err) {
         toast.error(
@@ -2012,8 +2031,8 @@ export function FinanceiroTitulosPanel({
         description={
           quickKind === "categoria"
             ? tipo === "receber"
-              ? "Cadastra no Centro de recebimentos e fica disponível em Contas a receber."
-              : "Cadastra no Centro de despesas e fica disponível em Contas a pagar."
+              ? "Fica disponível em Contas a receber."
+              : "Fica disponível em Contas a pagar."
             : "Criação rápida para usar neste título."
         }
         footer={
