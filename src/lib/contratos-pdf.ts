@@ -14,6 +14,31 @@ function formatDateBr(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
+function formatCartaDate(values: Values) {
+  if (values.data?.trim()) {
+    const [year, month, day] = values.data.slice(0, 10).split("-");
+    const monthIndex = Number(month) - 1;
+    const months = [
+      "JANEIRO",
+      "FEVEREIRO",
+      "MARÇO",
+      "ABRIL",
+      "MAIO",
+      "JUNHO",
+      "JULHO",
+      "AGOSTO",
+      "SETEMBRO",
+      "OUTUBRO",
+      "NOVEMBRO",
+      "DEZEMBRO",
+    ];
+    if (year && day && Number.isInteger(monthIndex) && months[monthIndex]) {
+      return `${day} DE ${months[monthIndex]} DE ${year}`;
+    }
+  }
+  return `${v(values, "dia")} DE ${v(values, "mes").toUpperCase()} DE 20${v(values, "ano")}`;
+}
+
 function safeName(raw: string) {
   return raw
     .normalize("NFD")
@@ -393,6 +418,31 @@ function writeSignature(
   return y + 8;
 }
 
+function writeCenteredSignature(
+  doc: jsPDF,
+  y: number,
+  label: string,
+  name: string,
+  color: Rgb,
+) {
+  const pageW = doc.internal.pageSize.getWidth();
+  y = ensureSpace(doc, y, 76);
+  y += 20;
+  const lineW = 255;
+  const x = (pageW - lineW) / 2;
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.7);
+  doc.line(x, y, x + lineW, y);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text(label, pageW / 2, y + 13, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(name, pageW / 2, y + 26, { align: "center" });
+  return y + 48;
+}
+
 async function pdfCartaCancelamento(
   values: Values,
   opts?: { logoUrl?: string | null; primaryColor?: string | null },
@@ -438,7 +488,7 @@ async function pdfCartaCancelamento(
   doc.setFontSize(10);
   doc.setTextColor(30, 30, 30);
   doc.text(
-    `${v(values, "cidade").toUpperCase()}, ${v(values, "dia")} DE ${v(values, "mes").toUpperCase()} DE 20${v(values, "ano")}`,
+    `${v(values, "cidade").toUpperCase()}, ${formatCartaDate(values)}`,
     pageW / 2,
     y,
     { align: "center" },
@@ -515,20 +565,18 @@ async function pdfParentescoSem(
   );
 
   y = writeParagraph(doc, y, `Data: ${formatDateBr(values.data)}`);
-  y = writeSignature(
+  y = writeCenteredSignature(
     doc,
     y,
     "Assinatura do parente",
     v(values, "nomeParente"),
-    undefined,
     header.color,
   );
-  y = writeSignature(
+  y = writeCenteredSignature(
     doc,
     y,
     "Assinatura do proponente",
     v(values, "nomeProponente"),
-    undefined,
     header.color,
   );
 
@@ -600,28 +648,25 @@ async function pdfParentescoCom(
   );
 
   y = writeParagraph(doc, y, `Data: ${formatDateBr(values.data)}`);
-  y = writeSignature(
+  y = writeCenteredSignature(
     doc,
     y,
     "Assinatura do parente",
     v(values, "nomeParente"),
-    undefined,
     header.color,
   );
-  y = writeSignature(
+  y = writeCenteredSignature(
     doc,
     y,
     "Assinatura do cônjuge do parente",
     v(values, "nomeConjuge"),
-    undefined,
     header.color,
   );
-  y = writeSignature(
+  y = writeCenteredSignature(
     doc,
     y,
     "Assinatura do proponente",
     v(values, "nomeProponente"),
-    undefined,
     header.color,
   );
 

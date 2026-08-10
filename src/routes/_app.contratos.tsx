@@ -62,6 +62,55 @@ function prefillFromTenant(
   return values;
 }
 
+function ContratoPreview({
+  template,
+  values,
+  logoUrl,
+}: {
+  template: ContratoTemplate;
+  values: Record<string, string>;
+  logoUrl: string;
+}) {
+  return (
+    <aside className="sticky top-3 self-start rounded-xl border bg-background p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between border-b pb-2">
+        <div>
+          <div className="text-sm font-semibold">Prévia do documento</div>
+          <div className="text-xs text-muted-foreground">
+            Atualizada enquanto você preenche
+          </div>
+        </div>
+        <FileText className="size-4 text-muted-foreground" />
+      </div>
+      <div className="aspect-[210/297] min-h-[480px] overflow-hidden rounded border bg-card p-6 text-foreground">
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt=""
+            className="mx-auto mb-5 h-12 max-w-36 object-contain"
+          />
+        ) : null}
+        <h3 className="text-center text-sm font-bold uppercase leading-snug">
+          {template.titulo}
+        </h3>
+        <div className="my-4 border-t" />
+        <div className="space-y-3 text-xs leading-relaxed">
+          {template.fields.map((field) => (
+            <div key={field.key}>
+              <div className="text-[10px] uppercase text-muted-foreground">
+                {field.label}
+              </div>
+              <div className="font-medium">
+                {values[field.key]?.trim() || "----"}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 function ContratosPage() {
   const { logoUrl, tenant } = useTenantTheme();
   const [selected, setSelected] = useState<ContratoTemplate | null>(null);
@@ -151,7 +200,7 @@ function ContratosPage() {
         icon={<FileText className="size-5" />}
         title={selected?.titulo ?? "Contrato"}
         description="Preencha os campos. O PDF será baixado ao gerar."
-        className="max-w-2xl"
+        className="max-w-6xl"
         footer={
           <FormDialogActions>
             <Button
@@ -179,7 +228,7 @@ function ContratosPage() {
             onSubmit={handleGenerate}
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
-            <FormDialogBody>
+            <FormDialogBody className="lg:grid lg:grid-cols-[minmax(22rem,0.85fr)_minmax(28rem,1.15fr)] lg:items-start lg:gap-5 lg:space-y-0">
               <FormSection title="Dados do documento">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {selected.fields.map((field) => (
@@ -223,6 +272,13 @@ function ContratosPage() {
                   ))}
                 </div>
               </FormSection>
+              <div className="hidden lg:block">
+                <ContratoPreview
+                  template={selected}
+                  values={form}
+                  logoUrl={logoUrl}
+                />
+              </div>
             </FormDialogBody>
           </form>
         )}

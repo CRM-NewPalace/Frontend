@@ -1,4 +1,5 @@
-export type ContratoFieldType = "text" | "cpf" | "cnpj" | "phone" | "date" | "money";
+export type ContratoFieldType =
+  "text" | "cpf" | "cnpj" | "phone" | "date" | "money";
 
 export type ContratoField = {
   key: string;
@@ -30,7 +31,13 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
       "Solicitação de cancelamento de avaliação habitacional em construtora.",
     fields: [
       { key: "nome", label: "Nome completo", type: "text", required: true },
-      { key: "rg", label: "RG", type: "text", required: true, placeholder: "0000000" },
+      {
+        key: "rg",
+        label: "RG",
+        type: "text",
+        required: true,
+        placeholder: "0000000",
+      },
       { key: "cpf", label: "CPF", type: "cpf", required: true },
       {
         key: "cidade",
@@ -39,21 +46,7 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
         required: true,
         defaultValue: "Paulista",
       },
-      { key: "dia", label: "Dia", type: "text", required: true, placeholder: "07" },
-      {
-        key: "mes",
-        label: "Mês (por extenso)",
-        type: "text",
-        required: true,
-        placeholder: "agosto",
-      },
-      {
-        key: "ano",
-        label: "Ano (2 dígitos)",
-        type: "text",
-        required: true,
-        placeholder: "26",
-      },
+      { key: "data", label: "Data", type: "date", required: true },
     ],
   },
   {
@@ -68,7 +61,12 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
         type: "text",
         required: true,
       },
-      { key: "cpfParente", label: "CPF do parente", type: "cpf", required: true },
+      {
+        key: "cpfParente",
+        label: "CPF do parente",
+        type: "cpf",
+        required: true,
+      },
       {
         key: "estadoCivil",
         label: "Estado civil do parente",
@@ -110,7 +108,12 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
         type: "text",
         required: true,
       },
-      { key: "cpfParente", label: "CPF do parente", type: "cpf", required: true },
+      {
+        key: "cpfParente",
+        label: "CPF do parente",
+        type: "cpf",
+        required: true,
+      },
       {
         key: "estadoCivil",
         label: "Estado civil do parente",
