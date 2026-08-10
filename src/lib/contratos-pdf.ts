@@ -261,6 +261,30 @@ function drawOrnament(doc: jsPDF, y: number, color: Rgb) {
   doc.triangle(center, y - 5, center - 5, y, center, y + 5, "F");
 }
 
+async function startBrandedDocument(
+  doc: jsPDF,
+  title: string,
+  opts?: { logoUrl?: string | null },
+) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const logo = opts?.logoUrl?.trim()
+    ? await loadLogoForPdf(opts.logoUrl)
+    : null;
+  const color = parseHexColor(logo?.primaryHex) ?? [30, 30, 30];
+  doc.setDrawColor(...color);
+  doc.setLineWidth(1.3);
+  doc.rect(16, 16, pageW - 32, pageH - 32);
+  doc.setLineWidth(0.55);
+  doc.rect(23, 23, pageW - 46, pageH - 46);
+
+  let y = 40;
+  if (logo) y = writeLogo(doc, logo, y);
+  y = writeTitle(doc, title, y + 6, color);
+  drawOrnament(doc, y, color);
+  return { y: y + 28, color };
+}
+
 function ensureSpace(doc: jsPDF, y: number, need: number) {
   const pageH = doc.internal.pageSize.getHeight();
   if (y + need > pageH - 48) {
@@ -432,14 +456,17 @@ async function pdfCartaCancelamento(
   doc.save(`carta-cancelamento-${safeName(v(values, "nome"))}.pdf`);
 }
 
-function pdfParentescoSem(values: Values) {
+async function pdfParentescoSem(
+  values: Values,
+  opts?: { logoUrl?: string | null },
+) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  let y = 56;
-  y = writeTitle(
+  const header = await startBrandedDocument(
     doc,
     "DECLARAÇÃO DE PARENTESCO, RESIDÊNCIA E AUSÊNCIA DE RENDIMENTOS",
-    y,
+    opts,
   );
+  let y = header.y;
 
   y = writeRich(
     doc,
@@ -488,25 +515,37 @@ function pdfParentescoSem(values: Values) {
   );
 
   y = writeParagraph(doc, y, `Data: ${formatDateBr(values.data)}`);
-  y = writeSignature(doc, y, "Assinatura do parente", v(values, "nomeParente"));
+  y = writeSignature(
+    doc,
+    y,
+    "Assinatura do parente",
+    v(values, "nomeParente"),
+    undefined,
+    header.color,
+  );
   y = writeSignature(
     doc,
     y,
     "Assinatura do proponente",
     v(values, "nomeProponente"),
+    undefined,
+    header.color,
   );
 
   doc.save(`parentesco-sem-conjuge-${safeName(v(values, "nomeParente"))}.pdf`);
 }
 
-function pdfParentescoCom(values: Values) {
+async function pdfParentescoCom(
+  values: Values,
+  opts?: { logoUrl?: string | null },
+) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  let y = 56;
-  y = writeTitle(
+  const header = await startBrandedDocument(
     doc,
     "DECLARAÇÃO DE PARENTESCO, RESIDÊNCIA E AUSÊNCIA DE RENDIMENTOS",
-    y,
+    opts,
   );
+  let y = header.y;
 
   y = writeRich(
     doc,
@@ -561,18 +600,29 @@ function pdfParentescoCom(values: Values) {
   );
 
   y = writeParagraph(doc, y, `Data: ${formatDateBr(values.data)}`);
-  y = writeSignature(doc, y, "Assinatura do parente", v(values, "nomeParente"));
+  y = writeSignature(
+    doc,
+    y,
+    "Assinatura do parente",
+    v(values, "nomeParente"),
+    undefined,
+    header.color,
+  );
   y = writeSignature(
     doc,
     y,
     "Assinatura do cônjuge do parente",
     v(values, "nomeConjuge"),
+    undefined,
+    header.color,
   );
   y = writeSignature(
     doc,
     y,
     "Assinatura do proponente",
     v(values, "nomeProponente"),
+    undefined,
+    header.color,
   );
 
   doc.save(`parentesco-com-conjuge-${safeName(v(values, "nomeParente"))}.pdf`);
@@ -790,10 +840,10 @@ export async function downloadContratoPdf(
       await pdfCartaCancelamento(values, opts);
       break;
     case "parentesco-sem-conjuge":
-      pdfParentescoSem(values);
+      await pdfParentescoSem(values, opts);
       break;
     case "parentesco-com-conjuge":
-      pdfParentescoCom(values);
+      await pdfParentescoCom(values, opts);
       break;
     case "intermediacao":
       await pdfIntermediacao(values, opts?.logoUrl);
