@@ -1069,7 +1069,11 @@ async function buildPropostaPdfFormulario(
   y = section("PROPONENTE 01", y + 7);
   y = row(y, [
     { label: "Nome completo", value: p.clienteNome, fraction: 0.67 },
-    { label: "CPF", value: p.clienteCpf, fraction: 0.33 },
+    {
+      label: "CPF",
+      value: p.clienteCpf ? formatCpfCnpj(p.clienteCpf) : "----",
+      fraction: 0.33,
+    },
   ]);
   y = row(y, [
     { label: "Identidade (RG)", value: p.clienteRg, fraction: 0.3 },

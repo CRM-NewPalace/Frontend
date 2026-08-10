@@ -124,7 +124,7 @@ import {
   maskMoneyInput,
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
-import { cn } from "@/lib/utils";
+import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
   Check,
   CheckCircle2,
@@ -315,51 +315,51 @@ function PropostaFormPreview({
   total: number;
 }) {
   const line = (label: string, value: string) => (
-    <div className="border-b px-2 py-1.5 last:border-b-0">
-      <div className="text-[8px] uppercase tracking-wide text-muted-foreground">
+    <div className="border-b px-4 py-2 last:border-b-0">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
-      <div className="truncate text-[11px] font-medium">
+      <div className="truncate text-sm font-medium">
         {value.trim() || "----"}
       </div>
     </div>
   );
 
   return (
-    <aside className="sticky top-0 space-y-3 rounded-xl border bg-background p-3 shadow-sm">
+    <aside className="sticky top-0 space-y-3 rounded-xl border bg-background p-4 shadow-sm">
       <div className="flex items-center justify-between border-b pb-2">
         <div>
-          <div className="text-xs font-semibold">Prévia do relatório</div>
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-sm font-semibold">Prévia do relatório</div>
+          <div className="text-xs text-muted-foreground">
             Atualizada enquanto você preenche
           </div>
         </div>
-        <FileText className="h-4 w-4 text-muted-foreground" />
+        <FileText className="h-5 w-5 text-muted-foreground" />
       </div>
-      <div className="overflow-hidden rounded border bg-card text-foreground">
-        <div className="border-b px-2 py-2">
-          <div className="text-xs font-bold">PROPOSTA DE COMPRA</div>
-          <div className="text-[9px] text-muted-foreground">
+      <div className="aspect-[210/297] min-h-[450px] overflow-hidden rounded border bg-card text-foreground">
+        <div className="border-b px-4 py-3">
+          <div className="text-sm font-bold">PROPOSTA DE COMPRA</div>
+          <div className="text-xs text-muted-foreground">
             {form.clienteNome || "Cliente não informado"}
           </div>
         </div>
-        <div className="border-b px-2 py-1 text-[9px] font-bold">
+        <div className="border-b px-4 py-1.5 text-xs font-bold">
           IDENTIFICAÇÃO DO IMÓVEL
         </div>
         <div className="grid grid-cols-2">
           {line("Unidade", form.unidade)}
           {line("Valor contratual", form.valor ? `R$ ${form.valor}` : "")}
         </div>
-        <div className="border-y px-2 py-1 text-[9px] font-bold">
+        <div className="border-y px-4 py-1.5 text-xs font-bold">
           PROPONENTE 01
         </div>
         <div className="grid grid-cols-2">
           {line("Nome completo", form.clienteNome)}
-          {line("CPF", form.clienteCpf)}
+          {line("CPF", form.clienteCpf ? formatCpfCnpj(form.clienteCpf) : "")}
           {line("Celular", form.clienteTelefone)}
           {line("E-mail", form.clienteEmail)}
         </div>
-        <div className="border-y px-2 py-1 text-[9px] font-bold">ENDEREÇO</div>
+        <div className="border-y px-4 py-1.5 text-xs font-bold">ENDEREÇO</div>
         <div className="grid grid-cols-2">
           {line("Endereço", form.clienteEnderecoResidencial)}
           {line(
@@ -369,10 +369,10 @@ function PropostaFormPreview({
               .join(" / "),
           )}
         </div>
-        <div className="border-y px-2 py-1 text-[9px] font-bold">
+        <div className="border-y px-4 py-1.5 text-xs font-bold">
           PLANO DE PAGAMENTO
         </div>
-        <div className="px-2 py-2 text-[11px]">
+        <div className="px-4 py-3 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Total da composição</span>
             <strong>{brl(total)}</strong>
@@ -1695,7 +1695,7 @@ function Page() {
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
-        className="max-w-6xl"
+        className="max-w-7xl"
         icon={<FileText className="w-5 h-5" />}
         title={formMode === "create" ? "Nova proposta" : "Editar proposta"}
         description="Preencha os dados comerciais da proposta."
@@ -1727,7 +1727,7 @@ function Page() {
           </FormDialogActions>
         }
       >
-        <FormDialogBody className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-5 lg:space-y-0">
+        <FormDialogBody className="lg:grid lg:grid-cols-[minmax(20rem,0.75fr)_minmax(32rem,1.6fr)] lg:items-start lg:gap-5 lg:space-y-0">
           <form
             id="proposta-form"
             className="min-w-0 space-y-5"
@@ -1860,8 +1860,12 @@ function Page() {
                   label="CPF"
                   value={form.clienteCpf}
                   onChange={(clienteCpf) =>
-                    setForm((f) => ({ ...f, clienteCpf }))
+                    setForm((f) => ({
+                      ...f,
+                      clienteCpf: formatCpfCnpj(digitsOnly(clienteCpf, 11)),
+                    }))
                   }
+                  placeholder="000.000.000-00"
                 />
                 <OptionalField
                   label="Identidade (RG)"
