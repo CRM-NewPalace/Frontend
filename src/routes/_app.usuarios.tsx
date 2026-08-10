@@ -1465,6 +1465,10 @@ function BrokerPipeline({
     : 0;
   const money = (value: number) =>
     value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const selectedPipelineStage =
+    metrics?.etapas.find((stage) => stage.slug === stageFilter) ??
+    metrics?.etapas[0] ??
+    null;
 
   return (
     <FormSection
@@ -1611,44 +1615,40 @@ function BrokerPipeline({
         </div>
       </div>
 
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-        {visibleStages.map((stage) => {
-          const pipelineStage = metrics?.etapas.find(
-            (item) => item.slug === stage.slug,
-          );
-          const stageLeads =
-            pipelineStage?.contatos ??
-            brokerLeads.filter((lead) => lead.stage === stage.slug);
-          return (
-            <div
-              key={stage.id}
-              className="w-44 shrink-0 rounded-lg border bg-muted/20 p-2.5"
-            >
-              <div className="flex items-center justify-between gap-2 border-b pb-2">
-                <span className="truncate text-xs font-semibold">{stage.label}</span>
-                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
-                  {stageLeads.length}
-                </Badge>
-              </div>
-              <div className="mt-2 space-y-2">
-                {stageLeads.length ? (
-                  stageLeads.map((lead) => (
-                    <div key={lead.id} className="rounded-md border bg-background p-2">
-                      <p className="truncate text-xs font-medium">{lead.nome}</p>
-                      <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                        {lead.empreendimento?.nome ?? "Documentação"}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="py-2 text-center text-[10px] text-muted-foreground">
-                    Nenhum contato
+      <div className="mt-3 overflow-hidden rounded-lg border bg-muted/20">
+        <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-3 py-2">
+          <p className="text-xs font-bold uppercase tracking-wide">
+            {selectedPipelineStage?.label ?? "Documentações"}
+          </p>
+          <span className="text-[11px] text-muted-foreground">
+            {selectedPipelineStage?.total ?? 0} na bandeja
+          </span>
+        </div>
+        {selectedPipelineStage?.contatos.length ? (
+          <div className="divide-y">
+            {selectedPipelineStage.contatos.slice(0, 5).map((contato) => (
+              <div
+                key={contato.id}
+                className="flex items-center justify-between gap-3 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold">{contato.nome}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {contato.empreendimento?.nome ?? "Documentação"}
                   </p>
-                )}
+                </div>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  Atualizado{" "}
+                  {new Date(contato.updatedAt).toLocaleDateString("pt-BR")}
+                </span>
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        ) : (
+          <p className="px-3 py-3 text-center text-[11px] text-muted-foreground">
+            Nenhuma documentação nesta etapa.
+          </p>
+        )}
       </div>
     </FormSection>
   );
