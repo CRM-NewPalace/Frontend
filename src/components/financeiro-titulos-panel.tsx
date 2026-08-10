@@ -199,17 +199,14 @@ type ParcelaDraft = {
 };
 
 function buildParcelasDraft(
-  total: number,
+  valorParcela: number,
   quantidade: number,
   primeiroVencimento: string,
 ): ParcelaDraft[] {
   const n = Math.max(2, Math.floor(quantidade));
-  const cents = Math.round(total * 100);
-  const base = Math.floor(cents / n);
-  const remainder = cents - base * n;
   return Array.from({ length: n }, (_, i) => ({
     vencimento: addMonthsIso(primeiroVencimento, i),
-    valor: formatValorInput((i === n - 1 ? base + remainder : base) / 100),
+    valor: formatValorInput(valorParcela),
   }));
 }
 
@@ -2111,7 +2108,7 @@ export function FinanceiroTitulosPanel({
                     <div className="space-y-1.5">
                       <Label>
                         {parcelado && formMode === "create"
-                          ? "Valor total (R$) *"
+                          ? "Valor de cada parcela (R$) *"
                           : "Valor (R$) *"}
                       </Label>
                       <Input
