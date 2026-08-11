@@ -72,6 +72,8 @@ import {
   Share2,
   Inbox,
   UserCheck,
+  Users,
+  Flame,
 } from "lucide-react";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
@@ -79,6 +81,7 @@ import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
+import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { importLeads } from "@/lib/leads-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
@@ -497,6 +500,23 @@ function LeadsPage() {
     }
     return { chegaram, distribuidos, todos: leads.length };
   }, [leads]);
+
+  const kpiCounts = useMemo(() => {
+    let alta = 0;
+    let novos = 0;
+    for (const l of leads) {
+      if (l.prioridade === "Alta") alta += 1;
+      const stage = funnelStages.find((s) => s.id === l.stage);
+      if (stage?.papel === "inicial" || l.stage === "novo") novos += 1;
+    }
+    return {
+      total: leads.length,
+      alta,
+      novos,
+      chegaram: distribuicaoCounts.chegaram,
+      distribuidos: distribuicaoCounts.distribuidos,
+    };
+  }, [leads, funnelStages, distribuicaoCounts]);
 
   /** Contagem de leads ativos por corretor (respeita demais filtros, ignora filtro de corretor). */
   const leadsAtivosPorCorretor = useMemo(() => {
@@ -1715,6 +1735,141 @@ function LeadsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <button
+          type="button"
+          className="min-w-0 text-left"
+          onClick={() => {
+            setDistribuicaoFilter("all");
+            setPrioridadeFilter("all");
+            setStageFilter("all");
+          }}
+        >
+          <FinanceKpiCard
+            label="Total de leads"
+            value={kpiCounts.total}
+            icon={Users}
+            tone="blue"
+            format="number"
+            className={cn(
+              distribuicaoFilter === "all" &&
+                prioridadeFilter === "all" &&
+                stageFilter === "all" &&
+                "ring-2 ring-primary/25",
+            )}
+          />
+        </button>
+        {!isCorretor ? (
+          <>
+            <button
+              type="button"
+              className="min-w-0 text-left"
+              onClick={() => {
+                setDistribuicaoFilter("chegaram");
+                setPrioridadeFilter("all");
+              }}
+            >
+              <FinanceKpiCard
+                label="Chegaram"
+                value={kpiCounts.chegaram}
+                icon={Inbox}
+                tone="orange"
+                format="number"
+                className={cn(
+                  distribuicaoFilter === "chegaram" && "ring-2 ring-primary/25",
+                )}
+              />
+            </button>
+            <button
+              type="button"
+              className="min-w-0 text-left"
+              onClick={() => {
+                setDistribuicaoFilter("distribuidos");
+                setPrioridadeFilter("all");
+              }}
+            >
+              <FinanceKpiCard
+                label="Distribuídos"
+                value={kpiCounts.distribuidos}
+                icon={UserCheck}
+                tone="teal"
+                format="number"
+                className={cn(
+                  distribuicaoFilter === "distribuidos" &&
+                    "ring-2 ring-primary/25",
+                )}
+              />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="min-w-0 text-left"
+            onClick={() => {
+              const novoStage =
+                funnelStages.find((s) => s.papel === "inicial")?.id ?? "novo";
+              setStageFilter(
+                stageFilter === novoStage ? "all" : novoStage,
+              );
+              setPrioridadeFilter("all");
+            }}
+          >
+            <FinanceKpiCard
+              label="Novos na etapa"
+              value={kpiCounts.novos}
+              icon={Inbox}
+              tone="teal"
+              format="number"
+              className={cn(
+                (stageFilter === "novo" ||
+                  funnelStages.find((s) => s.id === stageFilter)?.papel ===
+                    "inicial") &&
+                  "ring-2 ring-primary/25",
+              )}
+            />
+          </button>
+        )}
+        <button
+          type="button"
+          className="min-w-0 text-left"
+          onClick={() =>
+            setPrioridadeFilter(
+              prioridadeFilter === "Alta" ? "all" : "Alta",
+            )
+          }
+        >
+          <FinanceKpiCard
+            label="Prioridade alta"
+            value={kpiCounts.alta}
+            icon={Flame}
+            tone="rose"
+            format="number"
+            className={cn(
+              prioridadeFilter === "Alta" && "ring-2 ring-primary/25",
+            )}
+          />
+        </button>
+        {isCorretor && (
+          <button
+            type="button"
+            className="min-w-0 text-left"
+            onClick={() => {
+              setStageFilter("all");
+              setPrioridadeFilter("all");
+              setDistribuicaoFilter("all");
+            }}
+          >
+            <FinanceKpiCard
+              label="Em atendimento"
+              value={Math.max(0, kpiCounts.total - kpiCounts.novos)}
+              icon={UserCheck}
+              tone="emerald"
+              format="number"
+            />
+          </button>
+        )}
+      </div>
 
       {!isCorretor && leadsAtivosPorCorretor.length > 0 && (
         <Card className="mb-4">
