@@ -5,10 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -38,6 +45,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -45,7 +53,10 @@ import {
   Search,
   Filter,
   Download,
+  MoreHorizontal,
+  Phone,
   MessageSquare,
+  Mail,
   UserPlus,
   MapPin,
   Wallet,
@@ -61,20 +72,13 @@ import {
   Share2,
   Inbox,
   UserCheck,
-  Users,
-  MessagesSquare,
-  Gem,
-  ClipboardList,
-  User,
 } from "lucide-react";
-import { prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
+import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
-import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import { LeadHistoryTimeline } from "@/components/lead-history-timeline";
 import { importLeads } from "@/lib/leads-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
@@ -108,15 +112,6 @@ import {
   maskMoneyInput,
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
-import {
-  createTriagemEvent,
-  type TriagemEvent,
-} from "@/lib/triagem-api";
-import {
-  getTriagemHistoryCached,
-  loadTriagemHistory,
-  prependTriagemHistoryCached,
-} from "@/lib/triagem-history-cache";
 
 type LeadsSearch = {
   distribuicao?: "all" | "chegaram" | "distribuidos";
@@ -213,35 +208,6 @@ const TIPO_RENDA_OPTIONS = [
   "Outros",
 ] as const;
 
-const MAX_HISTORICO_TEXTO = 400;
-
-function leadInitials(nome: string) {
-  return nome
-    .split(" ")
-    .filter(Boolean)
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function prioridadeStripeClass(prioridade: Lead["prioridade"]) {
-  switch (prioridade) {
-    case "Alta":
-      return "bg-destructive";
-    case "Média":
-      return "bg-warning";
-    case "Baixa":
-      return "bg-sky-500";
-    default:
-      return "bg-primary";
-  }
-}
-
-function isWhatsAppOrigem(origem: string) {
-  return origem.toLowerCase().includes("whatsapp");
-}
-
 function LeadsPage() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
@@ -249,7 +215,6 @@ function LeadsPage() {
   const canDistribuir = user?.role === "admin" || user?.role === "gerente";
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
-  const canWriteTriagem = Boolean(user) && user?.role !== "super_admin";
   /** Só admin/analista filtram entre várias equipes. Gerente não filtra por outras. */
   const canFilterEquipe =
     user?.role === "admin" || user?.role === "analista";
@@ -268,11 +233,6 @@ function LeadsPage() {
     origens: origemOptions,
     colorByLabel,
   } = useCatalog();
-
-  const stageLabel = (slug: string | null) =>
-    slug
-      ? (funnelStages.find((s) => s.id === slug)?.name ?? slug)
-      : "—";
   // Backend atribui a etapa inicial (Novo lead) quando stage é omitido.
   const defaultStageName =
     funnelStages.find((s) => s.id === "novo")?.name ??
@@ -325,11 +285,6 @@ function LeadsPage() {
   const [bulkMotivo, setBulkMotivo] = useState("");
   const [bulkMotivoOutro, setBulkMotivoOutro] = useState("");
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
-  const [historyEvents, setHistoryEvents] = useState<TriagemEvent[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historicoOpen, setHistoricoOpen] = useState(false);
-  const [historicoTexto, setHistoricoTexto] = useState("");
-  const [historicoSaving, setHistoricoSaving] = useState(false);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -655,54 +610,6 @@ function LeadsPage() {
     [leadsAtivosPorCorretor],
   );
 
-  const kpiStats = useMemo(() => {
-    let novos = 0;
-    let emAtendimento = 0;
-    let qualificados = 0;
-    for (const l of leads) {
-      const stage = funnelStages.find((s) => s.id === l.stage);
-      const isNovo = stage?.papel === "inicial" || l.stage === "novo";
-      if (isNovo) novos += 1;
-      else emAtendimento += 1;
-      if (l.prioridade === "Alta" || l.tags.includes("Quente")) {
-        qualificados += 1;
-      }
-    }
-    const total = leads.length;
-    return {
-      novos,
-      emAtendimento,
-      qualificados,
-      total,
-      emAtendimentoPct:
-        total > 0 ? Math.round((emAtendimento / total) * 100) : 0,
-    };
-  }, [leads, funnelStages]);
-
-  useEffect(() => {
-    if (!detailLead) {
-      setHistoryEvents([]);
-      setHistoryLoading(false);
-      return;
-    }
-    const leadId = detailLead.id;
-    const cached = getTriagemHistoryCached(leadId);
-    if (cached) setHistoryEvents(cached);
-    setHistoryLoading(!cached);
-    let cancelled = false;
-    void loadTriagemHistory(leadId, (events) => {
-      if (!cancelled) {
-        setHistoryEvents(events);
-        setHistoryLoading(false);
-      }
-    }).catch(() => {
-      if (!cancelled) setHistoryLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [detailLead]);
-
   function clearFilters() {
     setSearch("");
     setDebouncedSearch("");
@@ -750,56 +657,6 @@ function LeadsPage() {
     }
     setForm(next);
     setOpen(true);
-  }
-
-  function openHistorico() {
-    if (!detailLead || !canWriteTriagem) return;
-    setHistoricoTexto("");
-    setHistoricoOpen(true);
-  }
-
-  function closeHistorico() {
-    setHistoricoOpen(false);
-    setHistoricoTexto("");
-    setHistoricoSaving(false);
-  }
-
-  async function saveHistorico() {
-    if (!detailLead) return;
-    const texto = historicoTexto.trim();
-    if (!texto) {
-      toast.error("Escreva o relato do histórico.");
-      return;
-    }
-    if (texto.length > MAX_HISTORICO_TEXTO) {
-      toast.error(
-        `O relato deve ter no máximo ${MAX_HISTORICO_TEXTO} caracteres.`,
-      );
-      return;
-    }
-    setHistoricoSaving(true);
-    try {
-      const created = await createTriagemEvent({
-        leadId: detailLead.id,
-        texto,
-        origem: "manual",
-      });
-      prependTriagemHistoryCached(detailLead.id, created);
-      setHistoryEvents((prev) => [
-        created,
-        ...prev.filter((e) => e.id !== created.id),
-      ]);
-      toast.success("Histórico registrado.");
-      closeHistorico();
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível salvar o histórico.",
-      );
-    } finally {
-      setHistoricoSaving(false);
-    }
   }
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -1662,7 +1519,7 @@ function LeadsPage() {
             ? `${funnelStages.find((s) => s.id === detailLead.stage)?.name ?? detailLead.stage} · Prioridade ${detailLead.prioridade}`
             : undefined
         }
-        className="sm:max-w-2xl"
+        className="sm:max-w-xl"
       >
         {detailLead && (
           <>
@@ -1678,13 +1535,6 @@ function LeadsPage() {
                     value={displayEmail(detailLead.email) || "—"}
                   />
                   <DetailField label="Origem" value={detailLead.origem} />
-                  <DetailField
-                    label="Etapa"
-                    value={
-                      funnelStages.find((s) => s.id === detailLead.stage)
-                        ?.name ?? detailLead.stage
-                    }
-                  />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detailLead.corretor} />
                   )}
@@ -1694,6 +1544,27 @@ function LeadsPage() {
                       value={equipeLabel(detailLead)}
                     />
                   )}
+                </div>
+              </FormSection>
+              <FormSection
+                icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
+                title="Renda"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DetailField
+                    label="Renda mensal"
+                    value={
+                      detailLead.renda != null ? brl(detailLead.renda) : "—"
+                    }
+                  />
+                  <DetailField
+                    label="Tipo de renda"
+                    value={detailLead.tipoRenda || "—"}
+                  />
+                  <DetailField
+                    label="Estado civil"
+                    value={detailLead.estadoCivil || "—"}
+                  />
                   <DetailField
                     label="Prioridade"
                     value={
@@ -1730,128 +1601,29 @@ function LeadsPage() {
                   <DetailField label="Bairro" value={detailLead.bairro} />
                 </div>
               </FormSection>
-              <FormSection
-                icon={<ClipboardList className="w-3.5 h-3.5 text-primary" />}
-                title="Histórico"
-              >
-                <LeadHistoryTimeline
-                  events={historyEvents}
-                  contactName={detailLead.nome}
-                  stageLabel={stageLabel}
-                  fallbackStage={detailLead.stage}
-                  loading={historyLoading}
-                />
-              </FormSection>
             </FormDialogBody>
             <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                {canWriteTriagem && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={openHistorico}
-                  >
-                    <ClipboardList className="w-4 h-4" />
-                    Novo histórico
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    const lead = detailLead;
-                    setDetailLead(null);
-                    openEdit(lead);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" /> Editar
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => {
-                    const lead = detailLead;
-                    setDetailLead(null);
-                    setDeleteLead(lead);
-                  }}
-                >
-                  <Trash2 className="w-4 h-4" /> Excluir
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setDetailLead(null)}
-                >
-                  Fechar
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none"
+                onClick={() => setDetailLead(null)}
+              >
+                Fechar
+              </Button>
+              <Button
+                className="flex-1 sm:flex-none"
+                onClick={() => {
+                  const lead = detailLead;
+                  setDetailLead(null);
+                  openEdit(lead);
+                }}
+              >
+                <Pencil className="w-4 h-4" /> Editar
+              </Button>
             </FormDialogActions>
           </>
         )}
       </FormDialogShell>
-
-      <Dialog
-        open={historicoOpen}
-        onOpenChange={(open) => {
-          if (!open && !historicoSaving) closeHistorico();
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ClipboardList className="h-5 w-5" />
-              </div>
-              <div className="space-y-1">
-                <DialogTitle>Registrar histórico</DialogTitle>
-                <DialogDescription>
-                  {detailLead
-                    ? `Relato sobre ${detailLead.nome}. A etapa do funil não será alterada.`
-                    : null}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-2 py-1">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="leads-historico-texto">Relato</Label>
-              <span className="text-xs text-muted-foreground">
-                {historicoTexto.length}/{MAX_HISTORICO_TEXTO}
-              </span>
-            </div>
-            <Textarea
-              id="leads-historico-texto"
-              value={historicoTexto}
-              onChange={(e) => setHistoricoTexto(e.target.value)}
-              maxLength={MAX_HISTORICO_TEXTO}
-              rows={5}
-              disabled={historicoSaving}
-              placeholder="Descreva o contato, o interesse ou o próximo passo..."
-            />
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={historicoSaving}
-              onClick={closeHistorico}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={historicoSaving}
-              onClick={() => void saveHistorico()}
-            >
-              {historicoSaving && (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              )}
-              Salvar histórico
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog
         open={!!deleteLead}
@@ -1943,35 +1715,6 @@ function LeadsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <FinanceKpiCard
-          label="Novos leads"
-          value={kpiStats.novos}
-          icon={Users}
-          tone="emerald"
-          format="number"
-        />
-        <FinanceKpiCard
-          label="Em atendimento"
-          value={kpiStats.emAtendimento}
-          icon={MessagesSquare}
-          tone="blue"
-          format="number"
-          suffix={
-            kpiStats.total > 0
-              ? `· ${kpiStats.emAtendimentoPct}% do total`
-              : undefined
-          }
-        />
-        <FinanceKpiCard
-          label="Qualificados"
-          value={kpiStats.qualificados}
-          icon={Gem}
-          tone="teal"
-          format="number"
-        />
-      </div>
 
       {!isCorretor && leadsAtivosPorCorretor.length > 0 && (
         <Card className="mb-4">
@@ -2262,153 +2005,212 @@ function LeadsPage() {
         </div>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            checked={
-              allSelected ? true : someSelected ? "indeterminate" : false
-            }
-            onCheckedChange={(v) => toggleSelectAll(v === true)}
-            aria-label="Selecionar todos os leads"
-            disabled={filteredLeads.length === 0 || bulkDeleting}
-          />
-          <span className="text-sm text-muted-foreground">
-            {selectedCount > 0
-              ? `${selectedCount} selecionado(s)`
-              : "Selecionar todos"}
-          </span>
-        </div>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {filteredLeads.length} card(s)
-        </span>
-      </div>
-
-      {loading ? (
-        <Card>
-          <CardContent className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Carregando leads...
-          </CardContent>
-        </Card>
-      ) : filteredLeads.length === 0 ? (
-        <Card>
-          <CardContent className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-            Nenhum lead encontrado com esses filtros.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredLeads.map((l) => {
-            const stage = funnelStages.find((s) => s.id === l.stage) ?? {
-              id: l.stage,
-              name: l.stage,
-              color: "bg-slate-200 text-slate-700",
-            };
-            const selected = selectedIds.has(l.id);
-            return (
-              <Card
-                key={l.id}
-                className={cn(
-                  "relative overflow-hidden border-border/60 shadow-sm transition-shadow hover:shadow-md",
-                  selected && "ring-2 ring-primary/30",
-                )}
-              >
-                <div
-                  aria-hidden
-                  className={cn(
-                    "absolute inset-y-0 left-0 w-1",
-                    prioridadeStripeClass(l.prioridade),
-                  )}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={
+                    allSelected
+                      ? true
+                      : someSelected
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={(v) => toggleSelectAll(v === true)}
+                  aria-label="Selecionar todos os leads"
+                  disabled={filteredLeads.length === 0 || bulkDeleting}
                 />
-                <CardContent className="space-y-4 p-4 pl-5">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      checked={selected}
-                      onCheckedChange={(v) =>
-                        toggleSelectOne(l.id, v === true)
-                      }
-                      aria-label={`Selecionar ${l.nome}`}
-                      disabled={bulkDeleting}
-                      className="mt-1"
-                    />
-                    <Avatar className="h-11 w-11 shrink-0">
-                      <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                        {leadInitials(l.nome)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-foreground">
-                        {l.nome}
-                      </div>
-                      <div className="text-sm tabular-nums text-muted-foreground">
-                        {l.telefone}
-                      </div>
-                    </div>
-                    {isWhatsAppOrigem(l.origem) ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-                        <MessageSquare className="h-3 w-3" />
-                        WhatsApp
-                      </span>
-                    ) : (
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        {l.origem || "—"}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge className={stage.color}>{stage.name}</Badge>
-                    <Badge
-                      className={cn(
-                        "uppercase tracking-wide",
-                        prioridadeBadgeClass(l.prioridade),
-                      )}
-                    >
-                      {l.prioridade}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
-                    <div className="min-w-0 flex items-center gap-2">
-                      <Avatar className="h-7 w-7 shrink-0">
-                        <AvatarFallback className="bg-muted text-[9px] font-semibold text-muted-foreground">
-                          {leadInitials(
-                            !isCorretor
-                              ? l.corretor || "SC"
-                              : user?.name || "EU",
-                          )}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        {!isCorretor && (
-                          <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                            <User className="h-3 w-3 shrink-0" />
-                            <span className="truncate">
-                              {l.corretor || "Sem corretor"}
-                            </span>
+              </TableHead>
+              <TableHead>Lead</TableHead>
+              <TableHead>Origem</TableHead>
+              <TableHead>Tipo de renda</TableHead>
+              <TableHead>Etapa</TableHead>
+              {!isCorretor && <TableHead>Equipe</TableHead>}
+              {!isCorretor && <TableHead>Corretor</TableHead>}
+              <TableHead>Renda</TableHead>
+              <TableHead>Estado civil</TableHead>
+              <TableHead>Prioridade</TableHead>
+              <TableHead>Atualizado</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={isCorretor ? 10 : 12}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
+                  Carregando leads...
+                </TableCell>
+              </TableRow>
+            ) : filteredLeads.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={isCorretor ? 10 : 12}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
+                  Nenhum lead encontrado com esses filtros.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredLeads.map((l) => {
+                const stage = funnelStages.find((s) => s.id === l.stage) ?? {
+                  id: l.stage,
+                  name: l.stage,
+                  color: "bg-slate-200 text-slate-700",
+                };
+                return (
+                  <TableRow
+                    key={l.id}
+                    className="hover:bg-muted/40"
+                    data-state={selectedIds.has(l.id) ? "selected" : undefined}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(l.id)}
+                        onCheckedChange={(v) =>
+                          toggleSelectOne(l.id, v === true)
+                        }
+                        aria-label={`Selecionar ${l.nome}`}
+                        disabled={bulkDeleting}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                            {l.nome
+                              .split(" ")
+                              .map((n) => n[0])
+                              .slice(0, 2)
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="text-sm font-medium">{l.nome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {l.telefone}
                           </div>
-                        )}
-                        <div className="truncate text-[11px] text-muted-foreground">
-                          Atualizado {l.updatedAt}
                         </div>
                       </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => setDetailLead(l)}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      Ver detalhes
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                    </TableCell>
+                    <TableCell className="text-sm">{l.origem}</TableCell>
+                    <TableCell className="text-sm">
+                      {l.tipoRenda || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={stage.color}>{stage.name}</Badge>
+                    </TableCell>
+                    {!isCorretor && (
+                      <TableCell className="text-sm">
+                        {equipeLabel(l)}
+                      </TableCell>
+                    )}
+                    {!isCorretor && (
+                      <TableCell className="text-sm">{l.corretor}</TableCell>
+                    )}
+                    <TableCell className="text-sm font-medium">
+                      {l.renda != null ? brl(l.renda) : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {l.estadoCivil || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={prioridadeBadgeClass(l.prioridade)}>
+                        {l.prioridade}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {l.updatedAt}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="WhatsApp"
+                          onClick={() =>
+                            toast.message(`WhatsApp — ${l.nome}`, {
+                              description: l.telefone,
+                            })
+                          }
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Ligar"
+                          onClick={() =>
+                            toast.message(`Ligar — ${l.nome}`, {
+                              description: l.telefone,
+                            })
+                          }
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="E-mail"
+                          disabled={!displayEmail(l.email)}
+                          onClick={() => {
+                            const email = displayEmail(l.email);
+                            if (!email) {
+                              toast.message(`E-mail — ${l.nome}`, {
+                                description: "Sem e-mail cadastrado",
+                              });
+                              return;
+                            }
+                            toast.message(`E-mail — ${l.nome}`, {
+                              description: email,
+                            });
+                          }}
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Mais opções"
+                            >
+                              <MoreHorizontal className="w-3.5 h-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => setDetailLead(l)}>
+                              <Eye className="w-4 h-4 mr-2" /> Ver detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(l)}>
+                              <Pencil className="w-4 h-4 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteLead(l)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </Card>
 
       <Dialog open={importHelpOpen} onOpenChange={setImportHelpOpen}>
         <DialogContent className="max-w-lg">
