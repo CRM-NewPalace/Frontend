@@ -66,6 +66,18 @@ type CompositionLine = {
   value: number;
 };
 
+const COMPOSITION_ORDER = [
+  "SINAL",
+  "APARTADO",
+  "PRÉ-CHAVES",
+  "PÓS-CHAVES",
+  "INTERCALADAS",
+  "FGTS",
+  "MORA BEM",
+  "MCMV",
+  "FINANCIAMENTO",
+] as const;
+
 type LoadedLogo = {
   dataUrl: string;
   format: "PNG" | "JPEG";
@@ -300,7 +312,11 @@ function compositionLines(p: Proposta): CompositionLine[] {
     });
   }
 
-  return lines;
+  return lines.sort(
+    (a, b) =>
+      COMPOSITION_ORDER.indexOf(a.label as (typeof COMPOSITION_ORDER)[number]) -
+      COMPOSITION_ORDER.indexOf(b.label as (typeof COMPOSITION_ORDER)[number]),
+  );
 }
 
 function empreendimentoNome(p: Proposta) {
