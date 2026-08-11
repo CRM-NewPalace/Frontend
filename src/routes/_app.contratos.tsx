@@ -27,6 +27,82 @@ import type { TenantBranding } from "@/lib/auth";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+const INTERMEDIACAO_SECTIONS = [
+  {
+    id: "contratante",
+    label: "Contratante",
+    keys: [
+      "contratanteNome",
+      "contratanteCpf",
+      "contratanteRg",
+      "contratanteTel",
+      "contratanteEmail",
+      "contratanteEndereco",
+      "contratanteCep",
+    ],
+  },
+  {
+    id: "proprietario",
+    label: "Proprietário",
+    keys: [
+      "proprietarioNome",
+      "proprietarioCnpj",
+      "proprietarioEndereco",
+      "proprietarioTel",
+    ],
+  },
+  {
+    id: "imovel",
+    label: "Imóvel",
+    keys: [
+      "construtora",
+      "empreendimento",
+      "unidade",
+      "andar",
+      "descricaoImovel",
+      "precoImovel",
+    ],
+  },
+  {
+    id: "pagamento",
+    label: "Pagamento",
+    keys: [
+      "valorIntermediacao",
+      "valorIntermediacaoExtenso",
+      "banco",
+      "agencia",
+      "conta",
+      "pix",
+      "representanteLegal",
+    ],
+  },
+  {
+    id: "imobiliaria",
+    label: "Imobiliária",
+    keys: [
+      "contratadaNome",
+      "contratadaCnpj",
+      "contratadaCreci",
+      "contratadaEmail",
+      "contratadaEndereco",
+      "cidade",
+      "data",
+    ],
+  },
+  {
+    id: "testemunhas",
+    label: "Testemunhas",
+    keys: [
+      "testemunha1Nome",
+      "testemunha1Cpf",
+      "testemunha2Nome",
+      "testemunha2Cpf",
+    ],
+  },
+] as const;
+
+type IntermediacaoSectionId = (typeof INTERMEDIACAO_SECTIONS)[number]["id"];
+
 export const Route = createFileRoute("/_app/contratos")({
   head: () => ({ meta: [{ title: "Contratos — Zone Connection" }] }),
   component: ContratosPage,
@@ -176,10 +252,13 @@ function ContratosPage() {
   const [selected, setSelected] = useState<ContratoTemplate | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
+  const [intermediacaoSection, setIntermediacaoSection] =
+    useState<IntermediacaoSectionId>("contratante");
 
   const openTemplate = (template: ContratoTemplate) => {
     setSelected(template);
     setForm(prefillFromTenant(template, tenant));
+    setIntermediacaoSection("contratante");
   };
 
   const requiredMissing = useMemo(() => {
@@ -188,6 +267,14 @@ function ContratosPage() {
       .filter((f) => f.required !== false && !(form[f.key] ?? "").trim())
       .map((f) => f.label);
   }, [form, selected]);
+  const formFields = useMemo(() => {
+    if (!selected) return [];
+    if (selected.id !== "intermediacao") return selected.fields;
+    const section = INTERMEDIACAO_SECTIONS.find(
+      (item) => item.id === intermediacaoSection,
+    );
+    return selected.fields.filter((field) => section?.keys.includes(field.key));
+  }, [intermediacaoSection, selected]);
 
   async function handleGenerate(e: FormEvent) {
     e.preventDefault();
@@ -260,7 +347,7 @@ function ContratosPage() {
         icon={<FileText className="size-5" />}
         title={selected?.titulo ?? "Contrato"}
         description="Preencha os campos. O PDF será baixado ao gerar."
-        className="max-w-6xl"
+        className={selected?.id === "intermediacao" ? "max-w-3xl" : "max-w-6xl"}
         footer={
           <FormDialogActions>
             <Button
@@ -288,10 +375,35 @@ function ContratosPage() {
             onSubmit={handleGenerate}
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
-            <FormDialogBody className="lg:grid lg:grid-cols-[minmax(22rem,0.85fr)_minmax(28rem,1.15fr)] lg:items-start lg:gap-5 lg:space-y-0">
+            <FormDialogBody
+              className={
+                selected.id === "intermediacao"
+                  ? ""
+                  : "lg:grid lg:grid-cols-[minmax(22rem,0.85fr)_minmax(28rem,1.15fr)] lg:items-start lg:gap-5 lg:space-y-0"
+              }
+            >
+              {selected.id === "intermediacao" ? (
+                <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-2 sm:grid-cols-3">
+                  {INTERMEDIACAO_SECTIONS.map((section) => (
+                    <Button
+                      key={section.id}
+                      type="button"
+                      size="sm"
+                      variant={
+                        intermediacaoSection === section.id
+                          ? "default"
+                          : "ghost"
+                      }
+                      onClick={() => setIntermediacaoSection(section.id)}
+                    >
+                      {section.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
               <FormSection title="Dados do documento">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {selected.fields.map((field) => (
+                  {formFields.map((field) => (
                     <div
                       key={field.key}
                       className={
@@ -332,13 +444,15 @@ function ContratosPage() {
                   ))}
                 </div>
               </FormSection>
-              <div className="hidden lg:block">
-                <ContratoPreview
-                  template={selected}
-                  values={form}
-                  logoUrl={logoUrl}
-                />
-              </div>
+              {selected.id !== "intermediacao" ? (
+                <div className="hidden lg:block">
+                  <ContratoPreview
+                    template={selected}
+                    values={form}
+                    logoUrl={logoUrl}
+                  />
+                </div>
+              ) : null}
             </FormDialogBody>
           </form>
         )}
