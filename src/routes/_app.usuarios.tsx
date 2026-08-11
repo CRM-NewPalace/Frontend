@@ -281,6 +281,8 @@ function Usuarios() {
   const session = getSession();
   const isAdmin = session?.role === "admin";
   const isManager = session ? canViewTeamData(session.role) : false;
+  const canCreateBroker =
+    isAdmin || session?.role === "gerente" || session?.role === "analista";
   const canUseAnalista = isAnalistaAllowed(
     session?.tenant?.plano,
     session?.tenant?.modules ?? null,
@@ -446,8 +448,16 @@ function Usuarios() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isAdmin) {
-      toast.error("Apenas administradores podem criar ou editar usuários.");
+    if (formMode === "create" && !canCreateBroker) {
+      toast.error("Você não tem permissão para cadastrar usuários.");
+      return;
+    }
+    if (formMode === "edit" && !isAdmin) {
+      toast.error("Apenas administradores podem editar usuários.");
+      return;
+    }
+    if (!isAdmin && form.role !== "corretor") {
+      toast.error("Gerentes e analistas podem cadastrar somente corretores.");
       return;
     }
     const name = form.name.trim();
@@ -615,7 +625,7 @@ function Usuarios() {
               : `Membros da sua equipe — ${filtered.length} usuário(s). E-mail visível; use Resetar senha se alguém esquecer.`
         }
         actions={
-          isAdmin ? (
+          canCreateBroker ? (
             <Button
               size="sm"
               onClick={openCreate}
@@ -968,10 +978,14 @@ function Usuarios() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="gerente">Gerente</SelectItem>
-                      {canUseAnalista && (
-                        <SelectItem value="analista">Analista</SelectItem>
+                      {isAdmin && (
+                        <>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                          <SelectItem value="gerente">Gerente</SelectItem>
+                          {canUseAnalista && (
+                            <SelectItem value="analista">Analista</SelectItem>
+                          )}
+                        </>
                       )}
                       <SelectItem value="corretor">Corretor</SelectItem>
                     </SelectContent>
