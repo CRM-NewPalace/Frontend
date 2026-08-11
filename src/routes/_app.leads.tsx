@@ -625,11 +625,6 @@ function LeadsPage() {
     corretorFilterOptions,
   ]);
 
-  const totalAtivosResumo = useMemo(
-    () => leadsAtivosPorCorretor.reduce((s, r) => s + r.count, 0),
-    [leadsAtivosPorCorretor],
-  );
-
   function clearFilters() {
     setSearch("");
     setDebouncedSearch("");
@@ -1870,62 +1865,6 @@ function LeadsPage() {
           </button>
         )}
       </div>
-
-      {!isCorretor && leadsAtivosPorCorretor.length > 0 && (
-        <Card className="mb-4">
-          <CardContent className="p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium">Leads ativos por corretor</p>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {totalAtivosResumo} no filtro
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setCorretorFilter("all")}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                  corretorFilter === "all"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/60 hover:bg-muted/50",
-                )}
-              >
-                Todos
-                <Badge variant="secondary" className="tabular-nums h-5 px-1.5">
-                  {totalAtivosResumo}
-                </Badge>
-              </button>
-              {leadsAtivosPorCorretor.map((row) => {
-                const selected = corretorFilter === row.id;
-                return (
-                  <button
-                    key={row.id}
-                    type="button"
-                    onClick={() =>
-                      setCorretorFilter(selected ? "all" : row.id)
-                    }
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                      selected
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/60 hover:bg-muted/50",
-                    )}
-                  >
-                    <span className="max-w-[140px] truncate">{row.name}</span>
-                    <Badge
-                      variant="secondary"
-                      className="tabular-nums h-5 px-1.5"
-                    >
-                      {row.count}
-                    </Badge>
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Card className="mb-4">
         <CardContent className="p-3 flex flex-wrap gap-2 items-center">
