@@ -458,34 +458,30 @@ function Page() {
         }
       />
 
-      <section className="mb-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
+      <section className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <FinanceKpiCard
           label={commissionValueLabel}
           value={kpis.total}
           icon={Percent}
           tone="violet"
-          compact
         />
         <FinanceKpiCard
           label="Pendentes"
           value={kpis.pending}
           icon={Clock3}
           tone="orange"
-          compact
         />
         <FinanceKpiCard
           label="Liberadas"
           value={kpis.released}
           icon={Banknote}
           tone="blue"
-          compact
         />
         <FinanceKpiCard
           label="Pagas"
           value={kpis.paid}
           icon={CheckCircle2}
           tone="emerald"
-          compact
         />
       </section>
 
@@ -523,7 +519,7 @@ function Page() {
 
       <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="[&_th]:px-4 [&_td]:px-4">
             <TableHeader>
               <TableRow>
                 <TableHead className="h-9">Corretor</TableHead>
@@ -770,7 +766,7 @@ function Page() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      className="w-(--radix-popover-trigger-width) p-0"
                       align="start"
                     >
                       <Command>
@@ -1162,7 +1158,7 @@ function Summary({
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "break-words",
+          "wrap-break-word",
           emphasized && "font-semibold text-primary",
         )}
       >

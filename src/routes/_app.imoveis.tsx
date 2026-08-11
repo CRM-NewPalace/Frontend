@@ -63,6 +63,16 @@ export const Route = createFileRoute("/_app/imoveis")({
   component: ImoveisPage,
 });
 
+const IMOVEIS_GRADIENT_BTN =
+  "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
+const IMOVEIS_GRADIENT_STYLE = {
+  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+} as const;
+const IMOVEIS_SOFT_BTN =
+  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+const IMOVEIS_SOFT_BTN_ACTIVE =
+  "border-2 border-[#079ED4]/40 bg-[#079ED4]/20 text-[#053647] hover:bg-[#079ED4]/25 hover:text-[#053647]";
+
 function ImoveisPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
@@ -307,7 +317,11 @@ function ImoveisPage() {
         description="Cadastre e gerencie os empreendimentos desta imobiliária."
         actions={
           canCreate ? (
-            <Button onClick={() => void openQuickCreate()}>
+            <Button
+              onClick={() => void openQuickCreate()}
+              className={IMOVEIS_GRADIENT_BTN}
+              style={IMOVEIS_GRADIENT_STYLE}
+            >
               <Plus className="w-4 h-4 mr-1" />
               Novo imóvel
             </Button>
@@ -393,8 +407,8 @@ function ImoveisPage() {
         <div className="flex items-end gap-2">
           <Button
             type="button"
-            variant={somenteLitoral ? "default" : "outline"}
-            className="flex-1"
+            variant="outline"
+            className={`flex-1 ${somenteLitoral ? IMOVEIS_SOFT_BTN_ACTIVE : IMOVEIS_SOFT_BTN}`}
             onClick={() => setSomenteLitoral((current) => !current)}
           >
             Litoral
@@ -426,7 +440,11 @@ function ImoveisPage() {
                   : "Nenhum resultado para a busca."}
             </p>
             {items.length === 0 && canCreate && (
-              <Button className="mt-2" onClick={() => void openQuickCreate()}>
+              <Button
+                className={`mt-2 ${IMOVEIS_GRADIENT_BTN}`}
+                style={IMOVEIS_GRADIENT_STYLE}
+                onClick={() => void openQuickCreate()}
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Novo imóvel
               </Button>
@@ -440,7 +458,7 @@ function ImoveisPage() {
               key={item.id}
               className="group overflow-hidden transition-shadow hover:shadow-lg"
             >
-              <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary/25 via-primary/10 to-muted">
+              <div className="relative h-40 overflow-hidden bg-linear-to-br from-primary/25 via-primary/10 to-muted">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Building2 className="h-10 w-10 text-primary/35" />
                 </div>
@@ -455,7 +473,7 @@ function ImoveisPage() {
                     }}
                   />
                 )}
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/60 to-transparent" />
                 {item.cidade && (
                   <Badge className="absolute bottom-3 right-3 border-white/20 bg-black/45 text-white hover:bg-black/55">
                     {item.cidade}

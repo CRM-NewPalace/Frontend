@@ -178,6 +178,9 @@ export const Route = createFileRoute("/_app/documentacao")({
   component: DocumentacaoPage,
 });
 
+const DOC_SOFT_BTN =
+  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+
 type FormState = {
   contatoId: string;
   novoCliente: boolean;
@@ -1677,6 +1680,7 @@ function DocumentacaoPage() {
               size="sm"
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
+              className={DOC_SOFT_BTN}
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1691,6 +1695,7 @@ function DocumentacaoPage() {
                   variant="outline"
                   size="sm"
                   disabled={filteredItems.length === 0}
+                  className={DOC_SOFT_BTN}
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -1733,7 +1738,7 @@ function DocumentacaoPage() {
       <div className="mb-4 space-y-3">
         <div className="rounded-xl border border-border/60 bg-card/40 p-3 space-y-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-            <div className="relative flex-1 min-w-[200px] lg:max-w-sm">
+            <div className="relative flex-1 min-w-50 lg:max-w-sm">
               <Label className="text-[11px] text-muted-foreground mb-1.5 block">
                 Busca
               </Label>
@@ -1748,7 +1753,7 @@ function DocumentacaoPage() {
               </div>
             </div>
 
-            <div className="w-full sm:w-[150px]">
+            <div className="w-full sm:w-37.5">
               <Label className="text-[11px] text-muted-foreground mb-1.5 block">
                 Data por
               </Label>
@@ -1769,7 +1774,7 @@ function DocumentacaoPage() {
               </Select>
             </div>
 
-            <div className="w-full sm:w-[170px]">
+            <div className="w-full sm:w-42.5">
               <Label className="text-[11px] text-muted-foreground mb-1.5 block">
                 Período
               </Label>
@@ -1799,7 +1804,7 @@ function DocumentacaoPage() {
 
             {filterPeriodo === "custom" ? (
               <>
-                <div className="w-full sm:w-[150px]">
+                <div className="w-full sm:w-37.5">
                   <Label className="text-[11px] text-muted-foreground mb-1.5 block">
                     De
                   </Label>
@@ -1809,7 +1814,7 @@ function DocumentacaoPage() {
                     onChange={(e) => setFilterDataDe(e.target.value)}
                   />
                 </div>
-                <div className="w-full sm:w-[150px]">
+                <div className="w-full sm:w-37.5">
                   <Label className="text-[11px] text-muted-foreground mb-1.5 block">
                     Até
                   </Label>
@@ -1829,7 +1834,8 @@ function DocumentacaoPage() {
                     type="button"
                     variant="outline"
                     className={cn(
-                      advancedFiltersCount > 0 && "border-primary text-primary",
+                      DOC_SOFT_BTN,
+                      advancedFiltersCount > 0 && "border-[#079ED4]/40",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />
@@ -1875,7 +1881,7 @@ function DocumentacaoPage() {
                     ) : null}
                   </div>
 
-                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 [scrollbar-gutter:stable] [scrollbar-width:thin]">
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 scrollbar-gutter-stable scrollbar-thin">
                     <div className="space-y-2.5">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         Situação
@@ -2144,7 +2150,7 @@ function DocumentacaoPage() {
         />
       </section>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="p-0">
           {isAnalista && !loading && items.length > 0 && (
             <div className="flex items-center justify-end gap-2 border-b border-border/60 px-3 py-2">
@@ -2195,38 +2201,38 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="text-xs [&_th]:h-8 [&_th]:px-1.5 [&_th]:py-1 [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1">
+            <Table className="text-xs [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px] max-w-[160px]">
+                  <TableHead className="min-w-30 max-w-40">
                     Nome
                   </TableHead>
-                  <TableHead className="min-w-[72px]">Construtora</TableHead>
-                  <TableHead className="min-w-[88px] max-w-[120px]">
+                  <TableHead className="min-w-18">Construtora</TableHead>
+                  <TableHead className="min-w-22 max-w-30">
                     Empreend.
                   </TableHead>
-                  <TableHead className="min-w-[100px]">Status</TableHead>
-                  <TableHead className="min-w-[72px] max-w-[96px]">
+                  <TableHead className="min-w-25">Status</TableHead>
+                  <TableHead className="min-w-18 max-w-24">
                     Corretor
                   </TableHead>
-                  <TableHead className="min-w-[72px] max-w-[96px]">
+                  <TableHead className="min-w-18 max-w-24">
                     Gerente
                   </TableHead>
-                  <TableHead className="min-w-[72px]">Fonte</TableHead>
+                  <TableHead className="min-w-18">Fonte</TableHead>
                   {(!isAnalista || showCondicoesCliente) && (
                     <>
-                      <TableHead className="min-w-[72px]">Entrada</TableHead>
-                      <TableHead className="min-w-[72px]">FGTS</TableHead>
-                      <TableHead className="min-w-[56px]">Dep.</TableHead>
+                      <TableHead className="min-w-18">Entrada</TableHead>
+                      <TableHead className="min-w-18">FGTS</TableHead>
+                      <TableHead className="min-w-14">Dep.</TableHead>
                     </>
                   )}
-                  <TableHead className="w-[84px]" />
+                  <TableHead className="w-21" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredItems.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="max-w-[160px]">
+                    <TableCell className="max-w-40">
                       <div className="font-medium truncate" title={doc.nome}>
                         {doc.nome}
                       </div>
@@ -2265,7 +2271,7 @@ function DocumentacaoPage() {
                       {doc.construtora?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-[88px] truncate"
+                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-22 truncate"
                           style={construtoraBadgeStyle(doc.construtora.cor)}
                           title={doc.construtora.nome}
                         >
@@ -2279,7 +2285,7 @@ function DocumentacaoPage() {
                       {doc.empreendimento?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-[120px] truncate"
+                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-30 truncate"
                           style={construtoraBadgeStyle(doc.empreendimento.cor)}
                           title={doc.empreendimento.nome}
                         >
@@ -2293,14 +2299,14 @@ function DocumentacaoPage() {
                       <div className="flex flex-wrap gap-0.5">
                         <Badge
                           variant="outline"
-                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-[88px] truncate"
+                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-22 truncate"
                           title={doc.status1}
                         >
                           {doc.status1}
                         </Badge>
                         <Badge
                           variant="secondary"
-                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-[88px] truncate"
+                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-22 truncate"
                           title={doc.status2}
                         >
                           {doc.status2}
@@ -2315,7 +2321,7 @@ function DocumentacaoPage() {
                         return (
                           <Badge
                             variant="secondary"
-                            className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-[96px] truncate"
+                            className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-24 truncate"
                             style={construtoraBadgeStyle(corretor.cor)}
                             title={corretor.name}
                           >
@@ -2325,13 +2331,13 @@ function DocumentacaoPage() {
                       })()}
                     </TableCell>
                     <TableCell
-                      className="max-w-[96px] truncate"
+                      className="max-w-24 truncate"
                       title={doc.gerente?.name ?? undefined}
                     >
                       {doc.gerente?.name ?? "—"}
                     </TableCell>
                     <TableCell
-                      className="max-w-[96px] truncate"
+                      className="max-w-24 truncate"
                       title={displayFonte(doc.fonte)}
                     >
                       {displayFonte(doc.fonte) || "—"}
@@ -2953,7 +2959,7 @@ function DocumentacaoPage() {
                     onChange={(e) => setQuickCor(e.target.value)}
                     placeholder="#3b82f6"
                     maxLength={7}
-                    className="max-w-[140px] font-mono text-sm"
+                    className="max-w-35 font-mono text-sm"
                   />
                   {quickNome.trim() && quickCor ? (
                     <Badge

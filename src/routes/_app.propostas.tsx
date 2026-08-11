@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import QRCode from "qrcode";
 import {
   useCallback,
   useEffect,
@@ -346,7 +345,7 @@ function PropostaFormPreview({
         </div>
         <FileText className="h-5 w-5 text-muted-foreground" />
       </div>
-      <div className="aspect-[210/297] min-h-[450px] overflow-hidden rounded border bg-card text-foreground">
+      <div className="aspect-210/297 min-h-112.5 overflow-hidden rounded border bg-card text-foreground">
         <div className="border-b px-4 py-3">
           <div className="text-sm font-bold">PROPOSTA DE COMPRA</div>
           <div className="text-xs text-muted-foreground">
@@ -743,11 +742,16 @@ function Page() {
       setQrCodeUrl("");
       return;
     }
-    void QRCode.toDataURL(url, {
-      width: 320,
-      margin: 2,
-      errorCorrectionLevel: "M",
-    }).then(setQrCodeUrl);
+    void import("qrcode")
+      .then((QRCode) =>
+        QRCode.toDataURL(url, {
+          width: 320,
+          margin: 2,
+          errorCorrectionLevel: "M",
+        }),
+      )
+      .then(setQrCodeUrl)
+      .catch(() => setQrCodeUrl(""));
   }, [qrTarget]);
 
   const load = useCallback(async () => {
@@ -1931,7 +1935,7 @@ function Page() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          className="w-(--radix-popover-trigger-width) p-0"
                           align="start"
                           onWheel={(e) => e.stopPropagation()}
                         >

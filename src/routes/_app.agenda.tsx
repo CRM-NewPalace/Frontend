@@ -108,6 +108,9 @@ export const Route = createFileRoute("/_app/agenda")({
   component: AgendaPage,
 });
 
+const AGENDA_SOFT_BTN =
+  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+
 type FormState = {
   leadId: string;
   clienteId: string;
@@ -770,6 +773,7 @@ function AgendaPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className={AGENDA_SOFT_BTN}
                         disabled={actingId === s.id}
                         onClick={() => void handleRecusar(s.id)}
                       >
@@ -801,7 +805,12 @@ function AgendaPage() {
         <>
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={goToday}>
+              <Button
+                variant="outline"
+                size="sm"
+                className={AGENDA_SOFT_BTN}
+                onClick={goToday}
+              >
                 Hoje
               </Button>
               <div className="flex items-center">
@@ -833,6 +842,9 @@ function AgendaPage() {
               <Button
                 variant={layoutMode === "calendario" ? "default" : "outline"}
                 size="sm"
+                className={
+                  layoutMode === "calendario" ? undefined : AGENDA_SOFT_BTN
+                }
                 onClick={() =>
                   setLayoutMode((m) =>
                     m === "tabela" ? "calendario" : "tabela",
@@ -878,7 +890,8 @@ function AgendaPage() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      activeFiltersCount > 0 && "border-primary text-primary",
+                      AGENDA_SOFT_BTN,
+                      activeFiltersCount > 0 && "border-[#079ED4]/40",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />
@@ -1074,6 +1087,7 @@ function AgendaPage() {
             <Button
               type="button"
               variant="outline"
+              className={AGENDA_SOFT_BTN}
               onClick={() => setOpen(false)}
               disabled={saving}
             >

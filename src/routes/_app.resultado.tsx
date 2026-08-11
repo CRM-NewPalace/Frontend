@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { funnelColumnBg } from "@/lib/catalog-colors";
 import { phoneDigits } from "@/lib/phone";
 import { displayEmail } from "@/lib/email";
 
@@ -89,7 +90,9 @@ function AnaliseCard({ item, onOpen }: { item: Analise; onOpen: () => void }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-medium truncate">{item.nome}</div>
+          <div className="text-sm font-semibold text-foreground truncate">
+            {item.nome}
+          </div>
           <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
             <MapPin className="w-3 h-3 shrink-0" />
             {item.cidade}
@@ -395,10 +398,13 @@ function AnalisePage() {
           ref={boardRef}
           className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
         >
-          {columns.map((col) => (
+          {columns.map((col, index) => (
             <div
               key={col.id}
-              className="w-72 shrink-0 flex flex-col bg-muted/40 rounded-xl p-3 min-h-[28rem]"
+              className={cn(
+                "w-72 shrink-0 flex flex-col rounded-xl p-3 min-h-112",
+                funnelColumnBg(index, columns.length),
+              )}
             >
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="min-w-0 space-y-1">
@@ -408,7 +414,7 @@ function AnalisePage() {
                       {col.name}
                     </span>
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-[11px] text-foreground/70">
                     {col.items.length} processo
                     {col.items.length === 1 ? "" : "s"}
                   </div>

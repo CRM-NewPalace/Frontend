@@ -107,6 +107,14 @@ export const Route = createFileRoute("/_app/clientes")({
   component: Clientes,
 });
 
+const CLIENTES_GRADIENT_BTN =
+  "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110 disabled:opacity-50";
+const CLIENTES_GRADIENT_STYLE = {
+  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+} as const;
+const CLIENTES_SOFT_BTN =
+  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+
 type FormState = {
   nome: string;
   telefone: string;
@@ -558,6 +566,7 @@ function Clientes() {
               size="sm"
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
+              className={CLIENTES_SOFT_BTN}
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -572,6 +581,7 @@ function Clientes() {
                   variant="outline"
                   size="sm"
                   disabled={clientes.length === 0}
+                  className={CLIENTES_SOFT_BTN}
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -620,14 +630,19 @@ function Clientes() {
                 Excluir ({selectedCount})
               </Button>
             )}
-            <Button size="sm" onClick={openCreate}>
+            <Button
+              size="sm"
+              onClick={openCreate}
+              className={CLIENTES_GRADIENT_BTN}
+              style={CLIENTES_GRADIENT_STYLE}
+            >
               <Plus className="w-4 h-4 mr-1" />
               Novo cliente
             </Button>
           </>
         }
       />
-      <Card>
+      <Card className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -1030,12 +1045,16 @@ function Clientes() {
             <Button
               type="button"
               variant="outline"
-              className="flex-1 sm:flex-none"
+              className={`flex-1 sm:flex-none ${CLIENTES_SOFT_BTN}`}
               onClick={() => setFormOpen(false)}
             >
               Cancelar
             </Button>
-            <Button type="submit" className="flex-1 sm:flex-none">
+            <Button
+              type="submit"
+              className={`flex-1 sm:flex-none ${CLIENTES_GRADIENT_BTN}`}
+              style={CLIENTES_GRADIENT_STYLE}
+            >
               {formMode === "edit" ? "Salvar alterações" : "Cadastrar cliente"}
             </Button>
           </FormDialogActions>
@@ -1116,7 +1135,7 @@ function Clientes() {
             <FormDialogActions hint={`Atualizado em ${detail.updatedAt}`}>
               <Button
                 variant="outline"
-                className="flex-1 sm:flex-none"
+                className={`flex-1 sm:flex-none ${CLIENTES_SOFT_BTN}`}
                 onClick={() => openEdit(detail)}
               >
                 <Pencil className="w-4 h-4" />
@@ -1294,6 +1313,7 @@ function Clientes() {
             <Button
               type="button"
               variant="outline"
+              className={CLIENTES_SOFT_BTN}
               onClick={() =>
                 downloadImportTemplate("modelo-importacao-clientes.xlsx")
               }
@@ -1305,6 +1325,8 @@ function Clientes() {
               type="button"
               disabled={importParsing}
               onClick={() => importInputRef.current?.click()}
+              className={CLIENTES_GRADIENT_BTN}
+              style={CLIENTES_GRADIENT_STYLE}
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1376,6 +1398,7 @@ function Clientes() {
               variant="outline"
               disabled={importSaving}
               onClick={() => setImportOpen(false)}
+              className={CLIENTES_SOFT_BTN}
             >
               Cancelar
             </Button>
@@ -1385,6 +1408,8 @@ function Clientes() {
                 importSaving || importRows.every((r) => Boolean(r.error))
               }
               onClick={() => void confirmImport()}
+              className={CLIENTES_GRADIENT_BTN}
+              style={CLIENTES_GRADIENT_STYLE}
             >
               {importSaving && (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />

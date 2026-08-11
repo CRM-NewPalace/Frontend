@@ -633,7 +633,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // do desktop quanto pelo drawer mobile, para não duplicar a lógica.
   function renderNavSections(collapsedView: boolean, onNavigate?: () => void) {
     return (
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+      <nav className="sidebar-nav-scroll flex-1 overflow-y-auto py-3 px-2 space-y-1">
         {navSections.map((section) => {
           const SectionIcon = section.icon;
           const isOpen = !!openSections[section.id];
@@ -648,22 +648,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => toggleSection(section.id)}
                 title={collapsedView ? section.label : undefined}
                 className={cn(
-                  "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                  "w-full flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
                   sectionActive
-                    ? "text-foreground bg-sidebar-accent"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-foreground",
+                    ? "text-sidebar-foreground bg-sidebar-accent"
+                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
                 )}
               >
-                <SectionIcon className="w-4 h-4 shrink-0" />
+                <SectionIcon
+                  className={cn(
+                    "w-4 h-4 shrink-0",
+                    sectionActive && "text-brand-accent",
+                  )}
+                />
                 {!collapsedView && (
                   <>
                     <span className="flex-1 text-left truncate">
                       {section.label}
                     </span>
                     {isOpen ? (
-                      <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                      <ChevronDown className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
                     ) : (
-                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
                     )}
                   </>
                 )}
@@ -682,10 +687,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             type="button"
                             onClick={() => toggleGroup(item.id)}
                             className={cn(
-                              "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors",
+                              "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors cursor-pointer",
                               groupActive
-                                ? "bg-sidebar-accent text-foreground font-semibold"
-                                : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
+                                ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                                : "hover:bg-white/6 text-sidebar-foreground/75",
                             )}
                           >
                             <GroupIcon className="w-4 h-4 shrink-0" />
@@ -693,9 +698,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               {item.label}
                             </span>
                             {groupOpen ? (
-                              <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                              <ChevronDown className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
                             ) : (
-                              <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                              <ChevronRight className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
                             )}
                           </button>
                           {groupOpen && (
@@ -713,8 +718,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     className={cn(
                                       "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                                       active
-                                        ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.75 before:rounded-full before:bg-brand-accent"
-                                        : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
+                                        ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                                        : "hover:bg-white/6 text-sidebar-foreground/75",
                                     )}
                                   >
                                     <ChildIcon className="w-4 h-4 shrink-0" />
@@ -743,8 +748,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         className={cn(
                           "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                           active
-                            ? "bg-sidebar-accent text-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.75 before:rounded-full before:bg-brand-accent"
-                            : "hover:bg-sidebar-accent/70 text-sidebar-foreground/75",
+                            ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                            : "hover:bg-white/6 text-sidebar-foreground/75",
                         )}
                       >
                         <span className="relative shrink-0">
@@ -793,10 +798,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside
         className={cn(
           collapsed ? "w-16" : "w-60",
-          "hidden md:flex shrink-0 border-r bg-sidebar text-sidebar-foreground transition-all duration-200 sticky top-0 h-screen flex-col",
+          "hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 sticky top-0 h-screen flex-col",
         )}
       >
-        <div className="flex items-center gap-2 px-4 h-14 border-b">
+        <div
+          className={cn(
+            "flex border-b border-sidebar-border",
+            collapsed
+              ? "flex-col items-center gap-1 px-1 py-2"
+              : "items-center gap-2 px-3 h-14",
+          )}
+        >
           <img
             src={logoUrl}
             alt={brandName}
@@ -813,32 +825,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   brandName
                 )}
               </div>
-              <div className="text-[10px] text-muted-foreground truncate">
+              <div className="text-[10px] text-sidebar-foreground/60 truncate">
                 {user?.role === "super_admin" ? "Plataforma" : "CRM conectado"}
               </div>
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="shrink-0 rounded-md p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground cursor-pointer"
+            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+            title={collapsed ? "Expandir" : "Recolher"}
+          >
+            <ChevronsLeft
+              className={cn(
+                "w-4 h-4 transition-transform",
+                collapsed && "rotate-180",
+              )}
+            />
+          </button>
         </div>
         {renderNavSections(collapsed)}
-        <div className="border-t">
+        <div className="border-t border-sidebar-border">
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full p-3 flex items-center gap-2 text-xs text-destructive hover:bg-destructive/10"
+            className="w-full p-3 flex items-center gap-2 text-xs text-[#f87171] hover:bg-[#f87171]/15 hover:text-[#fca5a5] cursor-pointer"
             title="Sair"
           >
             <LogOut className="w-4 h-4 shrink-0" />
             {!collapsed && <span>Sair da conta</span>}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            className="w-full border-t p-3 flex items-center gap-2 text-xs text-muted-foreground hover:bg-sidebar-accent"
-          >
-            <ChevronsLeft
-              className={`w-4 h-4 transition-transform ${collapsed ? "rotate-180" : ""}`}
-            />
-            {!collapsed && "Recolher"}
           </button>
         </div>
       </aside>
@@ -858,14 +874,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Drawer do menu mobile */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-sidebar text-sidebar-foreground border-r flex flex-col transition-transform duration-200 ease-out md:hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-transform duration-200 ease-out md:hidden",
           mobileNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
         role="dialog"
         aria-modal="true"
         aria-label="Menu de navegação"
       >
-        <div className="flex items-center gap-2 px-4 h-14 border-b">
+        <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
           <img
             src={logoUrl}
             alt={brandName}
@@ -881,7 +897,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 brandName
               )}
             </div>
-            <div className="text-[10px] text-muted-foreground truncate">
+            <div className="text-[10px] text-sidebar-foreground/60 truncate">
               {user?.role === "super_admin" ? "Plataforma" : "CRM conectado"}
             </div>
           </div>
@@ -896,11 +912,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
         {renderNavSections(false, () => setMobileNavOpen(false))}
-        <div className="border-t">
+        <div className="border-t border-sidebar-border">
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full p-3 flex items-center gap-2 text-xs text-destructive hover:bg-destructive/10"
+            className="w-full p-3 flex items-center gap-2 text-xs text-[#f87171] hover:bg-[#f87171]/15 hover:text-[#fca5a5] cursor-pointer"
             title="Sair"
           >
             <LogOut className="w-4 h-4 shrink-0" />
@@ -926,7 +942,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar..."
-                className="pl-8 sm:pl-9 h-9 rounded-full bg-background text-sm"
+                className="pl-8 sm:pl-9 h-9 rounded-md bg-background text-sm"
               />
             </div>
           </div>
@@ -1019,7 +1035,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   aria-label="Menu da conta"
                 >
                   <Avatar className="w-7 h-7">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    <AvatarFallback
+                      className="text-white text-xs font-semibold"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(135deg, #079ED4 0%, #057aa8 55%, #034e6e 100%)",
+                      }}
+                    >
                       {initials}
                     </AvatarFallback>
                   </Avatar>

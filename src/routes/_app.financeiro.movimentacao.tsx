@@ -591,7 +591,7 @@ function Page() {
             Carregando lançamentos…
           </div>
         ) : (
-          <Table>
+          <Table className="[&_th]:px-4 [&_td]:px-4">
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
@@ -601,7 +601,7 @@ function Page() {
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[88px] text-right">Ações</TableHead>
+                <TableHead className="w-22 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -620,7 +620,7 @@ function Page() {
                     <TableCell className="tabular-nums whitespace-nowrap">
                       {formatDate(m.data)}
                     </TableCell>
-                    <TableCell className="font-medium max-w-[240px]">
+                    <TableCell className="font-medium max-w-60">
                       {m.descricao}
                     </TableCell>
                     <TableCell>{m.parceiro || "—"}</TableCell>

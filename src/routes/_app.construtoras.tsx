@@ -299,7 +299,7 @@ function ConstrutorasPage() {
         }
       />
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -312,7 +312,7 @@ function ConstrutorasPage() {
               <p>Nenhuma construtora cadastrada.</p>
             </div>
           ) : (
-            <Table>
+            <Table className="[&_th]:px-4 [&_td]:px-4">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -320,7 +320,7 @@ function ConstrutorasPage() {
                   <TableHead>Viabilizador</TableHead>
                   <TableHead className="text-center">Empreend.</TableHead>
                   <TableHead className="text-center">Docs</TableHead>
-                  <TableHead className="w-[120px]" />
+                  <TableHead className="w-30" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -447,7 +447,7 @@ function ConstrutorasPage() {
                       disabled={readOnly}
                       placeholder="#3b82f6"
                       maxLength={7}
-                      className="max-w-[140px] font-mono text-sm"
+                      className="max-w-35 font-mono text-sm"
                     />
                     {!readOnly ? (
                       <Button

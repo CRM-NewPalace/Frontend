@@ -219,8 +219,8 @@ function LeadsPerdidos() {
         </div>
       </Card>
 
-      <Card>
-        <Table>
+      <Card className="overflow-hidden">
+        <Table className="[&_th]:px-4 [&_td]:px-4">
           <TableHeader>
             <TableRow>
               <TableHead>Lead</TableHead>
@@ -269,7 +269,7 @@ function LeadsPerdidos() {
                     </div>
                   </TableCell>
                   <TableCell
-                    className="text-sm max-w-[220px] truncate"
+                    className="text-sm max-w-55 truncate"
                     title={l.motivoPerda}
                   >
                     {l.motivoPerda}

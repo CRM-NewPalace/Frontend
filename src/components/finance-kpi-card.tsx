@@ -89,6 +89,7 @@ export function FinanceKpiCard({
   invertEvolucao = false,
   suffix,
   compact = false,
+  showBar = true,
 }: {
   label: string;
   value: number;
@@ -102,6 +103,7 @@ export function FinanceKpiCard({
   invertEvolucao?: boolean;
   suffix?: string;
   compact?: boolean;
+  showBar?: boolean;
 }) {
   const t = TONE[tone];
   const display =
@@ -131,7 +133,11 @@ export function FinanceKpiCard({
       )}
       title={display}
     >
-      <div className={cn("w-full shrink-0", compact ? "h-1" : "h-1.5", t.bar)} />
+      {showBar ? (
+        <div
+          className={cn("w-full shrink-0", compact ? "h-1" : "h-1.5", t.bar)}
+        />
+      ) : null}
       <div
         className={cn(
           "flex flex-1 items-center min-w-0",
@@ -161,8 +167,7 @@ export function FinanceKpiCard({
           >
             {display}
             {suffix ? (
-              <span className="text-xs font-medium text-muted-foreground">
-                {" "}
+              <span className="ml-1.5 text-xs font-medium text-muted-foreground">
                 {suffix}
               </span>
             ) : null}

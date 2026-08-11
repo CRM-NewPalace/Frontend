@@ -315,19 +315,19 @@ function Page() {
             label="Entradas"
             value={conv.entradas.valor}
             max={Math.max(conv.entradas.valor, 1)}
-            tone="bg-sky-500"
+            tone="sky"
           />
           <FunilBar
             label="Vendas"
             value={conv.vendas.valor}
             max={Math.max(conv.entradas.valor, 1)}
-            tone="bg-emerald-500"
+            tone="emerald"
           />
           <FunilBar
             label="Perdidos no mês"
             value={admin.perdidos.mes.valor}
             max={Math.max(conv.entradas.valor, admin.perdidos.mes.valor, 1)}
-            tone="bg-rose-500"
+            tone="rose"
           />
         </CardContent>
       </Card>
@@ -649,6 +649,13 @@ function Page() {
   );
 }
 
+const FUNIL_BAR_GRADIENTS = {
+  sky: "linear-gradient(90deg, #0284c7 0%, #38bdf8 30%, #7dd3fc 50%, #0ea5e9 70%, #0284c7 100%)",
+  emerald:
+    "linear-gradient(90deg, #059669 0%, #34d399 30%, #6ee7b7 50%, #10b981 70%, #059669 100%)",
+  rose: "linear-gradient(90deg, #e11d48 0%, #fb7185 30%, #fda4af 50%, #f43f5e 70%, #e11d48 100%)",
+} as const;
+
 function FunilBar({
   label,
   value,
@@ -658,7 +665,7 @@ function FunilBar({
   label: string;
   value: number;
   max: number;
-  tone: string;
+  tone: keyof typeof FUNIL_BAR_GRADIENTS;
 }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
@@ -669,8 +676,11 @@ function FunilBar({
       </div>
       <div className="h-2.5 rounded-full bg-muted overflow-hidden">
         <div
-          className={cn("h-full rounded-full transition-all", tone)}
-          style={{ width: `${pct}%` }}
+          className="funil-bar-flow h-full rounded-full transition-[width] duration-500"
+          style={{
+            width: `${pct}%`,
+            backgroundImage: FUNIL_BAR_GRADIENTS[tone],
+          }}
         />
       </div>
     </div>

@@ -211,6 +211,14 @@ const TIPO_RENDA_OPTIONS = [
   "Outros",
 ] as const;
 
+const LEADS_GRADIENT_BTN =
+  "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110 disabled:opacity-50";
+const LEADS_GRADIENT_STYLE = {
+  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+} as const;
+const LEADS_SOFT_BTN =
+  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+
 function LeadsPage() {
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
@@ -219,8 +227,7 @@ function LeadsPage() {
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
   /** Só admin/analista filtram entre várias equipes. Gerente não filtra por outras. */
-  const canFilterEquipe =
-    user?.role === "admin" || user?.role === "analista";
+  const canFilterEquipe = user?.role === "admin" || user?.role === "analista";
 
   const {
     leads: allLeads,
@@ -231,11 +238,7 @@ function LeadsPage() {
     assignees,
     refresh,
   } = useLeads();
-  const {
-    funnelStages,
-    origens: origemOptions,
-    colorByLabel,
-  } = useCatalog();
+  const { funnelStages, origens: origemOptions, colorByLabel } = useCatalog();
   // Backend atribui a etapa inicial (Novo lead) quando stage é omitido.
   const defaultStageName =
     funnelStages.find((s) => s.id === "novo")?.name ??
@@ -443,18 +446,10 @@ function LeadsPage() {
           return false;
         }
       }
-      if (
-        canFilterEquipe &&
-        !isCorretor &&
-        equipeFilter === "none"
-      ) {
+      if (canFilterEquipe && !isCorretor && equipeFilter === "none") {
         if (l.equipeId) return false;
         if (l.corretorId && anyEquipeMembroIds?.has(l.corretorId)) return false;
-      } else if (
-        canFilterEquipe &&
-        !isCorretor &&
-        equipeFilter !== "all"
-      ) {
+      } else if (canFilterEquipe && !isCorretor && equipeFilter !== "all") {
         const inPool = l.equipeId === equipeFilter;
         const inMembros =
           Boolean(l.corretorId) && Boolean(equipeMembros?.has(l.corretorId!));
@@ -562,10 +557,7 @@ function LeadsPage() {
       return true;
     });
 
-    const byId = new Map<
-      string,
-      { id: string; name: string; count: number }
-    >();
+    const byId = new Map<string, { id: string; name: string; count: number }>();
     // Gerente: só chips da própria equipe (mesma lista do select de filtro).
     for (const a of corretorFilterOptions) {
       byId.set(a.id, { id: a.id, name: a.name, count: 0 });
@@ -787,9 +779,7 @@ function LeadsPage() {
         bairro: form.bairro.trim(),
         prioridade: form.prioridade,
         ...(rendaNum != null ? { renda: rendaNum } : {}),
-        ...(form.tipoRenda.trim()
-          ? { tipoRenda: form.tipoRenda.trim() }
-          : {}),
+        ...(form.tipoRenda.trim() ? { tipoRenda: form.tipoRenda.trim() } : {}),
         ...(form.estadoCivil.trim()
           ? { estadoCivil: form.estadoCivil.trim() }
           : {}),
@@ -1000,6 +990,7 @@ function LeadsPage() {
               size="sm"
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
+              className={LEADS_SOFT_BTN}
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1013,6 +1004,7 @@ function LeadsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setDistribuirOpen(true)}
+                className={LEADS_SOFT_BTN}
               >
                 <Share2 className="w-4 h-4 mr-1" />
                 Distribuir
@@ -1024,6 +1016,7 @@ function LeadsPage() {
                   variant="outline"
                   size="sm"
                   disabled={filteredLeads.length === 0}
+                  className={LEADS_SOFT_BTN}
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -1070,7 +1063,12 @@ function LeadsPage() {
                 Excluir ({selectedCount})
               </Button>
             )}
-            <Button size="sm" onClick={openCreate}>
+            <Button
+              size="sm"
+              onClick={openCreate}
+              className={LEADS_GRADIENT_BTN}
+              style={LEADS_GRADIENT_STYLE}
+            >
               <Plus className="w-4 h-4 mr-1" />
               Novo lead
             </Button>
@@ -1152,8 +1150,7 @@ function LeadsPage() {
                     htmlFor="lead-email"
                     className="text-xs text-muted-foreground"
                   >
-                    E-mail{" "}
-                    <span className="font-normal">(opcional)</span>
+                    E-mail <span className="font-normal">(opcional)</span>
                   </Label>
                   <Input
                     id="lead-email"
@@ -1233,8 +1230,7 @@ function LeadsPage() {
                 {!isCorretor ? (
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      Corretor{" "}
-                      <span className="font-normal">(opcional)</span>
+                      Corretor <span className="font-normal">(opcional)</span>
                     </Label>
                     <Select
                       value={form.corretorId || "__none__"}
@@ -1322,8 +1318,7 @@ function LeadsPage() {
                   htmlFor="lead-tipo-renda"
                   className="text-xs text-muted-foreground"
                 >
-                  Tipo de renda{" "}
-                  <span className="font-normal">(opcional)</span>
+                  Tipo de renda <span className="font-normal">(opcional)</span>
                 </Label>
                 <Select
                   value={form.tipoRenda || "__none__"}
@@ -1349,8 +1344,7 @@ function LeadsPage() {
                   htmlFor="lead-estado-civil"
                   className="text-xs text-muted-foreground"
                 >
-                  Estado civil{" "}
-                  <span className="font-normal">(opcional)</span>
+                  Estado civil <span className="font-normal">(opcional)</span>
                 </Label>
                 <Select
                   value={form.estadoCivil || "__none__"}
@@ -1734,7 +1728,7 @@ function LeadsPage() {
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <button
           type="button"
-          className="min-w-0 text-left"
+          className="min-w-0 cursor-pointer text-left"
           onClick={() => {
             setDistribuicaoFilter("all");
             setPrioridadeFilter("all");
@@ -1751,7 +1745,7 @@ function LeadsPage() {
               distribuicaoFilter === "all" &&
                 prioridadeFilter === "all" &&
                 stageFilter === "all" &&
-                "ring-2 ring-primary/25",
+                "shadow-md",
             )}
           />
         </button>
@@ -1759,7 +1753,7 @@ function LeadsPage() {
           <>
             <button
               type="button"
-              className="min-w-0 text-left"
+              className="min-w-0 cursor-pointer text-left"
               onClick={() => {
                 setDistribuicaoFilter("chegaram");
                 setPrioridadeFilter("all");
@@ -1771,14 +1765,12 @@ function LeadsPage() {
                 icon={Inbox}
                 tone="orange"
                 format="number"
-                className={cn(
-                  distribuicaoFilter === "chegaram" && "ring-2 ring-primary/25",
-                )}
+                className={cn(distribuicaoFilter === "chegaram" && "shadow-md")}
               />
             </button>
             <button
               type="button"
-              className="min-w-0 text-left"
+              className="min-w-0 cursor-pointer text-left"
               onClick={() => {
                 setDistribuicaoFilter("distribuidos");
                 setPrioridadeFilter("all");
@@ -1791,8 +1783,7 @@ function LeadsPage() {
                 tone="teal"
                 format="number"
                 className={cn(
-                  distribuicaoFilter === "distribuidos" &&
-                    "ring-2 ring-primary/25",
+                  distribuicaoFilter === "distribuidos" && "shadow-md",
                 )}
               />
             </button>
@@ -1800,13 +1791,11 @@ function LeadsPage() {
         ) : (
           <button
             type="button"
-            className="min-w-0 text-left"
+            className="min-w-0 cursor-pointer text-left"
             onClick={() => {
               const novoStage =
                 funnelStages.find((s) => s.papel === "inicial")?.id ?? "novo";
-              setStageFilter(
-                stageFilter === novoStage ? "all" : novoStage,
-              );
+              setStageFilter(stageFilter === novoStage ? "all" : novoStage);
               setPrioridadeFilter("all");
             }}
           >
@@ -1820,18 +1809,16 @@ function LeadsPage() {
                 (stageFilter === "novo" ||
                   funnelStages.find((s) => s.id === stageFilter)?.papel ===
                     "inicial") &&
-                  "ring-2 ring-primary/25",
+                  "shadow-md",
               )}
             />
           </button>
         )}
         <button
           type="button"
-          className="min-w-0 text-left"
+          className="min-w-0 cursor-pointer text-left"
           onClick={() =>
-            setPrioridadeFilter(
-              prioridadeFilter === "Alta" ? "all" : "Alta",
-            )
+            setPrioridadeFilter(prioridadeFilter === "Alta" ? "all" : "Alta")
           }
         >
           <FinanceKpiCard
@@ -1840,15 +1827,13 @@ function LeadsPage() {
             icon={Flame}
             tone="rose"
             format="number"
-            className={cn(
-              prioridadeFilter === "Alta" && "ring-2 ring-primary/25",
-            )}
+            className={cn(prioridadeFilter === "Alta" && "shadow-md")}
           />
         </button>
         {isCorretor && (
           <button
             type="button"
-            className="min-w-0 text-left"
+            className="min-w-0 cursor-pointer text-left"
             onClick={() => {
               setStageFilter("all");
               setPrioridadeFilter("all");
@@ -1868,11 +1853,11 @@ function LeadsPage() {
 
       <Card className="mb-4">
         <CardContent className="p-3 flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-[220px]">
+          <div className="relative flex-1 min-w-55">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, email, telefone..."
-              className="pl-9 h-9"
+              className="h-9 rounded-md pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -1940,7 +1925,10 @@ function LeadsPage() {
             type="button"
             variant="outline"
             size="sm"
-            className={cn(extraFiltersActive && "border-primary text-primary")}
+            className={cn(
+              LEADS_SOFT_BTN,
+              extraFiltersActive && "border-[#079ED4]/40",
+            )}
             onClick={() => setShowExtraFilters((v) => !v)}
           >
             <Filter className="w-4 h-4 mr-1" />
@@ -2067,11 +2055,12 @@ function LeadsPage() {
                   type="button"
                   onClick={() => setDistribuicaoFilter(opt.id)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer",
                     selected
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                      ? "border-0 bg-transparent text-white shadow-sm"
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                   )}
+                  style={selected ? LEADS_GRADIENT_STYLE : undefined}
                 >
                   {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
                   {opt.label}
@@ -2079,8 +2068,9 @@ function LeadsPage() {
                     variant={selected ? "secondary" : "outline"}
                     className={cn(
                       "h-5 px-1.5 tabular-nums text-[10px]",
-                      selected &&
-                        "border-transparent bg-primary-foreground/20 text-primary-foreground",
+                      selected
+                        ? "border-transparent bg-white/20 text-white"
+                        : "border-transparent bg-[#079ED4]/15 text-brand-dark",
                     )}
                   >
                     {opt.count}
@@ -2099,18 +2089,14 @@ function LeadsPage() {
         </div>
       )}
 
-      <Card>
-        <Table>
+      <Card className="overflow-hidden">
+        <Table className="[&_th]:px-4 [&_td]:px-4">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10">
+              <TableHead className="w-12 pr-2">
                 <Checkbox
                   checked={
-                    allSelected
-                      ? true
-                      : someSelected
-                        ? "indeterminate"
-                        : false
+                    allSelected ? true : someSelected ? "indeterminate" : false
                   }
                   onCheckedChange={(v) => toggleSelectAll(v === true)}
                   aria-label="Selecionar todos os leads"
@@ -2155,14 +2141,19 @@ function LeadsPage() {
                   id: l.stage,
                   name: l.stage,
                   color: "bg-slate-200 text-slate-700",
+                  papel: null,
                 };
+                const isNovoStage =
+                  stage.papel === "inicial" ||
+                  stage.id === "novo" ||
+                  l.stage === "novo";
                 return (
                   <TableRow
                     key={l.id}
                     className="hover:bg-muted/40"
                     data-state={selectedIds.has(l.id) ? "selected" : undefined}
                   >
-                    <TableCell>
+                    <TableCell className="pr-2">
                       <Checkbox
                         checked={selectedIds.has(l.id)}
                         onCheckedChange={(v) =>
@@ -2196,7 +2187,15 @@ function LeadsPage() {
                       {l.tipoRenda || "—"}
                     </TableCell>
                     <TableCell>
-                      <Badge className={stage.color}>{stage.name}</Badge>
+                      <Badge
+                        className={cn(
+                          isNovoStage
+                            ? "badge-novo-glow border-transparent"
+                            : stage.color,
+                        )}
+                      >
+                        {stage.name}
+                      </Badge>
                     </TableCell>
                     {!isCorretor && (
                       <TableCell className="text-sm">

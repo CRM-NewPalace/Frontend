@@ -681,8 +681,8 @@ function Usuarios() {
         </div>
       </Card>
 
-      <Card>
-        <Table>
+      <Card className="overflow-hidden">
+        <Table className="[&_th]:px-4 [&_td]:px-4">
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
@@ -1618,7 +1618,7 @@ function BrokerPipeline({
                 {index < visibleStages.length - 1 ? (
                   <span
                     className={cn(
-                      "mb-5 h-0.5 min-w-2 flex-1 rounded-full bg-gradient-to-r",
+                      "mb-5 h-0.5 min-w-2 flex-1 rounded-full bg-linear-to-r",
                       theme.line,
                     )}
                   />

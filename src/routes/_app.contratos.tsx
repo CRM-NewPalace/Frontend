@@ -224,7 +224,7 @@ function ContratoPreview({
         </div>
         <FileText className="size-4 text-muted-foreground" />
       </div>
-      <div className="aspect-[210/297] min-h-[480px] overflow-y-auto rounded border bg-card p-6 text-foreground">
+      <div className="aspect-210/297 min-h-120 overflow-y-auto rounded border bg-card p-6 text-foreground">
         {logoUrl ? (
           <img
             src={logoUrl}
@@ -330,6 +330,7 @@ function ContratosPage() {
             </div>
             <Button
               type="button"
+              size="sm"
               className="mt-auto w-full"
               onClick={() => openTemplate(template)}
             >

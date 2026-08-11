@@ -8,7 +8,7 @@ import {
 import type { AuthUser, TenantBranding } from "@/lib/auth";
 
 /** Logo padrão Zone Connection (fundo transparente). */
-export const DEFAULT_TENANT_LOGO = "/brand/zone-connection-logo.png";
+export const DEFAULT_TENANT_LOGO = "/LozoZone.png";
 
 type TenantThemeContextValue = {
   tenant: TenantBranding | null;
