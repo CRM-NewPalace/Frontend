@@ -1271,46 +1271,156 @@ function savePdfBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-async function buildPropostaPdfClienteResumido(p: Proposta) {
+async function buildPropostaPdfClienteResumido(
+  p: Proposta,
+  brand?: PropostaPdfBrand,
+) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 36;
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 42;
   const contentW = pageW - margin * 2;
-  let y = 52;
+  const companyName = brand?.company?.name?.trim() || "IMOBILIÁRIA";
+  const logo = brand?.logoUrl ? await loadLogoForPdf(brand.logoUrl) : null;
+  const C = buildPaletteFromLogo(
+    logo?.dark ?? null,
+    logo?.accent ?? null,
+    brand?.primaryColor,
+  );
+  let y = 44;
 
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.7);
-  doc.line(margin, y, pageW - margin, y);
-  y += 24;
+  const sectionIcon = (
+    type: "company" | "client" | "payment",
+    x: number,
+    top: number,
+  ) => {
+    doc.setDrawColor(...C.white);
+    doc.setLineWidth(1.1);
+    if (type === "company") {
+      doc.rect(x + 3, top + 7, 12, 10);
+      doc.line(x + 2, top + 7, x + 9, top + 2);
+      doc.line(x + 9, top + 2, x + 16, top + 7);
+      doc.line(x + 10, top + 17, x + 10, top + 11);
+    } else if (type === "client") {
+      doc.circle(x + 9, top + 6, 3, "S");
+      doc.roundedRect(x + 3, top + 11, 12, 7, 3, 3, "S");
+    } else {
+      doc.circle(x + 9, top + 10, 7, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("$", x + 9, top + 13, { align: "center" });
+    }
+  };
+
+  // Moldura e detalhes decorativos, usando as cores identificadas na logo.
+  doc.setDrawColor(...C.gold);
+  doc.setLineWidth(1.3);
+  doc.roundedRect(14, 14, pageW - 28, pageH - 28, 8, 8, "S");
+  doc.setDrawColor(...C.navy);
+  doc.setLineWidth(0.45);
+  doc.roundedRect(20, 20, pageW - 40, pageH - 40, 6, 6, "S");
+  doc.setFillColor(...C.goldSoft);
+  doc.triangle(pageW - 104, 20, pageW - 20, 20, pageW - 20, 104, "F");
+  doc.setFillColor(...C.gold);
+  doc.triangle(pageW - 72, 20, pageW - 20, 20, pageW - 20, 72, "F");
+  doc.setFillColor(...C.goldSoft);
+  doc.triangle(20, pageH - 104, 20, pageH - 20, 104, pageH - 20, "F");
+  doc.setFillColor(...C.gold);
+  doc.triangle(20, pageH - 72, 20, pageH - 20, 72, pageH - 20, "F");
+
+  // Cabeçalho da imobiliária.
+  const logoMaxW = 82;
+  const logoMaxH = 54;
+  let headerX = margin;
+  if (logo) {
+    const scale = Math.min(logoMaxW / logo.width, logoMaxH / logo.height, 1);
+    const logoW = Math.max(32, logo.width * scale);
+    const logoH = Math.max(24, logo.height * scale);
+    doc.addImage(logo.dataUrl, logo.format, headerX, y, logoW, logoH);
+    headerX += logoW + 15;
+  }
+  doc.setDrawColor(...C.gold);
+  doc.setLineWidth(1);
+  doc.line(headerX, y + 4, headerX, y + 48);
+  headerX += 14;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.setTextColor(0, 0, 0);
-  doc.text("PROPOSTA DE COMPRA", margin, y);
+  doc.setFontSize(16);
+  doc.setTextColor(...C.gold);
+  doc.text("PROPOSTA DE COMPRA", headerX, y + 21);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(pdfText(p.codigo, "----"), pageW - margin, y, { align: "right" });
+  doc.setTextColor(...C.navy);
+  doc.text(companyName.toUpperCase(), headerX, y + 38);
+  doc.setFontSize(7);
+  doc.setTextColor(...C.muted);
+  doc.text(
+    `${new Date().toLocaleDateString("pt-BR")}  ·  ${pdfText(p.codigo, "----")}`,
+    headerX,
+    y + 49,
+  );
+  y += 73;
 
-  y += 30;
+  const section = (
+    title: string,
+    type: "company" | "client" | "payment",
+    top: number,
+  ) => {
+    doc.setFillColor(...C.navy);
+    doc.roundedRect(margin, top, contentW, 23, 4, 4, "F");
+    sectionIcon(type, margin + 6, top + 1);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...C.white);
+    doc.text(title, margin + 28, top + 15);
+    return top + 29;
+  };
+
+  y = section("IDENTIFICAÇÃO DA IMOBILIÁRIA", "company", y);
+  doc.setDrawColor(...C.gold);
+  doc.setLineWidth(0.55);
+  doc.roundedRect(margin, y, contentW, 35, 3, 3, "S");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...C.navy);
+  doc.text(companyName.toUpperCase(), margin + 10, y + 16);
+  const companyMeta = [brand?.company?.creci, brand?.company?.telefone]
+    .filter(Boolean)
+    .join("  ·  ");
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("CLIENTE", margin, y);
-  y += 15;
+  doc.setFontSize(7);
+  doc.setTextColor(...C.muted);
+  doc.text(companyMeta || "PROPOSTA COMERCIAL", margin + 10, y + 27);
+  y += 46;
+
+  y = section("PROPONENTE", "client", y);
+  doc.setDrawColor(...C.gold);
+  doc.roundedRect(margin, y, contentW, 40, 3, 3, "S");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(...C.muted);
+  doc.text("NOME DO CLIENTE", margin + 10, y + 13);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text(pdfText(p.clienteNome, "----"), margin, y);
-  y += 24;
+  doc.setTextColor(...C.navy);
+  doc.text(pdfText(p.clienteNome, "----"), margin + 10, y + 30);
+  y += 52;
 
   const columns = [0.13, 0.42, 0.23, 0.22];
   const headers = ["QTD", "DESCRIÇÃO", "VALOR", "SUBTOTAL"];
+  y = section("PLANO DE PAGAMENTO", "payment", y);
   let x = margin;
   headers.forEach((header, index) => {
     const width =
       index === headers.length - 1
         ? pageW - margin - x
         : Math.round(contentW * columns[index]!);
-    doc.rect(x, y, width, 19);
+    doc.setFillColor(...C.gold);
+    doc.rect(x, y, width, 19, "F");
+    doc.setDrawColor(...C.gold);
+    doc.rect(x, y, width, 19, "S");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
+    doc.setTextColor(...C.white);
     doc.text(header, x + width / 2, y + 13, { align: "center" });
     x += width;
   });
@@ -1329,9 +1439,11 @@ async function buildPropostaPdfClienteResumido(p: Proposta) {
         index === values.length - 1
           ? pageW - margin - x
           : Math.round(contentW * columns[index]!);
-      doc.rect(x, y, width, 19);
+      doc.setDrawColor(...C.gold);
+      doc.rect(x, y, width, 19, "S");
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
+      doc.setTextColor(...C.navy);
       doc.text(value, index === 1 ? x + 6 : x + width / 2, y + 13, {
         align: index === 1 ? "left" : "center",
       });
@@ -1349,12 +1461,15 @@ async function buildPropostaPdfClienteResumido(p: Proposta) {
     ["TOTAL DA COMPOSIÇÃO", brl(total)],
     ["VALOR NEGOCIADO", brl(valorNegociado)],
   ].forEach(([label, value]) => {
-    doc.rect(summaryX, y, summaryW, 24);
+    doc.setDrawColor(...C.gold);
+    doc.rect(summaryX, y, summaryW, 24, "S");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
+    doc.setTextColor(...C.navy);
     doc.text(label, summaryX + 7, y + 10);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
+    doc.setTextColor(...C.navy);
     doc.text(value, summaryX + summaryW - 7, y + 18, { align: "right" });
     y += 24;
   });
@@ -1364,10 +1479,10 @@ async function buildPropostaPdfClienteResumido(p: Proposta) {
 
 export async function downloadPropostaPdfCliente(
   p: Proposta,
-  _brand?: PropostaPdfBrand,
+  brand?: PropostaPdfBrand,
 ) {
   const filename = `proposta-cliente-${safeFilename(p.codigo)}.pdf`;
-  const pdf = await buildPropostaPdfClienteResumido(p);
+  const pdf = await buildPropostaPdfClienteResumido(p, brand);
   savePdfBlob(pdf, filename);
 }
 
@@ -1390,7 +1505,7 @@ export async function sharePropostaPdfWhatsApp(
   phoneOverride?: string | null,
 ) {
   const filename = `proposta-cliente-${safeFilename(p.codigo)}.pdf`;
-  const pdf = await buildPropostaPdfClienteResumido(p);
+  const pdf = await buildPropostaPdfClienteResumido(p, brand);
   const text = buildPropostaShareMessage(p);
   const file = new File([pdf], filename, { type: "application/pdf" });
 
