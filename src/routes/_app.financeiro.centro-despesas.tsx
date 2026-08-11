@@ -614,9 +614,24 @@ function Page() {
         className="mb-4"
       >
         <TabsList>
-          <TabsTrigger value="fixa">Fixa</TabsTrigger>
-          <TabsTrigger value="fixa_variavel">Fixa variável</TabsTrigger>
-          <TabsTrigger value="variavel">Variável</TabsTrigger>
+          <TabsTrigger
+            value="fixa"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:shadow-none"
+          >
+            Fixa
+          </TabsTrigger>
+          <TabsTrigger
+            value="fixa_variavel"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:shadow-none"
+          >
+            Fixa variável
+          </TabsTrigger>
+          <TabsTrigger
+            value="variavel"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:shadow-none"
+          >
+            Variável
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={naturezaTab} className="mt-4 space-y-4">
