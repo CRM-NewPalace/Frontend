@@ -1271,12 +1271,103 @@ function savePdfBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+async function buildPropostaPdfClienteResumido(p: Proposta) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 36;
+  const contentW = pageW - margin * 2;
+  let y = 52;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.7);
+  doc.line(margin, y, pageW - margin, y);
+  y += 24;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(0, 0, 0);
+  doc.text("PROPOSTA DE COMPRA", margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(pdfText(p.codigo, "----"), pageW - margin, y, { align: "right" });
+
+  y += 30;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("CLIENTE", margin, y);
+  y += 15;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(pdfText(p.clienteNome, "----"), margin, y);
+  y += 24;
+
+  const columns = [0.13, 0.42, 0.23, 0.22];
+  const headers = ["QTD", "DESCRIÇÃO", "VALOR", "SUBTOTAL"];
+  let x = margin;
+  headers.forEach((header, index) => {
+    const width =
+      index === headers.length - 1
+        ? pageW - margin - x
+        : Math.round(contentW * columns[index]!);
+    doc.rect(x, y, width, 19);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.text(header, x + width / 2, y + 13, { align: "center" });
+    x += width;
+  });
+  y += 19;
+
+  const lines = compositionLines(p);
+  if (!lines.length) lines.push({ label: "----", value: 0 });
+  for (const line of lines) {
+    x = margin;
+    const quantity = line.detail?.match(/^(\d+)\s×/)?.[1] ?? "1";
+    const unitValue =
+      line.detail?.match(/×\s(R\$\s[\d.,]+)/)?.[1] ?? brl(line.value);
+    const values = [quantity, line.label, unitValue, brl(line.value)];
+    values.forEach((value, index) => {
+      const width =
+        index === values.length - 1
+          ? pageW - margin - x
+          : Math.round(contentW * columns[index]!);
+      doc.rect(x, y, width, 19);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(value, index === 1 ? x + 6 : x + width / 2, y + 13, {
+        align: index === 1 ? "left" : "center",
+      });
+      x += width;
+    });
+    y += 19;
+  }
+
+  const total = propostaComposicaoTotal(p);
+  const valorNegociado = propostaValorLiquido(p);
+  const summaryW = 230;
+  const summaryX = pageW - margin - summaryW;
+  y += 14;
+  [
+    ["TOTAL DA COMPOSIÇÃO", brl(total)],
+    ["VALOR NEGOCIADO", brl(valorNegociado)],
+  ].forEach(([label, value]) => {
+    doc.rect(summaryX, y, summaryW, 24);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text(label, summaryX + 7, y + 10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(value, summaryX + summaryW - 7, y + 18, { align: "right" });
+    y += 24;
+  });
+
+  return doc.output("blob");
+}
+
 export async function downloadPropostaPdfCliente(
   p: Proposta,
-  brand?: PropostaPdfBrand,
+  _brand?: PropostaPdfBrand,
 ) {
   const filename = `proposta-cliente-${safeFilename(p.codigo)}.pdf`;
-  const pdf = await buildPropostaPdfFormulario(p, brand);
+  const pdf = await buildPropostaPdfClienteResumido(p);
   savePdfBlob(pdf, filename);
 }
 
@@ -1299,7 +1390,7 @@ export async function sharePropostaPdfWhatsApp(
   phoneOverride?: string | null,
 ) {
   const filename = `proposta-cliente-${safeFilename(p.codigo)}.pdf`;
-  const pdf = await buildPropostaPdfFormulario(p, brand);
+  const pdf = await buildPropostaPdfClienteResumido(p);
   const text = buildPropostaShareMessage(p);
   const file = new File([pdf], filename, { type: "application/pdf" });
 
