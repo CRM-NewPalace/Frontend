@@ -92,8 +92,9 @@ const emptyForm = (): FormState => ({
 function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
-  const canCreate =
+  const canManage =
     isAdmin || user?.role === "gerente" || user?.role === "analista";
+  const canCreate = canManage;
 
   const [items, setItems] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +183,7 @@ function ConstrutorasPage() {
     e.preventDefault();
     if (formMode === "view") return;
     if (formMode === "create" && !canCreate) return;
-    if (formMode === "edit" && !isAdmin) return;
+    if (formMode === "edit" && !canManage) return;
     if (form.nome.trim().length < 2) {
       toast.error("Informe o nome da construtora.");
       return;
@@ -270,7 +271,7 @@ function ConstrutorasPage() {
 
   const readOnly =
     formMode === "view" ||
-    (formMode === "edit" && !isAdmin) ||
+    (formMode === "edit" && !canManage) ||
     (formMode === "create" && !canCreate);
 
   function toggleEmpreendimento(id: string, checked: boolean) {
@@ -373,25 +374,25 @@ function ConstrutorasPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
+                        {canManage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(item)}
+                            title="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
                         {isAdmin && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEdit(item)}
-                              title="Editar"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteId(item.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteId(item.id)}
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>

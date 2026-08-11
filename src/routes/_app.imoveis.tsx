@@ -66,8 +66,10 @@ export const Route = createFileRoute("/_app/imoveis")({
 function ImoveisPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
-  const canManage = isAdmin || user?.role === "gerente";
-  const canCreate = canManage || user?.role === "analista";
+  const isAnalista = user?.role === "analista";
+  const canManage = isAdmin || user?.role === "gerente" || isAnalista;
+  const canCreate = canManage;
+  const canDelete = isAdmin || isAnalista;
 
   const [items, setItems] = useState<Empreendimento[]>([]);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
@@ -214,7 +216,7 @@ function ImoveisPage() {
   }
 
   async function handleDelete() {
-    if (!deleteId || !isAdmin) return;
+    if (!deleteId || !canDelete) return;
     setDeleting(true);
     try {
       await deleteEmpreendimento(deleteId);
@@ -477,7 +479,7 @@ function ImoveisPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {isAdmin && (
+                      {canDelete && (
                         <Button
                           type="button"
                           variant="ghost"
