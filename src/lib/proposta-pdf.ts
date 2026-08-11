@@ -953,6 +953,12 @@ async function buildPropostaPdfFormulario(
   const margin = 14;
   const contentW = pageW - margin * 2;
   const companyName = brand?.company?.name?.trim() || "----";
+  const logo = brand?.logoUrl ? await loadLogoForPdf(brand.logoUrl) : null;
+  const C = buildPaletteFromLogo(
+    logo?.dark ?? null,
+    logo?.accent ?? null,
+    brand?.primaryColor,
+  );
   const yesNo = (value: boolean | null) =>
     value === null ? "----" : value ? "Sim" : "Não";
   const rawText = doc.text.bind(doc) as (...args: unknown[]) => unknown;
@@ -980,8 +986,8 @@ async function buildPropostaPdfFormulario(
   };
 
   doc.setLineWidth(0.45);
-  doc.setDrawColor(0, 0, 0);
-  doc.setTextColor(0, 0, 0);
+  doc.setDrawColor(...C.navy);
+  doc.setTextColor(...C.navy);
 
   const write = (
     value: unknown,
@@ -993,18 +999,23 @@ async function buildPropostaPdfFormulario(
   ) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(size);
+    doc.setTextColor(...C.navy);
     const lines = doc.splitTextToSize(pdfText(value, "----"), maxW);
     doc.text(lines.slice(0, 1), x, y, { align });
   };
 
   const section = (title: string, top: number) => {
-    doc.setLineWidth(0.8);
-    doc.line(margin, top, pageW - margin, top);
+    doc.setFillColor(...C.navy);
+    doc.roundedRect(margin, top, contentW, 16, 3, 3, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text(title, margin, top + 10);
+    doc.setTextColor(...C.white);
+    doc.text(title, margin + 7, top + 11);
+    doc.setDrawColor(...C.gold);
+    doc.setLineWidth(0.55);
+    doc.line(margin, top + 16, pageW - margin, top + 16);
     doc.setLineWidth(0.45);
-    return top + 14;
+    return top + 18;
   };
 
   const field = (
@@ -1015,9 +1026,11 @@ async function buildPropostaPdfFormulario(
     width: number,
     height = 27,
   ) => {
+    doc.setDrawColor(...C.gold);
     doc.rect(x, top, width, height);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5.2);
+    doc.setTextColor(...C.muted);
     doc.text(label.toUpperCase(), x + 4, top + 7);
     write(value, x + 4, top + height - 7, width - 8, 7.4);
   };
@@ -1040,18 +1053,34 @@ async function buildPropostaPdfFormulario(
   };
 
   let y = margin;
+  const logoMaxW = 42;
+  const logoMaxH = 28;
+  let titleX = margin;
+  if (logo) {
+    const scale = Math.min(logoMaxW / logo.width, logoMaxH / logo.height, 1);
+    const logoW = Math.max(18, logo.width * scale);
+    const logoH = Math.max(16, logo.height * scale);
+    doc.addImage(logo.dataUrl, logo.format, margin, y, logoW, logoH);
+    titleX += logoW + 9;
+    doc.setDrawColor(...C.gold);
+    doc.setLineWidth(0.7);
+    doc.line(titleX - 5, y + 1, titleX - 5, y + 28);
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text("PROPOSTA DE COMPRA", margin, y + 13);
+  doc.setTextColor(...C.navy);
+  doc.text("PROPOSTA DE COMPRA", titleX, y + 13);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
+  doc.setTextColor(...C.gold);
   doc.text(
     `${companyName} · ${new Date().toLocaleDateString("pt-BR")}`,
-    margin,
+    titleX,
     y + 25,
   );
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
+  doc.setTextColor(...C.navy);
   doc.text(pdfText(p.codigo, "----"), pageW - margin, y + 13, {
     align: "right",
   });
@@ -1185,9 +1214,13 @@ async function buildPropostaPdfFormulario(
       index === tableHeaders.length - 1
         ? pageW - margin - tableX
         : Math.round(contentW * tableColumns[index]!);
-    doc.rect(tableX, y, width, 17);
+    doc.setFillColor(...C.gold);
+    doc.rect(tableX, y, width, 17, "F");
+    doc.setDrawColor(...C.gold);
+    doc.rect(tableX, y, width, 17, "S");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6.5);
+    doc.setTextColor(...C.white);
     doc.text(header, tableX + width / 2, y + 11, { align: "center" });
     tableX += width;
   });
@@ -1208,6 +1241,7 @@ async function buildPropostaPdfFormulario(
         index === values.length - 1
           ? pageW - margin - tableX
           : Math.round(contentW * tableColumns[index]!);
+      doc.setDrawColor(...C.gold);
       doc.rect(tableX, y, width, 17);
       write(
         value,
@@ -1232,9 +1266,11 @@ async function buildPropostaPdfFormulario(
     ["SITUAÇÃO", "----"],
   ];
   summary.forEach(([label, value]) => {
+    doc.setDrawColor(...C.gold);
     doc.rect(summaryX, y, 225, 20);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5.5);
+    doc.setTextColor(...C.muted);
     doc.text(label, summaryX + 5, y + 7);
     write(value, summaryX + 220, y + 15, 205, 7.4, "right");
     y += 20;
@@ -1249,9 +1285,11 @@ async function buildPropostaPdfFormulario(
   const signatureW = 160;
   [margin, pageW / 2 - signatureW / 2, pageW - margin - signatureW].forEach(
     (x, index) => {
+      doc.setDrawColor(...C.gold);
       doc.line(x, signY, x + signatureW, signY);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6);
+      doc.setTextColor(...C.navy);
       doc.text(
         ["LOCAL E DATA", "PROPONENTE", companyName.toUpperCase()][index]!,
         x,
