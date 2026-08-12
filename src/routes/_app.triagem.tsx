@@ -27,6 +27,7 @@ import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import {
   createTriagemEvent,
+  updateTriagemEvent,
   type TriagemContact,
   type TriagemEvent,
   type TriagemOrigem,
@@ -35,11 +36,13 @@ import {
   getTriagemHistoryCached,
   loadTriagemHistory,
   prependTriagemHistoryCached,
+  replaceTriagemHistoryCached,
 } from "@/lib/triagem-history-cache";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   ClipboardList,
+  Pencil,
   Plus,
   User,
   Users,
@@ -48,6 +51,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type TriagemSearch = {
   leadId?: string;
@@ -120,6 +131,8 @@ function HistoryTimeline({
   stageLabel,
   fallbackStage,
   loading,
+  leadId,
+  onEventUpdated,
 }: {
   events: TriagemEvent[];
   contactName: string;
@@ -127,7 +140,61 @@ function HistoryTimeline({
   /** Etapa atual do lead — usada só em relatos antigos sem stage gravado. */
   fallbackStage?: string | null;
   loading?: boolean;
+  leadId?: string | null;
+  onEventUpdated?: (event: TriagemEvent) => void;
 }) {
+  const session = getSession();
+  const canSeeOriginal =
+    session?.role === "admin" || session?.role === "gerente";
+  const canEditOwn =
+    session?.role === "corretor" && Boolean(session?.id);
+
+  const [editEvent, setEditEvent] = useState<TriagemEvent | null>(null);
+  const [editTexto, setEditTexto] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(
+    null,
+  );
+
+  function openEdit(ev: TriagemEvent) {
+    setEditEvent(ev);
+    setEditTexto(ev.texto);
+  }
+
+  async function submitEdit() {
+    if (!editEvent) return;
+    const texto = editTexto.trim();
+    if (!texto) {
+      toast.error("Informe o relato.");
+      return;
+    }
+    if (texto.length > MAX_TEXTO) {
+      toast.error(`O relato deve ter no máximo ${MAX_TEXTO} caracteres.`);
+      return;
+    }
+    if (texto === editEvent.texto) {
+      setEditEvent(null);
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      const updated = await updateTriagemEvent(editEvent.id, texto);
+      if (leadId) replaceTriagemHistoryCached(leadId, updated);
+      onEventUpdated?.(updated);
+      setEditEvent(null);
+      toast.success("Relato atualizado.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível atualizar o relato.",
+      );
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   if (loading && events.length === 0) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
@@ -160,6 +227,12 @@ function HistoryTimeline({
               ev.stageAnterior !== ev.stageNovo,
           );
           const isLast = index === events.length - 1;
+          const isOwn =
+            canEditOwn && session?.id != null && ev.autor.id === session.id;
+          const showOriginal =
+            canSeeOriginal &&
+            Boolean(ev.textoAnterior) &&
+            expandedOriginalId === ev.id;
 
           return (
             <li key={ev.id} className="relative flex gap-3 pb-6 last:pb-0">
@@ -177,8 +250,27 @@ function HistoryTimeline({
               </div>
 
               <div className="min-w-0 flex-1 space-y-2">
-                <div className="text-xs text-muted-foreground tabular-nums">
-                  {formatWhen(ev.createdAt)}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-muted-foreground tabular-nums">
+                    {formatWhen(ev.createdAt)}
+                    {ev.editedAt ? (
+                      <span className="ml-1.5">
+                        · editado {formatWhen(ev.editedAt)}
+                      </span>
+                    ) : null}
+                  </div>
+                  {isOwn ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => openEdit(ev)}
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" />
+                      Editar
+                    </Button>
+                  ) : null}
                 </div>
 
                 <div
@@ -214,18 +306,108 @@ function HistoryTimeline({
                         <Badge variant="outline" className="text-[10px]">
                           {ev.origem === "funil" ? "Funil" : "Manual"}
                         </Badge>
+                        {ev.editedAt ? (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-medium bg-amber-500/15 text-amber-800 border-amber-500/25"
+                          >
+                            Editado
+                          </Badge>
+                        ) : null}
                       </div>
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap pl-0 sm:pl-[2.625rem]">
                     {ev.texto}
                   </p>
+                  {canSeeOriginal && ev.textoAnterior ? (
+                    <div className="pl-0 sm:pl-[2.625rem] space-y-2">
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() =>
+                          setExpandedOriginalId((prev) =>
+                            prev === ev.id ? null : ev.id,
+                          )
+                        }
+                      >
+                        {showOriginal ? "Ocultar original" : "Ver original"}
+                      </Button>
+                      {showOriginal ? (
+                        <div className="rounded-lg border border-dashed bg-muted/30 p-2.5">
+                          <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                            Texto anterior
+                          </p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {ev.textoAnterior}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </li>
           );
         })}
       </ol>
+
+      <Dialog
+        open={Boolean(editEvent)}
+        onOpenChange={(open) => {
+          if (!open && !editSaving) setEditEvent(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar relato</DialogTitle>
+            <DialogDescription>
+              Altere o texto do seu relato. A etapa do funil não muda.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="triagem-edit-texto">Relato</Label>
+              <span className="text-xs text-muted-foreground">
+                {editTexto.length}/{MAX_TEXTO}
+              </span>
+            </div>
+            <Textarea
+              id="triagem-edit-texto"
+              value={editTexto}
+              maxLength={MAX_TEXTO}
+              rows={4}
+              disabled={editSaving}
+              onChange={(e) => setEditTexto(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={editSaving}
+              onClick={() => setEditEvent(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={editSaving || !editTexto.trim()}
+              onClick={() => void submitEdit()}
+            >
+              {editSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  Salvando…
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -677,6 +859,12 @@ function CorretorTriagem() {
                 stageLabel={stageName}
                 fallbackStage={selectedContact.stage}
                 loading={historyLoading}
+                leadId={selectedId}
+                onEventUpdated={(updated) =>
+                  setEvents((prev) =>
+                    prev.map((e) => (e.id === updated.id ? updated : e)),
+                  )
+                }
               />
             </div>
           )}
@@ -1157,6 +1345,12 @@ function ManagerTriagem() {
                 stageLabel={stageName}
                 fallbackStage={selectedLead.stage}
                 loading={historyLoading}
+                leadId={selectedLeadId}
+                onEventUpdated={(updated) =>
+                  setEvents((prev) =>
+                    prev.map((e) => (e.id === updated.id ? updated : e)),
+                  )
+                }
               />
             </div>
           )}

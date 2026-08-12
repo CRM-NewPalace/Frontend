@@ -23,10 +23,13 @@ export interface TriagemEvent {
   id: string;
   leadId: string;
   texto: string;
+  /** Texto imediatamente anterior à última edição (admin/gerente). */
+  textoAnterior: string | null;
   stageAnterior: string | null;
   stageNovo: string | null;
   origem: TriagemOrigem;
   createdAt: string;
+  editedAt: string | null;
   autor: { id: string; name: string };
 }
 
@@ -79,5 +82,15 @@ export async function createTriagemEvent(
   return apiFetch<TriagemEvent>("/triagem", {
     method: "POST",
     body: input,
+  });
+}
+
+export async function updateTriagemEvent(
+  id: string,
+  texto: string,
+): Promise<TriagemEvent> {
+  return apiFetch<TriagemEvent>(`/triagem/events/${id}`, {
+    method: "PATCH",
+    body: { texto },
   });
 }

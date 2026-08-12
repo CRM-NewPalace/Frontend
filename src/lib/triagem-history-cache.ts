@@ -26,6 +26,17 @@ export function prependTriagemHistoryCached(
   historyCache.set(leadId, [event, ...prev.filter((e) => e.id !== event.id)]);
 }
 
+export function replaceTriagemHistoryCached(
+  leadId: string,
+  event: TriagemEvent,
+) {
+  const prev = historyCache.get(leadId) ?? [];
+  historyCache.set(
+    leadId,
+    prev.map((e) => (e.id === event.id ? event : e)),
+  );
+}
+
 /**
  * Retorna histórico: cache imediato se houver; sempre revalida em background.
  * `onUpdate` é chamado quando a rede responde.
