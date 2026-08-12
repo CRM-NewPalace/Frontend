@@ -14,6 +14,8 @@ import {
   AGENDAMENTO_ORIGEM_SOFT,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_LABEL,
+  getAgendamentoCardSubtitle,
+  getAgendamentoCardTitle,
   getAgendamentoOrigem,
   isAgendamentoAniversario,
   isAgendamentoBloqueio,
@@ -282,7 +284,10 @@ export function AgendaDayTable({
                             }}
                             className="w-full rounded-lg border border-dashed border-slate-400 bg-slate-100/80 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-200/80"
                           >
-                            Bloqueado — {bloqueio.titulo}
+                            Bloqueado — {bloqueio.autor.name}
+                            {bloqueio.titulo
+                              ? ` · ${bloqueio.titulo}`
+                              : ""}
                           </button>
                         ) : (
                           <button
@@ -370,10 +375,12 @@ export function AgendaDayTable({
                           onClick={() => onEdit(item)}
                           className="text-left font-medium hover:underline"
                         >
-                          {item.titulo}
+                          {getAgendamentoCardTitle(item)}
                         </button>
                       ) : (
-                        <span className="font-medium">{item.titulo}</span>
+                        <span className="font-medium">
+                          {getAgendamentoCardTitle(item)}
+                        </span>
                       )}
                       <div className="mt-1 flex flex-wrap gap-1">
                         {isAdminEvent && alvoBadgeLabel ? (
@@ -388,14 +395,14 @@ export function AgendaDayTable({
                             variant="outline"
                             className="text-[10px] border-slate-400 text-slate-800"
                           >
-                            Bloqueado
+                            Bloqueado · {item.autor.name}
                           </Badge>
-                        ) : item.atribuidoPara ? (
+                        ) : item.atribuidoParaId ? (
                           <Badge
                             variant="outline"
                             className="text-[10px] border-violet-300 text-violet-800"
                           >
-                            Atribuída
+                            De {item.autor.name}
                           </Badge>
                         ) : item.escopo === "pessoal" ? (
                           <Badge variant="outline" className="text-[10px]">
@@ -415,6 +422,19 @@ export function AgendaDayTable({
                           </Badge>
                         ) : null}
                       </div>
+                      {isAgendamentoBloqueio(item) && item.titulo ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {item.titulo}
+                        </p>
+                      ) : null}
+                      {item.atribuidoParaId ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {item.atribuidoPara
+                            ? `Para ${item.atribuidoPara.name} · `
+                            : ""}
+                          Passada por {item.autor.name}
+                        </p>
+                      ) : null}
                       {item.local ? (
                         <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="w-3 h-3" />

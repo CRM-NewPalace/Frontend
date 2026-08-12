@@ -5,6 +5,8 @@ import {
   AGENDAMENTO_ORIGEM_LABEL,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_LABEL,
+  getAgendamentoCardSubtitle,
+  getAgendamentoCardTitle,
   getAgendamentoOrigem,
   isAgendamentoBloqueio,
   type Agendamento,
@@ -386,15 +388,21 @@ function TimeGridBoard({
                       item.status === "cancelado" && "opacity-50 grayscale",
                     )}
                     style={{ top, height: Math.max(height, 22) }}
-                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${item.titulo}${item.lead ? ` · ${item.lead.nome}` : ""}`}
+                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${getAgendamentoCardTitle(item)}${
+                      getAgendamentoCardSubtitle(item)
+                        ? ` · ${getAgendamentoCardSubtitle(item)}`
+                        : ""
+                    }`}
                   >
                     <div className="truncate text-[11px] font-semibold leading-tight">
-                      {item.titulo}
+                      {getAgendamentoCardTitle(item)}
                     </div>
                     {height > 36 ? (
                       <div className="truncate text-[10px] opacity-90">
                         {formatEventTime(item)}
-                        {item.lead ? ` · ${item.lead.nome}` : ""}
+                        {getAgendamentoCardSubtitle(item)
+                          ? ` · ${getAgendamentoCardSubtitle(item)}`
+                          : ""}
                       </div>
                     ) : null}
                   </button>
@@ -518,13 +526,17 @@ function MonthBoard({
                       AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
                       item.status === "cancelado" && "opacity-50 grayscale",
                     )}
-                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${AGENDAMENTO_TIPO_LABEL[item.tipo]} · ${item.titulo} · ${AGENDAMENTO_STATUS_LABEL[item.status]}`}
+                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${AGENDAMENTO_TIPO_LABEL[item.tipo]} · ${getAgendamentoCardTitle(item)}${
+                      getAgendamentoCardSubtitle(item)
+                        ? ` · ${getAgendamentoCardSubtitle(item)}`
+                        : ""
+                    } · ${AGENDAMENTO_STATUS_LABEL[item.status]}`}
                   >
                     {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}{" "}
-                    {item.titulo}
+                    {getAgendamentoCardTitle(item)}
                   </button>
                 ))}
                 {extra > 0 ? (

@@ -151,6 +151,36 @@ export function isAgendamentoBloqueio(item: { tipo: AgendamentoTipo }) {
   return item.tipo === "bloqueio";
 }
 
+/** Título principal no card do calendário. */
+export function getAgendamentoCardTitle(item: {
+  tipo: AgendamentoTipo;
+  titulo: string;
+  autor: { name: string };
+}) {
+  if (isAgendamentoBloqueio(item)) {
+    return `Bloqueado · ${item.autor.name}`;
+  }
+  return item.titulo;
+}
+
+/** Linha secundária: quem atribuiu / título do bloqueio / lead. */
+export function getAgendamentoCardSubtitle(item: {
+  tipo: AgendamentoTipo;
+  titulo: string;
+  autor: { name: string };
+  atribuidoParaId?: string | null;
+  lead?: { nome: string } | null;
+}) {
+  if (isAgendamentoBloqueio(item)) {
+    return item.titulo?.trim() || null;
+  }
+  if (item.atribuidoParaId) {
+    const base = `De ${item.autor.name}`;
+    return item.lead?.nome ? `${base} · ${item.lead.nome}` : base;
+  }
+  return item.lead?.nome ?? null;
+}
+
 export function getAgendamentoOrigem(item: {
   id: string;
   isAniversario?: boolean;
