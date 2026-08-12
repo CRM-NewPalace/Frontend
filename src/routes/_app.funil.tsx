@@ -73,7 +73,7 @@ import {
   DEFAULT_STATUS1,
   DEFAULT_STATUS2,
 } from "@/lib/documentacao-api";
-import { nextCatalogColor } from "@/lib/catalog-colors";
+import { funnelColumnBg, nextCatalogColor } from "@/lib/catalog-colors";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -123,6 +123,12 @@ const MAX_HISTORICO_TEXTO = 400;
 
 /** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
 const COLUMN_STEP_PX = 288 + 12;
+
+const FUNIL_GRADIENT_BTN =
+  "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
+const FUNIL_GRADIENT_STYLE = {
+  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
+} as const;
 
 export const Route = createFileRoute("/_app/funil")({
   head: () => ({ meta: [{ title: "Funil de Vendas — Zone Connection" }] }),
@@ -281,9 +287,18 @@ export function ComercialFunilBoard({
     user,
   ]);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [activeDropStage, setActiveDropStage] = useState<StageId | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const didDrag = useRef(false);
   const boardRef = useRef<HTMLDivElement>(null);
+  const dragSession = useRef<{
+    leadId: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    activated: boolean;
+    longPressTimer: ReturnType<typeof setTimeout> | null;
+  } | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -690,9 +705,145 @@ export function ComercialFunilBoard({
     el.scrollBy({ left: direction * COLUMN_STEP_PX, behavior: "smooth" });
   }
 
-  async function onDrop(stage: StageId) {
-    if (!dragging) return;
-    const leadId = dragging;
+  useEffect(() => {
+    return () => {
+      const s = dragSession.current;
+      if (s?.longPressTimer != null) clearTimeout(s.longPressTimer);
+      dragSession.current = null;
+    };
+  }, []);
+
+  const DRAG_THRESHOLD_PX = 8;
+  const TOUCH_DRAG_DELAY_MS = 200;
+
+  function stageFromPoint(x: number, y: number): StageId | null {
+    const stack = document.elementsFromPoint(x, y);
+    for (const el of stack) {
+      if (!(el instanceof Element)) continue;
+      if (el.closest("[data-dragging-card]")) continue;
+      const col = el.closest("[data-funnel-stage]");
+      const id = col?.getAttribute("data-funnel-stage");
+      if (id) return id as StageId;
+    }
+    return null;
+  }
+
+  function clearDragTimers() {
+    const s = dragSession.current;
+    if (s?.longPressTimer != null) {
+      clearTimeout(s.longPressTimer);
+      s.longPressTimer = null;
+    }
+  }
+
+  function activateCardDrag(leadId: string, target: HTMLElement, pointerId: number) {
+    const s = dragSession.current;
+    if (!s || s.leadId !== leadId || s.activated) return;
+    s.activated = true;
+    didDrag.current = true;
+    try {
+      target.setPointerCapture(pointerId);
+    } catch {
+      /* pointer already released */
+    }
+    setDragging(leadId);
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate?.(12);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  function autoScrollBoard(clientX: number) {
+    const board = boardRef.current;
+    if (!board) return;
+    const rect = board.getBoundingClientRect();
+    const edge = 56;
+    const step = 18;
+    if (clientX < rect.left + edge) board.scrollLeft -= step;
+    else if (clientX > rect.right - edge) board.scrollLeft += step;
+  }
+
+  function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>, leadId: string) {
+    if (e.button !== 0) return;
+    didDrag.current = false;
+    clearDragTimers();
+    const target = e.currentTarget;
+    dragSession.current = {
+      leadId,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      activated: false,
+      longPressTimer: null,
+    };
+
+    // Touch/pen: long-press to drag (preserves horizontal board scroll).
+    if (e.pointerType === "touch" || e.pointerType === "pen") {
+      dragSession.current.longPressTimer = setTimeout(() => {
+        activateCardDrag(leadId, target, e.pointerId);
+      }, TOUCH_DRAG_DELAY_MS);
+    }
+  }
+
+  function onCardPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const s = dragSession.current;
+    if (!s || s.pointerId !== e.pointerId) return;
+
+    const dist = Math.hypot(e.clientX - s.startX, e.clientY - s.startY);
+
+    if (!s.activated) {
+      if (e.pointerType === "touch" || e.pointerType === "pen") {
+        // Finger moved before long-press → treat as scroll, cancel drag.
+        if (dist > DRAG_THRESHOLD_PX) {
+          clearDragTimers();
+          dragSession.current = null;
+        }
+        return;
+      }
+      // Mouse: start drag after a small movement.
+      if (dist < DRAG_THRESHOLD_PX) return;
+      activateCardDrag(s.leadId, e.currentTarget, e.pointerId);
+    }
+
+    if (!dragSession.current?.activated) return;
+    e.preventDefault();
+    setActiveDropStage(stageFromPoint(e.clientX, e.clientY));
+    autoScrollBoard(e.clientX);
+  }
+
+  function endCardPointer(
+    e: React.PointerEvent<HTMLDivElement>,
+    drop: boolean,
+  ) {
+    const s = dragSession.current;
+    if (!s || s.pointerId !== e.pointerId) return;
+
+    const { leadId, activated } = s;
+    clearDragTimers();
+    dragSession.current = null;
+    setActiveDropStage(null);
+    setDragging(null);
+
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* not capturing */
+    }
+
+    if (drop && activated) {
+      const stage = stageFromPoint(e.clientX, e.clientY);
+      if (stage) void dropLeadOnStage(leadId, stage);
+      // Keep didDrag true through the synthetic click, then reset.
+      window.setTimeout(() => {
+        didDrag.current = false;
+      }, 0);
+    }
+  }
+
+  async function dropLeadOnStage(leadId: string, stage: StageId) {
     const lead = allLeads.find((l) => l.id === leadId);
     setDragging(null);
     if (!lead || lead.stage === stage) return;
@@ -839,7 +990,7 @@ export function ComercialFunilBoard({
                   setFilterCorretorId("__all__");
                 }}
               >
-                <SelectTrigger className="h-8 w-[11.5rem] bg-background">
+                <SelectTrigger className="h-8 w-46 bg-background">
                   <SelectValue placeholder="Equipe" />
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -858,7 +1009,7 @@ export function ComercialFunilBoard({
                 value={filterCorretorId}
                 onValueChange={setFilterCorretorId}
               >
-                <SelectTrigger className="h-8 w-[11.5rem] bg-background">
+                <SelectTrigger className="h-8 w-46 bg-background">
                   <SelectValue placeholder="Corretor" />
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -900,7 +1051,12 @@ export function ComercialFunilBoard({
               </Button>
             </div>
             {!isCorretor && (
-              <Button size="sm" asChild>
+              <Button
+                size="sm"
+                asChild
+                className={FUNIL_GRADIENT_BTN}
+                style={FUNIL_GRADIENT_STYLE}
+              >
                 <Link to="/configuracoes">Configurar funil</Link>
               </Button>
             )}
@@ -912,24 +1068,36 @@ export function ComercialFunilBoard({
         ref={boardRef}
         className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
       >
-        {funnelStages.map((stage) => {
+        {funnelStages.map((stage, stageIndex) => {
           const stageLeads = leads.filter((l) => l.stage === stage.id);
           const total = stageLeads.reduce((s, l) => s + (l.renda ?? 0), 0);
           return (
             <div
               key={stage.id}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => onDrop(stage.id)}
-              className="w-72 shrink-0 flex flex-col bg-muted/40 rounded-xl p-3"
+              data-funnel-stage={stage.id}
+              className={cn(
+                "w-72 shrink-0 flex flex-col rounded-xl p-3 transition-colors",
+                funnelColumnBg(stageIndex, funnelStages.length),
+                activeDropStage === stage.id &&
+                  "ring-2 ring-[#079ED4]/40 brightness-[0.98]",
+              )}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Badge className={stage.color}>{stage.name}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[14px] px-3 py-1 border-black/10 shadow-none",
+                      stage.color,
+                    )}
+                  >
+                    {stage.name}
+                  </Badge>
                   <span className="text-xs text-muted-foreground">
                     {stageLeads.length}
                   </span>
                 </div>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[11px] font-semibold text-foreground">
                   {brl(total)}
                 </span>
               </div>
@@ -937,22 +1105,19 @@ export function ComercialFunilBoard({
                 {stageLeads.map((l) => (
                   <Card
                     key={l.id}
-                    draggable
-                    onDragStart={() => {
-                      didDrag.current = false;
-                      setDragging(l.id);
-                    }}
-                    onDrag={() => {
-                      didDrag.current = true;
-                    }}
-                    onDragEnd={() => setDragging(null)}
+                    data-dragging-card={dragging === l.id ? "" : undefined}
+                    onPointerDown={(e) => onCardPointerDown(e, l.id)}
+                    onPointerMove={onCardPointerMove}
+                    onPointerUp={(e) => endCardPointer(e, true)}
+                    onPointerCancel={(e) => endCardPointer(e, false)}
                     onClick={() => openDetail(l)}
-                    className={`p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
-                      dragging === l.id ? "opacity-50" : ""
-                    }`}
+                    className={cn(
+                      "p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow touch-manipulation select-none",
+                      dragging === l.id && "opacity-40 touch-none shadow-md",
+                    )}
                   >
                     <div className="flex items-start justify-between mb-1.5 gap-2">
-                      <div className="text-sm font-medium truncate">
+                      <div className="table-person-name text-sm truncate">
                         {l.nome}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -1153,7 +1318,7 @@ export function ComercialFunilBoard({
                     value={detailLead.stage}
                     onValueChange={(v) => void moveDetailToStage(v)}
                   >
-                    <SelectTrigger className="h-9 min-w-[180px]">
+                    <SelectTrigger className="h-9 min-w-45">
                       <SelectValue placeholder="Selecione a etapa" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1948,12 +2113,15 @@ function AnalistaFunilBoard() {
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6">
-          {ANALISTA_COLUMNS.map((col) => {
+          {ANALISTA_COLUMNS.map((col, index) => {
             const colItems = items.filter((i) => i.status === col.id);
             return (
               <div
                 key={col.id}
-                className="w-72 shrink-0 flex flex-col bg-muted/40 rounded-xl p-3"
+                className={cn(
+                  "w-72 shrink-0 flex flex-col rounded-xl p-3",
+                  funnelColumnBg(index, ANALISTA_COLUMNS.length),
+                )}
               >
                 <div className="flex items-center justify-between mb-3">
                   <Badge variant="secondary">{col.label}</Badge>
@@ -1964,7 +2132,7 @@ function AnalistaFunilBoard() {
                 <div className="space-y-2 min-h-16 flex-1">
                   {colItems.map((item) => (
                     <Card key={item.id} className="p-3 space-y-2 shadow-sm">
-                      <div className="text-sm font-medium truncate">
+                      <div className="text-sm font-semibold text-foreground/80 truncate">
                         {item.nome}
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">

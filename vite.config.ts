@@ -6,6 +6,14 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+/** Host da API sem sufixo /api — o browser já chama /api/... e o proxy mantém esse path. */
+function apiProxyTarget() {
+  const raw =
+    process.env.API_PROXY_TARGET ??
+    "https://api-zoneconnection-backendzoneconnection-0163c0-179-198-111-97.sslip.io";
+  return raw.replace(/\/api\/?$/, "");
+}
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
@@ -13,13 +21,26 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    // Vite 8 default = lightningcss; ele não entende @utility/@theme do Tailwind v4
+    // (ex.: tw-animate-css) e spamma "Unknown at rule" no terminal.
+    css: {
+      transformer: "postcss",
+    },
+    build: {
+      cssMinify: "esbuild",
+    },
+    // CJS → ESM: sem prebundle o Vite serve o shim cru e quebra named export.
+    optimizeDeps: {
+      include: ["use-sync-external-store/shim/with-selector"],
+    },
     server: {
+      open: true,
       // Proxy evita CORS e o atraso ~3s do Windows (localhost → IPv6 timeout → IPv4).
       // O browser fala com a mesma origem; o Vite encaminha para o Nest.
-      // API_PROXY_TARGET aponta para a API hospedada (ex.: https://x.onrender.com).
+      // API_PROXY_TARGET = origem do backend (sem /api no final).
       proxy: {
         "/api": {
-          target: process.env.API_PROXY_TARGET ?? "http://127.0.0.1:3333",
+          target: apiProxyTarget(),
           changeOrigin: true,
         },
       },

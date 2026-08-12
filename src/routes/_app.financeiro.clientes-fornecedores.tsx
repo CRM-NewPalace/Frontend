@@ -319,7 +319,7 @@ function Page() {
             })}
         extra={
           <Select value={ativo} onValueChange={setAtivo}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-45">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -346,7 +346,7 @@ function Page() {
             Carregando parceiros…
           </div>
         ) : (
-          <Table>
+          <Table className="[&_th]:px-4 [&_td]:px-4">
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
@@ -356,7 +356,7 @@ function Page() {
                 <TableHead>Cidade</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[88px] text-right">Ações</TableHead>
+                <TableHead className="w-22 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

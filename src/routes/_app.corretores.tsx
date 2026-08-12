@@ -7,6 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -132,7 +140,7 @@ function Page() {
       <div className="space-y-1">
         <Label className="text-[11px] text-muted-foreground">Mês</Label>
         <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-          <SelectTrigger className="h-9 w-[9.5rem] bg-background">
+          <SelectTrigger className="h-9 w-38 bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -147,7 +155,7 @@ function Page() {
       <div className="space-y-1">
         <Label className="text-[11px] text-muted-foreground">Ano</Label>
         <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-          <SelectTrigger className="h-9 w-[5.5rem] bg-background">
+          <SelectTrigger className="h-9 w-22 bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -258,7 +266,7 @@ function Page() {
 
           {showRankingGerentes && (
             <section className="mt-5 mb-6">
-              <Card>
+              <Card className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <UsersRound className="h-4 w-4 text-primary" />
@@ -268,49 +276,35 @@ function Page() {
                     Agregado pela equipe liderada · ordenado por VGV do mês.
                   </p>
                 </CardHeader>
-                <CardContent className="overflow-x-auto">
+                <CardContent className="p-0">
                   {data.gerentes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">
+                    <p className="text-sm text-muted-foreground px-6 py-4">
                       Nenhuma equipe com gerente cadastrada.
                     </p>
                   ) : (
-                    <table className="w-full min-w-200 text-sm">
-                      <thead>
-                        <tr className="border-b text-left text-muted-foreground">
-                          <th className="pb-2 pr-2 font-medium w-10">#</th>
-                          <th className="pb-2 pr-2 font-medium">Gerente</th>
-                          <th className="pb-2 pr-2 font-medium text-right">
+                    <Table className="min-w-200 [&_th]:px-4 [&_td]:px-4">
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead>Gerente</TableHead>
+                          <TableHead className="text-right">
                             Corretores
-                          </th>
-                          <th className="pb-2 pr-2 font-medium text-right">
-                            Leads
-                          </th>
-                          <th className="pb-2 pr-2 font-medium text-right">
-                            Entradas
-                          </th>
-                          <th className="pb-2 pr-2 font-medium text-right">
-                            Visitas
-                          </th>
-                          <th className="pb-2 pr-2 font-medium text-right">
-                            Vendas
-                          </th>
-                          <th className="pb-2 pr-2 font-medium text-right">
-                            VGV
-                          </th>
-                          <th className="pb-2 pr-2 font-medium text-right">
-                            Conv.
-                          </th>
-                          <th className="pb-2 font-medium text-right">
-                            Perdidos
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                          </TableHead>
+                          <TableHead className="text-right">Leads</TableHead>
+                          <TableHead className="text-right">Entradas</TableHead>
+                          <TableHead className="text-right">Visitas</TableHead>
+                          <TableHead className="text-right">Vendas</TableHead>
+                          <TableHead className="text-right">VGV</TableHead>
+                          <TableHead className="text-right">Conv.</TableHead>
+                          <TableHead className="text-right">Perdidos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {data.gerentes.map((r) => (
                           <GerenteRow key={r.gerenteId} row={r} />
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   )}
                 </CardContent>
               </Card>
@@ -327,63 +321,109 @@ function PodioCorretores({
 }: {
   corretores: DashboardRankingCorretor[];
 }) {
-  const podium = [corretores[1], corretores[0], corretores[2]].filter(
-    Boolean,
-  ) as DashboardRankingCorretor[];
+  const slots = [
+    {
+      row: corretores[1],
+      place: 2 as const,
+      step: "h-24 sm:h-28",
+      avatar:
+        "border-slate-300 bg-slate-200 text-slate-800 ring-slate-300/60",
+      stepBg:
+        "bg-gradient-to-b from-slate-200 to-slate-400 text-slate-800 rounded-tl-2xl",
+    },
+    {
+      row: corretores[0],
+      place: 1 as const,
+      step: "h-36 sm:h-44",
+      avatar:
+        "border-amber-300 bg-amber-400 text-amber-950 ring-amber-300/50",
+      stepBg:
+        "bg-gradient-to-b from-amber-300 to-amber-500 text-amber-950 rounded-t-2xl shadow-md z-[1]",
+    },
+    {
+      row: corretores[2],
+      place: 3 as const,
+      step: "h-20 sm:h-24",
+      avatar:
+        "border-orange-300 bg-orange-500 text-orange-950 ring-orange-300/50",
+      stepBg:
+        "bg-gradient-to-b from-orange-300 to-orange-500 text-orange-950 rounded-tr-2xl",
+    },
+  ].filter((s) => Boolean(s.row));
+
+  if (slots.length === 0) return null;
+
   return (
-    <Card className="overflow-hidden bg-gradient-to-br from-card via-card to-muted/70 text-foreground">
-      <CardContent className="p-5">
+    <Card className="overflow-hidden bg-linear-to-br from-card via-card to-muted/70 text-foreground">
+      <CardContent className="p-5 sm:p-6">
         <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
           <Trophy className="h-4 w-4" /> Pódio de vendas · corretores
         </div>
-        <div className="mt-5 flex items-end justify-center gap-3 sm:gap-8">
-          {podium.map((row, index) => {
-            const position = row.posicao;
-            const first = position === 1;
-            return (
-              <div
-                key={row.corretorId}
-                className={cn(
-                  "flex w-28 flex-col items-center text-center",
-                  first && "order-none -translate-y-3",
-                )}
-              >
+
+        <div className="mx-auto mt-6 max-w-lg">
+          <div className="flex items-end justify-center gap-0">
+            {slots.map(({ row, place, step, avatar, stepBg }) => {
+              if (!row) return null;
+              const initials = row.nome
+                .split(" ")
+                .slice(0, 2)
+                .map((name) => name[0])
+                .join("");
+
+              return (
                 <div
-                  className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-bold",
-                    position === 1
-                      ? "border-amber-300 bg-amber-400 text-amber-950"
-                      : position === 2
-                        ? "border-slate-200 bg-slate-300 text-slate-800"
-                        : "border-orange-300 bg-orange-500 text-orange-950",
-                  )}
+                  key={row.corretorId}
+                  className="flex min-w-0 flex-1 flex-col items-center"
                 >
-                  {row.nome
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((name) => name[0])
-                    .join("")}
+                  <div className="mb-3 flex w-full flex-col items-center px-1 text-center sm:px-2">
+                    <div
+                      className={cn(
+                        "podio-float relative flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-bold ring-4 sm:h-14 sm:w-14",
+                        place === 1 && "podio-float-delay-1",
+                        place === 2 && "podio-float-delay-2",
+                        place === 3 && "podio-float-delay-3",
+                        avatar,
+                        place === 1 && "h-14 w-14 sm:h-16 sm:w-16 text-base",
+                      )}
+                    >
+                      {initials}
+                      {place === 1 ? (
+                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold leading-none text-amber-950 shadow-sm sm:text-xs">
+                          1º
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 w-full truncate text-xs font-semibold sm:text-sm">
+                      {row.nome}
+                    </p>
+                    <p className="text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+                      {row.vendas.valor} venda
+                      {row.vendas.valor === 1 ? "" : "s"}
+                      <br className="sm:hidden" />
+                      <span className="hidden sm:inline"> · </span>
+                      {money(row.vgv.valor)}
+                    </p>
+                  </div>
+
+                  <div
+                    className={cn(
+                      "flex w-full flex-col items-center justify-start gap-1 border border-b-0 border-black/5 pt-3",
+                      step,
+                      stepBg,
+                    )}
+                  >
+                    <span className="text-base font-black tracking-tight sm:text-lg">
+                      #{place}
+                    </span>
+                    {place === 1 ? (
+                      <Trophy className="h-4 w-4 opacity-80" />
+                    ) : null}
+                  </div>
                 </div>
-                <p className="mt-2 truncate text-xs font-semibold">{row.nome}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {row.vendas.valor} venda{row.vendas.valor === 1 ? "" : "s"} ·{" "}
-                  {money(row.vgv.valor)}
-                </p>
-                <div
-                  className={cn(
-                    "mt-3 flex w-full items-center justify-center rounded-t-md text-xs font-bold",
-                    position === 1
-                      ? "h-12 bg-amber-400 text-amber-950"
-                      : position === 2
-                        ? "h-8 bg-muted text-foreground"
-                        : "h-8 bg-orange-500 text-orange-950",
-                  )}
-                >
-                  #{position}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          <div className="h-2.5 rounded-b-2xl bg-[#032b43]/25 shadow-inner" />
         </div>
       </CardContent>
     </Card>
@@ -520,39 +560,39 @@ function GerenteRow({ row }: { row: DashboardRankingGerente }) {
   const entradas = row.entradas.valor ?? 0;
   const conversao = row.taxaConversao.valor ?? 0;
   return (
-    <tr className="border-b last:border-0 align-top">
-      <td className="py-2.5 pr-2 tabular-nums text-muted-foreground">
+    <TableRow className="align-top">
+      <TableCell className="tabular-nums text-muted-foreground">
         {row.posicao}
-      </td>
-      <td className="py-2.5 pr-2">
+      </TableCell>
+      <TableCell>
         <div className="font-medium">{row.nome}</div>
         <div className="text-xs text-muted-foreground">{row.equipe}</div>
-      </td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.corretores}</td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.leads ?? 0}</td>
-      <td className="py-2.5 pr-2 text-right">
+      </TableCell>
+      <TableCell className="text-right tabular-nums">{row.corretores}</TableCell>
+      <TableCell className="text-right tabular-nums">{row.leads ?? 0}</TableCell>
+      <TableCell className="text-right">
         <div className="tabular-nums font-medium">{entradas}</div>
         <EvolucaoBadge
           value={row.entradas.evolucaoPct ?? 0}
           previous={row.entradas.valorMesAnterior ?? 0}
         />
-      </td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">{row.visitas ?? 0}</td>
-      <td className="py-2.5 pr-2 text-right">
+      </TableCell>
+      <TableCell className="text-right tabular-nums">{row.visitas ?? 0}</TableCell>
+      <TableCell className="text-right">
         <div className="tabular-nums font-medium">{vendas}</div>
         <EvolucaoBadge
           value={row.vendas.evolucaoPct ?? 0}
           previous={row.vendas.valorMesAnterior ?? 0}
         />
-      </td>
-      <td className="py-2.5 pr-2 text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <div className="tabular-nums font-medium">{money(vgv)}</div>
         <EvolucaoBadge
           value={row.vgv.evolucaoPct ?? 0}
           previous={row.vgv.valorMesAnterior ?? 0}
         />
-      </td>
-      <td className="py-2.5 pr-2 text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <div className="tabular-nums font-medium">
           {conversao.toLocaleString("pt-BR", {
             maximumFractionDigits: 1,
@@ -560,8 +600,8 @@ function GerenteRow({ row }: { row: DashboardRankingGerente }) {
           %
         </div>
         <EvolucaoBadge value={row.taxaConversao.evolucaoPct ?? 0} />
-      </td>
-      <td className="py-2.5 text-right tabular-nums">{row.perdidos ?? 0}</td>
-    </tr>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">{row.perdidos ?? 0}</TableCell>
+    </TableRow>
   );
 }

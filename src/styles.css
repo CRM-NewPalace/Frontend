@@ -38,7 +38,7 @@
   --color-surface-muted: #f8fafc;
   --color-text-muted: #64748b;
   --background-image-brand-text: linear-gradient(to right, #079ed4, #053647);
-  --background-image-brand-cta: linear-gradient(to right, #053647, #079ed4);
+  --background-image-brand-cta: linear-gradient(135deg, #0e6f8a 0%, #079ed4 100%);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -95,13 +95,13 @@
   --chart-3: #0a5a75;
   --chart-4: #38bdf8;
   --chart-5: #64748b;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #053647;
-  --sidebar-primary: #053647;
+  --sidebar: #032b43;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #079ed4;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e8f6fc;
-  --sidebar-accent-foreground: #053647;
-  --sidebar-border: #e2e8f0;
+  --sidebar-accent: #075a82;
+  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-ring: #079ed4;
 }
 
@@ -158,6 +158,30 @@ html.tenant-sidebar-dark {
 
 html.tenant-sidebar-compact aside {
   --tenant-sidebar-pad: 0.35rem;
+}
+
+/* Scrollbar do aside: trilho = fundo do sidebar; thumb = #075A82 */
+.sidebar-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #075a82 var(--sidebar);
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar-track {
+  background: var(--sidebar);
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar-thumb {
+  background: #075a82;
+  border-radius: 999px;
+  border: 2px solid var(--sidebar);
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: #086a96;
 }
 
 html.tenant-density-compact {
@@ -237,5 +261,106 @@ html.tenant-density-compact .space-y-6 {
 
   .bg-brand-cta {
     background-image: var(--background-image-brand-cta);
+  }
+
+  /** Avatar de iniciais — mesmo degradê do usuário no nav. */
+  .avatar-fallback-brand {
+    background-color: transparent !important;
+    background-image: linear-gradient(
+      135deg,
+      #079ed4 0%,
+      #057aa8 55%,
+      #034e6e 100%
+    ) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+  }
+
+  /** Nome de cliente/corretor em tabelas e cards — mais contraste. */
+  .table-person-name {
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .dark .table-person-name {
+    color: #f8fafc;
+  }
+
+  .badge-novo-glow {
+    border: none;
+    color: #053647;
+    background-image: linear-gradient(
+      120deg,
+      #cfeaf5 0%,
+      #a8d8eb 35%,
+      #8ecce3 55%,
+      #cfeaf5 100%
+    );
+    background-size: 200% 200%;
+    animation: badge-novo-shift 5s ease-in-out infinite;
+  }
+
+  .badge-novo-glow::before,
+  .badge-novo-glow::after {
+    content: none;
+  }
+
+  .podio-float {
+    animation: podio-float 3.2s ease-in-out infinite;
+  }
+
+  .podio-float-delay-1 {
+    animation-delay: 0.15s;
+  }
+
+  .podio-float-delay-2 {
+    animation-delay: 0.45s;
+  }
+
+  .podio-float-delay-3 {
+    animation-delay: 0.75s;
+  }
+
+  .funil-bar-flow {
+    background-size: 200% 100%;
+    animation: funil-bar-flow 2.2s linear infinite;
+  }
+}
+
+@keyframes badge-novo-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes podio-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes funil-bar-flow {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .podio-float,
+  .funil-bar-flow {
+    animation: none;
   }
 }

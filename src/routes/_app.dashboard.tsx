@@ -60,6 +60,9 @@ import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 
+const DASHBOARD_SOFT_BTN =
+  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+
 const chartConfig = {
   total: { label: "Processos", color: "hsl(var(--primary))" },
 } satisfies ChartConfig;
@@ -266,7 +269,7 @@ function DashboardAdminView() {
       <div className="space-y-1">
         <Label className="text-[11px] text-muted-foreground">Mês</Label>
         <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-          <SelectTrigger className="h-9 w-[9.5rem] bg-background">
+          <SelectTrigger className="h-9 w-38 bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -281,7 +284,7 @@ function DashboardAdminView() {
       <div className="space-y-1">
         <Label className="text-[11px] text-muted-foreground">Ano</Label>
         <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-          <SelectTrigger className="h-9 w-[5.5rem] bg-background">
+          <SelectTrigger className="h-9 w-22 bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -438,7 +441,7 @@ function DashboardAdminView() {
             Processos cadastrados em {mesLabel}.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className={DASHBOARD_SOFT_BTN}>
           <Link to="/documentacao">Ver documentação</Link>
         </Button>
       </div>
@@ -493,7 +496,7 @@ function DashboardAdminView() {
               : `Comissão líquida lançada nas vendas de ${mesLabel}.`}
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className={DASHBOARD_SOFT_BTN}>
           <Link to="/financeiro/comissao">Ver comissões</Link>
         </Button>
       </div>
@@ -744,7 +747,7 @@ function DashboardAdminView() {
               type="button"
               variant="outline"
               size="sm"
-              className="mt-3"
+              className={`mt-3 ${DASHBOARD_SOFT_BTN}`}
             >
               <Link to="/agenda">Abrir agenda</Link>
             </Button>
@@ -919,9 +922,10 @@ function DashboardAdminView() {
                               ? `${money(m.atual)} / ${money(m.valor)}`
                               : `${m.atual} / ${m.valor}`}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground mb-1">
                             {m.percentual}%
                           </div>
+                          <Progress value={m.percentual} className="h-1.5" />
                         </td>
                       </tr>
                     ))}
@@ -1149,7 +1153,7 @@ function DashboardCorretorView() {
             Quanto você recebe nas vendas de {mesLabel}.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className={DASHBOARD_SOFT_BTN}>
           <Link to="/financeiro/comissao">Ver comissões</Link>
         </Button>
       </div>
@@ -1282,7 +1286,7 @@ function AgendaCategoria({
               type="button"
               variant="outline"
               size="sm"
-              className="mt-3"
+              className={`mt-3 ${DASHBOARD_SOFT_BTN}`}
             >
               <Link to="/agenda">Exibir mais</Link>
             </Button>

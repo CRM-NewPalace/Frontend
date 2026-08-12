@@ -231,7 +231,7 @@ export function AgendaDayTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="[&_th]:px-4 [&_td]:px-4 [&_th]:h-11 [&_th]:py-3">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[110px]">Horário</TableHead>

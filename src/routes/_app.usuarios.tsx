@@ -683,8 +683,8 @@ function Usuarios() {
         </div>
       </Card>
 
-      <Card>
-        <Table>
+      <Card className="overflow-hidden">
+        <Table className="[&_th]:px-4 [&_td]:px-4">
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
@@ -723,11 +723,11 @@ function Usuarios() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        <AvatarFallback className="avatar-fallback-brand text-xs">
                           {initials(u.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-medium">{u.name}</span>
+                      <span className="table-person-name text-sm">{u.name}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">{u.email}</TableCell>
@@ -1656,7 +1656,7 @@ function BrokerPipeline({
                 {index < visibleStages.length - 1 ? (
                   <span
                     className={cn(
-                      "mb-5 h-0.5 min-w-2 flex-1 rounded-full bg-gradient-to-r",
+                      "mb-5 h-0.5 min-w-2 flex-1 rounded-full bg-linear-to-r",
                       theme.line,
                     )}
                   />

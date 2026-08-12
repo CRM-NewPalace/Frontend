@@ -126,7 +126,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium break-words">{value}</p>
+      <p className="text-sm font-medium wrap-break-word">{value}</p>
     </div>
   );
 }
@@ -1324,7 +1324,7 @@ export function FinanceiroTitulosPanel({
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 Tipo:
               </span>
-              <div className="grid flex-1 grid-cols-3 rounded-lg border bg-muted/40 p-1 sm:w-[310px] sm:flex-none">
+              <div className="grid flex-1 grid-cols-3 rounded-lg border bg-muted/40 p-1 sm:w-77.5 sm:flex-none">
                 {[
                   { value: "todos", label: "Todas" },
                   { value: "normal", label: "Normais" },
@@ -1355,7 +1355,7 @@ export function FinanceiroTitulosPanel({
       />
 
       <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-        <Table>
+        <Table className="[&_th]:px-4 [&_td]:px-4">
           <TableHeader>
             <TableRow>
               <TableHead>Descrição</TableHead>
@@ -1365,7 +1365,7 @@ export function FinanceiroTitulosPanel({
               <TableHead>Parcela</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[168px]" />
+              <TableHead className="w-42" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1384,7 +1384,7 @@ export function FinanceiroTitulosPanel({
                   const t = row.titulo;
                   return (
                     <TableRow key={t.id}>
-                      <TableCell className="font-medium max-w-[200px]">
+                      <TableCell className="font-medium max-w-50">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="truncate">{t.descricao}</span>
                           {t.platformContratoId ? (
@@ -1397,10 +1397,10 @@ export function FinanceiroTitulosPanel({
                           ) : null}
                         </div>
                       </TableCell>
-                      <TableCell className="truncate max-w-[140px]">
+                      <TableCell className="truncate max-w-35">
                         {t.parceiro || "—"}
                       </TableCell>
-                      <TableCell className="truncate max-w-[120px]">
+                      <TableCell className="truncate max-w-30">
                         {t.categoria || t.centro || "—"}
                       </TableCell>
                       <TableCell>{formatDate(t.vencimento)}</TableCell>
@@ -1429,7 +1429,7 @@ export function FinanceiroTitulosPanel({
                 return (
                   <Fragment key={row.grupoId}>
                     <TableRow>
-                      <TableCell className="font-medium max-w-[220px]">
+                      <TableCell className="font-medium max-w-55">
                         <button
                           type="button"
                           className="flex items-center gap-1.5 text-left w-full min-w-0"
@@ -1451,10 +1451,10 @@ export function FinanceiroTitulosPanel({
                           ) : null}
                         </button>
                       </TableCell>
-                      <TableCell className="truncate max-w-[140px]">
+                      <TableCell className="truncate max-w-35">
                         {summary.parceiro || "—"}
                       </TableCell>
-                      <TableCell className="truncate max-w-[120px]">
+                      <TableCell className="truncate max-w-30">
                         {summary.categoria || summary.centro || "—"}
                       </TableCell>
                       <TableCell>
@@ -1539,10 +1539,10 @@ export function FinanceiroTitulosPanel({
                             <TableCell className="pl-9 text-sm text-muted-foreground">
                               Parcela {t.parcela || "—"}
                             </TableCell>
-                            <TableCell className="truncate max-w-[140px]">
+                            <TableCell className="truncate max-w-35">
                               {t.parceiro || "—"}
                             </TableCell>
-                            <TableCell className="truncate max-w-[120px]">
+                            <TableCell className="truncate max-w-30">
                               {t.categoria || t.centro || "—"}
                             </TableCell>
                             <TableCell>{formatDate(t.vencimento)}</TableCell>
@@ -1917,7 +1917,7 @@ export function FinanceiroTitulosPanel({
                         }
                       />
                     </div>
-                    <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+                    <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/3 p-3">
                       <Label className="text-primary">
                         Adesão · valor total (R$){" "}
                         {tipo === "receber" ? "*" : "(opcional)"}
@@ -1934,7 +1934,7 @@ export function FinanceiroTitulosPanel({
                         placeholder="0,00"
                       />
                     </div>
-                    <div className="space-y-1.5 rounded-lg border border-sky-500/20 bg-sky-500/[0.03] p-3">
+                    <div className="space-y-1.5 rounded-lg border border-sky-500/20 bg-sky-500/3 p-3">
                       <Label className="text-sky-700 dark:text-sky-300">
                         Mensalidade · valor por cobrança (R$) *
                       </Label>
@@ -1950,7 +1950,7 @@ export function FinanceiroTitulosPanel({
                         placeholder="0,00"
                       />
                     </div>
-                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/[0.03] px-3 py-2.5">
+                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/3 px-3 py-2.5">
                       <Checkbox
                         id="contrato-adesao-parcelada"
                         className="mt-0.5"
@@ -1975,7 +1975,7 @@ export function FinanceiroTitulosPanel({
                       </div>
                     </div>
                     {parcelarAdesao ? (
-                      <div className="sm:col-span-2 space-y-1.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+                      <div className="sm:col-span-2 space-y-1.5 rounded-lg border border-primary/20 bg-primary/3 p-3">
                         <Label>Qtd. parcelas da adesão *</Label>
                         <Input
                           type="number"
@@ -1986,7 +1986,7 @@ export function FinanceiroTitulosPanel({
                         />
                       </div>
                     ) : null}
-                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-sky-500/20 bg-sky-500/[0.03] px-3 py-2.5">
+                    <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-sky-500/20 bg-sky-500/3 px-3 py-2.5">
                       <Checkbox
                         id="contrato-parcelado"
                         className="mt-0.5"
@@ -2010,7 +2010,7 @@ export function FinanceiroTitulosPanel({
                       </div>
                     </div>
                     {parcelado ? (
-                      <div className="sm:col-span-2 space-y-1.5 rounded-lg border border-sky-500/20 bg-sky-500/[0.03] p-3">
+                      <div className="sm:col-span-2 space-y-1.5 rounded-lg border border-sky-500/20 bg-sky-500/3 p-3">
                         <Label>Qtd. mensalidades *</Label>
                         <Input
                           type="number"
@@ -2183,7 +2183,7 @@ export function FinanceiroTitulosPanel({
                       parcelasDraft.some((p) =>
                         isParcelaDoContrato(p, "mensalidade"),
                       )) ? (
-                      <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3 space-y-3">
+                      <div className="rounded-lg border border-primary/20 bg-primary/3 p-3 space-y-3">
                         <div>
                           <p className="text-sm font-medium">
                             Editar parcelas do contrato

@@ -377,7 +377,7 @@ function Page() {
               <Input
                 id="fluxo-mes"
                 type="month"
-                className="h-8 w-[150px]"
+                className="h-8 w-44 rounded-md px-2.5 pe-1 [&::-webkit-calendar-picker-indicator]:ms-0 [&::-webkit-calendar-picker-indicator]:me-0"
                 value={monthInputValue(selectedDay)}
                 onChange={(event) => {
                   const [year, month] = event.target.value
@@ -422,7 +422,7 @@ function Page() {
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   view === opt.id
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-[#079ED4]/5 text-brand-dark shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -767,7 +767,7 @@ function Page() {
                 <Input
                   id="confirm-date"
                   type="date"
-                  className="h-9 w-[150px]"
+                  className="h-9 w-37.5"
                   value={confirmDate}
                   onChange={(e) => setConfirmDate(e.target.value)}
                 />

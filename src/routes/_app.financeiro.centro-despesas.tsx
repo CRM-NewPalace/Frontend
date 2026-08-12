@@ -526,7 +526,7 @@ function Page() {
                 type="month"
                 value={renovarCompetencia}
                 onChange={(e) => setRenovarCompetencia(e.target.value)}
-                className="h-9 w-[150px]"
+                className="h-9 w-44 rounded-md px-2.5 pe-1 [&::-webkit-calendar-picker-indicator]:ms-0 [&::-webkit-calendar-picker-indicator]:me-0"
                 aria-label="Competência para renovar"
               />
               <Button
@@ -614,9 +614,24 @@ function Page() {
         className="mb-4"
       >
         <TabsList>
-          <TabsTrigger value="fixa">Fixa</TabsTrigger>
-          <TabsTrigger value="fixa_variavel">Fixa variável</TabsTrigger>
-          <TabsTrigger value="variavel">Variável</TabsTrigger>
+          <TabsTrigger
+            value="fixa"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:shadow-none"
+          >
+            Fixa
+          </TabsTrigger>
+          <TabsTrigger
+            value="fixa_variavel"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:shadow-none"
+          >
+            Fixa variável
+          </TabsTrigger>
+          <TabsTrigger
+            value="variavel"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:shadow-none"
+          >
+            Variável
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={naturezaTab} className="mt-4 space-y-4">
@@ -643,7 +658,7 @@ function Page() {
                   ) : (
                     <ChartContainer
                       config={chartConfig}
-                      className="h-[260px] w-full"
+                      className="h-65 w-full"
                     >
                       <BarChart data={chartRows} margin={{ left: 8, right: 8 }}>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -699,7 +714,7 @@ function Page() {
                   </Button>
                 </div>
                 <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-                  <Table>
+                  <Table className="[&_th]:px-4 [&_td]:px-4">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Categoria</TableHead>
@@ -708,7 +723,7 @@ function Page() {
                         <TableHead className="text-right">Realizado</TableHead>
                         <TableHead>Consumo</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="w-[88px] text-right">
+                        <TableHead className="w-22 text-right">
                           Ações
                         </TableHead>
                       </TableRow>
@@ -751,7 +766,7 @@ function Page() {
                                 {brl(t.realizado)}
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-2 min-w-[120px]">
+                                <div className="flex items-center gap-2 min-w-30">
                                   <Progress
                                     value={Math.min(pct, 100)}
                                     className="h-2"
@@ -821,7 +836,7 @@ function Page() {
                   </Button>
                 </div>
                 <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-                  <Table>
+                  <Table className="[&_th]:px-4 [&_td]:px-4">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Descrição</TableHead>
@@ -830,7 +845,7 @@ function Page() {
                         <TableHead>Data</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
                         <TableHead>Recorrente</TableHead>
-                        <TableHead className="w-[88px] text-right">
+                        <TableHead className="w-22 text-right">
                           Ações
                         </TableHead>
                       </TableRow>
@@ -949,14 +964,14 @@ function Page() {
       >
         <FormDialogBody className="space-y-3">
           <div className="rounded-xl border border-border/60 overflow-hidden">
-            <Table>
+            <Table className="[&_th]:px-4 [&_td]:px-4">
               <TableHeader>
                 <TableRow>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Natureza</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Orçado/mês</TableHead>
-                  <TableHead className="w-[72px] text-right">Ações</TableHead>
+                  <TableHead className="w-18 text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1202,6 +1217,7 @@ function Page() {
                   <Input
                     id="desp-comp"
                     type="month"
+                    className="rounded-md px-2.5 pe-1 [&::-webkit-calendar-picker-indicator]:ms-0 [&::-webkit-calendar-picker-indicator]:me-0"
                     value={despesaForm.competencia}
                     onChange={(e) =>
                       setDespesaForm((f) => ({

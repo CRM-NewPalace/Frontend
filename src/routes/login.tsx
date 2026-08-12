@@ -40,31 +40,6 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-// Atalhos de desenvolvimento. Nunca vão para o bundle de produção, para não
-// divulgar credenciais válidas na tela de login.
-const SHOW_DEMO_ACCOUNTS = import.meta.env.DEV;
-
-const DEMO = [
-  {
-    email: "admin@imob.com",
-    password: "admin",
-    role: "Administrador",
-    hint: "Acesso total",
-  },
-  {
-    email: "gerente@imob.com",
-    password: "gerente",
-    role: "Gerente",
-    hint: "Equipe e operação",
-  },
-  {
-    email: "corretor@imob.com",
-    password: "corretor",
-    role: "Corretor",
-    hint: "Carteira própria",
-  },
-] as const;
-
 const FEATURE_PILLS = [
   { label: "CRM integrado", icon: Users },
   { label: "Funil comercial", icon: BarChart3 },
@@ -222,10 +197,8 @@ function LoginAuthField({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState(
-    SHOW_DEMO_ACCOUNTS ? "admin@imob.com" : "",
-  );
-  const [password, setPassword] = useState(SHOW_DEMO_ACCOUNTS ? "admin" : "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
@@ -397,8 +370,8 @@ function LoginPage() {
                 type="submit"
                 disabled={loading}
                 className={cn(
-                  "w-full cursor-pointer rounded-full bg-brand-dark px-4 py-3 text-sm font-semibold text-white transition-all",
-                  "hover:bg-brand-dark/90 hover:-translate-y-0.5 hover:shadow-md",
+                  "w-full cursor-pointer rounded-full bg-brand-cta px-4 py-3 text-sm font-semibold text-white transition-all",
+                  "hover:brightness-110 hover:-translate-y-0.5 hover:shadow-md",
                   "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none",
                 )}
               >
@@ -411,46 +384,6 @@ function LoginPage() {
                   "Entrar"
                 )}
               </button>
-
-              {SHOW_DEMO_ACCOUNTS && (
-                <div className="space-y-3 pt-1">
-                  <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-text-muted">
-                    <div className="h-px flex-1 bg-border" />
-                    Contas demo
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  <div className="grid gap-2">
-                    {DEMO.map((d) => (
-                      <button
-                        key={d.email}
-                        type="button"
-                        onClick={() => {
-                          setEmail(d.email);
-                          setPassword(d.password);
-                        }}
-                        className={cn(
-                          "group w-full rounded-2xl border bg-surface-muted px-3.5 py-3 text-left transition-all",
-                          "hover:border-brand-accent/40 hover:bg-accent hover:shadow-sm",
-                          email === d.email &&
-                            "border-brand-accent/50 bg-accent ring-1 ring-brand-accent/20",
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-brand-dark">
-                            {d.role}
-                          </span>
-                          <span className="text-[11px] text-text-muted group-hover:text-brand-accent transition-colors">
-                            usar →
-                          </span>
-                        </div>
-                        <div className="mt-0.5 text-xs text-text-muted">
-                          {d.hint} · {d.email}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </form>
 
             <p className="mt-6 text-center text-sm text-text-muted">

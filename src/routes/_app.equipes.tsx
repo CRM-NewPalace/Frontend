@@ -70,7 +70,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
 export const Route = createFileRoute("/_app/equipes")({
   head: () => ({ meta: [{ title: "Equipes — Zone Connection" }] }),
   component: EquipesPage,
@@ -119,8 +118,8 @@ function MemberCard({
   return (
     <Card
       className={cn(
-        "p-3 shadow-sm",
-        accent && "border-primary/30 bg-primary/5",
+        "p-3 shadow-sm border-[#079ED4]/15 bg-[#e8f6fc]",
+        accent && "border-primary/30",
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -141,7 +140,7 @@ function MemberCard({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 {accent && <Crown className="w-3 h-3 text-primary shrink-0" />}
-                <div className="text-sm font-medium truncate">
+                <div className="table-person-name text-sm truncate">
                   {member.name}
                 </div>
               </div>
@@ -496,7 +495,7 @@ function EquipesPage() {
           {items.map((eq) => (
             <div
               key={eq.id}
-              className="w-72 shrink-0 flex flex-col bg-muted/40 rounded-xl p-3 min-h-[28rem]"
+              className="w-72 shrink-0 flex flex-col rounded-xl p-3 min-h-112 bg-[#e8f6fc]"
             >
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="min-w-0 space-y-1">
@@ -700,7 +699,7 @@ function EquipesPage() {
                               }
                             />
                             <div className="min-w-0">
-                              <div className="text-sm font-medium truncate">
+                              <div className="table-person-name text-sm truncate">
                                 {c.name}
                               </div>
                               <div className="text-xs text-muted-foreground truncate">
