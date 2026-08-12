@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -141,6 +142,7 @@ function TenantsPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [tenantFormTab, setTenantFormTab] = useState("dados");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TenantForm>(emptyTenantForm());
   const [slugTouched, setSlugTouched] = useState(false);
@@ -209,6 +211,7 @@ function TenantsPage() {
     setEditingUserCount(null);
     setForm(emptyTenantForm());
     setSlugTouched(false);
+    setTenantFormTab("dados");
     setFormOpen(true);
   }
 
@@ -217,6 +220,7 @@ function TenantsPage() {
     setEditingId(item.id);
     setEditingAdmin(item.admin);
     setEditingUserCount(null);
+    setTenantFormTab("dados");
     setForm({
       name: item.name,
       slug: item.slug,
@@ -737,459 +741,460 @@ function TenantsPage() {
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <FormDialogBody>
-            <FormSection title="Dados">
-              <div className="space-y-2">
-                <Label htmlFor="tenant-name">Cliente (nome)</Label>
-                <Input
-                  id="tenant-name"
-                  value={form.name}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setForm((prev) => ({
-                      ...prev,
-                      name,
-                      slug:
-                        formMode === "create" && !slugTouched
-                          ? slugifyTenantName(name)
-                          : prev.slug,
-                    }));
-                  }}
-                  placeholder="New Palace"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tenant-documento">Documento (CPF/CNPJ)</Label>
-                <Input
-                  id="tenant-documento"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={form.documento}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      documento: formatCpfCnpj(e.target.value),
-                    }))
-                  }
-                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                  maxLength={18}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tenant-slug">Slug</Label>
-                <Input
-                  id="tenant-slug"
-                  value={form.slug}
-                  disabled={formMode === "edit"}
-                  onChange={(e) => {
-                    setSlugTouched(true);
-                    setForm((prev) => ({
-                      ...prev,
-                      slug: e.target.value.toLowerCase(),
-                    }));
-                  }}
-                  placeholder="new-palace"
-                  required={formMode === "create"}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Identificador único na URL/login (ex.: new-palace).
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      status: value as UserStatus,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="inativo">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </FormSection>
+            <Tabs
+              value={tenantFormTab}
+              onValueChange={setTenantFormTab}
+              className="gap-4"
+            >
+              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+                <TabsTrigger value="dados">Dados</TabsTrigger>
+                <TabsTrigger value="plano">Plano</TabsTrigger>
+                <TabsTrigger value="identidade">Identidade</TabsTrigger>
+                <TabsTrigger value="modulos">Módulos</TabsTrigger>
+                <TabsTrigger value="admin">Admin</TabsTrigger>
+              </TabsList>
 
-            <FormSection title="Plano e cotas">
-              <div className="space-y-2">
-                <Label>Plano</Label>
-                <Select
-                  value={form.plano}
-                  onValueChange={(value) => {
-                    const plano = value as TenantPlano;
-                    setForm((prev) => ({
-                      ...prev,
-                      plano,
-                      modules: modulesPresetForPlano(plano),
-                      iaBotEnabled:
-                        plano === "ouro" ? true : prev.iaBotEnabled,
-                    }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(PLANO_LABELS) as TenantPlano[]).map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {PLANO_LABELS[p]} ({PLANO_MAX_USUARIOS[p]} users)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Cota base: {PLANO_MAX_USUARIOS[form.plano]} usuários. Extras
-                  liberam além do limite para o admin da imobiliária.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="tenant-extras">Usuários extras</Label>
-                  <Input
-                    id="tenant-extras"
-                    type="number"
-                    min={0}
-                    value={form.usuariosExtras}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        usuariosExtras: Math.max(
-                          0,
-                          Number(e.target.value) || 0,
-                        ),
-                      }))
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Limite total:{" "}
-                    {PLANO_MAX_USUARIOS[form.plano] + form.usuariosExtras}
-                    {editingUserCount != null
-                      ? ` · ${editingUserCount} em uso`
-                      : ""}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Bot de IA</Label>
-                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={form.iaBotEnabled}
+              <TabsContent value="dados" className="mt-0 space-y-0">
+                <FormSection title="Dados do cliente">
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant-name">Cliente (nome)</Label>
+                    <Input
+                      id="tenant-name"
+                      value={form.name}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          name,
+                          slug:
+                            formMode === "create" && !slugTouched
+                              ? slugifyTenantName(name)
+                              : prev.slug,
+                        }));
+                      }}
+                      placeholder="New Palace"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant-documento">Documento (CPF/CNPJ)</Label>
+                    <Input
+                      id="tenant-documento"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      value={form.documento}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,
-                          iaBotEnabled: e.target.checked,
+                          documento: formatCpfCnpj(e.target.value),
                         }))
                       }
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                      maxLength={18}
                     />
-                    Conexão com bot de IA liberada
-                  </label>
-                </div>
-              </div>
-            </FormSection>
-
-            {formMode === "edit" && (
-              <FormSection title="Administrador">
-                {editingAdmin ? (
-                  <div className="space-y-3">
-                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                      <div className="text-[11px] text-muted-foreground">
-                        Nome
-                      </div>
-                      <div className="text-sm font-medium">
-                        {editingAdmin.name}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                      <div className="text-[11px] text-muted-foreground">
-                        E-mail de login
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <code className="text-sm break-all">
-                          {editingAdmin.email}
-                        </code>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={() =>
-                            void copyText(editingAdmin.email, "email")
-                          }
-                        >
-                          {copiedField === "email" ? (
-                            <Check className="w-3.5 h-3.5 mr-1" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5 mr-1" />
-                          )}
-                          Copiar
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground pt-1">
-                        Slug no login (opcional):{" "}
-                        <code className="rounded bg-muted px-1">
-                          {form.slug}
-                        </code>
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={resettingPassword}
-                      onClick={() => void handleResetAdminPassword()}
-                    >
-                      {resettingPassword ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Gerando…
-                        </>
-                      ) : (
-                        <>
-                          <KeyRound className="h-4 w-4" />
-                          Gerar senha temporária
-                        </>
-                      )}
-                    </Button>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Este tenant ainda não tem administrador. Gere um com
-                      e-mail e senha temporária.
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant-slug">Slug</Label>
+                    <Input
+                      id="tenant-slug"
+                      value={form.slug}
+                      disabled={formMode === "edit"}
+                      onChange={(e) => {
+                        setSlugTouched(true);
+                        setForm((prev) => ({
+                          ...prev,
+                          slug: e.target.value.toLowerCase(),
+                        }));
+                      }}
+                      placeholder="new-palace"
+                      required={formMode === "create"}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Identificador único na URL/login (ex.: new-palace).
                     </p>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={savingAdmin || !editingId}
-                      onClick={() => {
-                        if (!editingId) return;
-                        void handleCreateInitialAdmin(editingId, form.slug);
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={form.status}
+                      onValueChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          status: value as UserStatus,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="inativo">Inativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </FormSection>
+              </TabsContent>
+
+              <TabsContent value="plano" className="mt-0 space-y-0">
+                <FormSection title="Plano e cotas">
+                  <div className="space-y-2">
+                    <Label>Plano</Label>
+                    <Select
+                      value={form.plano}
+                      onValueChange={(value) => {
+                        const plano = value as TenantPlano;
+                        setForm((prev) => ({
+                          ...prev,
+                          plano,
+                          modules: modulesPresetForPlano(plano),
+                          iaBotEnabled:
+                            plano === "ouro" ? true : prev.iaBotEnabled,
+                        }));
                       }}
                     >
-                      {savingAdmin ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Gerando…
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="h-4 w-4" />
-                          Gerar administrador
-                        </>
-                      )}
-                    </Button>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(PLANO_LABELS) as TenantPlano[]).map(
+                          (p) => (
+                            <SelectItem key={p} value={p}>
+                              {PLANO_LABELS[p]} ({PLANO_MAX_USUARIOS[p]} users)
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Cota base: {PLANO_MAX_USUARIOS[form.plano]} usuários.
+                      Extras liberam além do limite para o admin da imobiliária.
+                    </p>
                   </div>
-                )}
-              </FormSection>
-            )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="tenant-extras">Usuários extras</Label>
+                      <Input
+                        id="tenant-extras"
+                        type="number"
+                        min={0}
+                        value={form.usuariosExtras}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            usuariosExtras: Math.max(
+                              0,
+                              Number(e.target.value) || 0,
+                            ),
+                          }))
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Limite total:{" "}
+                        {PLANO_MAX_USUARIOS[form.plano] + form.usuariosExtras}
+                        {editingUserCount != null
+                          ? ` · ${editingUserCount} em uso`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bot de IA</Label>
+                      <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.iaBotEnabled}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              iaBotEnabled: e.target.checked,
+                            }))
+                          }
+                        />
+                        Conexão com bot de IA liberada
+                      </label>
+                    </div>
+                  </div>
+                </FormSection>
+              </TabsContent>
 
-            {formMode === "create" && (
-              <FormSection title="Administrador">
-                <p className="text-sm text-muted-foreground">
-                  Ao criar o tenant, um admin é gerado automaticamente (e-mail{" "}
-                  <code className="rounded bg-muted px-1">
-                    admin@
-                    {(form.slug || "slug").replace(/-/g, "")}
-                    .com
-                  </code>{" "}
-                  e senha temporária). As credenciais aparecem na tela seguinte.
-                </p>
-              </FormSection>
-            )}
+              <TabsContent value="identidade" className="mt-0 space-y-0">
+                <FormSection title="Logo">
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    URL da logo da imobiliária. Se vazio, usa a logo da Zone
+                    Connection.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant-logo">URL do logo</Label>
+                    <Input
+                      id="tenant-logo"
+                      value={form.logoUrl}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          logoUrl: e.target.value,
+                        }))
+                      }
+                      placeholder="https://..."
+                    />
+                  </div>
+                  {form.logoUrl.trim() ? (
+                    <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-3">
+                      <img
+                        src={form.logoUrl.trim()}
+                        alt="Prévia do logo"
+                        className="h-10 w-10 object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display =
+                            "none";
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        Prévia (se a URL for válida)
+                      </span>
+                    </div>
+                  ) : null}
+                </FormSection>
+              </TabsContent>
 
-            <FormSection title="Logo">
-              <p className="text-xs text-muted-foreground -mt-1">
-                URL da logo da imobiliária. Se vazio, usa a logo da Zone
-                Connection.
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="tenant-logo">URL do logo</Label>
-                <Input
-                  id="tenant-logo"
-                  value={form.logoUrl}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      logoUrl: e.target.value,
-                    }))
-                  }
-                  placeholder="https://..."
-                />
-              </div>
-              {form.logoUrl.trim() ? (
-                <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-3">
-                  <img
-                    src={form.logoUrl.trim()}
-                    alt="Prévia do logo"
-                    className="h-10 w-10 object-contain"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display =
-                        "none";
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Prévia (se a URL for válida)
-                  </span>
-                </div>
-              ) : null}
-            </FormSection>
+              <TabsContent value="modulos" className="mt-0 space-y-0">
+                <FormSection title="Módulos">
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    {form.plano === "bronze"
+                      ? "Bronze inclui apenas o CRM operacional (Usuários e Configurações ficam para o admin)."
+                      : form.plano === "prata"
+                        ? "Prata: escolha Administrativo ou Financeiro (não os dois). Analista só com Administrativo."
+                        : "Marque os módulos ativos para este tenant. Desmarcados ficam ocultos no menu."}
+                  </p>
+                  <div className="space-y-4">
+                    {TENANT_MODULE_GROUPS.map((group) => {
+                      const adminOn =
+                        group.id === "administrativo" &&
+                        adminGroupEnabled(form.modules);
+                      const bronzeLocked =
+                        form.plano === "bronze" &&
+                        (group.id === "administrativo" ||
+                          group.id === "financeiro");
+                      const prataFinanceLockedByAdmin =
+                        form.plano === "prata" &&
+                        group.id === "financeiro" &&
+                        adminGroupEnabled(form.modules);
+                      const prataAdminLockedByFinance =
+                        form.plano === "prata" &&
+                        group.id === "administrativo" &&
+                        form.modules.financeiro === true &&
+                        !adminGroupEnabled(form.modules);
 
-            <FormSection title="Módulos">
-              <p className="text-xs text-muted-foreground -mt-1">
-                {form.plano === "bronze"
-                  ? "Bronze inclui apenas o CRM operacional (Usuários e Configurações ficam para o admin)."
-                  : form.plano === "prata"
-                    ? "Prata: escolha Administrativo ou Financeiro (não os dois). Analista só com Administrativo."
-                    : "Marque os módulos ativos para este tenant. Desmarcados ficam ocultos no menu."}
-              </p>
-              <div className="space-y-4">
-                {TENANT_MODULE_GROUPS.map((group) => {
-                  const adminOn =
-                    group.id === "administrativo" &&
-                    adminGroupEnabled(form.modules);
-                  const bronzeLocked =
-                    form.plano === "bronze" &&
-                    (group.id === "administrativo" ||
-                      group.id === "financeiro");
-                  const prataFinanceLockedByAdmin =
-                    form.plano === "prata" &&
-                    group.id === "financeiro" &&
-                    adminGroupEnabled(form.modules);
-                  const prataAdminLockedByFinance =
-                    form.plano === "prata" &&
-                    group.id === "administrativo" &&
-                    form.modules.financeiro === true &&
-                    !adminGroupEnabled(form.modules);
-
-                  return (
-                    <div
-                      key={group.id}
-                      className="rounded-lg border bg-muted/20 p-3 space-y-3"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold">{group.label}</p>
-                        {group.id === "administrativo" &&
-                        form.plano !== "bronze" ? (
-                          <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                            <span className="text-muted-foreground">
-                              {adminOn ? "Ativo" : "Desativado"}
-                            </span>
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4"
-                              checked={adminOn}
-                              disabled={prataAdminLockedByFinance}
-                              onChange={(e) =>
-                                setForm((prev) => ({
-                                  ...prev,
-                                  modules: normalizeModulesForPlano(
-                                    prev.plano,
-                                    {
-                                      ...setAdminGroupEnabled(
-                                        prev.modules,
-                                        e.target.checked,
-                                      ),
-                                      ...(e.target.checked &&
-                                      prev.plano === "prata"
-                                        ? { financeiro: false }
-                                        : {}),
-                                    },
-                                  ),
-                                }))
-                              }
-                            />
-                            <span className="font-medium">
-                              Todo o administrativo
-                            </span>
-                          </label>
-                        ) : null}
-                      </div>
-                      {bronzeLocked ? (
-                        <p className="text-[11px] text-muted-foreground">
-                          Indisponível no plano Bronze.
-                        </p>
-                      ) : null}
-                      {group.id === "administrativo" &&
-                      !adminOn &&
-                      form.plano !== "bronze" ? (
-                        <p className="text-[11px] text-muted-foreground">
-                          Desativar o administrativo oculta estes módulos
-                          (exceto Usuários e Configurações) e remove o perfil
-                          Analista.
-                        </p>
-                      ) : null}
-                      {prataFinanceLockedByAdmin ? (
-                        <p className="text-[11px] text-muted-foreground">
-                          Com Administrativo ativo no Prata, o Financeiro fica
-                          desligado.
-                        </p>
-                      ) : null}
-                      <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                        {group.modules.map((mod) => {
-                          const lockedOff =
-                            bronzeLocked ||
-                            prataFinanceLockedByAdmin ||
-                            (group.id === "administrativo" &&
-                              !adminOn &&
-                              !mod.keepOnAdminBulkOff) ||
-                            (prataAdminLockedByFinance &&
-                              !mod.keepOnAdminBulkOff);
-                          return (
-                            <label
-                              key={mod.key}
-                              className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
-                                lockedOff
-                                  ? "opacity-60 bg-muted/40"
-                                  : "bg-background"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={form.modules[mod.key] !== false}
-                                disabled={lockedOff || bronzeLocked}
-                                onChange={(e) =>
-                                  setForm((prev) => {
-                                    let modules = {
-                                      ...prev.modules,
-                                      [mod.key]: e.target.checked,
-                                    };
-                                    if (
-                                      prev.plano === "prata" &&
-                                      mod.key === "financeiro" &&
-                                      e.target.checked
-                                    ) {
-                                      modules = setAdminGroupEnabled(
-                                        modules,
-                                        false,
-                                      );
-                                      modules.financeiro = true;
-                                    }
-                                    return {
+                      return (
+                        <div
+                          key={group.id}
+                          className="rounded-lg border bg-muted/20 p-3 space-y-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold">
+                              {group.label}
+                            </p>
+                            {group.id === "administrativo" &&
+                            form.plano !== "bronze" ? (
+                              <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                                <span className="text-muted-foreground">
+                                  {adminOn ? "Ativo" : "Desativado"}
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4"
+                                  checked={adminOn}
+                                  disabled={prataAdminLockedByFinance}
+                                  onChange={(e) =>
+                                    setForm((prev) => ({
                                       ...prev,
                                       modules: normalizeModulesForPlano(
                                         prev.plano,
-                                        modules,
+                                        {
+                                          ...setAdminGroupEnabled(
+                                            prev.modules,
+                                            e.target.checked,
+                                          ),
+                                          ...(e.target.checked &&
+                                          prev.plano === "prata"
+                                            ? { financeiro: false }
+                                            : {}),
+                                        },
                                       ),
-                                    };
-                                  })
-                                }
-                              />
-                              <span>{mod.label}</span>
-                            </label>
-                          );
-                        })}
+                                    }))
+                                  }
+                                />
+                                <span className="font-medium">
+                                  Todo o administrativo
+                                </span>
+                              </label>
+                            ) : null}
+                          </div>
+                          {bronzeLocked ? (
+                            <p className="text-[11px] text-muted-foreground">
+                              Indisponível no plano Bronze.
+                            </p>
+                          ) : null}
+                          {group.id === "administrativo" &&
+                          !adminOn &&
+                          form.plano !== "bronze" ? (
+                            <p className="text-[11px] text-muted-foreground">
+                              Desativar o administrativo oculta estes módulos
+                              (exceto Usuários e Configurações) e remove o perfil
+                              Analista.
+                            </p>
+                          ) : null}
+                          {prataFinanceLockedByAdmin ? (
+                            <p className="text-[11px] text-muted-foreground">
+                              Com Administrativo ativo no Prata, o Financeiro
+                              fica desligado.
+                            </p>
+                          ) : null}
+                          <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                            {group.modules.map((mod) => {
+                              const lockedOff =
+                                bronzeLocked ||
+                                prataFinanceLockedByAdmin ||
+                                (group.id === "administrativo" &&
+                                  !adminOn &&
+                                  !mod.keepOnAdminBulkOff) ||
+                                (prataAdminLockedByFinance &&
+                                  !mod.keepOnAdminBulkOff);
+                              return (
+                                <label
+                                  key={mod.key}
+                                  className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
+                                    lockedOff
+                                      ? "opacity-60 bg-muted/40"
+                                      : "bg-background"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={form.modules[mod.key] !== false}
+                                    disabled={lockedOff || bronzeLocked}
+                                    onChange={(e) =>
+                                      setForm((prev) => {
+                                        let modules = {
+                                          ...prev.modules,
+                                          [mod.key]: e.target.checked,
+                                        };
+                                        if (
+                                          prev.plano === "prata" &&
+                                          mod.key === "financeiro" &&
+                                          e.target.checked
+                                        ) {
+                                          modules = setAdminGroupEnabled(
+                                            modules,
+                                            false,
+                                          );
+                                          modules.financeiro = true;
+                                        }
+                                        return {
+                                          ...prev,
+                                          modules: normalizeModulesForPlano(
+                                            prev.plano,
+                                            modules,
+                                          ),
+                                        };
+                                      })
+                                    }
+                                  />
+                                  <span>{mod.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </FormSection>
+              </TabsContent>
+
+              <TabsContent value="admin" className="mt-0 space-y-0">
+                {formMode === "edit" ? (
+                  <FormSection title="Administrador">
+                    {editingAdmin ? (
+                      <div className="space-y-3">
+                        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                          <div className="text-[11px] text-muted-foreground">
+                            Nome
+                          </div>
+                          <div className="text-sm font-medium">
+                            {editingAdmin.name}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                          <div className="text-[11px] text-muted-foreground">
+                            E-mail de login
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="text-sm break-all">
+                              {editingAdmin.email}
+                            </code>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={() =>
+                                void copyText(editingAdmin.email, "email")
+                              }
+                            >
+                              {copiedField === "email" ? (
+                                <Check className="w-3.5 h-3.5 mr-1" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5 mr-1" />
+                              )}
+                              Copiar
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground pt-1">
+                            Slug no login (opcional):{" "}
+                            <code className="rounded bg-muted px-1">
+                              {form.slug}
+                            </code>
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={resettingPassword}
+                          onClick={() => void handleResetAdminPassword()}
+                        >
+                          {resettingPassword ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Gerando…
+                            </>
+                          ) : (
+                            "Gerar nova senha temporária"
+                          )}
+                        </Button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </FormSection>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum administrador encontrado para este cliente.
+                      </p>
+                    )}
+                  </FormSection>
+                ) : (
+                  <FormSection title="Administrador">
+                    <p className="text-sm text-muted-foreground">
+                      Ao criar o tenant, um admin é gerado automaticamente
+                      (e-mail{" "}
+                      <code className="rounded bg-muted px-1">
+                        admin@
+                        {(form.slug || "slug").replace(/-/g, "")}
+                        .com
+                      </code>{" "}
+                      e senha temporária). As credenciais aparecem na tela
+                      seguinte.
+                    </p>
+                  </FormSection>
+                )}
+              </TabsContent>
+            </Tabs>
           </FormDialogBody>
           <FormDialogActions>
             <Button
