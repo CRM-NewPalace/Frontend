@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,8 +57,10 @@ import {
   Phone,
   MapPin,
   User,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   formatPhone,
   isValidPhone,
@@ -78,6 +80,7 @@ type FormState = {
   endereco: string;
   viabilizadorNome: string;
   viabilizadorContato: string;
+  driveFolderUrl: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -87,7 +90,17 @@ const emptyForm = (): FormState => ({
   endereco: "",
   viabilizadorNome: "",
   viabilizadorContato: "",
+  driveFolderUrl: "",
 });
+
+function construtoraIniciais(nome: string) {
+  return nome
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 function ConstrutorasPage() {
   const user = getSession();
@@ -131,6 +144,11 @@ function ConstrutorasPage() {
     void loadItems();
   }, [loadItems]);
 
+  const driveHubItems = useMemo(
+    () => items.filter((item) => Boolean(item.driveFolderUrl?.trim())),
+    [items],
+  );
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -156,6 +174,7 @@ function ConstrutorasPage() {
       viabilizadorContato: item.viabilizadorContato
         ? formatPhone(item.viabilizadorContato)
         : "",
+      driveFolderUrl: item.driveFolderUrl ?? "",
     });
     setLoadingEmpreendimentos(true);
     void fetchEmpreendimentos()
@@ -177,6 +196,10 @@ function ConstrutorasPage() {
   function openEdit(item: Construtora) {
     openView(item);
     setFormMode("edit");
+  }
+
+  function openDriveFolder(url: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -201,6 +224,12 @@ function ConstrutorasPage() {
       return;
     }
 
+    const driveFolderUrl = form.driveFolderUrl.trim();
+    if (driveFolderUrl && !/^https:\/\//i.test(driveFolderUrl)) {
+      toast.error("A pasta do Drive deve ser uma URL https válida.");
+      return;
+    }
+
     const payload = {
       nome: form.nome.trim(),
       cor: form.cor.trim() || null,
@@ -208,6 +237,7 @@ function ConstrutorasPage() {
       endereco: form.endereco.trim() || null,
       viabilizadorNome: form.viabilizadorNome.trim() || null,
       viabilizadorContato: form.viabilizadorContato.trim() || null,
+      driveFolderUrl: driveFolderUrl || null,
     };
 
     setSaving(true);
@@ -220,6 +250,7 @@ function ConstrutorasPage() {
           endereco: payload.endereco ?? undefined,
           viabilizadorNome: payload.viabilizadorNome ?? undefined,
           viabilizadorContato: payload.viabilizadorContato ?? undefined,
+          driveFolderUrl: payload.driveFolderUrl,
         });
         toast.success("Construtora cadastrada.");
       } else if (editingId) {
@@ -298,6 +329,48 @@ function ConstrutorasPage() {
           ) : undefined
         }
       />
+
+      {!loading && driveHubItems.length > 0 ? (
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Arquivos no Drive</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Clique na construtora para abrir a pasta no Google Drive.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {driveHubItems.map((item) => {
+                const bg = item.cor || "#079ED4";
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openDriveFolder(item.driveFolderUrl!)}
+                    className={cn(
+                      "group flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center transition-colors",
+                      "hover:border-[#079ED4]/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#079ED4]/35",
+                    )}
+                    title={`Abrir Drive de ${item.nome}`}
+                  >
+                    <span
+                      className="flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
+                      style={{ backgroundColor: bg }}
+                    >
+                      {construtoraIniciais(item.nome) || (
+                        <FolderOpen className="h-6 w-6" />
+                      )}
+                    </span>
+                    <span className="line-clamp-2 text-sm font-medium text-foreground">
+                      {item.nome}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
@@ -483,6 +556,28 @@ function ConstrutorasPage() {
                       ))}
                     </div>
                   ) : null}
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="driveFolderUrl">
+                    <span className="inline-flex items-center gap-1">
+                      <FolderOpen className="w-3.5 h-3.5" /> Pasta Google Drive
+                    </span>
+                  </Label>
+                  <Input
+                    id="driveFolderUrl"
+                    type="url"
+                    inputMode="url"
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    value={form.driveFolderUrl}
+                    onChange={(e) =>
+                      setField("driveFolderUrl", e.target.value)
+                    }
+                    disabled={readOnly}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Link da pasta da construtora no Google Drive. Aparece na
+                    grade de arquivos desta página.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contato">
