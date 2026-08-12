@@ -142,6 +142,7 @@ type Props = {
   showCorretor?: boolean;
   /** Papel do usuário logado — compromissos de admin só admin altera. */
   currentUserRole?: Role;
+  currentUserId?: string;
   completingId?: string | null;
   cancelingId?: string | null;
   onCreateAt: (day: Date, hour?: number) => void;
@@ -159,7 +160,11 @@ function canMutateItem(item: Agendamento, role?: Role) {
   return true;
 }
 
-function canCompleteItem(item: Agendamento, role?: Role) {
+function canCompleteItem(
+  item: Agendamento,
+  role?: Role,
+  currentUserId?: string,
+) {
   if (isAgendamentoAniversario(item) || isAgendamentoBloqueio(item)) {
     return false;
   }
@@ -167,8 +172,10 @@ function canCompleteItem(item: Agendamento, role?: Role) {
     return false;
   }
   if (canMutateItem(item, role)) return true;
-  // Corretor pode concluir tarefa atribuída (mesmo criada por admin).
-  return role === "corretor" && Boolean(item.atribuidoParaId);
+  // Destinatário da tarefa atribuída pode concluir.
+  return Boolean(
+    currentUserId && item.atribuidoParaId === currentUserId,
+  );
 }
 
 export function AgendaDayTable({
@@ -177,6 +184,7 @@ export function AgendaDayTable({
   loading,
   showCorretor,
   currentUserRole,
+  currentUserId,
   completingId,
   cancelingId,
   onCreateAt,
@@ -455,7 +463,7 @@ export function AgendaDayTable({
                     </TableCell>
                     <TableCell className="align-top text-right">
                       <div className="inline-flex items-center gap-0.5">
-                        {canCompleteItem(item, currentUserRole) ? (
+                        {canCompleteItem(item, currentUserRole, currentUserId) ? (
                           <Button
                             variant="ghost"
                             size="icon"

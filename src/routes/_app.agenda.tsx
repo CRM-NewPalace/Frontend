@@ -47,11 +47,13 @@ import {
   type AgendaViewMode,
 } from "@/components/agenda-board";
 import { AgendaDayTable } from "@/components/agenda-day-table";
+import { TimePicker } from "@/components/time-picker";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
+import { fetchUsers } from "@/lib/users-api";
 import {
   AGENDAMENTO_ALVO_LABEL,
   AGENDAMENTO_ESCOPO_LABEL,
@@ -220,6 +222,9 @@ function AgendaPage() {
   const [solicitacoes, setSolicitacoes] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [assignUsers, setAssignUsers] = useState<
+    Array<{ id: string; name: string; role: string }>
+  >([]);
   const [filterEquipeId, setFilterEquipeId] = useState("__all__");
   const [filterCorretorId, setFilterCorretorId] = useState(
     () => search.corretorId ?? "__all__",
@@ -362,10 +367,23 @@ function AgendaPage() {
   }, [equipes]);
 
   const corretorAssignOptions = useMemo(() => {
+    if (isAdmin) {
+      return assignUsers
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    }
     return assignees
       .filter((a) => a.role === "corretor")
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  }, [assignees]);
+  }, [assignees, assignUsers, isAdmin]);
+
+  const assignRoleLabel = (role: string) => {
+    if (role === "admin") return "Admin";
+    if (role === "gerente") return "Gerente";
+    if (role === "analista") return "Analista";
+    if (role === "corretor") return "Corretor";
+    return role;
+  };
 
   const tiposDisponiveis = useMemo(() => {
     if (isAdmin || isGerente) return AGENDAMENTO_TIPOS;
@@ -410,6 +428,15 @@ function AgendaPage() {
     void fetchEquipes()
       .then((list) => setEquipes(list.filter((e) => e.status === "ativo")))
       .catch(() => setEquipes([]));
+    void fetchUsers({ status: "ativo", page: 1, limit: 200 })
+      .then((res) =>
+        setAssignUsers(
+          res.data
+            .filter((u) => u.role !== "super_admin")
+            .map((u) => ({ id: u.id, name: u.name, role: u.role })),
+        ),
+      )
+      .catch(() => setAssignUsers([]));
   }, [isAdmin]);
 
   useEffect(() => {
@@ -531,7 +558,8 @@ function AgendaPage() {
       return;
     }
     if (
-      user?.role === "corretor" &&
+      item.atribuidoParaId &&
+      user?.id &&
       item.atribuidoParaId === user.id &&
       item.autor.id !== user.id
     ) {
@@ -716,7 +744,7 @@ function AgendaPage() {
               : "Horário bloqueado.",
           );
         } else if (payload.atribuidoParaId) {
-          toast.success("Tarefa atribuída ao corretor.");
+          toast.success("Tarefa atribuída.");
         } else {
           toast.success(
             user?.role === "admin"
@@ -1283,6 +1311,7 @@ function AgendaPage() {
               loading={loading}
               showCorretor={isManager}
               currentUserRole={user?.role}
+              currentUserId={user?.id}
               completingId={completingId}
               cancelingId={cancelingId}
               onCreateAt={openCreate}
@@ -1654,7 +1683,9 @@ function AgendaPage() {
 
               {(isAdmin || isGerente) && form.tipo !== "bloqueio" ? (
                 <div className="space-y-2">
-                  <Label>Atribuir ao corretor</Label>
+                  <Label>
+                    {isAdmin ? "Atribuir a" : "Atribuir ao corretor"}
+                  </Label>
                   <Select
                     value={form.atribuidoParaId || "__none__"}
                     onValueChange={(v) =>
@@ -1677,14 +1708,17 @@ function AgendaPage() {
                       </SelectItem>
                       {corretorAssignOptions.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.name}
+                          {isAdmin
+                            ? `${c.name} (${assignRoleLabel(c.role)})`
+                            : c.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
-                    A tarefa aparece na agenda do corretor e ele recebe
-                    notificação.
+                    {isAdmin
+                      ? "A tarefa aparece na agenda da pessoa escolhida e ela recebe notificação."
+                      : "A tarefa aparece na agenda do corretor e ele recebe notificação."}
                   </p>
                 </div>
               ) : null}
@@ -1724,22 +1758,23 @@ function AgendaPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timeStart">Início</Label>
-                  <Input
+                  <TimePicker
                     id="timeStart"
-                    type="time"
                     value={form.timeStart}
-                    onChange={(e) => setField("timeStart", e.target.value)}
+                    onChange={(v) => setField("timeStart", v)}
+                    placeholder="--:--"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timeEnd">
                     {form.tipo === "bloqueio" ? "Término" : "Término (opc.)"}
                   </Label>
-                  <Input
+                  <TimePicker
                     id="timeEnd"
-                    type="time"
                     value={form.timeEnd}
-                    onChange={(e) => setField("timeEnd", e.target.value)}
+                    onChange={(v) => setField("timeEnd", v)}
+                    placeholder="--:--"
+                    allowClear={form.tipo !== "bloqueio"}
                   />
                 </div>
               </div>
