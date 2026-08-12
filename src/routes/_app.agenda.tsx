@@ -860,7 +860,7 @@ function AgendaPage() {
     setSelectedDay(startOfDay(new Date()));
   }
 
-  function navigate(direction: -1 | 1) {
+  function shiftAgenda(direction: -1 | 1) {
     if (layoutMode === "tabela") {
       setSelectedDay((d) => addDays(d, direction));
       return;
@@ -1059,7 +1059,7 @@ function AgendaPage() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => navigate(-1)}
+                  onClick={() => shiftAgenda(-1)}
                   aria-label="Anterior"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -1068,7 +1068,7 @@ function AgendaPage() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => navigate(1)}
+                  onClick={() => shiftAgenda(1)}
                   aria-label="Próximo"
                 >
                   <ChevronRight className="w-4 h-4" />
