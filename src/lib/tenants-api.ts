@@ -160,7 +160,7 @@ export async function createTenantUser(
     phone?: string;
     whatsapp?: string;
     cargo?: string;
-    role: "admin" | "gerente" | "corretor" | "analista";
+    role: "admin" | "gerente" | "corretor" | "analista" | "treinee";
     status?: UserStatus;
   },
 ): Promise<{

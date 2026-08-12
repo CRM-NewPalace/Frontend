@@ -7,6 +7,7 @@ import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
  * - gerente: operação da equipe; carteira própria (/clientes) e vendas
  * - corretor: essencial (próprios leads/agenda/clientes)
  * - analista: funil de análise, documentação, resultado e catálogos (origens/tags/motivos)
+ * - treinee: cadastro de construtoras, empreendimentos, origens e tags
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
   super_admin: [
@@ -95,6 +96,12 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/configuracoes",
     "/perfil",
   ],
+  treinee: [
+    "/imoveis",
+    "/construtoras",
+    "/configuracoes",
+    "/perfil",
+  ],
 };
 
 /** No Bronze o gerente acessa só o CRM operacional. */
@@ -147,6 +154,7 @@ export function defaultRouteForRole(
 ): string {
   if (role === "super_admin") return "/tenants";
   if (role === "analista") return "/funil";
+  if (role === "treinee") return "/imoveis";
 
   const home = user?.tenant?.homePath?.trim();
   if (

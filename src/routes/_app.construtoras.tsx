@@ -106,7 +106,10 @@ function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const canManage =
-    isAdmin || user?.role === "gerente" || user?.role === "analista";
+    isAdmin ||
+    user?.role === "gerente" ||
+    user?.role === "analista" ||
+    user?.role === "treinee";
   const canCreate = canManage;
 
   const [items, setItems] = useState<Construtora[]>([]);

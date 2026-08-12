@@ -147,6 +147,10 @@ function ColorSwatchPicker({
 function Config() {
   const user = getSession();
   const isAnalista = user?.role === "analista";
+  const isTreinee = user?.role === "treinee";
+  const showOpsTabs = !isAnalista && !isTreinee;
+  const showDocumentacao = !isTreinee;
+  const showMotivos = !isTreinee;
   const { catalog, loading, error, addItem, updateItem, removeItem } =
     useCatalog();
 
@@ -259,9 +263,11 @@ function Config() {
       <PageHeader
         title="Configurações"
         description={
-          isAnalista
-            ? "Gerencie documentação, origens, motivos de perda e tags."
-            : "Personalize imobiliária, funil, documentação, origens, motivos e tags."
+          isTreinee
+            ? "Gerencie origens e tags."
+            : isAnalista
+              ? "Gerencie documentação, origens, motivos de perda e tags."
+              : "Personalize imobiliária, funil, documentação, origens, motivos e tags."
         }
       />
 
@@ -271,24 +277,32 @@ function Config() {
         </div>
       )}
 
-      <Tabs defaultValue={isAnalista ? "documentacao" : "empresa"}>
+      <Tabs
+        defaultValue={
+          isTreinee ? "origens" : isAnalista ? "documentacao" : "empresa"
+        }
+      >
         <TabsList className="flex h-auto flex-wrap gap-1">
-          {!isAnalista ? (
+          {showOpsTabs ? (
             <>
               <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
               <TabsTrigger value="funil">Funil</TabsTrigger>
             </>
           ) : null}
-          <TabsTrigger value="documentacao">Documentação</TabsTrigger>
-          {!isAnalista ? (
+          {showDocumentacao ? (
+            <TabsTrigger value="documentacao">Documentação</TabsTrigger>
+          ) : null}
+          {showOpsTabs ? (
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           ) : null}
           <TabsTrigger value="origens">Origens</TabsTrigger>
-          <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
+          {showMotivos ? (
+            <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
+          ) : null}
           <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
 
-        {!isAnalista ? (
+        {showOpsTabs ? (
           <>
             <TabsContent value="empresa">
               <ConfigEmpresaPanel />
@@ -365,6 +379,7 @@ function Config() {
           </>
         ) : null}
 
+        {showDocumentacao ? (
         <TabsContent value="documentacao" className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Opções usadas no formulário rápido do analista e na tela
@@ -429,8 +444,15 @@ function Config() {
             ),
           )}
         </TabsContent>
+        ) : null}
 
-        {(["origens", "motivos", "tags"] as ListKind[]).map((kind) => (
+        {(
+          [
+            "origens",
+            ...(showMotivos ? (["motivos"] as const) : []),
+            "tags",
+          ] as ListKind[]
+        ).map((kind) => (
           <TabsContent key={kind} value={kind}>
             <Card>
               <CardHeader className="flex-row justify-between items-center">

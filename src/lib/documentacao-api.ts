@@ -62,7 +62,7 @@ export interface Documentacao {
   autor: {
     id: string;
     name: string;
-    role?: "admin" | "gerente" | "corretor" | "analista" | "super_admin";
+    role?: "admin" | "gerente" | "corretor" | "analista" | "treinee" | "super_admin";
   };
   construtora: { id: string; nome: string; cor: string | null } | null;
   empreendimento: {

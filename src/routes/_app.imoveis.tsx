@@ -77,7 +77,9 @@ function ImoveisPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const isAnalista = user?.role === "analista";
-  const canManage = isAdmin || user?.role === "gerente" || isAnalista;
+  const isTreinee = user?.role === "treinee";
+  const canManage =
+    isAdmin || user?.role === "gerente" || isAnalista || isTreinee;
   const canCreate = canManage;
   const canDelete = isAdmin || isAnalista;
 

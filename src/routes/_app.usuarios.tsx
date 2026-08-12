@@ -142,6 +142,7 @@ const ROLE_LABEL: Record<Role, string> = {
   gerente: "Gerente",
   corretor: "Corretor",
   analista: "Analista",
+  treinee: "Treinee",
 };
 
 const STATUS_LABEL: Record<UserStatus, string> = {
@@ -219,6 +220,8 @@ function roleBadgeClass(role: Role) {
   if (role === "gerente") return "bg-info/15 text-info border-info/30";
   if (role === "analista")
     return "bg-sky-500/15 text-sky-700 border-sky-500/30";
+  if (role === "treinee")
+    return "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
   return "bg-muted text-muted-foreground";
 }
 
@@ -667,6 +670,7 @@ function Usuarios() {
               {canUseAnalista && (
                 <SelectItem value="analista">Analista</SelectItem>
               )}
+              <SelectItem value="treinee">Treinee</SelectItem>
               <SelectItem value="corretor">Corretor</SelectItem>
             </SelectContent>
           </Select>
@@ -1004,6 +1008,7 @@ function Usuarios() {
                           {canUseAnalista && (
                             <SelectItem value="analista">Analista</SelectItem>
                           )}
+                          <SelectItem value="treinee">Treinee</SelectItem>
                         </>
                       )}
                       <SelectItem value="corretor">Corretor</SelectItem>

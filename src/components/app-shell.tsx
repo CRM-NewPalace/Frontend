@@ -271,6 +271,7 @@ const ROLE_LABEL: Record<string, string> = {
   gerente: "Gerente",
   corretor: "Corretor",
   analista: "Analista",
+  treinee: "Treinee",
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
