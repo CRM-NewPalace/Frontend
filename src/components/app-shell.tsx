@@ -1035,13 +1035,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   aria-label="Menu da conta"
                 >
                   <Avatar className="w-7 h-7">
-                    <AvatarFallback
-                      className="text-white text-xs font-semibold"
-                      style={{
-                        backgroundImage:
-                          "linear-gradient(135deg, #079ED4 0%, #057aa8 55%, #034e6e 100%)",
-                      }}
-                    >
+                    <AvatarFallback className="avatar-fallback-brand text-xs">
                       {initials}
                     </AvatarFallback>
                   </Avatar>

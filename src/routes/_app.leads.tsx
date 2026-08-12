@@ -54,9 +54,6 @@ import {
   Filter,
   Download,
   MoreHorizontal,
-  Phone,
-  MessageSquare,
-  Mail,
   UserPlus,
   MapPin,
   Wallet,
@@ -214,7 +211,7 @@ const TIPO_RENDA_OPTIONS = [
 const LEADS_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110 disabled:opacity-50";
 const LEADS_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
 } as const;
 const LEADS_SOFT_BTN =
   "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
@@ -2166,7 +2163,7 @@ function LeadsPage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          <AvatarFallback className="avatar-fallback-brand text-xs">
                             {l.nome
                               .split(" ")
                               .map((n) => n[0])
@@ -2175,7 +2172,7 @@ function LeadsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="text-sm font-medium">{l.nome}</div>
+                          <div className="table-person-name text-sm">{l.nome}</div>
                           <div className="text-xs text-muted-foreground">
                             {l.telefone}
                           </div>
@@ -2203,7 +2200,9 @@ function LeadsPage() {
                       </TableCell>
                     )}
                     {!isCorretor && (
-                      <TableCell className="text-sm">{l.corretor}</TableCell>
+                      <TableCell className="table-person-name text-sm">
+                        {l.corretor}
+                      </TableCell>
                     )}
                     <TableCell className="text-sm font-medium">
                       {l.renda != null ? brl(l.renda) : "—"}
@@ -2220,54 +2219,7 @@ function LeadsPage() {
                       {l.updatedAt}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="WhatsApp"
-                          onClick={() =>
-                            toast.message(`WhatsApp — ${l.nome}`, {
-                              description: l.telefone,
-                            })
-                          }
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="Ligar"
-                          onClick={() =>
-                            toast.message(`Ligar — ${l.nome}`, {
-                              description: l.telefone,
-                            })
-                          }
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="E-mail"
-                          disabled={!displayEmail(l.email)}
-                          onClick={() => {
-                            const email = displayEmail(l.email);
-                            if (!email) {
-                              toast.message(`E-mail — ${l.nome}`, {
-                                description: "Sem e-mail cadastrado",
-                              });
-                              return;
-                            }
-                            toast.message(`E-mail — ${l.nome}`, {
-                              description: email,
-                            });
-                          }}
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                        </Button>
+                      <div className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

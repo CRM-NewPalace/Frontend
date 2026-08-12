@@ -256,12 +256,12 @@ function LeadsPerdidos() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-destructive/10 text-destructive text-xs">
+                        <AvatarFallback className="avatar-fallback-brand text-xs">
                           {initials(l.nome)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="text-sm font-medium">{l.nome}</div>
+                        <div className="table-person-name text-sm">{l.nome}</div>
                         <div className="text-xs text-muted-foreground">
                           {l.telefone}
                         </div>
@@ -274,7 +274,9 @@ function LeadsPerdidos() {
                   >
                     {l.motivoPerda}
                   </TableCell>
-                  <TableCell className="text-sm">{l.corretor}</TableCell>
+                  <TableCell className="table-person-name text-sm">
+                    {l.corretor}
+                  </TableCell>
                   <TableCell className="text-sm">{l.perdidoPor}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {l.perdidoAt}

@@ -110,7 +110,7 @@ export const Route = createFileRoute("/_app/clientes")({
 const CLIENTES_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110 disabled:opacity-50";
 const CLIENTES_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
 } as const;
 const CLIENTES_SOFT_BTN =
   "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
@@ -688,12 +688,12 @@ function Clientes() {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="w-8 h-8">
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      <AvatarFallback className="avatar-fallback-brand text-xs">
                         {initials(l.nome)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="text-sm font-medium">{l.nome}</div>
+                      <div className="table-person-name text-sm">{l.nome}</div>
                       {displayEmail(l.email) ? (
                         <div className="text-xs text-muted-foreground">
                           {displayEmail(l.email)}
@@ -711,7 +711,9 @@ function Clientes() {
                   {l.cidade ? `, ${l.cidade}` : ""}
                 </TableCell>
                 {!isCorretor && (
-                  <TableCell className="text-sm">{l.corretor}</TableCell>
+                  <TableCell className="table-person-name text-sm">
+                    {l.corretor}
+                  </TableCell>
                 )}
                 <TableCell>
                   <div className="flex gap-1 flex-wrap">

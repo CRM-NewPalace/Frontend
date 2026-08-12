@@ -38,7 +38,7 @@
   --color-surface-muted: #f8fafc;
   --color-text-muted: #64748b;
   --background-image-brand-text: linear-gradient(to right, #079ed4, #053647);
-  --background-image-brand-cta: linear-gradient(135deg, #053647 0%, #079ed4 100%);
+  --background-image-brand-cta: linear-gradient(135deg, #0e6f8a 0%, #079ed4 100%);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -261,6 +261,29 @@ html.tenant-density-compact .space-y-6 {
 
   .bg-brand-cta {
     background-image: var(--background-image-brand-cta);
+  }
+
+  /** Avatar de iniciais — mesmo degradê do usuário no nav. */
+  .avatar-fallback-brand {
+    background-color: transparent !important;
+    background-image: linear-gradient(
+      135deg,
+      #079ed4 0%,
+      #057aa8 55%,
+      #034e6e 100%
+    ) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+  }
+
+  /** Nome de cliente/corretor em tabelas e cards — mais contraste. */
+  .table-person-name {
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .dark .table-person-name {
+    color: #f8fafc;
   }
 
   .badge-novo-glow {

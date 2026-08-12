@@ -66,7 +66,7 @@ export const Route = createFileRoute("/_app/imoveis")({
 const IMOVEIS_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
 const IMOVEIS_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
 } as const;
 const IMOVEIS_SOFT_BTN =
   "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";

@@ -302,12 +302,22 @@ function Page() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Funil do mês</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Dos {conv.entradas.valor} leads que entraram, {conv.vendas.valor}{" "}
+            Dos{" "}
+            <span className="table-person-name tabular-nums">
+              {conv.entradas.valor}
+            </span>{" "}
+            leads que entraram,{" "}
+            <span className="table-person-name tabular-nums">
+              {conv.vendas.valor}
+            </span>{" "}
             viraram venda (
-            {conv.taxa.valor.toLocaleString("pt-BR", {
-              maximumFractionDigits: 1,
-            })}
-            %).
+            <span className="table-person-name tabular-nums">
+              {conv.taxa.valor.toLocaleString("pt-BR", {
+                maximumFractionDigits: 1,
+              })}
+              %
+            </span>
+            ).
           </p>
         </CardHeader>
         <CardContent className="space-y-3">

@@ -210,7 +210,7 @@ export function DigitalCardMockup({ large = false }: MockupProps) {
         <div
           className="rounded-2xl p-3 text-white sm:p-4"
           style={{
-            background: "linear-gradient(145deg, #053647 0%, #079ed4 100%)",
+            background: "linear-gradient(145deg, #0e6f8a 0%, #079ed4 100%)",
           }}
         >
           <div className="flex items-center gap-2.5">

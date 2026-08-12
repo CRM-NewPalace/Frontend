@@ -127,7 +127,7 @@ const COLUMN_STEP_PX = 288 + 12;
 const FUNIL_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
 const FUNIL_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
 } as const;
 
 export const Route = createFileRoute("/_app/funil")({
@@ -1117,7 +1117,7 @@ export function ComercialFunilBoard({
                     )}
                   >
                     <div className="flex items-start justify-between mb-1.5 gap-2">
-                      <div className="text-sm font-semibold text-foreground/80 truncate">
+                      <div className="table-person-name text-sm truncate">
                         {l.nome}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">

@@ -140,7 +140,7 @@ function MemberCard({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 {accent && <Crown className="w-3 h-3 text-primary shrink-0" />}
-                <div className="text-sm font-medium truncate">
+                <div className="table-person-name text-sm truncate">
                   {member.name}
                 </div>
               </div>
@@ -699,7 +699,7 @@ function EquipesPage() {
                               }
                             />
                             <div className="min-w-0">
-                              <div className="text-sm font-medium truncate">
+                              <div className="table-person-name text-sm truncate">
                                 {c.name}
                               </div>
                               <div className="text-xs text-muted-foreground truncate">

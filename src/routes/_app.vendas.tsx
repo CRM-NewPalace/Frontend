@@ -79,7 +79,7 @@ function dateBr(value: string | null | undefined) {
 const APPLY_FILTERS_BTN =
   "rounded-md border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
 const APPLY_FILTERS_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #053647 0%, #079ED4 100%)",
+  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
 } as const;
 
 function VendasPage() {
@@ -479,7 +479,7 @@ function VendasPage() {
                     return (
                       <TableRow key={doc.id}>
                         <TableCell>
-                          <div className="font-medium">{doc.nome}</div>
+                          <div className="table-person-name">{doc.nome}</div>
                           <div className="text-xs text-muted-foreground">
                             {doc.construtora?.nome ?? "Sem construtora"}
                           </div>
@@ -495,10 +495,14 @@ function VendasPage() {
                         </TableCell>
                         <TableCell>{equipe?.name ?? "—"}</TableCell>
                         <TableCell>
-                          {doc.gerente?.name ?? equipe?.gerente.name ?? "—"}
+                          <span className="table-person-name text-sm">
+                            {doc.gerente?.name ?? equipe?.gerente.name ?? "—"}
+                          </span>
                         </TableCell>
                         <TableCell>
-                          {doc.corretor?.name ?? doc.lead.corretor?.name ?? "—"}
+                          <span className="table-person-name text-sm">
+                            {doc.corretor?.name ?? doc.lead.corretor?.name ?? "—"}
+                          </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {dateBr(doc.dataVenda)}

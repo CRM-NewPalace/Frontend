@@ -2,6 +2,11 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/** Um pouco mais clara que o aside, sem lavar o tom (mistura com o ciano da marca). */
+const TABLE_HEADER_BG = {
+  backgroundColor: "color-mix(in srgb, var(--sidebar) 88%, #079ed4)",
+} as const;
+
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
@@ -9,7 +14,10 @@ const Table = React.forwardRef<
   <div className="relative w-full overflow-auto rounded-[inherit]">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(
+        "w-full border-separate border-spacing-0 caption-bottom text-sm",
+        className,
+      )}
       {...props}
     />
   </div>
@@ -19,11 +27,12 @@ Table.displayName = "Table";
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
+>(({ className, style, ...props }, ref) => (
   <thead
     ref={ref}
+    style={{ ...TABLE_HEADER_BG, ...style }}
     className={cn(
-      "[&_tr]:border-b-0 [&_tr]:bg-linear-to-r [&_tr]:from-[#c5eaf8] [&_tr]:to-[#e8f6fc]",
+      "text-sidebar-foreground [&_tr]:border-b-0",
       className,
     )}
     {...props}
@@ -65,7 +74,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted [[thead]_&]:border-b-0 [[thead]_&]:hover:bg-transparent",
       className,
     )}
     {...props}
@@ -76,11 +85,12 @@ TableRow.displayName = "TableRow";
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+>(({ className, style, ...props }, ref) => (
   <th
     ref={ref}
+    style={{ ...TABLE_HEADER_BG, ...style }}
     className={cn(
-      "h-10 px-2 text-left align-middle font-semibold text-brand-dark has-[[role=checkbox]]:pr-0 *:[[role=checkbox]]:translate-y-0.5",
+      "h-10 px-2 text-left align-middle font-semibold text-sidebar-foreground has-[[role=checkbox]]:pr-0 *:[[role=checkbox]]:translate-y-0.5",
       className,
     )}
     {...props}

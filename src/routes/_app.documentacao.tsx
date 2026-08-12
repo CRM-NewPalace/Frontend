@@ -150,7 +150,7 @@ import {
   Trash2,
   Pencil,
   Eye,
-  EyeOff,
+  MoreHorizontal,
   Building,
   Building2,
   Filter,
@@ -302,7 +302,6 @@ function DocumentacaoPage() {
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
-  const isAnalista = user?.role === "analista";
   const canOwnCarteira = isAdmin || isGerente;
 
   function canMutateDoc(doc: Documentacao): boolean {
@@ -371,26 +370,6 @@ function DocumentacaoPage() {
   const [filterDataDe, setFilterDataDe] = useState("");
   const [filterDataAte, setFilterDataAte] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [showCondicoesCliente, setShowCondicoesCliente] = useState(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      return window.localStorage.getItem("doc-show-condicoes") !== "0";
-    } catch {
-      return true;
-    }
-  });
-
-  function toggleCondicoesCliente() {
-    setShowCondicoesCliente((prev) => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem("doc-show-condicoes", next ? "1" : "0");
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importHelpOpen, setImportHelpOpen] = useState(false);
@@ -2152,31 +2131,6 @@ function DocumentacaoPage() {
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {isAnalista && !loading && items.length > 0 && (
-            <div className="flex items-center justify-end gap-2 border-b border-border/60 px-3 py-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={toggleCondicoesCliente}
-                title={
-                  showCondicoesCliente
-                    ? "Ocultar Entrada, FGTS e Dependente na tabela"
-                    : "Mostrar Entrada, FGTS e Dependente na tabela"
-                }
-              >
-                {showCondicoesCliente ? (
-                  <EyeOff className="w-3.5 h-3.5 mr-1.5" />
-                ) : (
-                  <Eye className="w-3.5 h-3.5 mr-1.5" />
-                )}
-                {showCondicoesCliente
-                  ? "Ocultar condições"
-                  : "Mostrar condições"}
-              </Button>
-            </div>
-          )}
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -2201,7 +2155,7 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="text-xs [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1">
+            <Table className="text-xs [&_th]:h-9 [&_th]:px-5 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:px-5 [&_td]:py-1.5">
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-30 max-w-40">
@@ -2219,21 +2173,17 @@ function DocumentacaoPage() {
                     Gerente
                   </TableHead>
                   <TableHead className="min-w-18">Fonte</TableHead>
-                  {(!isAnalista || showCondicoesCliente) && (
-                    <>
-                      <TableHead className="min-w-18">Entrada</TableHead>
-                      <TableHead className="min-w-18">FGTS</TableHead>
-                      <TableHead className="min-w-14">Dep.</TableHead>
-                    </>
-                  )}
-                  <TableHead className="w-21" />
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredItems.map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell className="max-w-40">
-                      <div className="font-medium truncate" title={doc.nome}>
+                      <div
+                        className="table-person-name truncate"
+                        title={doc.nome}
+                      >
                         {doc.nome}
                       </div>
                       <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-0.5 mt-0.5">
@@ -2331,7 +2281,7 @@ function DocumentacaoPage() {
                       })()}
                     </TableCell>
                     <TableCell
-                      className="max-w-24 truncate"
+                      className="table-person-name max-w-24 truncate text-sm"
                       title={doc.gerente?.name ?? undefined}
                     >
                       {doc.gerente?.name ?? "—"}
@@ -2342,60 +2292,41 @@ function DocumentacaoPage() {
                     >
                       {displayFonte(doc.fonte) || "—"}
                     </TableCell>
-                    {(!isAnalista || showCondicoesCliente) && (
-                      <>
-                        <TableCell className="whitespace-nowrap text-[11px]">
-                          {doc.temEntrada
-                            ? doc.valorEntrada != null
-                              ? brl(doc.valorEntrada)
-                              : "Sim"
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-[11px]">
-                          {doc.temFgts
-                            ? doc.valorFgts != null
-                              ? brl(doc.valorFgts)
-                              : "Sim"
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-[11px]">
-                          {doc.temDependente ? "Sim" : "—"}
-                        </TableCell>
-                      </>
-                    )}
                     <TableCell>
-                      <div className="flex justify-end gap-0.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => openView(doc)}
-                          title="Visualizar"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </Button>
-                        {canMutateDoc(doc) && (
-                          <>
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() => openEdit(doc)}
-                              title="Editar"
+                              title="Ações"
                             >
-                              <Pencil className="w-3.5 h-3.5" />
+                              <MoreHorizontal className="w-4 h-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => setDeleteId(doc.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                            </Button>
-                          </>
-                        )}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openView(doc)}>
+                              <Eye className="w-3.5 h-3.5 mr-2" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            {canMutateDoc(doc) && (
+                              <>
+                                <DropdownMenuItem onClick={() => openEdit(doc)}>
+                                  <Pencil className="w-3.5 h-3.5 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteId(doc.id)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>

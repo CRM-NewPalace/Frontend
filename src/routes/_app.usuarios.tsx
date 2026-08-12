@@ -721,11 +721,11 @@ function Usuarios() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        <AvatarFallback className="avatar-fallback-brand text-xs">
                           {initials(u.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-medium">{u.name}</span>
+                      <span className="table-person-name text-sm">{u.name}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">{u.email}</TableCell>
