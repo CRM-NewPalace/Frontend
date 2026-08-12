@@ -26,9 +26,6 @@ export default defineConfig({
     css: {
       transformer: "postcss",
     },
-    build: {
-      cssMinify: "esbuild",
-    },
     // CJS → ESM: sem prebundle o Vite serve o shim cru e quebra named export.
     optimizeDeps: {
       include: ["use-sync-external-store/shim/with-selector"],
