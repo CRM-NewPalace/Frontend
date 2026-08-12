@@ -430,23 +430,61 @@ function PodioCorretores({
   );
 }
 
+function rankTextClass(place: number) {
+  if (place === 1) {
+    return "text-amber-500 dark:text-amber-400";
+  }
+  if (place === 2) {
+    return "text-slate-400 dark:text-slate-300";
+  }
+  if (place === 3) {
+    return "text-[#8B6914] dark:text-[#C4A35A]";
+  }
+  return "text-muted-foreground";
+}
+
 function RankingList({ corretores }: { corretores: DashboardRankingCorretor[] }) {
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Medal className="h-4 w-4 text-amber-500" /> Ranking geral · corretores por venda
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-1">
-        {corretores.slice(0, 8).map((row) => (
-          <div key={row.corretorId} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/60">
-            <span className="w-5 text-xs font-bold text-muted-foreground">#{row.posicao}</span>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.nome}</span>
-            <span className="text-xs text-muted-foreground">{row.vendas.valor} vendas</span>
-            <span className="text-xs font-semibold tabular-nums">{money(row.vgv.valor)}</span>
-          </div>
-        ))}
+      <CardContent className="space-y-0 p-0">
+        {corretores.slice(0, 8).map((row) => {
+          const place = row.posicao;
+          const topThree = place <= 3;
+          return (
+            <div
+              key={row.corretorId}
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/60"
+            >
+              <span
+                className={cn(
+                  "w-5 text-xs font-bold",
+                  topThree ? rankTextClass(place) : "text-muted-foreground",
+                )}
+              >
+                #{place}
+              </span>
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-sm text-foreground",
+                  topThree ? "font-bold" : "font-medium",
+                )}
+              >
+                {row.nome}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {row.vendas.valor} vendas
+              </span>
+              <span className="text-xs font-semibold tabular-nums">
+                {money(row.vgv.valor)}
+              </span>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
@@ -458,22 +496,51 @@ function ConstrutorasRanking({
   items: Array<{ nome: string; vendas: number; vgv: number }>;
 }) {
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Building2 className="h-4 w-4 text-primary" /> Top construtoras · VGV
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-1">
-        {items.length ? items.map((item, index) => (
-          <div key={item.nome} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/60">
-            <span className="w-5 text-xs font-bold text-muted-foreground">#{index + 1}</span>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.nome}</span>
-            <span className="text-xs text-muted-foreground">{item.vendas} vendas</span>
-            <span className="text-xs font-semibold tabular-nums">{money(item.vgv)}</span>
-          </div>
-        )) : (
-          <p className="py-5 text-center text-sm text-muted-foreground">Nenhuma venda no período.</p>
+      <CardContent className="space-y-0 p-0">
+        {items.length ? (
+          items.map((item, index) => {
+            const place = index + 1;
+            const topThree = place <= 3;
+            return (
+              <div
+                key={item.nome}
+                className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/60"
+              >
+                <span
+                  className={cn(
+                    "w-5 text-xs font-bold",
+                    topThree ? rankTextClass(place) : "text-muted-foreground",
+                  )}
+                >
+                  #{place}
+                </span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-sm text-foreground",
+                    topThree ? "font-bold" : "font-medium",
+                  )}
+                >
+                  {item.nome}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {item.vendas} vendas
+                </span>
+                <span className="text-xs font-semibold tabular-nums">
+                  {money(item.vgv)}
+                </span>
+              </div>
+            );
+          })
+        ) : (
+          <p className="px-4 py-5 text-center text-sm text-muted-foreground">
+            Nenhuma venda no período.
+          </p>
         )}
       </CardContent>
     </Card>

@@ -51,12 +51,17 @@ import {
   FileText,
   MapPin,
   MessageCircle,
+  CheckCircle2,
+  XCircle,
+  Clock3,
+  BadgeCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { funnelColumnBg } from "@/lib/catalog-colors";
 import { phoneDigits } from "@/lib/phone";
 import { displayEmail } from "@/lib/email";
+import { FinanceKpiCard } from "@/components/finance-kpi-card";
 
 export const Route = createFileRoute("/_app/resultado")({
   head: () => ({ meta: [{ title: "Análise — Zone Connection" }] }),
@@ -122,6 +127,15 @@ function AnaliseCard({ item, onOpen }: { item: Analise; onOpen: () => void }) {
       </div>
     </Card>
   );
+}
+
+function isLeadVendido(stage: string) {
+  const raw = stage
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return raw.includes("vendid");
 }
 
 function AnalisePage() {
@@ -204,6 +218,26 @@ function AnalisePage() {
 
     return cols;
   }, [items, corretores]);
+
+  const pipelineSummary = useMemo(() => {
+    let emAnalise = 0;
+    let aprovado = 0;
+    let reprovado = 0;
+    let vendidos = 0;
+    for (const item of items) {
+      if (item.status === "em_analise" || item.status === "pendente") {
+        emAnalise += 1;
+      } else if (item.status === "aprovado") {
+        aprovado += 1;
+      } else if (item.status === "reprovado") {
+        reprovado += 1;
+      }
+      if (isLeadVendido(item.lead.stage) || isLeadVendido(item.stageSituacao)) {
+        vendidos += 1;
+      }
+    }
+    return { emAnalise, aprovado, reprovado, vendidos };
+  }, [items]);
 
   const updateScrollButtons = useCallback(() => {
     const el = boardRef.current;
@@ -376,6 +410,40 @@ function AnalisePage() {
           </div>
         }
       />
+
+      {!busy ? (
+        <section className="mb-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
+          <FinanceKpiCard
+            label="Total em análise"
+            value={pipelineSummary.emAnalise}
+            icon={Clock3}
+            tone="orange"
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Aprovado"
+            value={pipelineSummary.aprovado}
+            icon={CheckCircle2}
+            tone="emerald"
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Reprovados"
+            value={pipelineSummary.reprovado}
+            icon={XCircle}
+            tone="red"
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Vendidos"
+            value={pipelineSummary.vendidos}
+            icon={BadgeCheck}
+            tone="teal"
+            format="number"
+            href="/vendas"
+          />
+        </section>
+      ) : null}
 
       {busy ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
