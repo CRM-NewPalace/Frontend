@@ -476,6 +476,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (
       n.tipo === "agenda_solicitacao" ||
       n.tipo === "agenda_resposta" ||
+      n.tipo === "agenda_atribuicao" ||
       n.tipo === "agenda_lembrete_1d" ||
       n.tipo === "agenda_lembrete_2h" ||
       n.tipo === "agenda_lembrete_1h"

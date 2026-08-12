@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -64,6 +64,7 @@ import {
   Check,
   Clock3,
   Kanban,
+  CalendarDays,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { isAnalistaAllowed } from "@/lib/tenant-modules";
@@ -278,6 +279,7 @@ function isStrongPassword(value: string) {
 }
 
 function Usuarios() {
+  const navigate = useNavigate();
   const session = getSession();
   const isAdmin = session?.role === "admin";
   const isManager = session ? canViewTeamData(session.role) : false;
@@ -769,6 +771,23 @@ function Usuarios() {
                           <Eye className="w-3.5 h-3.5 mr-2" />
                           Ver detalhes
                         </DropdownMenuItem>
+                        {((isAdmin &&
+                          (u.role === "corretor" || u.role === "gerente")) ||
+                          (isManager &&
+                            session?.role === "gerente" &&
+                            u.role === "corretor")) && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              void navigate({
+                                to: "/agenda",
+                                search: { corretorId: u.id, nome: u.name },
+                              })
+                            }
+                          >
+                            <CalendarDays className="w-3.5 h-3.5 mr-2" />
+                            Ver agenda
+                          </DropdownMenuItem>
+                        )}
                         {isAdmin && (
                           <DropdownMenuItem onClick={() => openEdit(u)}>
                             <Pencil className="w-3.5 h-3.5 mr-2" />
@@ -1235,6 +1254,25 @@ function Usuarios() {
               >
                 Fechar
               </Button>
+              {((isAdmin &&
+                (detail.role === "corretor" || detail.role === "gerente")) ||
+                (session?.role === "gerente" &&
+                  detail.role === "corretor")) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setDetail(null);
+                    void navigate({
+                      to: "/agenda",
+                      search: { corretorId: detail.id, nome: detail.name },
+                    });
+                  }}
+                >
+                  <CalendarDays className="w-4 h-4 mr-1" />
+                  Ver agenda
+                </Button>
+              )}
               {(isAdmin || (isManager && detail.role === "corretor")) && (
                 <Button
                   type="button"

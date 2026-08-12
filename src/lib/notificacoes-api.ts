@@ -4,6 +4,7 @@ export type NotificacaoTipo =
   | "analise_resultado"
   | "agenda_solicitacao"
   | "agenda_resposta"
+  | "agenda_atribuicao"
   | "agenda_lembrete_1d"
   | "agenda_lembrete_2h"
   | "agenda_lembrete_1h";

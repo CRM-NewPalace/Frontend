@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   useCallback,
   useEffect,
@@ -57,25 +57,30 @@ import {
   AGENDAMENTO_ESCOPO_LABEL,
   AGENDAMENTO_ORIGEM_DOT,
   AGENDAMENTO_ORIGEM_LABEL,
-  isAgendamentoAniversario,
+  AGENDAMENTO_RECURRENCE_FREQ,
+  AGENDAMENTO_RECURRENCE_LABEL,
   AGENDAMENTO_STATUS,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPOS,
   AGENDAMENTO_TIPO_LABEL,
+  WEEKDAY_OPTIONS,
   aprovarAgendamento,
   createAgendamento,
   deleteAgendamento,
   fetchAgendamentos,
   fetchSolicitacoesAgenda,
+  isAgendamentoAniversario,
   recusarAgendamento,
   updateAgendamento,
   type Agendamento,
   type AgendamentoAlvo,
   type AgendamentoEscopo,
+  type AgendamentoRecurrenceFreq,
   type AgendamentoStatus,
   type AgendamentoTipo,
   type CreateAgendamentoInput,
 } from "@/lib/agenda-api";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   CalendarDays,
   CalendarRange,
@@ -103,14 +108,34 @@ import {
 type LayoutMode = "tabela" | "calendario";
 type AgendaSection = "agenda" | "solicitacoes";
 
+type AgendaSearch = {
+  corretorId?: string;
+  nome?: string;
+};
+
 export const Route = createFileRoute("/_app/agenda")({
   head: () => ({ meta: [{ title: "Agenda — Zone Connection" }] }),
+  validateSearch: (search: Record<string, unknown>): AgendaSearch => {
+    const corretorId =
+      typeof search.corretorId === "string" && search.corretorId.trim()
+        ? search.corretorId.trim()
+        : undefined;
+    const nome =
+      typeof search.nome === "string" && search.nome.trim()
+        ? search.nome.trim()
+        : undefined;
+    return {
+      ...(corretorId ? { corretorId } : {}),
+      ...(corretorId && nome ? { nome } : {}),
+    };
+  },
   component: AgendaPage,
 });
 
 type FormState = {
   leadId: string;
   clienteId: string;
+  atribuidoParaId: string;
   titulo: string;
   tipo: AgendamentoTipo;
   escopo: AgendamentoEscopo;
@@ -123,6 +148,10 @@ type FormState = {
   timeEnd: string;
   local: string;
   observacoes: string;
+  recurrenceFreq: AgendamentoRecurrenceFreq;
+  recurrenceDays: number[];
+  recurrenceUntil: string;
+  seriesId: string | null;
 };
 
 const emptyForm = (): FormState => {
@@ -130,6 +159,7 @@ const emptyForm = (): FormState => {
   return {
     leadId: "",
     clienteId: "",
+    atribuidoParaId: "",
     titulo: "",
     tipo: "tarefa",
     escopo: "pessoal",
@@ -142,6 +172,10 @@ const emptyForm = (): FormState => {
     timeEnd: "",
     local: "",
     observacoes: "",
+    recurrenceFreq: "unica",
+    recurrenceDays: [now.getDay()],
+    recurrenceUntil: "",
+    seriesId: null,
   };
 };
 
@@ -162,6 +196,8 @@ const VIEW_OPTIONS: { id: AgendaViewMode; label: string }[] = [
 ];
 
 function AgendaPage() {
+  const navigate = useNavigate();
+  const search = Route.useSearch();
   const user = getSession();
   const isPlatformAdmin = user?.role === "super_admin";
   const isManager = user ? canViewTeamData(user.role) : false;
@@ -185,7 +221,9 @@ function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [filterEquipeId, setFilterEquipeId] = useState("__all__");
-  const [filterCorretorId, setFilterCorretorId] = useState("__all__");
+  const [filterCorretorId, setFilterCorretorId] = useState(
+    () => search.corretorId ?? "__all__",
+  );
   const [filterTipo, setFilterTipo] = useState<string>("__all__");
   const [filterStatus, setFilterStatus] = useState<string>("__all__");
 
@@ -195,6 +233,7 @@ function AgendaPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteSeriesId, setDeleteSeriesId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
@@ -230,12 +269,87 @@ function AgendaPage() {
   }, [leads, user, isManager, filterCorretorId, filterEquipeId, equipes]);
 
   const corretorFilterOptions = useMemo(() => {
-    if (filterEquipeId === "__all__") return assignees;
-    const eq = equipes.find((e) => e.id === filterEquipeId);
-    if (!eq) return assignees;
-    const ids = new Set([eq.gerenteId, ...eq.membros.map((m) => m.id)]);
-    return assignees.filter((a) => ids.has(a.id));
-  }, [assignees, equipes, filterEquipeId]);
+    let list = [...assignees];
+
+    if (isAdmin) {
+      for (const e of equipes) {
+        if (
+          e.gerente &&
+          !list.some((a) => a.id === e.gerente!.id) &&
+          (filterEquipeId === "__all__" || e.id === filterEquipeId)
+        ) {
+          list.push({
+            id: e.gerente.id,
+            name: e.gerente.name,
+            role: "gerente",
+          });
+        }
+      }
+    }
+
+    if (filterEquipeId !== "__all__") {
+      const eq = equipes.find((e) => e.id === filterEquipeId);
+      if (eq) {
+        const ids = new Set([eq.gerenteId, ...eq.membros.map((m) => m.id)]);
+        list = list.filter((a) => ids.has(a.id));
+      }
+    }
+
+    // Garante o usuário aberto via /usuarios → Ver agenda.
+    if (
+      search.corretorId &&
+      search.nome &&
+      !list.some((a) => a.id === search.corretorId)
+    ) {
+      list = [
+        ...list,
+        { id: search.corretorId, name: search.nome, role: "gerente" },
+      ];
+    }
+
+    return list.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [
+    assignees,
+    equipes,
+    filterEquipeId,
+    isAdmin,
+    search.corretorId,
+    search.nome,
+  ]);
+
+  const viewedAgendaName = useMemo(() => {
+    if (filterCorretorId === "__all__") return null;
+    return (
+      search.nome ||
+      corretorFilterOptions.find((a) => a.id === filterCorretorId)?.name ||
+      null
+    );
+  }, [filterCorretorId, search.nome, corretorFilterOptions]);
+
+  useEffect(() => {
+    if (search.corretorId) {
+      setFilterCorretorId(search.corretorId);
+      setSection("agenda");
+    }
+  }, [search.corretorId]);
+
+  function setAgendaUserFilter(userId: string) {
+    setFilterCorretorId(userId);
+    const option = corretorFilterOptions.find((a) => a.id === userId);
+    void navigate({
+      to: "/agenda",
+      search:
+        userId === "__all__"
+          ? {}
+          : {
+              corretorId: userId,
+              ...(option?.name || search.nome
+                ? { nome: option?.name ?? search.nome }
+                : {}),
+            },
+      replace: true,
+    });
+  }
 
   const gerenteOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
@@ -246,6 +360,17 @@ function AgendaPage() {
       a.name.localeCompare(b.name, "pt-BR"),
     );
   }, [equipes]);
+
+  const corretorAssignOptions = useMemo(() => {
+    return assignees
+      .filter((a) => a.role === "corretor")
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [assignees]);
+
+  const tiposDisponiveis = useMemo(() => {
+    if (isAdmin || isGerente) return AGENDAMENTO_TIPOS;
+    return AGENDAMENTO_TIPOS.filter((t) => t !== "bloqueio");
+  }, [isAdmin, isGerente]);
 
   const activeFiltersCount = useMemo(() => {
     let n = 0;
@@ -268,6 +393,7 @@ function AgendaPage() {
     setFilterCorretorId("__all__");
     setFilterTipo("__all__");
     setFilterStatus("__all__");
+    void navigate({ to: "/agenda", search: {}, replace: true });
   }
 
   const leadOptions = useMemo(
@@ -398,6 +524,22 @@ function AgendaPage() {
       );
       return;
     }
+    if (item.tipo === "bloqueio" && user?.role === "corretor") {
+      toast.message("Horário bloqueado", {
+        description: item.titulo,
+      });
+      return;
+    }
+    if (
+      user?.role === "corretor" &&
+      item.atribuidoParaId === user.id &&
+      item.autor.id !== user.id
+    ) {
+      toast.message("Tarefa atribuída", {
+        description: "Use o botão de concluir na lista para marcar como feita.",
+      });
+      return;
+    }
     const start = new Date(item.startsAt);
     const end = item.endsAt ? new Date(item.endsAt) : null;
     setFormMode("edit");
@@ -405,6 +547,7 @@ function AgendaPage() {
     setForm({
       leadId: item.lead?.tipo === "lead" ? (item.leadId ?? "") : "",
       clienteId: item.lead?.tipo === "cliente" ? (item.leadId ?? "") : "",
+      atribuidoParaId: item.atribuidoParaId ?? "",
       titulo: item.titulo,
       tipo: item.tipo,
       escopo: item.escopo,
@@ -418,21 +561,34 @@ function AgendaPage() {
       timeEnd: end ? toTimeInput(end) : "",
       local: item.local ?? "",
       observacoes: item.observacoes ?? "",
+      recurrenceFreq: item.recurrenceFreq ?? "unica",
+      recurrenceDays:
+        item.recurrenceDays?.length > 0
+          ? item.recurrenceDays
+          : [start.getDay()],
+      recurrenceUntil: item.recurrenceUntil
+        ? toDateInput(new Date(item.recurrenceUntil))
+        : "",
+      seriesId: item.seriesId ?? null,
     });
     setOpen(true);
   }
 
   function validateForm(): CreateAgendamentoInput | null {
-    const isAdminEvent = user?.role === "admin";
+    const isAdminEvent = user?.role === "admin" && form.tipo !== "bloqueio" && !form.atribuidoParaId;
     const isPersonalPlatformAgenda = user?.role === "super_admin";
+    const isBloqueio = form.tipo === "bloqueio";
+    const atribuidoParaId = form.atribuidoParaId || null;
     const leadId =
-      isAdminEvent || isPersonalPlatformAgenda
+      isAdminEvent || isPersonalPlatformAgenda || isBloqueio || atribuidoParaId
         ? null
         : form.leadId || form.clienteId || null;
 
     if (
       !isAdminEvent &&
       !isPersonalPlatformAgenda &&
+      !isBloqueio &&
+      !atribuidoParaId &&
       form.escopo === "com_gerente" &&
       !leadId
     ) {
@@ -441,11 +597,22 @@ function AgendaPage() {
       );
       return null;
     }
-    if (isAdminEvent && form.alvoTipo === "equipe" && !form.alvoEquipeId) {
+    if (
+      user?.role === "admin" &&
+      (isBloqueio || (!atribuidoParaId && form.tipo !== "bloqueio")) &&
+      !atribuidoParaId &&
+      form.alvoTipo === "equipe" &&
+      !form.alvoEquipeId
+    ) {
       toast.error("Selecione a equipe do evento.");
       return null;
     }
-    if (isAdminEvent && form.alvoTipo === "gerente" && !form.alvoGerenteId) {
+    if (
+      user?.role === "admin" &&
+      !atribuidoParaId &&
+      form.alvoTipo === "gerente" &&
+      !form.alvoGerenteId
+    ) {
       toast.error("Selecione o gerente do evento.");
       return null;
     }
@@ -455,6 +622,26 @@ function AgendaPage() {
     }
     if (!form.date || !form.timeStart) {
       toast.error("Informe data e horário de início.");
+      return null;
+    }
+    if (isBloqueio && !form.timeEnd) {
+      toast.error("Informe o horário de término do bloqueio.");
+      return null;
+    }
+    if (
+      isBloqueio &&
+      form.recurrenceFreq !== "unica" &&
+      !form.recurrenceUntil
+    ) {
+      toast.error("Informe a data final da recorrência.");
+      return null;
+    }
+    if (
+      isBloqueio &&
+      form.recurrenceFreq === "semanal" &&
+      form.recurrenceDays.length === 0
+    ) {
+      toast.error("Selecione ao menos um dia da semana.");
       return null;
     }
 
@@ -468,13 +655,22 @@ function AgendaPage() {
       return null;
     }
 
+    const showAdminAlvo =
+      user?.role === "admin" && !atribuidoParaId;
+
     return {
       leadId,
+      atribuidoParaId,
       titulo: form.titulo.trim(),
       tipo: form.tipo,
       escopo:
-        isAdminEvent || isPersonalPlatformAgenda ? "pessoal" : form.escopo,
-      ...(isAdminEvent
+        isAdminEvent ||
+        isPersonalPlatformAgenda ||
+        isBloqueio ||
+        atribuidoParaId
+          ? "pessoal"
+          : form.escopo,
+      ...(showAdminAlvo
         ? {
             alvoTipo: form.alvoTipo === "nenhum" ? "todos" : form.alvoTipo,
             alvoEquipeId:
@@ -487,6 +683,17 @@ function AgendaPage() {
       endsAt,
       local: form.local.trim() || null,
       observacoes: form.observacoes.trim() || null,
+      ...(isBloqueio
+        ? {
+            recurrenceFreq: form.recurrenceFreq,
+            recurrenceDays:
+              form.recurrenceFreq === "semanal" ? form.recurrenceDays : [],
+            recurrenceUntil:
+              form.recurrenceFreq === "unica"
+                ? null
+                : combineLocalIso(form.recurrenceUntil, "23:59"),
+          }
+        : {}),
     };
   }
 
@@ -502,6 +709,14 @@ function AgendaPage() {
         if (created.solicitacaoStatus === "pendente") {
           toast.success("Solicitação enviada ao gerente.");
           setSection("solicitacoes");
+        } else if (payload.tipo === "bloqueio") {
+          toast.success(
+            payload.recurrenceFreq && payload.recurrenceFreq !== "unica"
+              ? "Horários bloqueados (recorrência criada)."
+              : "Horário bloqueado.",
+          );
+        } else if (payload.atribuidoParaId) {
+          toast.success("Tarefa atribuída ao corretor.");
         } else {
           toast.success(
             user?.role === "admin"
@@ -518,10 +733,21 @@ function AgendaPage() {
           );
         }
       } else if (editingId) {
-        // PATCH não aceita leadId (vínculo fixo); enviar gera 400 Bad Request.
-        const { leadId: _leadId, ...updateFields } = payload;
         await updateAgendamento(editingId, {
-          ...updateFields,
+          titulo: payload.titulo,
+          tipo: payload.tipo,
+          escopo: payload.escopo,
+          startsAt: payload.startsAt,
+          endsAt: payload.endsAt,
+          local: payload.local,
+          observacoes: payload.observacoes,
+          ...(payload.alvoTipo
+            ? {
+                alvoTipo: payload.alvoTipo,
+                alvoEquipeId: payload.alvoEquipeId,
+                alvoGerenteId: payload.alvoGerenteId,
+              }
+            : {}),
           status: form.status,
         });
         toast.success("Compromisso atualizado.");
@@ -608,12 +834,17 @@ function AgendaPage() {
     }
   }
 
-  async function handleDelete() {
+  async function handleDelete(series: "one" | "all" = "one") {
     if (!deleteId) return;
     try {
-      await deleteAgendamento(deleteId);
-      toast.success("Compromisso excluído.");
+      await deleteAgendamento(deleteId, { series });
+      toast.success(
+        series === "all"
+          ? "Série de bloqueios excluída."
+          : "Compromisso excluído.",
+      );
       setDeleteId(null);
+      setDeleteSeriesId(null);
       setOpen(false);
       await loadItems();
     } catch (err) {
@@ -671,9 +902,11 @@ function AgendaPage() {
             ? isGerente
               ? "Pedidos de visita/reunião dos corretores aguardando sua aprovação."
               : "Pedidos enviados ao gerente — acompanhe aqui sem misturar com sua agenda do dia."
-            : isManager
-              ? "Tabela do dia com os compromissos da equipe — alterne para o calendário completo quando quiser."
-              : "Tabela do dia com seus compromissos — alterne para o calendário completo quando quiser."
+            : viewedAgendaName
+              ? `Visualizando a agenda de ${viewedAgendaName}.`
+              : isManager
+                ? "Tabela do dia com os compromissos da equipe — alterne para o calendário completo quando quiser."
+                : "Tabela do dia com seus compromissos — alterne para o calendário completo quando quiser."
         }
         actions={
           section === "agenda" ? (
@@ -684,6 +917,23 @@ function AgendaPage() {
           ) : null
         }
       />
+
+      {viewedAgendaName && section === "agenda" ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-900">
+          <span>
+            Agenda de <strong>{viewedAgendaName}</strong>
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-teal-300 bg-white hover:bg-teal-50"
+            onClick={() => setAgendaUserFilter("__all__")}
+          >
+            Voltar à minha visão
+          </Button>
+        </div>
+      ) : null}
 
       <div className="mb-4 inline-flex rounded-lg border p-0.5 bg-muted/40">
         <button
@@ -938,22 +1188,25 @@ function AgendaPage() {
                   {isManager ? (
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">
-                        Corretor
+                        {isAdmin ? "Corretor / Gerente" : "Corretor"}
                       </Label>
                       <Select
                         value={filterCorretorId}
-                        onValueChange={setFilterCorretorId}
+                        onValueChange={setAgendaUserFilter}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Corretor" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__all__">
-                            Todos os corretores
+                            {isAdmin
+                              ? "Todos (visão geral)"
+                              : "Todos os corretores"}
                           </SelectItem>
                           {corretorFilterOptions.map((a) => (
                             <SelectItem key={a.id} value={a.id}>
                               {a.name}
+                              {a.role === "gerente" ? " (gerente)" : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1008,7 +1261,9 @@ function AgendaPage() {
 
           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
             <span className="font-medium text-foreground/80">Cores:</span>
-            {(["admin", "gerente", "corretor"] as const).map((origem) => (
+            {(
+              ["admin", "gerente", "corretor", "bloqueio"] as const
+            ).map((origem) => (
               <span key={origem} className="inline-flex items-center gap-1.5">
                 <span
                   className={cn(
@@ -1054,9 +1309,23 @@ function AgendaPage() {
         onOpenChange={setOpen}
         icon={<CalendarDays className="w-5 h-5" />}
         title={
-          formMode === "create" ? "Novo compromisso" : "Editar compromisso"
+          formMode === "create"
+            ? form.tipo === "bloqueio"
+              ? "Bloquear horário"
+              : form.atribuidoParaId
+                ? "Atribuir tarefa"
+                : "Novo compromisso"
+            : form.tipo === "bloqueio"
+              ? "Editar bloqueio"
+              : "Editar compromisso"
         }
-        description="Defina data e horário. Lead/cliente é opcional em tarefas pessoais."
+        description={
+          form.tipo === "bloqueio"
+            ? "Trave um horário para impedir novos agendamentos sobrepostos."
+            : form.atribuidoParaId
+              ? "A tarefa aparecerá na agenda do corretor selecionado."
+              : "Defina data e horário. Lead/cliente é opcional em tarefas pessoais."
+        }
         footer={
           <FormDialogActions>
             {formMode === "edit" && editingId ? (
@@ -1064,7 +1333,10 @@ function AgendaPage() {
                 type="button"
                 variant="destructive"
                 className="mr-auto"
-                onClick={() => setDeleteId(editingId)}
+                onClick={() => {
+                  setDeleteId(editingId);
+                  setDeleteSeriesId(form.seriesId);
+                }}
                 disabled={saving}
               >
                 <Trash2 className="w-4 h-4 mr-1" />
@@ -1086,7 +1358,13 @@ function AgendaPage() {
                   Salvando…
                 </>
               ) : formMode === "create" ? (
-                "Agendar"
+                form.tipo === "bloqueio" ? (
+                  "Bloquear"
+                ) : form.atribuidoParaId ? (
+                  "Atribuir"
+                ) : (
+                  "Agendar"
+                )
               ) : (
                 "Salvar"
               )}
@@ -1100,7 +1378,7 @@ function AgendaPage() {
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <FormDialogBody className="overflow-y-scroll">
-            {isAdmin ? (
+            {isAdmin && !form.atribuidoParaId ? (
               <FormSection
                 title="Público do evento"
                 icon={<Network className="w-4 h-4 text-primary" />}
@@ -1200,7 +1478,9 @@ function AgendaPage() {
                   ) : null}
                 </div>
               </FormSection>
-            ) : !isPlatformAdmin ? (
+            ) : !isPlatformAdmin &&
+              form.tipo !== "bloqueio" &&
+              !form.atribuidoParaId ? (
               <FormSection
                 title="Contato (opcional)"
                 icon={<User className="w-4 h-4 text-primary" />}
@@ -1268,7 +1548,11 @@ function AgendaPage() {
                   id="titulo"
                   value={form.titulo}
                   onChange={(e) => setField("titulo", e.target.value)}
-                  placeholder="Ex.: Visita ao empreendimento"
+                  placeholder={
+                    form.tipo === "bloqueio"
+                      ? "Ex.: Reunião interna"
+                      : "Ex.: Visita ao empreendimento"
+                  }
                   maxLength={160}
                 />
               </div>
@@ -1276,7 +1560,9 @@ function AgendaPage() {
               <div
                 className={cn(
                   "grid gap-4",
-                  isAdmin || isPlatformAdmin ? "" : "sm:grid-cols-2",
+                  isAdmin || isPlatformAdmin || form.tipo === "bloqueio"
+                    ? ""
+                    : "sm:grid-cols-2",
                 )}
               >
                 <div className="space-y-2">
@@ -1288,23 +1574,41 @@ function AgendaPage() {
                       setForm((prev) => ({
                         ...prev,
                         tipo,
+                        atribuidoParaId:
+                          tipo === "bloqueio" ? "" : prev.atribuidoParaId,
                         escopo:
-                          isAdmin || isPlatformAdmin
-                            ? prev.escopo
+                          isAdmin ||
+                          isPlatformAdmin ||
+                          tipo === "bloqueio" ||
+                          prev.atribuidoParaId
+                            ? "pessoal"
                             : tipo === "visita" || tipo === "reuniao"
                               ? "com_gerente"
                               : prev.escopo === "com_gerente" &&
                                   (tipo === "tarefa" || tipo === "ligacao")
                                 ? "pessoal"
                                 : prev.escopo,
+                        timeEnd:
+                          tipo === "bloqueio" && !prev.timeEnd
+                            ? prev.timeStart
+                              ? (() => {
+                                  const [hh, mm] = prev.timeStart
+                                    .split(":")
+                                    .map(Number);
+                                  const next = (hh + 1) % 24;
+                                  return `${String(next).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                                })()
+                              : "15:00"
+                            : prev.timeEnd,
                       }));
                     }}
+                    disabled={formMode === "edit"}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {AGENDAMENTO_TIPOS.map((t) => (
+                      {tiposDisponiveis.map((t) => (
                         <SelectItem key={t} value={t}>
                           {AGENDAMENTO_TIPO_LABEL[t]}
                         </SelectItem>
@@ -1312,7 +1616,10 @@ function AgendaPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {!isAdmin && !isPlatformAdmin ? (
+                {!isAdmin &&
+                !isPlatformAdmin &&
+                form.tipo !== "bloqueio" &&
+                !form.atribuidoParaId ? (
                   <div className="space-y-2">
                     <Label>Participação</Label>
                     <Select
@@ -1344,6 +1651,43 @@ function AgendaPage() {
                   </div>
                 ) : null}
               </div>
+
+              {(isAdmin || isGerente) && form.tipo !== "bloqueio" ? (
+                <div className="space-y-2">
+                  <Label>Atribuir ao corretor</Label>
+                  <Select
+                    value={form.atribuidoParaId || "__none__"}
+                    onValueChange={(v) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        atribuidoParaId: v === "__none__" ? "" : v,
+                        escopo: "pessoal",
+                        leadId: "",
+                        clienteId: "",
+                      }))
+                    }
+                    disabled={formMode === "edit"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Ninguém (agenda própria)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        Ninguém (agenda própria / equipe)
+                      </SelectItem>
+                      {corretorAssignOptions.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    A tarefa aparece na agenda do corretor e ele recebe
+                    notificação.
+                  </p>
+                </div>
+              ) : null}
 
               {formMode === "edit" ? (
                 <div className="space-y-2">
@@ -1388,7 +1732,9 @@ function AgendaPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="timeEnd">Término (opc.)</Label>
+                  <Label htmlFor="timeEnd">
+                    {form.tipo === "bloqueio" ? "Término" : "Término (opc.)"}
+                  </Label>
                   <Input
                     id="timeEnd"
                     type="time"
@@ -1398,16 +1744,95 @@ function AgendaPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="local">Local</Label>
-                <Input
-                  id="local"
-                  value={form.local}
-                  onChange={(e) => setField("local", e.target.value)}
-                  placeholder="Endereço ou ponto de encontro"
-                  maxLength={160}
-                />
-              </div>
+              {form.tipo === "bloqueio" && formMode === "create" ? (
+                <div className="space-y-4 rounded-lg border border-dashed p-3">
+                  <div className="space-y-2">
+                    <Label>Recorrência</Label>
+                    <Select
+                      value={form.recurrenceFreq}
+                      onValueChange={(v) =>
+                        setField(
+                          "recurrenceFreq",
+                          v as AgendamentoRecurrenceFreq,
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AGENDAMENTO_RECURRENCE_FREQ.map((f) => (
+                          <SelectItem key={f} value={f}>
+                            {AGENDAMENTO_RECURRENCE_LABEL[f]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {form.recurrenceFreq === "semanal" ? (
+                    <div className="space-y-2">
+                      <Label>Dias da semana</Label>
+                      <div className="flex flex-wrap gap-3">
+                        {WEEKDAY_OPTIONS.map((d) => {
+                          const checked = form.recurrenceDays.includes(d.value);
+                          return (
+                            <label
+                              key={d.value}
+                              className="inline-flex items-center gap-2 text-sm"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  setForm((prev) => {
+                                    const days = new Set(prev.recurrenceDays);
+                                    if (v === true) days.add(d.value);
+                                    else days.delete(d.value);
+                                    return {
+                                      ...prev,
+                                      recurrenceDays: Array.from(days).sort(
+                                        (a, b) => a - b,
+                                      ),
+                                    };
+                                  });
+                                }}
+                              />
+                              {d.label}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {form.recurrenceFreq !== "unica" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="recurrenceUntil">Repetir até</Label>
+                      <Input
+                        id="recurrenceUntil"
+                        type="date"
+                        value={form.recurrenceUntil}
+                        onChange={(e) =>
+                          setField("recurrenceUntil", e.target.value)
+                        }
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {form.tipo !== "bloqueio" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="local">Local</Label>
+                  <Input
+                    id="local"
+                    value={form.local}
+                    onChange={(e) => setField("local", e.target.value)}
+                    placeholder="Endereço ou ponto de encontro"
+                    maxLength={160}
+                  />
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <Label htmlFor="obs">Observações</Label>
@@ -1415,7 +1840,11 @@ function AgendaPage() {
                   id="obs"
                   value={form.observacoes}
                   onChange={(e) => setField("observacoes", e.target.value)}
-                  placeholder="Detalhes do compromisso…"
+                  placeholder={
+                    form.tipo === "bloqueio"
+                      ? "Motivo do bloqueio…"
+                      : "Detalhes do compromisso…"
+                  }
                   rows={3}
                   maxLength={2000}
                 />
@@ -1427,19 +1856,37 @@ function AgendaPage() {
 
       <AlertDialog
         open={!!deleteId}
-        onOpenChange={(v) => !v && setDeleteId(null)}
+        onOpenChange={(v) => {
+          if (!v) {
+            setDeleteId(null);
+            setDeleteSeriesId(null);
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir compromisso?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteSeriesId ? "Excluir bloqueio?" : "Excluir compromisso?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
+              {deleteSeriesId
+                ? "Este bloqueio faz parte de uma série recorrente."
+                : "Esta ação não pode ser desfeita."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleDelete()}>
-              Excluir
+            {deleteSeriesId ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleDelete("all")}
+              >
+                Excluir série inteira
+              </Button>
+            ) : null}
+            <AlertDialogAction onClick={() => void handleDelete("one")}>
+              {deleteSeriesId ? "Excluir só este" : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

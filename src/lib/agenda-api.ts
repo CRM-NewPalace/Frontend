@@ -8,6 +8,7 @@ export const AGENDAMENTO_TIPOS = [
   "reuniao",
   "tarefa",
   "outro",
+  "bloqueio",
 ] as const;
 
 export type AgendamentoTipo = (typeof AGENDAMENTO_TIPOS)[number];
@@ -41,12 +42,21 @@ export const AGENDAMENTO_SOLICITACAO = [
 export type AgendamentoSolicitacaoStatus =
   (typeof AGENDAMENTO_SOLICITACAO)[number];
 
+export const AGENDAMENTO_RECURRENCE_FREQ = [
+  "unica",
+  "semanal",
+  "mensal",
+] as const;
+export type AgendamentoRecurrenceFreq =
+  (typeof AGENDAMENTO_RECURRENCE_FREQ)[number];
+
 export const AGENDAMENTO_TIPO_LABEL: Record<AgendamentoTipo, string> = {
   visita: "Visita",
   ligacao: "Ligação",
   reuniao: "Reunião",
   tarefa: "Tarefa",
   outro: "Outro",
+  bloqueio: "Bloqueio",
 };
 
 export const AGENDAMENTO_STATUS_LABEL: Record<AgendamentoStatus, string> = {
@@ -68,18 +78,39 @@ export const AGENDAMENTO_ALVO_LABEL: Record<AgendamentoAlvo, string> = {
   gerentes: "Todos os gerentes",
 };
 
+export const AGENDAMENTO_RECURRENCE_LABEL: Record<
+  AgendamentoRecurrenceFreq,
+  string
+> = {
+  unica: "Único",
+  semanal: "Semanal",
+  mensal: "Mensal",
+};
+
+export const WEEKDAY_OPTIONS = [
+  { value: 0, label: "Dom" },
+  { value: 1, label: "Seg" },
+  { value: 2, label: "Ter" },
+  { value: 3, label: "Qua" },
+  { value: 4, label: "Qui" },
+  { value: 5, label: "Sex" },
+  { value: 6, label: "Sáb" },
+] as const;
+
 /** Origem visual no calendário: quem criou o compromisso. */
 export type AgendamentoOrigem =
   | "admin"
   | "gerente"
   | "corretor"
-  | "aniversario";
+  | "aniversario"
+  | "bloqueio";
 
 export const AGENDAMENTO_ORIGEM_LABEL: Record<AgendamentoOrigem, string> = {
   admin: "Administrador",
   gerente: "Gerente",
   corretor: "Corretor (lead/cliente)",
   aniversario: "Aniversário",
+  bloqueio: "Bloqueado",
 };
 
 /** Blocos sólidos (calendário semana/mês). */
@@ -88,6 +119,8 @@ export const AGENDAMENTO_ORIGEM_BLOCK: Record<AgendamentoOrigem, string> = {
   gerente: "bg-teal-500 border-teal-600 text-white",
   corretor: "bg-amber-500 border-amber-600 text-white",
   aniversario: "bg-rose-500 border-rose-600 text-white",
+  bloqueio:
+    "bg-slate-400/80 border-slate-600 text-white border-dashed bg-[repeating-linear-gradient(135deg,transparent,transparent_4px,rgba(15,23,42,0.25)_4px,rgba(15,23,42,0.25)_8px)]",
 };
 
 /** Badges suaves (tabela do dia). */
@@ -96,6 +129,7 @@ export const AGENDAMENTO_ORIGEM_SOFT: Record<AgendamentoOrigem, string> = {
   gerente: "bg-teal-100 text-teal-900 border-teal-200",
   corretor: "bg-amber-100 text-amber-900 border-amber-200",
   aniversario: "bg-rose-100 text-rose-900 border-rose-200",
+  bloqueio: "bg-slate-200 text-slate-800 border-slate-400 border-dashed",
 };
 
 export const AGENDAMENTO_ORIGEM_DOT: Record<AgendamentoOrigem, string> = {
@@ -103,6 +137,7 @@ export const AGENDAMENTO_ORIGEM_DOT: Record<AgendamentoOrigem, string> = {
   gerente: "bg-teal-500",
   corretor: "bg-amber-500",
   aniversario: "bg-rose-500",
+  bloqueio: "bg-slate-500",
 };
 
 export function isAgendamentoAniversario(item: {
@@ -112,12 +147,18 @@ export function isAgendamentoAniversario(item: {
   return Boolean(item.isAniversario) || item.id.startsWith("aniversario:");
 }
 
+export function isAgendamentoBloqueio(item: { tipo: AgendamentoTipo }) {
+  return item.tipo === "bloqueio";
+}
+
 export function getAgendamentoOrigem(item: {
   id: string;
   isAniversario?: boolean;
+  tipo?: AgendamentoTipo;
   autor: { role: Role };
 }): AgendamentoOrigem {
   if (isAgendamentoAniversario(item)) return "aniversario";
+  if (item.tipo === "bloqueio") return "bloqueio";
   if (item.autor.role === "admin") return "admin";
   if (item.autor.role === "gerente") return "gerente";
   return "corretor";
@@ -126,6 +167,7 @@ export function getAgendamentoOrigem(item: {
 export interface Agendamento {
   id: string;
   leadId: string | null;
+  atribuidoParaId: string | null;
   titulo: string;
   tipo: AgendamentoTipo;
   status: AgendamentoStatus;
@@ -134,6 +176,10 @@ export interface Agendamento {
   alvoTipo: AgendamentoAlvo;
   alvoEquipeId: string | null;
   alvoGerenteId: string | null;
+  seriesId: string | null;
+  recurrenceFreq: AgendamentoRecurrenceFreq;
+  recurrenceDays: number[];
+  recurrenceUntil: string | null;
   startsAt: string;
   endsAt: string | null;
   local: string | null;
@@ -145,6 +191,7 @@ export interface Agendamento {
   /** Evento virtual (aniversário de corretor) — somente leitura. */
   isAniversario?: boolean;
   autor: { id: string; name: string; role: Role };
+  atribuidoPara: { id: string; name: string; role: Role } | null;
   aprovadoPor: { id: string; name: string } | null;
   alvoEquipe: { id: string; name: string } | null;
   alvoGerente: { id: string; name: string } | null;
@@ -161,6 +208,7 @@ export interface Agendamento {
 
 export type CreateAgendamentoInput = {
   leadId?: string | null;
+  atribuidoParaId?: string | null;
   titulo: string;
   tipo: AgendamentoTipo;
   escopo: AgendamentoEscopo;
@@ -171,10 +219,16 @@ export type CreateAgendamentoInput = {
   endsAt?: string | null;
   local?: string | null;
   observacoes?: string | null;
+  recurrenceFreq?: AgendamentoRecurrenceFreq;
+  recurrenceDays?: number[];
+  recurrenceUntil?: string | null;
 };
 
 export type UpdateAgendamentoInput = Partial<
-  Omit<CreateAgendamentoInput, "leadId">
+  Omit<
+    CreateAgendamentoInput,
+    "leadId" | "atribuidoParaId" | "recurrenceFreq" | "recurrenceDays" | "recurrenceUntil"
+  >
 > & {
   status?: AgendamentoStatus;
 };
@@ -245,8 +299,13 @@ export async function recusarAgendamento(
   });
 }
 
-export async function deleteAgendamento(id: string): Promise<void> {
-  await apiFetch<{ ok: boolean }>(`/agenda/${id}`, {
+export async function deleteAgendamento(
+  id: string,
+  opts?: { series?: "one" | "all" },
+): Promise<void> {
+  const qs =
+    opts?.series === "all" ? "?series=all" : "";
+  await apiFetch<{ ok: boolean }>(`/agenda/${id}${qs}`, {
     method: "DELETE",
   });
 }

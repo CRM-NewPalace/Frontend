@@ -16,6 +16,7 @@ import {
   AGENDAMENTO_TIPO_LABEL,
   getAgendamentoOrigem,
   isAgendamentoAniversario,
+  isAgendamentoBloqueio,
   type Agendamento,
   type AgendamentoStatus,
 } from "@/lib/agenda-api";
@@ -33,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { sameDay, toDateInput } from "@/components/agenda-board";
+import { toast } from "sonner";
 
 /** Horários da tabela: 07:00 até 00:00. */
 const DAY_HOURS = [
@@ -57,6 +59,32 @@ function formatTimeRange(item: Agendamento) {
   const startLabel = formatTime(start);
   if (!item.endsAt) return startLabel;
   return `${startLabel} – ${formatTime(new Date(item.endsAt))}`;
+}
+
+function slotBounds(day: Date, hour: number) {
+  const start = new Date(day);
+  start.setHours(hour, 0, 0, 0);
+  const end = new Date(day);
+  if (hour === 23) end.setHours(23, 59, 59, 999);
+  else if (hour === 0) end.setHours(0, 59, 59, 999);
+  else end.setHours(hour + 1, 0, 0, 0);
+  return { start, end };
+}
+
+function findCoveringBloqueio(
+  day: Date,
+  hour: number,
+  items: Agendamento[],
+): Agendamento | null {
+  const { start, end } = slotBounds(day, hour);
+  for (const item of items) {
+    if (!isAgendamentoBloqueio(item) || item.status === "cancelado") continue;
+    if (!sameDay(new Date(item.startsAt), day)) continue;
+    const bStart = new Date(item.startsAt);
+    const bEnd = item.endsAt ? new Date(item.endsAt) : bStart;
+    if (start < bEnd && end > bStart) return item;
+  }
+  return null;
 }
 
 type Slot =
@@ -124,8 +152,23 @@ type Props = {
 
 function canMutateItem(item: Agendamento, role?: Role) {
   if (isAgendamentoAniversario(item)) return false;
+  if (isAgendamentoBloqueio(item)) {
+    return role === "admin" || role === "gerente";
+  }
   if (item.autor.role === "admin") return role === "admin";
   return true;
+}
+
+function canCompleteItem(item: Agendamento, role?: Role) {
+  if (isAgendamentoAniversario(item) || isAgendamentoBloqueio(item)) {
+    return false;
+  }
+  if (item.status !== "agendado" || item.solicitacaoStatus === "pendente") {
+    return false;
+  }
+  if (canMutateItem(item, role)) return true;
+  // Corretor pode concluir tarefa atribuída (mesmo criada por admin).
+  return role === "corretor" && Boolean(item.atribuidoParaId);
 }
 
 export function AgendaDayTable({
@@ -199,6 +242,7 @@ export function AgendaDayTable({
               {slots.map((slot) => {
                 if (slot.kind === "empty") {
                   const isNow = isToday && slot.hour === currentHour;
+                  const bloqueio = findCoveringBloqueio(day, slot.hour, items);
                   return (
                     <TableRow
                       key={`empty-${slot.hour}`}
@@ -216,13 +260,31 @@ export function AgendaDayTable({
                         </div>
                       </TableCell>
                       <TableCell colSpan={showCorretor ? 4 : 3}>
-                        <button
-                          type="button"
-                          onClick={() => onCreateAt(day, slot.hour)}
-                          className="w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm text-muted-foreground transition hover:border-primary/40 hover:bg-muted/40 hover:text-foreground"
-                        >
-                          Livre — clicar para agendar
-                        </button>
+                        {bloqueio ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (canMutateItem(bloqueio, currentUserRole)) {
+                                onEdit(bloqueio);
+                              } else {
+                                toast.message("Horário bloqueado", {
+                                  description: bloqueio.titulo,
+                                });
+                              }
+                            }}
+                            className="w-full rounded-lg border border-dashed border-slate-400 bg-slate-100/80 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-200/80"
+                          >
+                            Bloqueado — {bloqueio.titulo}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onCreateAt(day, slot.hour)}
+                            className="w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm text-muted-foreground transition hover:border-primary/40 hover:bg-muted/40 hover:text-foreground"
+                          >
+                            Livre — clicar para agendar
+                          </button>
+                        )}
                       </TableCell>
                       <TableCell />
                     </TableRow>
@@ -313,6 +375,20 @@ export function AgendaDayTable({
                           >
                             {alvoBadgeLabel}
                           </Badge>
+                        ) : isAgendamentoBloqueio(item) ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-slate-400 text-slate-800"
+                          >
+                            Bloqueado
+                          </Badge>
+                        ) : item.atribuidoPara ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-violet-300 text-violet-800"
+                          >
+                            Atribuída
+                          </Badge>
                         ) : item.escopo === "pessoal" ? (
                           <Badge variant="outline" className="text-[10px]">
                             Pessoal
@@ -362,7 +438,10 @@ export function AgendaDayTable({
                       <TableCell className="align-top hidden lg:table-cell">
                         <div className="inline-flex items-center gap-1.5 text-sm">
                           <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                          {item.lead?.corretor?.name ?? item.autor?.name ?? "—"}
+                          {item.atribuidoPara?.name ??
+                            item.lead?.corretor?.name ??
+                            item.autor?.name ??
+                            "—"}
                         </div>
                       </TableCell>
                     ) : null}
@@ -376,9 +455,7 @@ export function AgendaDayTable({
                     </TableCell>
                     <TableCell className="align-top text-right">
                       <div className="inline-flex items-center gap-0.5">
-                        {canMutate &&
-                        item.status === "agendado" &&
-                        item.solicitacaoStatus !== "pendente" ? (
+                        {canCompleteItem(item, currentUserRole) ? (
                           <Button
                             variant="ghost"
                             size="icon"

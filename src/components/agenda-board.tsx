@@ -6,9 +6,11 @@ import {
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_LABEL,
   getAgendamentoOrigem,
+  isAgendamentoBloqueio,
   type Agendamento,
 } from "@/lib/agenda-api";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export type AgendaViewMode = "dia" | "semana" | "mes";
 
@@ -312,7 +314,33 @@ function TimeGridBoard({
                     height: PX_PER_HOUR,
                   }}
                   aria-label={`Agendar ${key} às ${formatHour(h)}`}
-                  onClick={() => onCreateAt(day, h)}
+                  onClick={() => {
+                    const bloqueio = dayItems.find((item) => {
+                      if (
+                        !isAgendamentoBloqueio(item) ||
+                        item.status === "cancelado"
+                      ) {
+                        return false;
+                      }
+                      const bStart = new Date(item.startsAt);
+                      const bEnd = item.endsAt
+                        ? new Date(item.endsAt)
+                        : bStart;
+                      const slotStart = new Date(day);
+                      slotStart.setHours(h, 0, 0, 0);
+                      const slotEnd = new Date(day);
+                      slotEnd.setHours(h + 1, 0, 0, 0);
+                      return slotStart < bEnd && slotEnd > bStart;
+                    });
+                    if (bloqueio) {
+                      toast.message("Horário bloqueado", {
+                        description: bloqueio.titulo,
+                      });
+                      onEdit(bloqueio);
+                      return;
+                    }
+                    onCreateAt(day, h);
+                  }}
                 />
               ))}
 
