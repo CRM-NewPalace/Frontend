@@ -33,6 +33,7 @@ import {
   type VistaParcelas,
 } from "@/lib/financeiro-prefs";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,8 @@ function ColorSwatchPicker({
 }
 
 function Config() {
+  const user = getSession();
+  const isAnalista = user?.role === "analista";
   const { catalog, loading, error, addItem, updateItem, removeItem } =
     useCatalog();
 
@@ -255,7 +258,11 @@ function Config() {
     <div>
       <PageHeader
         title="Configurações"
-        description="Personalize imobiliária, funil, documentação, origens, motivos e tags."
+        description={
+          isAnalista
+            ? "Gerencie documentação, origens, motivos de perda e tags."
+            : "Personalize imobiliária, funil, documentação, origens, motivos e tags."
+        }
       />
 
       {error && (
@@ -264,88 +271,99 @@ function Config() {
         </div>
       )}
 
-      <Tabs defaultValue="empresa">
+      <Tabs defaultValue={isAnalista ? "documentacao" : "empresa"}>
         <TabsList className="flex h-auto flex-wrap gap-1">
-          <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
-          <TabsTrigger value="funil">Funil</TabsTrigger>
+          {!isAnalista ? (
+            <>
+              <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
+              <TabsTrigger value="funil">Funil</TabsTrigger>
+            </>
+          ) : null}
           <TabsTrigger value="documentacao">Documentação</TabsTrigger>
-          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          {!isAnalista ? (
+            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          ) : null}
           <TabsTrigger value="origens">Origens</TabsTrigger>
           <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="empresa">
-          <ConfigEmpresaPanel />
-        </TabsContent>
+        {!isAnalista ? (
+          <>
+            <TabsContent value="empresa">
+              <ConfigEmpresaPanel />
+            </TabsContent>
 
-        <TabsContent value="funil">
-          <ConfigFunisPanel />
-        </TabsContent>
+            <TabsContent value="funil">
+              <ConfigFunisPanel />
+            </TabsContent>
 
-        <TabsContent value="financeiro" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Visualização de parcelas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Define como Contas a pagar e Contas a receber exibem títulos
-                parcelados.
-              </p>
-              <RadioGroup
-                value={vistaParcelas}
-                onValueChange={(v) => {
-                  const next = v as VistaParcelas;
-                  setVistaParcelasState(next);
-                  setVistaParcelas(next);
-                  toast.success(
-                    next === "agrupado"
-                      ? "Vista agrupada ativada."
-                      : "Lista completa ativada.",
-                  );
-                }}
-                className="space-y-3"
-              >
-                <label
-                  htmlFor="vista-agrupado"
-                  className="flex items-start gap-3 rounded-lg border border-border/60 p-3 cursor-pointer hover:bg-muted/40"
-                >
-                  <RadioGroupItem
-                    id="vista-agrupado"
-                    value="agrupado"
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <p className="text-sm font-medium">Conta agrupada</p>
-                    <p className="text-xs text-muted-foreground">
-                      Uma linha por contrato; use a seta para expandir as
-                      parcelas e pagar cada uma.
-                    </p>
-                  </div>
-                </label>
-                <label
-                  htmlFor="vista-lista"
-                  className="flex items-start gap-3 rounded-lg border border-border/60 p-3 cursor-pointer hover:bg-muted/40"
-                >
-                  <RadioGroupItem
-                    id="vista-lista"
-                    value="lista"
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <p className="text-sm font-medium">Lista completa</p>
-                    <p className="text-xs text-muted-foreground">
-                      Exibe todas as parcelas como linhas separadas na tabela.
-                    </p>
-                  </div>
-                </label>
-              </RadioGroup>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <TabsContent value="financeiro" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Visualização de parcelas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Define como Contas a pagar e Contas a receber exibem títulos
+                    parcelados.
+                  </p>
+                  <RadioGroup
+                    value={vistaParcelas}
+                    onValueChange={(v) => {
+                      const next = v as VistaParcelas;
+                      setVistaParcelasState(next);
+                      setVistaParcelas(next);
+                      toast.success(
+                        next === "agrupado"
+                          ? "Vista agrupada ativada."
+                          : "Lista completa ativada.",
+                      );
+                    }}
+                    className="space-y-3"
+                  >
+                    <label
+                      htmlFor="vista-agrupado"
+                      className="flex items-start gap-3 rounded-lg border border-border/60 p-3 cursor-pointer hover:bg-muted/40"
+                    >
+                      <RadioGroupItem
+                        id="vista-agrupado"
+                        value="agrupado"
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">Conta agrupada</p>
+                        <p className="text-xs text-muted-foreground">
+                          Uma linha por contrato; use a seta para expandir as
+                          parcelas e pagar cada uma.
+                        </p>
+                      </div>
+                    </label>
+                    <label
+                      htmlFor="vista-lista"
+                      className="flex items-start gap-3 rounded-lg border border-border/60 p-3 cursor-pointer hover:bg-muted/40"
+                    >
+                      <RadioGroupItem
+                        id="vista-lista"
+                        value="lista"
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">Lista completa</p>
+                        <p className="text-xs text-muted-foreground">
+                          Exibe todas as parcelas como linhas separadas na
+                          tabela.
+                        </p>
+                      </div>
+                    </label>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </>
+        ) : null}
 
         <TabsContent value="documentacao" className="space-y-4">
           <p className="text-sm text-muted-foreground">

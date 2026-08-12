@@ -6,7 +6,7 @@ import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
  * - admin: operação + financeiro; carteira própria (/clientes) e vendas
  * - gerente: operação da equipe; carteira própria (/clientes) e vendas
  * - corretor: essencial (próprios leads/agenda/clientes)
- * - analista: funil de análise, documentação e resultado (visão global)
+ * - analista: funil de análise, documentação, resultado e catálogos (origens/tags/motivos)
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
   super_admin: [
@@ -92,6 +92,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/imoveis",
     "/construtoras",
     "/usuarios",
+    "/configuracoes",
     "/perfil",
   ],
 };
