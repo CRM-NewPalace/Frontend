@@ -4,7 +4,20 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type FinanceKpiTone =
-  "teal" | "emerald" | "orange" | "red" | "blue" | "violet" | "rose";
+  | "teal"
+  | "emerald"
+  | "orange"
+  | "red"
+  | "blue"
+  | "violet"
+  | "rose"
+  /** Escala progressiva de azul (claro → escuro). */
+  | "blue-1"
+  | "blue-2"
+  | "blue-3"
+  | "blue-4"
+  | "blue-5"
+  | "blue-6";
 
 const TONE: Record<FinanceKpiTone, { bar: string; icon: string }> = {
   teal: { bar: "bg-teal-600", icon: "bg-teal-600" },
@@ -14,6 +27,12 @@ const TONE: Record<FinanceKpiTone, { bar: string; icon: string }> = {
   blue: { bar: "bg-blue-600", icon: "bg-blue-600" },
   violet: { bar: "bg-violet-600", icon: "bg-violet-600" },
   rose: { bar: "bg-rose-500", icon: "bg-rose-500" },
+  "blue-1": { bar: "bg-[#5BC4E8]", icon: "bg-[#5BC4E8]" },
+  "blue-2": { bar: "bg-[#079ED4]", icon: "bg-[#079ED4]" },
+  "blue-3": { bar: "bg-[#0689BD]", icon: "bg-[#0689BD]" },
+  "blue-4": { bar: "bg-[#057AA8]", icon: "bg-[#057AA8]" },
+  "blue-5": { bar: "bg-[#04648A]", icon: "bg-[#04648A]" },
+  "blue-6": { bar: "bg-[#034E6E]", icon: "bg-[#034E6E]" },
 };
 
 function money(n: number) {
@@ -82,6 +101,8 @@ export function FinanceKpiCard({
   icon: Icon,
   tone,
   href,
+  onClick,
+  active = false,
   className,
   format = "money",
   evolucaoPct,
@@ -96,6 +117,8 @@ export function FinanceKpiCard({
   icon: LucideIcon;
   tone: FinanceKpiTone;
   href?: string;
+  onClick?: () => void;
+  active?: boolean;
   className?: string;
   format?: "money" | "number" | "percent";
   evolucaoPct?: number | null;
@@ -124,11 +147,14 @@ export function FinanceKpiCard({
         ? "text-base leading-snug"
         : "text-xl leading-tight";
 
+  const interactive = Boolean(href || onClick);
+
   const card = (
     <div
       className={cn(
         "h-full rounded-xl bg-card text-card-foreground shadow-sm border border-border/60 overflow-hidden min-w-0 flex flex-col",
-        href && "transition-shadow hover:shadow-md",
+        interactive && "transition-shadow hover:shadow-md",
+        active && "border-[#079ED4]/50 ring-2 ring-[#079ED4]/25 shadow-md",
         className,
       )}
       title={display}
@@ -192,6 +218,19 @@ export function FinanceKpiCard({
       <Link to={href} className="block h-full min-w-0">
         {card}
       </Link>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="block h-full min-w-0 w-full text-left cursor-pointer"
+        aria-pressed={active}
+      >
+        {card}
+      </button>
     );
   }
 

@@ -33,6 +33,10 @@ import { useCatalog } from "@/lib/catalog-store";
 import {
   CATALOG_COLORS,
   DEFAULT_CATALOG_COLOR,
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+  catalogColorSoftSurfaceClass,
+  catalogColorSoftSurfaceStyle,
   catalogColorSwatch,
   nextCatalogColor,
 } from "@/lib/catalog-colors";
@@ -106,7 +110,13 @@ function ColorSwatchPicker({
       <div className="flex items-center gap-2">
         <Label>Cor</Label>
         {previewLabel?.trim() && (
-          <Badge className={cn(value || DEFAULT_CATALOG_COLOR, "text-[10px]")}>
+          <Badge
+            className={cn(
+              catalogColorBadgeClass(value || DEFAULT_CATALOG_COLOR),
+              "text-[10px]",
+            )}
+            style={catalogColorBadgeStyle(value || DEFAULT_CATALOG_COLOR)}
+          >
             {previewLabel.trim()}
           </Badge>
         )}
@@ -438,7 +448,12 @@ export function ConfigFunisPanel() {
                           <Badge
                             key={e.id}
                             className={cn(
+                              catalogColorBadgeClass(
+                                e.color || DEFAULT_CATALOG_COLOR,
+                              ),
                               "text-[10px]",
+                            )}
+                            style={catalogColorBadgeStyle(
                               e.color || DEFAULT_CATALOG_COLOR,
                             )}
                           >
@@ -534,12 +549,20 @@ export function ConfigFunisPanel() {
             {activeEtapas.map((s) => {
               const papel = resolveEtapaPapel(s);
               const isInitial = papel === "inicial";
+              const color = s.color || DEFAULT_CATALOG_COLOR;
               return (
                 <div
                   key={s.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/40"
+                  className={cn(
+                    "flex items-center gap-3 border border-border/60 rounded-lg p-3",
+                    catalogColorSoftSurfaceClass(color),
+                  )}
+                  style={catalogColorSoftSurfaceStyle(color)}
                 >
-                  <Badge className={s.color || DEFAULT_CATALOG_COLOR}>
+                  <Badge
+                    className={catalogColorBadgeClass(color)}
+                    style={catalogColorBadgeStyle(color)}
+                  >
                     {s.label}
                   </Badge>
                   {papel && (

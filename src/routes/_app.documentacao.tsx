@@ -81,6 +81,7 @@ import {
 import {
   createDocumentacao,
   deleteDocumentacao,
+  fetchDocumentacaoCorretores,
   fetchDocumentacoes,
   updateDocumentacao,
   DEFAULT_DOCUMENTACAO_FONTES,
@@ -89,6 +90,7 @@ import {
   displayFonte,
   type CreateDocumentacaoInput,
   type Documentacao,
+  type DocumentacaoCorretor,
 } from "@/lib/documentacao-api";
 import {
   dedupeStatusOptions,
@@ -347,6 +349,9 @@ function DocumentacaoPage() {
   const canCreateStatus = true;
 
   const [items, setItems] = useState<Documentacao[]>([]);
+  const [docCorretores, setDocCorretores] = useState<DocumentacaoCorretor[]>(
+    [],
+  );
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
   const [gerentes, setGerentes] = useState<EquipeOptionUser[]>([]);
@@ -423,18 +428,28 @@ function DocumentacaoPage() {
     [funnelStages],
   );
 
-  const corretorOptions = useMemo(
-    () =>
-      assignees.filter(
-        (a) =>
-          !a.role ||
-          a.role === "corretor" ||
-          (canOwnCarteira &&
-            (a.role === "admin" || a.role === "gerente") &&
-            a.id === user?.id),
-      ),
-    [assignees, canOwnCarteira, user?.id],
-  );
+  const corretorOptions = useMemo(() => {
+    // Lista dedicada da API de documentação (todos os corretores ativos).
+    if (docCorretores.length > 0) {
+      return docCorretores.map((c) => ({
+        id: c.id,
+        name: c.name,
+        role: c.role,
+        cor: c.cor,
+        gerenteId: c.gerenteId,
+        gerente: c.gerente,
+      }));
+    }
+    // Fallback enquanto a lista dedicada carrega.
+    return assignees.filter(
+      (a) =>
+        !a.role ||
+        a.role === "corretor" ||
+        (canOwnCarteira &&
+          (a.role === "admin" || a.role === "gerente") &&
+          a.id === user?.id),
+    );
+  }, [docCorretores, assignees, canOwnCarteira, user?.id]);
   const gerenteOptions = useMemo<EquipeOptionUser[]>(() => {
     const options =
       gerentes.length > 0
@@ -537,12 +552,14 @@ function DocumentacaoPage() {
 
   const loadLookups = useCallback(async () => {
     try {
-      const [c, e] = await Promise.all([
+      const [c, e, corretores] = await Promise.all([
         fetchConstrutoras(),
         fetchEmpreendimentos({ ativo: true }),
+        fetchDocumentacaoCorretores().catch(() => [] as DocumentacaoCorretor[]),
       ]);
       setConstrutoras(c);
       setEmpreendimentos(e);
+      setDocCorretores(corretores);
       if (user?.role === "admin") {
         try {
           setGerentes(await fetchEquipeGerentes());
@@ -961,7 +978,11 @@ function DocumentacaoPage() {
 
   function gerenteIdOfCorretor(corretorId: string): string {
     if (!corretorId) return "";
-    return assignees.find((a) => a.id === corretorId)?.gerenteId ?? "";
+    return (
+      docCorretores.find((a) => a.id === corretorId)?.gerenteId ??
+      assignees.find((a) => a.id === corretorId)?.gerenteId ??
+      ""
+    );
   }
 
   function applyContact(contact: Lead) {
@@ -999,8 +1020,8 @@ function DocumentacaoPage() {
     const base = emptyForm();
     base.dataAnalise = todayDateInput();
     base.createdAt = todayDateInput();
-    // Só o corretor se auto-preenche: admin/gerente escolhem o corretor
-    // (ou herdam do lead) para a venda não ficar creditada no admin.
+    // Admin/gerente/analista escolhem o corretor na ficha.
+    // Só o corretor se auto-preenche.
     if (user?.role === "corretor") {
       base.corretorId = user.id;
       base.gerenteId = gerenteIdOfCorretor(user.id);
@@ -2103,28 +2124,28 @@ function DocumentacaoPage() {
           label="Aprovadas"
           value={pipelineSummary.aprovadas}
           icon={CheckCircle2}
-          tone="emerald"
+          tone="blue-1"
           format="number"
         />
         <FinanceKpiCard
           label="Reprovadas"
           value={pipelineSummary.reprovadas}
           icon={XCircle}
-          tone="red"
+          tone="blue-2"
           format="number"
         />
         <FinanceKpiCard
           label="Em análise"
           value={pipelineSummary.emAnalise}
           icon={Clock3}
-          tone="orange"
+          tone="blue-3"
           format="number"
         />
         <FinanceKpiCard
           label="VGV vendido"
           value={pipelineSummary.vgv}
           icon={Wallet}
-          tone="teal"
+          tone="blue-4"
           href="/vendas"
         />
       </section>

@@ -73,6 +73,10 @@ import {
   Flame,
 } from "lucide-react";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
+import {
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+} from "@/lib/catalog-colors";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
@@ -1736,7 +1740,7 @@ function LeadsPage() {
             label="Total de leads"
             value={kpiCounts.total}
             icon={Users}
-            tone="blue"
+            tone="blue-1"
             format="number"
             className={cn(
               distribuicaoFilter === "all" &&
@@ -1760,7 +1764,7 @@ function LeadsPage() {
                 label="Chegaram"
                 value={kpiCounts.chegaram}
                 icon={Inbox}
-                tone="orange"
+                tone="blue-2"
                 format="number"
                 className={cn(distribuicaoFilter === "chegaram" && "shadow-md")}
               />
@@ -1777,7 +1781,7 @@ function LeadsPage() {
                 label="Distribuídos"
                 value={kpiCounts.distribuidos}
                 icon={UserCheck}
-                tone="teal"
+                tone="blue-3"
                 format="number"
                 className={cn(
                   distribuicaoFilter === "distribuidos" && "shadow-md",
@@ -1800,7 +1804,7 @@ function LeadsPage() {
               label="Novos na etapa"
               value={kpiCounts.novos}
               icon={Inbox}
-              tone="teal"
+              tone="blue-2"
               format="number"
               className={cn(
                 (stageFilter === "novo" ||
@@ -1822,7 +1826,7 @@ function LeadsPage() {
             label="Prioridade alta"
             value={kpiCounts.alta}
             icon={Flame}
-            tone="rose"
+            tone={isCorretor ? "blue-3" : "blue-4"}
             format="number"
             className={cn(prioridadeFilter === "Alta" && "shadow-md")}
           />
@@ -1841,7 +1845,7 @@ function LeadsPage() {
               label="Em atendimento"
               value={Math.max(0, kpiCounts.total - kpiCounts.novos)}
               icon={UserCheck}
-              tone="emerald"
+              tone="blue-4"
               format="number"
             />
           </button>
@@ -2186,10 +2190,14 @@ function LeadsPage() {
                     <TableCell>
                       <Badge
                         className={cn(
-                          isNovoStage
-                            ? "badge-novo-glow border-transparent"
-                            : stage.color,
+                          catalogColorBadgeClass(stage.color),
+                          isNovoStage && "badge-novo-glow",
                         )}
+                        style={
+                          isNovoStage
+                            ? undefined
+                            : catalogColorBadgeStyle(stage.color)
+                        }
                       >
                         {stage.name}
                       </Badge>

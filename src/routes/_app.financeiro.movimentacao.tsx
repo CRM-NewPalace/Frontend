@@ -548,19 +548,19 @@ function Page() {
           label="Entradas filtradas"
           value={totais.entradas}
           icon={ArrowUpRight}
-          tone="emerald"
+          tone="blue-1"
         />
         <FinanceKpiCard
           label="Saídas filtradas"
           value={totais.saidas}
           icon={ArrowDownRight}
-          tone="red"
+          tone="blue-2"
         />
         <FinanceKpiCard
           label="Saldo do filtro"
           value={totais.saldo}
           icon={ArrowUpRight}
-          tone="teal"
+          tone="blue-3"
         />
       </section>
 

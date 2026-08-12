@@ -1222,20 +1222,20 @@ function Page() {
           label="Propostas (filtro)"
           value={kpis.total}
           icon={FileText}
-          tone="blue"
+          tone="blue-1"
           format="number"
         />
         <FinanceKpiCard
           label="VGV das propostas"
           value={kpis.valor}
           icon={Handshake}
-          tone="violet"
+          tone="blue-2"
         />
         <FinanceKpiCard
           label="Aceitas"
           value={kpis.aceitas}
           icon={CheckCircle2}
-          tone="emerald"
+          tone="blue-3"
           format="number"
           suffix={kpis.valorAceitas ? `· ${brl(kpis.valorAceitas)}` : undefined}
         />
@@ -1243,7 +1243,7 @@ function Page() {
           label="Em aberto"
           value={kpis.emAberto}
           icon={Clock3}
-          tone="orange"
+          tone="blue-4"
           format="number"
           suffix={`· ${kpis.taxaAceite.toFixed(0)}% aceite`}
         />

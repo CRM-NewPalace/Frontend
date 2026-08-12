@@ -120,6 +120,22 @@ export async function fetchDocumentacoes(
   return apiFetch<Documentacao[]>(`/documentacao${query ? `?${query}` : ""}`);
 }
 
+/** Corretores ativos do tenant para o select na ficha (analista/admin/gerente: todos). */
+export type DocumentacaoCorretor = {
+  id: string;
+  name: string;
+  role: string;
+  cor: string | null;
+  gerenteId: string | null;
+  gerente: { id: string; name: string } | null;
+};
+
+export async function fetchDocumentacaoCorretores(): Promise<
+  DocumentacaoCorretor[]
+> {
+  return apiFetch<DocumentacaoCorretor[]>("/documentacao/corretores");
+}
+
 export async function createDocumentacao(
   input: CreateDocumentacaoInput,
 ): Promise<Documentacao> {

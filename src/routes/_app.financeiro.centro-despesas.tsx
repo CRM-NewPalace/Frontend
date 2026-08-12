@@ -581,25 +581,25 @@ function Page() {
           label="Fixas"
           value={totais.fixas}
           icon={Target}
-          tone="blue"
+          tone="blue-1"
         />
         <FinanceKpiCard
           label="Fixas variáveis"
           value={totais.fixasVariaveis}
           icon={RefreshCw}
-          tone="orange"
+          tone="blue-2"
         />
         <FinanceKpiCard
           label="Variáveis"
           value={totais.variaveis}
           icon={FolderKanban}
-          tone="violet"
+          tone="blue-3"
         />
         <FinanceKpiCard
           label="Total realizado"
           value={totais.total}
           icon={Target}
-          tone="teal"
+          tone="blue-4"
           suffix={
             totais.orcado
               ? `· orçado ${brl(totais.orcado)}`

@@ -214,28 +214,28 @@ function Page() {
               label="Entradas do mês"
               value={data.totais.entradas ?? 0}
               icon={UsersRound}
-              tone="blue"
+              tone="blue-1"
               format="number"
             />
             <FinanceKpiCard
               label="Vendas do mês"
               value={data.totais.vendas ?? 0}
               icon={TrendingUp}
-              tone="emerald"
+              tone="blue-2"
               format="number"
             />
             <FinanceKpiCard
               label="VGV do mês"
               value={data.totais.vgv ?? 0}
               icon={Wallet}
-              tone="teal"
+              tone="blue-3"
               format="money"
             />
             <FinanceKpiCard
               label="Taxa de conversão"
               value={data.totais.taxaConversao ?? 0}
               icon={Goal}
-              tone="violet"
+              tone="blue-4"
               format="percent"
             />
           </section>

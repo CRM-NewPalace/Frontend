@@ -463,25 +463,25 @@ function Page() {
           label={commissionValueLabel}
           value={kpis.total}
           icon={Percent}
-          tone="violet"
+          tone="blue-1"
         />
         <FinanceKpiCard
           label="Pendentes"
           value={kpis.pending}
           icon={Clock3}
-          tone="orange"
+          tone="blue-2"
         />
         <FinanceKpiCard
           label="Liberadas"
           value={kpis.released}
           icon={Banknote}
-          tone="blue"
+          tone="blue-3"
         />
         <FinanceKpiCard
           label="Pagas"
           value={kpis.paid}
           icon={CheckCircle2}
-          tone="emerald"
+          tone="blue-4"
         />
       </section>
 

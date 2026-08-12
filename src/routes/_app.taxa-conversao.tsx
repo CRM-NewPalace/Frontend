@@ -249,7 +249,7 @@ function Page() {
           evolucaoPct={conv.entradas.evolucaoPct}
           valorMesAnterior={conv.entradas.valorMesAnterior}
           icon={UsersRound}
-          tone="blue"
+          tone="blue-1"
           format="number"
         />
         <FinanceKpiCard
@@ -258,7 +258,7 @@ function Page() {
           evolucaoPct={conv.vendas.evolucaoPct}
           valorMesAnterior={conv.vendas.valorMesAnterior}
           icon={TrendingUp}
-          tone="emerald"
+          tone="blue-2"
           format="number"
         />
         <FinanceKpiCard
@@ -267,7 +267,7 @@ function Page() {
           evolucaoPct={conv.taxa.evolucaoPct}
           valorMesAnterior={conv.taxa.valorMesAnterior}
           icon={Percent}
-          tone="violet"
+          tone="blue-3"
           format="percent"
         />
         <FinanceKpiCard
@@ -276,7 +276,7 @@ function Page() {
           evolucaoPct={conv.vgv.evolucaoPct}
           valorMesAnterior={conv.vgv.valorMesAnterior}
           icon={Wallet}
-          tone="teal"
+          tone="blue-4"
         />
         <FinanceKpiCard
           label="Leads perdidos"
@@ -284,7 +284,7 @@ function Page() {
           evolucaoPct={admin.perdidos.mes.evolucaoPct}
           valorMesAnterior={admin.perdidos.mes.valorMesAnterior}
           icon={UserX}
-          tone="red"
+          tone="blue-5"
           format="number"
           invertEvolucao
         />
@@ -292,7 +292,7 @@ function Page() {
           label="Taxa geral (ranking)"
           value={ranking.totais.taxaConversao}
           icon={Goal}
-          tone="orange"
+          tone="blue-6"
           format="percent"
           suffix={`· ${ranking.totais.visitas} visitas`}
         />

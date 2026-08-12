@@ -178,20 +178,20 @@ function Page() {
           label="Saldo em caixa"
           value={Math.round(k.saldoAtual * (periodo === "mes" ? 1 : 1.05))}
           icon={Wallet}
-          tone="teal"
+          tone="blue-1"
         />
         <FinanceKpiCard
           label="Receitas"
           value={Math.round(k.receitasMes * fator)}
           icon={ArrowUpRight}
-          tone="emerald"
+          tone="blue-2"
           evolucaoPct={k.evolucaoReceitas}
         />
         <FinanceKpiCard
           label="Despesas"
           value={Math.round(k.despesasMes * fator)}
           icon={ArrowDownRight}
-          tone="red"
+          tone="blue-3"
           evolucaoPct={k.evolucaoDespesas}
           invertEvolucao
         />
@@ -199,21 +199,21 @@ function Page() {
           label="Resultado"
           value={Math.round(k.resultadoMes * fator)}
           icon={TrendingUp}
-          tone="blue"
+          tone="blue-4"
           evolucaoPct={k.evolucaoResultado}
         />
         <FinanceKpiCard
           label="A receber neste mês"
           value={k.aReceber}
           icon={Banknote}
-          tone="violet"
+          tone="blue-5"
           href="/financeiro/contas-a-receber"
         />
         <FinanceKpiCard
           label="A pagar neste mês"
           value={k.aPagar}
           icon={ArrowDownRight}
-          tone="orange"
+          tone="blue-6"
           href="/financeiro/contas-a-pagar"
         />
       </section>

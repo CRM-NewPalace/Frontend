@@ -269,20 +269,20 @@ function VendasPage() {
           label="Vendas filtradas"
           value={filtered.length}
           icon={ReceiptText}
-          tone="emerald"
+          tone="blue-1"
           format="number"
         />
         <FinanceKpiCard
           label="VGV vendido"
           value={totalVgv}
           icon={Wallet}
-          tone="teal"
+          tone="blue-2"
         />
         <FinanceKpiCard
           label="Vendas com VGV"
           value={comVgv}
           icon={UsersRound}
-          tone="violet"
+          tone="blue-3"
           format="number"
           suffix={`de ${filtered.length}`}
         />

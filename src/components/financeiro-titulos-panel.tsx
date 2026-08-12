@@ -1283,19 +1283,19 @@ export function FinanceiroTitulosPanel({
           }
           value={kpis.aberto}
           icon={Clock3}
-          tone={tipo === "receber" ? "blue" : "orange"}
+          tone="blue-1"
         />
         <FinanceKpiCard
           label="Atrasado neste mês"
           value={kpis.atrasado}
           icon={AlertTriangle}
-          tone="red"
+          tone="blue-2"
         />
         <FinanceKpiCard
           label={tipo === "receber" ? "Recebido neste mês" : "Pago neste mês"}
           value={kpis.pago}
           icon={CheckCircle2}
-          tone="emerald"
+          tone="blue-3"
         />
       </section>
 

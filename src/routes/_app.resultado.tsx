@@ -1,9 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,7 +38,7 @@ import {
   FormDialogShell,
   FormSection,
 } from "@/components/form-dialog";
-import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
+import { brl } from "@/lib/crm-types";
 import { ApiError } from "@/lib/api";
 import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { useLeads } from "@/lib/leads-store";
@@ -43,22 +53,21 @@ import { getSession } from "@/lib/auth";
 import {
   SearchCheck,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
-  Users,
   User,
   Wallet,
   FileText,
-  MapPin,
   MessageCircle,
   CheckCircle2,
   XCircle,
   Clock3,
   BadgeCheck,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { funnelColumnBg } from "@/lib/catalog-colors";
 import { phoneDigits } from "@/lib/phone";
 import { displayEmail } from "@/lib/email";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -68,7 +77,7 @@ export const Route = createFileRoute("/_app/resultado")({
   component: AnalisePage,
 });
 
-const COLUMN_STEP_PX = 288 + 12;
+const CORRETOR_RANKING_PAGE_SIZE = 8;
 
 const STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Pré-análise",
@@ -87,48 +96,6 @@ function statusBadgeClass(status: AnaliseStatus) {
   return "bg-amber-500/15 text-amber-800 border-amber-500/30";
 }
 
-function AnaliseCard({ item, onOpen }: { item: Analise; onOpen: () => void }) {
-  return (
-    <Card
-      className="p-3 shadow-sm cursor-pointer hover:border-primary/40 transition-colors"
-      onClick={onOpen}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-foreground truncate">
-            {item.nome}
-          </div>
-          <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
-            <MapPin className="w-3 h-3 shrink-0" />
-            {item.cidade}
-            {item.bairro ? ` · ${item.bairro}` : ""}
-          </div>
-        </div>
-        <Badge
-          variant="outline"
-          className={cn(
-            "text-[10px] shrink-0 capitalize",
-            statusBadgeClass(item.status),
-          )}
-        >
-          {STATUS_LABEL[item.status]}
-        </Badge>
-      </div>
-      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-        <Badge
-          variant="outline"
-          className={cn("text-[10px]", prioridadeBadgeClass(item.prioridade))}
-        >
-          {item.prioridade}
-        </Badge>
-        <Badge variant="secondary" className="text-[10px] capitalize">
-          {item.tipoContato}
-        </Badge>
-      </div>
-    </Card>
-  );
-}
-
 function isLeadVendido(stage: string) {
   const raw = stage
     .trim()
@@ -136,6 +103,26 @@ function isLeadVendido(stage: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
   return raw.includes("vendid");
+}
+
+type KpiFilter = "emAnalise" | "aprovado" | "reprovado" | "vendidos";
+
+const KPI_FILTER_LABEL: Record<KpiFilter, string> = {
+  emAnalise: "Em análise",
+  aprovado: "Aprovados",
+  reprovado: "Reprovados",
+  vendidos: "Vendidos",
+};
+
+function matchesKpiFilter(item: Analise, filter: KpiFilter): boolean {
+  if (filter === "emAnalise") {
+    return item.status === "em_analise" || item.status === "pendente";
+  }
+  if (filter === "aprovado") return item.status === "aprovado";
+  if (filter === "reprovado") return item.status === "reprovado";
+  return (
+    isLeadVendido(item.lead.stage) || isLeadVendido(item.stageSituacao)
+  );
 }
 
 function AnalisePage() {
@@ -148,10 +135,12 @@ function AnalisePage() {
   const [saving, setSaving] = useState(false);
   const [vgvModalOpen, setVgvModalOpen] = useState(false);
   const [vgvValor, setVgvValor] = useState("");
-
-  const boardRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [kpiFilter, setKpiFilter] = useState<KpiFilter | null>(null);
+  const [corretorSearch, setCorretorSearch] = useState("");
+  const [corretorPage, setCorretorPage] = useState(1);
+  const [selectedCorretorId, setSelectedCorretorId] = useState<string | null>(
+    null,
+  );
 
   /** Colunas: corretores + admin/gerente com carteira própria. */
   const corretores = useMemo(
@@ -239,36 +228,87 @@ function AnalisePage() {
     return { emAnalise, aprovado, reprovado, vendidos };
   }, [items]);
 
-  const updateScrollButtons = useCallback(() => {
-    const el = boardRef.current;
-    if (!el) {
-      setCanScrollLeft(false);
-      setCanScrollRight(false);
-      return;
-    }
-    const max = el.scrollWidth - el.clientWidth;
-    setCanScrollLeft(el.scrollLeft > 2);
-    setCanScrollRight(el.scrollLeft < max - 2);
-  }, []);
+  const filteredByKpi = useMemo(() => {
+    if (!kpiFilter) return [];
+    return items
+      .filter((item) => matchesKpiFilter(item, kpiFilter))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [items, kpiFilter]);
 
-  useEffect(() => {
-    const el = boardRef.current;
-    if (!el) return;
-    updateScrollButtons();
-    el.addEventListener("scroll", updateScrollButtons, { passive: true });
-    const ro = new ResizeObserver(updateScrollButtons);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", updateScrollButtons);
-      ro.disconnect();
-    };
-  }, [columns.length, updateScrollButtons]);
+  function toggleKpiFilter(next: KpiFilter) {
+    setKpiFilter((prev) => (prev === next ? null : next));
+    setSelectedCorretorId(null);
+  }
 
-  function scrollBoard(dir: -1 | 1) {
-    boardRef.current?.scrollBy({
-      left: dir * COLUMN_STEP_PX,
-      behavior: "smooth",
-    });
+  const corretorRanking = useMemo(() => {
+    return columns
+      .map((col) => {
+        let emAnalise = 0;
+        let aprovados = 0;
+        for (const item of col.items) {
+          if (item.status === "em_analise" || item.status === "pendente") {
+            emAnalise += 1;
+          } else if (item.status === "aprovado") {
+            aprovados += 1;
+          }
+        }
+        return {
+          id: col.id,
+          nome: col.name,
+          total: col.items.length,
+          emAnalise,
+          aprovados,
+        };
+      })
+      .filter((row) => row.total > 0)
+      .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [columns]);
+
+  const corretorRankingFiltered = useMemo(() => {
+    const q = corretorSearch.trim().toLowerCase();
+    if (!q) return corretorRanking;
+    return corretorRanking.filter((row) =>
+      row.nome.toLowerCase().includes(q),
+    );
+  }, [corretorRanking, corretorSearch]);
+
+  const corretorTotalPages = Math.max(
+    1,
+    Math.ceil(corretorRankingFiltered.length / CORRETOR_RANKING_PAGE_SIZE),
+  );
+
+  const corretorCurrentPage = Math.min(corretorPage, corretorTotalPages);
+
+  const corretorRankingVisible = useMemo(() => {
+    const start = (corretorCurrentPage - 1) * CORRETOR_RANKING_PAGE_SIZE;
+    return corretorRankingFiltered.slice(
+      start,
+      start + CORRETOR_RANKING_PAGE_SIZE,
+    );
+  }, [corretorRankingFiltered, corretorCurrentPage]);
+
+  const corretorRankingMax = Math.max(
+    1,
+    ...corretorRanking.map((row) => row.total),
+  );
+
+  const selectedCorretor = useMemo(
+    () => corretorRanking.find((row) => row.id === selectedCorretorId) ?? null,
+    [corretorRanking, selectedCorretorId],
+  );
+
+  const selectedCorretorItems = useMemo(() => {
+    if (!selectedCorretorId) return [];
+    return items
+      .filter(
+        (item) => (item.lead.corretorId ?? "__none__") === selectedCorretorId,
+      )
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [items, selectedCorretorId]);
+
+  function toggleCorretor(id: string) {
+    setSelectedCorretorId((prev) => (prev === id ? null : id));
+    setKpiFilter(null);
   }
 
   function openDetail(item: Analise) {
@@ -379,37 +419,15 @@ function AnalisePage() {
     <div>
       <PageHeader
         title="Análise"
-        description="Processos em análise — uma coluna por responsável (corretor, gerente ou admin)."
-        actions={
-          <div className="flex items-center rounded-md border bg-background">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-r-none"
-              disabled={!canScrollLeft}
-              aria-label="Coluna anterior"
-              title="Coluna anterior"
-              onClick={() => scrollBoard(-1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <div className="w-px h-4 bg-border" />
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-l-none"
-              disabled={!canScrollRight}
-              aria-label="Próxima coluna"
-              title="Próxima coluna"
-              onClick={() => scrollBoard(1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        }
+        description="Acompanhe processos em análise por status e por corretor."
       />
+
+      {busy ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Carregando análises...
+        </div>
+      ) : null}
 
       {!busy ? (
         <section className="mb-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
@@ -417,97 +435,331 @@ function AnalisePage() {
             label="Total em análise"
             value={pipelineSummary.emAnalise}
             icon={Clock3}
-            tone="orange"
+            tone="blue-1"
             format="number"
+            active={kpiFilter === "emAnalise"}
+            onClick={() => toggleKpiFilter("emAnalise")}
           />
           <FinanceKpiCard
             label="Aprovado"
             value={pipelineSummary.aprovado}
             icon={CheckCircle2}
-            tone="emerald"
+            tone="blue-2"
             format="number"
+            active={kpiFilter === "aprovado"}
+            onClick={() => toggleKpiFilter("aprovado")}
           />
           <FinanceKpiCard
             label="Reprovados"
             value={pipelineSummary.reprovado}
             icon={XCircle}
-            tone="red"
+            tone="blue-3"
             format="number"
+            active={kpiFilter === "reprovado"}
+            onClick={() => toggleKpiFilter("reprovado")}
           />
           <FinanceKpiCard
             label="Vendidos"
             value={pipelineSummary.vendidos}
             icon={BadgeCheck}
-            tone="teal"
+            tone="blue-4"
             format="number"
-            href="/vendas"
+            active={kpiFilter === "vendidos"}
+            onClick={() => toggleKpiFilter("vendidos")}
           />
         </section>
       ) : null}
 
-      {busy ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Carregando análises...
-        </div>
-      ) : columns.length === 0 ? (
+      {!busy && kpiFilter ? (
+        <Card className="mb-4">
+          <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <div>
+              <CardTitle className="text-base">
+                {KPI_FILTER_LABEL[kpiFilter]}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {filteredByKpi.length} processo
+                {filteredByKpi.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setKpiFilter(null)}
+            >
+              <X className="w-4 h-4 mr-1" />
+              Limpar
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {filteredByKpi.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Nenhum processo neste filtro.
+              </p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredByKpi.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openDetail(item)}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover:border-[#079ED4]/40 hover:bg-muted/30"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="table-person-name text-sm truncate">
+                        {item.nome}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {item.lead.corretor?.name ?? "Sem corretor"}
+                        {item.cidade ? ` · ${item.cidade}` : ""}
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] shrink-0 capitalize",
+                        statusBadgeClass(item.status),
+                      )}
+                    >
+                      {STATUS_LABEL[item.status]}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!busy && corretorRanking.length > 0 ? (
+        <Card className="mb-4 min-w-0 overflow-hidden">
+          <CardHeader className="gap-3 space-y-0 pb-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-base">
+                  Ranking por corretor
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Ordenado do maior para o menor volume — {CORRETOR_RANKING_PAGE_SIZE}{" "}
+                  por página.
+                </p>
+              </div>
+              <div className="relative w-full sm:max-w-64">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={corretorSearch}
+                  onChange={(e) => {
+                    setCorretorSearch(e.target.value);
+                    setCorretorPage(1);
+                  }}
+                  placeholder="Buscar corretor…"
+                  className="h-9 pl-8"
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="overflow-x-auto rounded-lg border border-border/60">
+              <table className="w-full min-w-[36rem] text-sm">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/30 text-left text-xs text-muted-foreground">
+                    <th className="px-3 py-2.5 font-medium w-10">#</th>
+                    <th className="px-3 py-2.5 font-medium">Corretor</th>
+                    <th className="px-3 py-2.5 font-medium text-right tabular-nums">
+                      Total
+                    </th>
+                    <th className="px-3 py-2.5 font-medium text-right tabular-nums">
+                      Em análise
+                    </th>
+                    <th className="px-3 py-2.5 font-medium text-right tabular-nums">
+                      Aprovados
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {corretorRankingVisible.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-3 py-8 text-center text-muted-foreground"
+                      >
+                        Nenhum corretor encontrado para “{corretorSearch.trim()}
+                        ”.
+                      </td>
+                    </tr>
+                  ) : (
+                    corretorRankingVisible.map((row) => {
+                      const selected = selectedCorretorId === row.id;
+                      const pct = Math.min(
+                        100,
+                        (row.total / corretorRankingMax) * 100,
+                      );
+                      const rank =
+                        corretorRanking.findIndex((r) => r.id === row.id) + 1;
+                      return (
+                        <tr
+                          key={row.id}
+                          className={cn(
+                            "border-b border-border/40 last:border-0 cursor-pointer transition-colors",
+                            selected
+                              ? "bg-[#079ED4]/10"
+                              : "hover:bg-muted/40",
+                          )}
+                          onClick={() => toggleCorretor(row.id)}
+                        >
+                          <td className="px-3 py-2.5 text-muted-foreground tabular-nums">
+                            {rank}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="min-w-0 space-y-1.5">
+                              <div className="table-person-name truncate">
+                                {row.nome}
+                              </div>
+                              <div className="h-1.5 max-w-56 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-[#079ED4]"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-semibold tabular-nums">
+                            {row.total}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular-nums text-[#057AA8]">
+                            {row.emAnalise}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular-nums text-emerald-600">
+                            {row.aprovados}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {corretorRankingFiltered.length > 0 ? (
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Exibindo {corretorRankingVisible.length} de{" "}
+                  {corretorRankingFiltered.length} corretor
+                  {corretorRankingFiltered.length === 1 ? "" : "es"}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+                    disabled={corretorCurrentPage <= 1}
+                    onClick={() => setCorretorPage((p) => Math.max(1, p - 1))}
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Anterior
+                  </button>
+                  <span className="px-2 tabular-nums text-foreground">
+                    Página {corretorCurrentPage}
+                    {corretorTotalPages > 1
+                      ? ` de ${corretorTotalPages}`
+                      : ""}
+                  </span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+                    disabled={corretorCurrentPage >= corretorTotalPages}
+                    onClick={() =>
+                      setCorretorPage((p) =>
+                        Math.min(corretorTotalPages, p + 1),
+                      )
+                    }
+                    aria-label="Próxima página"
+                  >
+                    Próxima
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {selectedCorretor ? (
+              <div className="rounded-lg border border-border/60 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium table-person-name">
+                      {selectedCorretor.nome}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedCorretorItems.length} processo
+                      {selectedCorretorItems.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedCorretorId(null)}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Fechar
+                  </Button>
+                </div>
+                {selectedCorretorItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2 text-center">
+                    Nenhum processo deste corretor.
+                  </p>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {selectedCorretorItems.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => openDetail(item)}
+                        className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover:border-[#079ED4]/40 hover:bg-muted/30"
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <div className="table-person-name text-sm truncate">
+                            {item.nome}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {item.cidade || "—"}
+                          </div>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] shrink-0 capitalize",
+                            statusBadgeClass(item.status),
+                          )}
+                        >
+                          {STATUS_LABEL[item.status]}
+                        </Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center">
+                Clique em um corretor para ver os processos.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!busy && items.length === 0 ? (
         <div className="text-center py-16 px-4 rounded-xl border border-dashed bg-muted/20">
           <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
             <SearchCheck className="w-5 h-5 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium">Nenhum responsável encontrado</p>
+          <p className="text-sm font-medium">Nenhuma análise encontrada</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Vincule corretores à equipe em Administração → Equipes. Processos
-            entram aqui ao avançar para Em análise no funil.
+            Processos entram aqui ao avançar para Em análise no funil.
           </p>
         </div>
-      ) : (
-        <div
-          ref={boardRef}
-          className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
-        >
-          {columns.map((col, index) => (
-            <div
-              key={col.id}
-              className={cn(
-                "w-72 shrink-0 flex flex-col rounded-xl p-3 min-h-112",
-                funnelColumnBg(index, columns.length),
-              )}
-            >
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-semibold truncate">
-                      {col.name}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-foreground/70">
-                    {col.items.length} processo
-                    {col.items.length === 1 ? "" : "s"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2 flex-1">
-                {col.items.length === 0 ? (
-                  <div className="rounded-lg border border-dashed bg-background/50 px-3 py-8 text-center text-xs text-muted-foreground">
-                    Nenhum processo em análise
-                  </div>
-                ) : (
-                  col.items.map((item) => (
-                    <AnaliseCard
-                      key={item.id}
-                      item={item}
-                      onOpen={() => openDetail(item)}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      ) : null}
 
       <FormDialogShell
         open={!!detail}

@@ -438,25 +438,25 @@ function Page() {
           label="Entradas realizadas"
           value={totais.entradasRealizadas}
           icon={ArrowUpRight}
-          tone="emerald"
+          tone="blue-1"
         />
         <FinanceKpiCard
           label="Saídas realizadas"
           value={totais.saidasRealizadas}
           icon={ArrowDownRight}
-          tone="red"
+          tone="blue-2"
         />
         <FinanceKpiCard
           label="A receber neste mês"
           value={totais.entradasPrevistas}
           icon={ArrowUpRight}
-          tone="blue"
+          tone="blue-3"
         />
         <FinanceKpiCard
           label="A pagar neste mês"
           value={totais.saidasPrevistas}
           icon={ArrowDownRight}
-          tone="orange"
+          tone="blue-4"
         />
       </section>
 
