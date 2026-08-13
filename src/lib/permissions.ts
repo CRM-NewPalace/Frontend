@@ -7,7 +7,7 @@ import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
  * - gerente: operação da equipe; carteira própria (/clientes) e vendas
  * - corretor: essencial (próprios leads/agenda/clientes) + consulta de books/construtoras
  * - analista: documentação, resultado e catálogos (origens/tags/motivos)
- * - treinee: mesmo acesso operacional do corretor + cadastro de construtoras/empreendimentos/origens/tags
+ * - treinee: mesmo acesso operacional do corretor + cadastro de construtoras/empreendimentos/origens/tags (sem documentação)
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
   super_admin: [
@@ -107,7 +107,6 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/clientes-perdidos",
     "/metas",
     "/triagem",
-    "/documentacao",
     "/contratos",
     "/financeiro/comissao",
     "/construtoras",
@@ -125,6 +124,7 @@ const GERENTE_BRONZE_ROUTES: readonly string[] = [
   "/imoveis",
   "/triagem",
   "/construtoras",
+  "/documentacao",
   "/contratos",
   "/financeiro/comissao",
   "/perfil",

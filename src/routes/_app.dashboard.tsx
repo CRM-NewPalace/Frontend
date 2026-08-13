@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/chart";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
-import { isCorretorLike } from "@/lib/permissions";
+import { canAccessRoute, isCorretorLike } from "@/lib/permissions";
 import { useCatalog } from "@/lib/catalog-store";
 import {
   fetchDashboardAdmin,
@@ -946,6 +946,15 @@ function DashboardAdminView() {
 }
 
 function DashboardCorretorView() {
+  const user = getSession();
+  const canOpenDocumentacao = user
+    ? canAccessRoute(
+        user.role,
+        "/documentacao",
+        user.tenant?.modules ?? null,
+        user.tenant?.plano ?? null,
+      )
+    : false;
   const { funnelStages, stageByPapel } = useCatalog();
   const [summary, setSummary] = useState<DashboardCorretor | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1121,7 +1130,7 @@ function DashboardCorretorView() {
           icon={BriefcaseBusiness}
           tone="blue"
           format="number"
-          href="/documentacao"
+          href={canOpenDocumentacao ? "/documentacao" : undefined}
         />
         <FinanceKpiCard
           label="Em andamento"
@@ -1129,7 +1138,7 @@ function DashboardCorretorView() {
           icon={FileCheck2}
           tone="orange"
           format="number"
-          href="/documentacao"
+          href={canOpenDocumentacao ? "/documentacao" : undefined}
         />
         <FinanceKpiCard
           label="Vendas registradas"
@@ -1137,7 +1146,7 @@ function DashboardCorretorView() {
           icon={FileCheck2}
           tone="emerald"
           format="number"
-          href="/documentacao"
+          href={canOpenDocumentacao ? "/documentacao" : undefined}
         />
         <FinanceKpiCard
           label="VGV vendido no mês"

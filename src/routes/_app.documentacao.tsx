@@ -314,20 +314,9 @@ function DocumentacaoPage() {
   const isGerente = user?.role === "gerente";
   const canOwnCarteira = isAdmin || isGerente;
 
-  function canMutateDoc(doc: Documentacao): boolean {
-    if (!user) return false;
-    if (user.role === "admin" || user.role === "analista") {
-      return true;
-    }
-    if (user.role === "gerente") {
-      return doc.autor.id === user.id;
-    }
-    return false;
-  }
   const canCreateDoc =
-    user?.role === "admin" ||
-    user?.role === "gerente" ||
-    user?.role === "analista";
+    user?.role === "admin" || user?.role === "analista";
+  const canMutateDocs = canCreateDoc;
   const {
     leads,
     assignees,
@@ -1703,7 +1692,11 @@ function DocumentacaoPage() {
     <div>
       <PageHeader
         title="Documentação"
-        description="Fichas operacionais vinculadas a leads e clientes."
+        description={
+          canCreateDoc
+            ? "Fichas operacionais vinculadas a leads e clientes."
+            : "Consulta das documentações vinculadas a você."
+        }
         actions={
           <>
             <input
@@ -2386,7 +2379,7 @@ function DocumentacaoPage() {
                               <Eye className="w-3.5 h-3.5 mr-2" />
                               Visualizar
                             </DropdownMenuItem>
-                            {canMutateDoc(doc) && (
+                            {canMutateDocs && (
                               <>
                                 <DropdownMenuItem onClick={() => openEdit(doc)}>
                                   <Pencil className="w-3.5 h-3.5 mr-2" />

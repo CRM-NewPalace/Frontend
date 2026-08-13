@@ -47,7 +47,7 @@ function celebrateToast(title: string, description: string) {
 }
 
 function shouldRunForRole(role: Role): boolean {
-  return isCorretorLike(role) || role === "gerente" || role === "admin";
+  return role === "corretor" || role === "gerente" || role === "admin";
 }
 
 /** Meta pessoal do corretor, ou meta ampla da imobiliária. */

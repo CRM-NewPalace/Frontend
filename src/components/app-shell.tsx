@@ -516,7 +516,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // ignore
     }
     if (opts?.openDoc) {
-      void navigate({ to: "/documentacao" });
+      if (
+        user &&
+        canAccessRoute(
+          user.role,
+          "/documentacao",
+          user.tenant?.modules ?? null,
+          user.tenant?.plano ?? null,
+        )
+      ) {
+        void navigate({ to: "/documentacao" });
+      }
     }
   }
 
