@@ -54,6 +54,11 @@ import {
   type Construtora,
 } from "@/lib/construtoras-api";
 import {
+  createLocalidade,
+  fetchLocalidades,
+  type Localidade,
+} from "@/lib/localidades-api";
+import {
   Building,
   Plus,
   Loader2,
@@ -134,6 +139,11 @@ function ConstrutorasPage() {
     string[]
   >([]);
   const [loadingEmpreendimentos, setLoadingEmpreendimentos] = useState(false);
+  const [localidades, setLocalidades] = useState<Localidade[]>([]);
+  const [selectedLocalidades, setSelectedLocalidades] = useState<string[]>([]);
+  const [loadingLocalidades, setLoadingLocalidades] = useState(false);
+  const [newLocalidadeNome, setNewLocalidadeNome] = useState("");
+  const [savingLocalidade, setSavingLocalidade] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -185,13 +195,29 @@ function ConstrutorasPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function loadLocalidades(selectedIds: string[] = []) {
+    setLoadingLocalidades(true);
+    try {
+      const list = await fetchLocalidades();
+      setLocalidades(list);
+      setSelectedLocalidades(selectedIds);
+    } catch {
+      setLocalidades([]);
+      toast.error("Não foi possível carregar as localidades.");
+    } finally {
+      setLoadingLocalidades(false);
+    }
+  }
+
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
     setForm(emptyForm());
     setEmpreendimentos([]);
     setSelectedEmpreendimentos([]);
+    setNewLocalidadeNome("");
     setOpen(true);
+    void loadLocalidades([]);
   }
 
   function openView(item: Construtora) {
@@ -208,6 +234,8 @@ function ConstrutorasPage() {
         : "",
       driveFolderUrl: item.driveFolderUrl ?? "",
     });
+    setNewLocalidadeNome("");
+    void loadLocalidades((item.localidades ?? []).map((loc) => loc.id));
     setLoadingEmpreendimentos(true);
     void fetchEmpreendimentos()
       .then((result) => {
@@ -270,6 +298,7 @@ function ConstrutorasPage() {
       viabilizadorNome: form.viabilizadorNome.trim() || null,
       viabilizadorContato: form.viabilizadorContato.trim() || null,
       driveFolderUrl: driveFolderUrl || null,
+      localidadeIds: selectedLocalidades,
     };
 
     setSaving(true);
@@ -283,6 +312,7 @@ function ConstrutorasPage() {
           viabilizadorNome: payload.viabilizadorNome ?? undefined,
           viabilizadorContato: payload.viabilizadorContato ?? undefined,
           driveFolderUrl: payload.driveFolderUrl,
+          localidadeIds: payload.localidadeIds,
         });
         toast.success("Construtora cadastrada.");
       } else if (editingId) {
@@ -336,6 +366,53 @@ function ConstrutorasPage() {
     formMode === "view" ||
     (formMode === "edit" && !canManage) ||
     (formMode === "create" && !canCreate);
+
+  function toggleLocalidade(id: string, checked: boolean) {
+    setSelectedLocalidades((previous) =>
+      checked ? [...previous, id] : previous.filter((itemId) => itemId !== id),
+    );
+  }
+
+  async function handleCreateLocalidade() {
+    if (!canManage) return;
+    const nome = newLocalidadeNome.trim();
+    if (nome.length < 2) {
+      toast.error("Informe o nome da localidade.");
+      return;
+    }
+    const already = localidades.find(
+      (item) => item.nome.localeCompare(nome, "pt-BR", { sensitivity: "base" }) === 0,
+    );
+    if (already) {
+      setSelectedLocalidades((previous) =>
+        previous.includes(already.id) ? previous : [...previous, already.id],
+      );
+      setNewLocalidadeNome("");
+      return;
+    }
+    setSavingLocalidade(true);
+    try {
+      const created = await createLocalidade(nome);
+      setLocalidades((previous) =>
+        [...previous, created].sort((a, b) =>
+          a.nome.localeCompare(b.nome, "pt-BR"),
+        ),
+      );
+      setSelectedLocalidades((previous) =>
+        previous.includes(created.id) ? previous : [...previous, created.id],
+      );
+      setNewLocalidadeNome("");
+      toast.success("Localidade cadastrada.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível cadastrar a localidade.",
+      );
+    } finally {
+      setSavingLocalidade(false);
+    }
+  }
 
   function toggleEmpreendimento(id: string, checked: boolean) {
     setSelectedEmpreendimentos((previous) =>
@@ -426,6 +503,7 @@ function ConstrutorasPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead>Viabilizador</TableHead>
+                  <TableHead>Localidades</TableHead>
                   <TableHead className="text-center">Empreend.</TableHead>
                   <TableHead className="text-center">Docs</TableHead>
                   <TableHead className="w-30" />
@@ -457,6 +535,19 @@ function ConstrutorasPage() {
                               {item.viabilizadorContato}
                             </div>
                           )}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.localidades && item.localidades.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {item.localidades.map((loc) => (
+                            <Badge key={loc.id} variant="secondary">
+                              {loc.nome}
+                            </Badge>
+                          ))}
                         </div>
                       ) : (
                         "—"
@@ -682,6 +773,77 @@ function ConstrutorasPage() {
                   />
                 </div>
               </div>
+            </FormSection>
+            <FormSection
+              icon={<MapPin className="w-3.5 h-3.5 text-primary" />}
+              title="Localidades"
+            >
+              <p className="mb-3 text-sm text-muted-foreground">
+                Vincule as regiões de atuação desta construtora. A mesma
+                localidade pode ser usada em várias construtoras.
+              </p>
+              {canManage && !readOnly && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <Input
+                    value={newLocalidadeNome}
+                    onChange={(e) => setNewLocalidadeNome(e.target.value)}
+                    placeholder="Nova localidade (ex.: Recife)"
+                    className="h-9 min-w-50 flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleCreateLocalidade();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                    disabled={savingLocalidade}
+                    onClick={() => void handleCreateLocalidade()}
+                  >
+                    {savingLocalidade ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="mr-1 h-4 w-4" />
+                    )}
+                    Cadastrar região
+                  </Button>
+                </div>
+              )}
+              {loadingLocalidades ? (
+                <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando localidades…
+                </div>
+              ) : localidades.length === 0 ? (
+                <p className="py-3 text-sm text-muted-foreground">
+                  Nenhuma localidade cadastrada.
+                </p>
+              ) : (
+                <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">
+                  {localidades.map((localidade) => {
+                    const checked = selectedLocalidades.includes(localidade.id);
+                    return (
+                      <label
+                        key={localidade.id}
+                        className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 hover:bg-muted"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) =>
+                            toggleLocalidade(localidade.id, value === true)
+                          }
+                          disabled={readOnly}
+                        />
+                        <span className="truncate text-sm">{localidade.nome}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </FormSection>
             {formMode !== "create" && (
               <FormSection title="Empreendimentos vinculados">

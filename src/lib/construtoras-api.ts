@@ -12,6 +12,7 @@ export type Construtora = {
   driveFolderUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  localidades?: Array<{ id: string; nome: string }>;
   _count?: { empreendimentos: number; documentacoes: number };
 };
 
@@ -23,6 +24,7 @@ export type CreateConstrutoraInput = {
   viabilizadorNome?: string;
   viabilizadorContato?: string;
   driveFolderUrl?: string | null;
+  localidadeIds?: string[];
 };
 
 export type UpdateConstrutoraInput = {
@@ -33,6 +35,7 @@ export type UpdateConstrutoraInput = {
   viabilizadorNome?: string | null;
   viabilizadorContato?: string | null;
   driveFolderUrl?: string | null;
+  localidadeIds?: string[];
 };
 
 export const CONSTRUTORA_CORES_PRESET = [
