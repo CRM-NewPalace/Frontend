@@ -121,6 +121,21 @@ function construtoraIniciais(nome: string) {
     .join("");
 }
 
+function uniqueLocalidades(items: Construtora[]) {
+  const map = new Map<string, { id: string; nome: string }>();
+  for (const item of items) {
+    for (const localidade of item.localidades ?? []) {
+      map.set(localidade.id, {
+        id: localidade.id,
+        nome: localidade.nome,
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) =>
+    a.nome.localeCompare(b.nome, "pt-BR"),
+  );
+}
+
 function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
@@ -191,6 +206,14 @@ function ConstrutorasPage() {
     );
   }, [items, searchQuery]);
 
+  const driveLocalidades = useMemo(
+    () =>
+      uniqueLocalidades(
+        matchingItems.filter((item) => Boolean(item.driveFolderUrl?.trim())),
+      ),
+    [matchingItems],
+  );
+
   const driveHubItems = useMemo(() => {
     return matchingItems.filter((item) => {
       if (!item.driveFolderUrl?.trim()) return false;
@@ -222,6 +245,15 @@ function ConstrutorasPage() {
       ),
     [driveHubItems, sort],
   );
+
+  useEffect(() => {
+    if (
+      driveFilterLocalidadeId &&
+      !driveLocalidades.some((localidade) => localidade.id === driveFilterLocalidadeId)
+    ) {
+      setDriveFilterLocalidadeId("");
+    }
+  }, [driveFilterLocalidadeId, driveLocalidades]);
 
   const showDriveHub =
     !loading &&
@@ -484,30 +516,39 @@ function ConstrutorasPage() {
                   Clique na construtora para abrir a pasta no Google Drive.
                 </p>
               </div>
-              <Select
-                value={driveFilterLocalidadeId || "__all__"}
-                onValueChange={(value) =>
-                  setDriveFilterLocalidadeId(value === "__all__" ? "" : value)
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[220px]">
-                  <SelectValue placeholder="Todas as regiões" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todas as regiões</SelectItem>
-                  {localidades.map((localidade) => (
-                    <SelectItem key={localidade.id} value={localidade.id}>
-                      {localidade.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="w-full sm:w-[220px]">
+                <Select
+                  value={driveFilterLocalidadeId || "__all__"}
+                  onValueChange={(value) =>
+                    setDriveFilterLocalidadeId(value === "__all__" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as localidades" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todas as localidades</SelectItem>
+                    {driveLocalidades.map((localidade) => (
+                      <SelectItem key={localidade.id} value={localidade.id}>
+                        {localidade.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {driveLocalidades.length === 0 ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Vincule localidades nas construtoras para filtrar.
+                  </p>
+                ) : null}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             {sortedDriveItems.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhuma pasta do Drive nesta região.
+                {driveFilterLocalidadeId
+                  ? "Nenhuma construtora com pasta do Drive nesta localidade."
+                  : "Nenhuma pasta do Drive encontrada."}
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -535,6 +576,11 @@ function ConstrutorasPage() {
                       <span className="line-clamp-2 text-sm font-medium text-foreground">
                         {item.nome}
                       </span>
+                      {item.localidades && item.localidades.length > 0 ? (
+                        <span className="line-clamp-1 text-[11px] text-muted-foreground">
+                          {item.localidades.map((loc) => loc.nome).join(", ")}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
