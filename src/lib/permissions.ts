@@ -6,7 +6,7 @@ import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
  * - admin: operação + financeiro; carteira própria (/clientes) e vendas
  * - gerente: operação da equipe; carteira própria (/clientes) e vendas
  * - corretor: essencial (próprios leads/agenda/clientes)
- * - analista: funil de análise, documentação, resultado e catálogos (origens/tags/motivos)
+ * - analista: documentação, resultado e catálogos (origens/tags/motivos)
  * - treinee: mesmo acesso operacional do corretor + cadastro de construtoras/empreendimentos/origens/tags
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
@@ -86,7 +86,6 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/perfil",
   ],
   analista: [
-    "/funil",
     "/resultado",
     "/documentacao",
     "/contratos",
@@ -165,7 +164,7 @@ export function defaultRouteForRole(
   user?: Pick<AuthUser, "tenant"> | null,
 ): string {
   if (role === "super_admin") return "/tenants";
-  if (role === "analista") return "/funil";
+  if (role === "analista") return "/documentacao";
 
   const home = user?.tenant?.homePath?.trim();
   if (

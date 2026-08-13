@@ -494,7 +494,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       });
       return;
     }
-    void navigate({ to: "/funil" });
+    void navigate({
+      to: user?.role === "analista" ? "/documentacao" : "/funil",
+    });
   }
 
   async function dismissAnaliseAlert(opts?: { openDoc?: boolean }) {

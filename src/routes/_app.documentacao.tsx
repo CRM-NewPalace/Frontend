@@ -172,6 +172,8 @@ import {
   XCircle,
   Clock3,
   Wallet,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -220,7 +222,7 @@ const emptyForm = (): FormState => ({
   construtoraId: "",
   empreendimentoId: "",
   fonte: "Outro",
-  status1: "Pré-análise",
+  status1: "Em análise",
   status2: "Andamento",
   corretorId: "",
   gerenteId: "",
@@ -314,16 +316,18 @@ function DocumentacaoPage() {
 
   function canMutateDoc(doc: Documentacao): boolean {
     if (!user) return false;
-    // Admin/analista: visão global — editam qualquer ficha.
     if (user.role === "admin" || user.role === "analista") {
       return true;
     }
-    // Corretor/gerente: só as próprias fichas comerciais.
-    if (isCorretorLike(user.role) || user.role === "gerente") {
+    if (user.role === "gerente") {
       return doc.autor.id === user.id;
     }
     return false;
   }
+  const canCreateDoc =
+    user?.role === "admin" ||
+    user?.role === "gerente" ||
+    user?.role === "analista";
   const {
     leads,
     assignees,
@@ -393,6 +397,8 @@ function DocumentacaoPage() {
   const [importFileName, setImportFileName] = useState("");
 
   const [open, setOpen] = useState(false);
+  const [createLocked, setCreateLocked] = useState(false);
+  const [leaveCreateOpen, setLeaveCreateOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
     "create",
   );
@@ -526,7 +532,6 @@ function DocumentacaoPage() {
   const status1Options = useMemo(() => {
     return dedupeStatusOptions(
       [
-        "Pré-análise",
         ...status1Catalog,
         ...extraStatus1,
         ...items.map((i) => i.status1),
@@ -1033,22 +1038,37 @@ function DocumentacaoPage() {
     if (contact) applyContact(contact);
   }
 
-  function openCreate() {
+  function resetCreateForm() {
     setFormMode("create");
     setEditingId(null);
     const base = emptyForm();
     base.dataAnalise = todayDateInput();
     base.createdAt = todayDateInput();
-    // Admin/gerente/analista escolhem o corretor na ficha.
-    // Só o corretor se auto-preenche.
-    if (user && isCorretorLike(user.role)) {
-      base.corretorId = user.id;
-      base.gerenteId = gerenteIdOfCorretor(user.id);
-    } else if (user?.role === "gerente") {
+    if (user?.role === "gerente") {
       base.gerenteId = user.id;
     }
     setForm(base);
+  }
+
+  function openCreate() {
+    if (!canCreateDoc) return;
+    resetCreateForm();
+    setCreateLocked(false);
     setOpen(true);
+  }
+
+  function closeDocDialog() {
+    setOpen(false);
+    setCreateLocked(false);
+    setLeaveCreateOpen(false);
+  }
+
+  function requestCloseDocDialog() {
+    if (formMode === "create" && createLocked) {
+      setLeaveCreateOpen(true);
+      return;
+    }
+    closeDocDialog();
   }
 
   function fillFromDoc(doc: Documentacao) {
@@ -1203,7 +1223,12 @@ function DocumentacaoPage() {
           becameVendido,
         });
       }
-      setOpen(false);
+      if (formMode === "create" && createLocked) {
+        resetCreateForm();
+        await loadItems();
+        return;
+      }
+      closeDocDialog();
       await loadItems();
     } catch (err) {
       toast.error(
@@ -1694,20 +1719,22 @@ function DocumentacaoPage() {
                 }
               }}
             />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={importParsing}
-              onClick={() => setImportHelpOpen(true)}
-              className={DOC_SOFT_BTN}
-            >
-              {importParsing ? (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4 mr-1" />
-              )}
-              Importar
-            </Button>
+            {canCreateDoc && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={importParsing}
+                onClick={() => setImportHelpOpen(true)}
+                className={DOC_SOFT_BTN}
+              >
+                {importParsing ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-1" />
+                )}
+                Importar
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1746,10 +1773,12 @@ function DocumentacaoPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={openCreate} disabled={leadsLoading} size="sm">
-              <Plus className="w-4 h-4 mr-1" />
-              Nova documentação
-            </Button>
+            {canCreateDoc && (
+              <Button onClick={openCreate} disabled={leadsLoading} size="sm">
+                <Plus className="w-4 h-4 mr-1" />
+                Nova documentação
+              </Button>
+            )}
           </>
         }
       />
@@ -2386,11 +2415,15 @@ function DocumentacaoPage() {
 
       <FormDialogShell
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          if (!next) requestCloseDocDialog();
+        }}
         icon={<FolderOpen className="w-5 h-5" />}
         title={
           formMode === "create"
-            ? "Nova documentação"
+            ? createLocked
+              ? "Nova documentação (tela travada)"
+              : "Nova documentação"
             : formMode === "edit"
               ? "Editar documentação"
               : "Documentação"
@@ -2871,13 +2904,33 @@ function DocumentacaoPage() {
               </div>
             </FormSection>
           </FormDialogBody>
-          <FormDialogActions>
+          <FormDialogActions
+            hint={
+              formMode === "create" && createLocked
+                ? "Tela travada: ao clicar fora, o sistema pergunta se deseja sair."
+                : undefined
+            }
+          >
+            {formMode === "create" && (
+              <Button
+                type="button"
+                variant={createLocked ? "secondary" : "outline"}
+                onClick={() => setCreateLocked((current) => !current)}
+              >
+                {createLocked ? (
+                  <Lock className="w-4 h-4 mr-1" />
+                ) : (
+                  <LockOpen className="w-4 h-4 mr-1" />
+                )}
+                {createLocked ? "Tela travada" : "Travar tela"}
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={requestCloseDocDialog}
             >
-              {readOnly ? "Fechar" : "Cancelar"}
+              {readOnly ? "Fechar" : formMode === "create" && createLocked ? "Sair" : "Cancelar"}
             </Button>
             {!readOnly && (
               <Button type="submit" disabled={saving}>
@@ -3104,6 +3157,27 @@ function DocumentacaoPage() {
       </FormDialogShell>
 
       <AlertDialog
+        open={leaveCreateOpen}
+        onOpenChange={(next) => {
+          if (!next) setLeaveCreateOpen(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair da criação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A tela de criação está travada. Se sair agora, o formulário será
+              fechado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar criando</AlertDialogCancel>
+            <AlertDialogAction onClick={closeDocDialog}>Sair</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
         open={!!deleteId}
         onOpenChange={(v) => !v && setDeleteId(null)}
       >
@@ -3156,7 +3230,7 @@ function DocumentacaoPage() {
                       <td className="p-2">Cyrela</td>
                       <td className="p-2">Torre Aurora</td>
                       <td className="p-2">Indicação</td>
-                      <td className="p-2">Pré-análise</td>
+                      <td className="p-2">Em análise</td>
                       <td className="p-2">Andamento</td>
                       <td className="p-2">Rafael Souza</td>
                       <td className="p-2">Juliana Costa</td>

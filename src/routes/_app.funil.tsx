@@ -100,7 +100,7 @@ import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 import { isStatusVendido } from "@/lib/documentacao-status";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
-  pendente: "Pré-análise",
+  pendente: "Pendente",
   em_analise: "Em análise",
   aprovado: "Análise aprovada",
   reprovado: "Análise reprovada",
@@ -118,7 +118,6 @@ function analiseBadgeClass(status: AnaliseStatus) {
 
 /** Slug legado (fallback se o funil não tiver papel configurado). */
 const LOST_STAGE_SLUG_FALLBACK = "perdido";
-const ANALISE_STAGE_SLUG_FALLBACK = "em-analise";
 const MAX_HISTORICO_TEXTO = 400;
 
 /** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
@@ -136,10 +135,6 @@ export const Route = createFileRoute("/_app/funil")({
 });
 
 function Funil() {
-  const user = getSession();
-  if (user?.role === "analista") {
-    return <AnalistaFunilBoard />;
-  }
   return <ComercialFunilBoard tipoFiltro="lead" />;
 }
 
@@ -170,36 +165,8 @@ export function ComercialFunilBoard({
     loading: catalogLoading,
     colorByLabel,
     stageByPapel,
-    documentacaoFontes,
-    documentacaoStatus1,
-    documentacaoStatus2,
   } = useCatalog();
-  const analiseStageSlug =
-    stageByPapel("analise") ?? ANALISE_STAGE_SLUG_FALLBACK;
   const lostStageSlug = stageByPapel("perdido") ?? LOST_STAGE_SLUG_FALLBACK;
-  const docFonteOptions =
-    documentacaoFontes.length > 0
-      ? documentacaoFontes
-      : [...DEFAULT_DOCUMENTACAO_FONTES];
-  const docStatus1Options = (() => {
-    const base =
-      documentacaoStatus1.length > 0
-        ? documentacaoStatus1
-        : [...DEFAULT_STATUS1];
-    return base.includes("Pré-análise")
-      ? base
-      : ["Pré-análise", ...base];
-  })();
-  const docStatus2Options =
-    documentacaoStatus2.length > 0
-      ? documentacaoStatus2
-      : [...DEFAULT_STATUS2];
-
-  function isAnaliseStage(stage: StageId): boolean {
-    const found = funnelStages.find((s) => s.id === stage);
-    if (found?.papel === "analise") return true;
-    return stage === analiseStageSlug || stage === ANALISE_STAGE_SLUG_FALLBACK;
-  }
 
   function isLostStage(stage: StageId): boolean {
     const found = funnelStages.find((s) => s.id === stage);
@@ -307,42 +274,6 @@ export function ComercialFunilBoard({
   const [lostMotivo, setLostMotivo] = useState("");
   const [lostMotivoOutro, setLostMotivoOutro] = useState("");
 
-  /** Envio para análise: exige construtora + empreendimento. */
-  const [analiseTarget, setAnaliseTarget] = useState<Lead | null>(null);
-  const [analiseTargetStage, setAnaliseTargetStage] = useState<StageId>(
-    analiseStageSlug,
-  );
-  const [analiseConstrutoraId, setAnaliseConstrutoraId] = useState("");
-  const [analiseEmpreendimentoId, setAnaliseEmpreendimentoId] = useState("");
-  const [analiseTemEntrada, setAnaliseTemEntrada] = useState(false);
-  const [analiseValorEntrada, setAnaliseValorEntrada] = useState("");
-  const [analiseTemFgts, setAnaliseTemFgts] = useState(false);
-  const [analiseValorFgts, setAnaliseValorFgts] = useState("");
-  const [analiseTemDependente, setAnaliseTemDependente] = useState(false);
-  const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
-  const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
-  const [analiseSaving, setAnaliseSaving] = useState(false);
-  /** Após enviar para análise: pergunta se registra ficha comercial. */
-  const [comercialDocPrompt, setComercialDocPrompt] = useState<{
-    lead: Lead;
-    targetStage: StageId;
-    construtoraId: string;
-    empreendimentoId: string;
-    temEntrada: boolean;
-    valorEntrada: number | null;
-    temFgts: boolean;
-    valorFgts: number | null;
-    temDependente: boolean;
-  } | null>(null);
-  const [comercialDocSaving, setComercialDocSaving] = useState(false);
-  const skipComercialDocRef = useRef(false);
-  const [quickEmpreendimentoOpen, setQuickEmpreendimentoOpen] = useState(false);
-  const [quickEmpreendimentoNome, setQuickEmpreendimentoNome] = useState("");
-  const [quickEmpreendimentoCidade, setQuickEmpreendimentoCidade] =
-    useState("");
-  const [quickEmpreendimentoSaving, setQuickEmpreendimentoSaving] =
-    useState(false);
-
   /** Após mudar etapa (só corretor): formulário para registrar histórico. */
   const [triagemPrompt, setTriagemPrompt] = useState<{
     leadId: string;
@@ -363,27 +294,6 @@ export function ComercialFunilBoard({
   } | null>(null);
   const [manualTriagemTexto, setManualTriagemTexto] = useState("");
   const [manualTriagemSaving, setManualTriagemSaving] = useState(false);
-
-  useEffect(() => {
-    void Promise.all([
-      fetchConstrutoras(),
-      fetchEmpreendimentos({ ativo: true }),
-    ])
-      .then(([c, e]) => {
-        setConstrutoras(c);
-        setEmpreendimentos(e);
-      })
-      .catch(() => {
-        /* selects vazios — erro só no envio */
-      });
-  }, []);
-
-  const empreendimentosFiltrados = useMemo(() => {
-    if (!analiseConstrutoraId) return [];
-    return empreendimentos.filter(
-      (e) => e.construtoraId === analiseConstrutoraId,
-    );
-  }, [empreendimentos, analiseConstrutoraId]);
 
   function offerTriagemHistory(lead: Lead, stage: StageId) {
     if (!isCorretor) return;
@@ -499,179 +409,6 @@ export function ComercialFunilBoard({
       return;
     }
     await registerFunilTriagem(texto);
-  }
-
-  function openAnaliseDialog(lead: Lead, stage: StageId = analiseStageSlug) {
-    setAnaliseTarget(lead);
-    setAnaliseTargetStage(stage);
-    setAnaliseConstrutoraId(lead.construtoraId ?? "");
-    setAnaliseEmpreendimentoId(lead.empreendimentoId ?? "");
-    setAnaliseTemEntrada(false);
-    setAnaliseValorEntrada("");
-    setAnaliseTemFgts(false);
-    setAnaliseValorFgts("");
-    setAnaliseTemDependente(false);
-  }
-
-  const canQuickCreateEmpreendimento =
-    user?.role === "admin" || user?.role === "gerente";
-
-  function openQuickEmpreendimento() {
-    if (!analiseConstrutoraId) {
-      toast.error(
-        "Selecione a construtora antes de cadastrar um empreendimento.",
-      );
-      return;
-    }
-    setQuickEmpreendimentoNome("");
-    setQuickEmpreendimentoCidade("");
-    setQuickEmpreendimentoOpen(true);
-  }
-
-  async function handleQuickCreateEmpreendimento() {
-    if (!analiseConstrutoraId) return;
-    if (quickEmpreendimentoNome.trim().length < 2) {
-      toast.error("Informe o nome do empreendimento.");
-      return;
-    }
-
-    setQuickEmpreendimentoSaving(true);
-    try {
-      const created = await createEmpreendimento({
-        nome: quickEmpreendimentoNome.trim(),
-        construtoraId: analiseConstrutoraId,
-        cidade: quickEmpreendimentoCidade.trim() || undefined,
-      });
-      setEmpreendimentos((current) =>
-        [...current, created].sort((a, b) =>
-          a.nome.localeCompare(b.nome, "pt-BR"),
-        ),
-      );
-      setAnaliseEmpreendimentoId(created.id);
-      setQuickEmpreendimentoOpen(false);
-      toast.success("Empreendimento cadastrado e selecionado.");
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível cadastrar o empreendimento.",
-      );
-    } finally {
-      setQuickEmpreendimentoSaving(false);
-    }
-  }
-
-  async function confirmAnaliseSend() {
-    if (!analiseTarget) return;
-    if (!analiseConstrutoraId || !analiseEmpreendimentoId) {
-      toast.error("Selecione a construtora e o empreendimento.");
-      return;
-    }
-    const lead = analiseTarget;
-    const targetStage = analiseTargetStage;
-    const stageName =
-      funnelStages.find((s) => s.id === targetStage)?.name ?? "Em análise";
-    const finance = {
-      temEntrada: analiseTemEntrada,
-      valorEntrada: analiseTemEntrada
-        ? parseOptionalMoneyInput(analiseValorEntrada)
-        : null,
-      temFgts: analiseTemFgts,
-      valorFgts: analiseTemFgts
-        ? parseOptionalMoneyInput(analiseValorFgts)
-        : null,
-      temDependente: analiseTemDependente,
-    };
-    setAnaliseSaving(true);
-    try {
-      await updateLeadStage(lead.id, targetStage, {
-        construtoraId: analiseConstrutoraId,
-        empreendimentoId: analiseEmpreendimentoId,
-        ...(isCorretor ? { omitTriagem: true } : {}),
-        ...finance,
-      });
-      setAnaliseTarget(null);
-      toast.success(`${lead.nome} enviado para ${stageName}`);
-      setComercialDocPrompt({
-        lead,
-        targetStage,
-        construtoraId: analiseConstrutoraId,
-        empreendimentoId: analiseEmpreendimentoId,
-        ...finance,
-      });
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Não foi possível enviar para análise.",
-      );
-    } finally {
-      setAnaliseSaving(false);
-    }
-  }
-
-  async function registerComercialDoc() {
-    if (!comercialDocPrompt) return;
-    const prompt = comercialDocPrompt;
-    const fonte = docFonteOptions.includes("Outro")
-      ? "Outro"
-      : (docFonteOptions[0] ?? "Outro");
-    const status1 = docStatus1Options.includes("Pré-análise")
-      ? "Pré-análise"
-      : docStatus1Options.includes("Análise")
-        ? "Pré-análise"
-        : (docStatus1Options[0] ?? "Pré-análise");
-    const status2 = docStatus2Options.includes("Andamento")
-      ? "Andamento"
-      : (docStatus2Options[0] ?? "Andamento");
-    setComercialDocSaving(true);
-    try {
-      // Backend reutiliza ficha ativa do lead, se já existir.
-      const created = await createDocumentacao({
-        leadId: prompt.lead.id,
-        nome: prompt.lead.nome,
-        construtoraId: prompt.construtoraId,
-        empreendimentoId: prompt.empreendimentoId,
-        fonte,
-        status1,
-        status2,
-        corretorId: prompt.lead.corretorId ?? undefined,
-        dataAnalise: new Date().toISOString().slice(0, 10),
-        temEntrada: prompt.temEntrada,
-        valorEntrada: prompt.valorEntrada,
-        temFgts: prompt.temFgts,
-        valorFgts: prompt.valorFgts,
-        temDependente: prompt.temDependente,
-      });
-      toast.success("Documentação comercial registrada.");
-      void celebrateAfterDocumentacao({
-        corretorId: created.corretorId ?? prompt.lead.corretorId,
-        docCreated: true,
-        becameVendido: isStatusVendido(created.status2),
-      });
-      skipComercialDocRef.current = true;
-      setComercialDocPrompt(null);
-      offerTriagemHistory(prompt.lead, prompt.targetStage);
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível registrar a documentação.",
-      );
-    } finally {
-      setComercialDocSaving(false);
-    }
-  }
-
-  function dismissComercialDocPrompt() {
-    const prompt = comercialDocPrompt;
-    skipComercialDocRef.current = true;
-    setComercialDocPrompt(null);
-    if (prompt) {
-      offerTriagemHistory(prompt.lead, prompt.targetStage);
-    }
   }
 
   const updateScrollButtons = useCallback(() => {
@@ -856,11 +593,6 @@ export function ComercialFunilBoard({
       return;
     }
 
-    if (isAnaliseStage(stage)) {
-      openAnaliseDialog(lead, stage);
-      return;
-    }
-
     const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
     // Feedback imediato (a API já atualiza o board de forma otimista no store).
     toast.success(`${lead.nome} movido para ${stageName}`);
@@ -923,13 +655,6 @@ export function ComercialFunilBoard({
       setLostMotivo("");
       setLostMotivoOutro("");
       setLostTarget(target);
-      return;
-    }
-
-    if (isAnaliseStage(stage)) {
-      const target = detailLead;
-      setDetailLead(null);
-      openAnaliseDialog(target, stage);
       return;
     }
 
@@ -1516,271 +1241,6 @@ export function ComercialFunilBoard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog
-        open={Boolean(analiseTarget)}
-        onOpenChange={(open) => {
-          if (!open) setAnaliseTarget(null);
-        }}
-      >
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Enviar para análise</DialogTitle>
-            <DialogDescription>
-              {analiseTarget
-                ? `Informe o imóvel e as condições de ${analiseTarget.nome}. Ao enviar, a documentação é criada automaticamente.`
-                : null}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-1">
-            <div className="space-y-1.5">
-              <Label>Construtora *</Label>
-              <Select
-                value={analiseConstrutoraId || "__none__"}
-                onValueChange={(v) => {
-                  setAnaliseConstrutoraId(v === "__none__" ? "" : v);
-                  setAnaliseEmpreendimentoId("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">—</SelectItem>
-                  {construtoras.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <Label>Empreendimento *</Label>
-                {canQuickCreateEmpreendimento && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={openQuickEmpreendimento}
-                    title="Cadastrar empreendimento"
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Novo imóvel
-                  </Button>
-                )}
-              </div>
-              <Select
-                value={analiseEmpreendimentoId || "__none__"}
-                onValueChange={(v) =>
-                  setAnaliseEmpreendimentoId(v === "__none__" ? "" : v)
-                }
-                disabled={!analiseConstrutoraId}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      analiseConstrutoraId
-                        ? "Selecione"
-                        : "Selecione a construtora primeiro"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">—</SelectItem>
-                  {empreendimentosFiltrados.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.nome}
-                      {e.cidade ? ` · ${e.cidade}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="rounded-lg border border-border/60 p-3 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Condições do cliente
-              </p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor="analise-tem-entrada">Tem entrada?</Label>
-                  <Switch
-                    id="analise-tem-entrada"
-                    checked={analiseTemEntrada}
-                    onCheckedChange={(checked) => {
-                      setAnaliseTemEntrada(checked);
-                      if (!checked) setAnaliseValorEntrada("");
-                    }}
-                  />
-                </div>
-                {analiseTemEntrada && (
-                  <Input
-                    inputMode="numeric"
-                    placeholder="0,00"
-                    value={analiseValorEntrada}
-                    onChange={(e) =>
-                      setAnaliseValorEntrada(maskMoneyInput(e.target.value))
-                    }
-                  />
-                )}
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor="analise-tem-fgts">Tem FGTS?</Label>
-                  <Switch
-                    id="analise-tem-fgts"
-                    checked={analiseTemFgts}
-                    onCheckedChange={(checked) => {
-                      setAnaliseTemFgts(checked);
-                      if (!checked) setAnaliseValorFgts("");
-                    }}
-                  />
-                </div>
-                {analiseTemFgts && (
-                  <Input
-                    inputMode="numeric"
-                    placeholder="0,00"
-                    value={analiseValorFgts}
-                    onChange={(e) =>
-                      setAnaliseValorFgts(maskMoneyInput(e.target.value))
-                    }
-                  />
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="analise-tem-dependente">Tem dependente?</Label>
-                <Switch
-                  id="analise-tem-dependente"
-                  checked={analiseTemDependente}
-                  onCheckedChange={setAnaliseTemDependente}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAnaliseTarget(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={analiseSaving}
-              onClick={() => void confirmAnaliseSend()}
-            >
-              {analiseSaving && (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              )}
-              Enviar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        open={Boolean(comercialDocPrompt)}
-        onOpenChange={(open) => {
-          if (open) return;
-          if (!skipComercialDocRef.current) {
-            dismissComercialDocPrompt();
-          }
-          skipComercialDocRef.current = false;
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Registrar documentação?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {comercialDocPrompt
-                ? `O processo de ${comercialDocPrompt.lead.nome} já foi enviado para análise. Deseja registrar uma documentação comercial agora? Ela fica visível para você e para o gerente da equipe.`
-                : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={comercialDocSaving}
-              onClick={() => dismissComercialDocPrompt()}
-            >
-              Agora não
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={comercialDocSaving}
-              onClick={(e) => {
-                e.preventDefault();
-                void registerComercialDoc();
-              }}
-            >
-              {comercialDocSaving && (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              )}
-              Registrar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog
-        open={quickEmpreendimentoOpen}
-        onOpenChange={setQuickEmpreendimentoOpen}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Novo empreendimento</DialogTitle>
-            <DialogDescription>
-              O imóvel será vinculado à construtora selecionada.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-1">
-            <div className="space-y-1.5">
-              <Label htmlFor="quick-empreendimento-nome">Nome *</Label>
-              <Input
-                id="quick-empreendimento-nome"
-                value={quickEmpreendimentoNome}
-                onChange={(event) =>
-                  setQuickEmpreendimentoNome(event.target.value)
-                }
-                placeholder="Ex.: Reserva dos Ipês"
-                autoFocus
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="quick-empreendimento-cidade">Cidade</Label>
-              <Input
-                id="quick-empreendimento-cidade"
-                value={quickEmpreendimentoCidade}
-                onChange={(event) =>
-                  setQuickEmpreendimentoCidade(event.target.value)
-                }
-                placeholder="Ex.: Recife"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setQuickEmpreendimentoOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={quickEmpreendimentoSaving}
-              onClick={() => void handleQuickCreateEmpreendimento()}
-            >
-              {quickEmpreendimentoSaving && (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              )}
-              Cadastrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -1789,7 +1249,7 @@ const ANALISTA_COLUMNS: {
   id: AnaliseStatus;
   label: string;
 }[] = [
-  { id: "pendente", label: "Pré-análise" },
+  { id: "pendente", label: "Pendente" },
   { id: "em_analise", label: "Em análise" },
   { id: "aprovado", label: "Aprovado" },
   { id: "reprovado", label: "Reprovado" },
@@ -1812,9 +1272,9 @@ function AnalistaFunilBoard() {
       documentacaoStatus1.length > 0
         ? documentacaoStatus1
         : [...DEFAULT_STATUS1];
-    return base.includes("Pré-análise")
+    return base.includes("Em análise")
       ? base
-      : ["Pré-análise", ...base];
+      : ["Em análise", ...base];
   })();
   const status2Options =
     documentacaoStatus2.length > 0
@@ -1828,7 +1288,7 @@ function AnalistaFunilBoard() {
   const [docTarget, setDocTarget] = useState<Analise | null>(null);
   const [docSaving, setDocSaving] = useState(false);
   const [docFonte, setDocFonte] = useState("Outro");
-  const [docStatus1, setDocStatus1] = useState("Pré-análise");
+  const [docStatus1, setDocStatus1] = useState("Em análise");
   const [docStatus2, setDocStatus2] = useState("Andamento");
   const [docObs, setDocObs] = useState("");
   const [docTemEntrada, setDocTemEntrada] = useState(false);
@@ -1890,9 +1350,8 @@ function AnalistaFunilBoard() {
   }
 
   function defaultDocStatus1() {
-    if (status1Options.includes("Pré-análise")) return "Pré-análise";
-    if (status1Options.includes("Análise")) return "Pré-análise";
-    return status1Options[0] ?? "Pré-análise";
+    if (status1Options.includes("Em análise")) return "Em análise";
+    return status1Options[0] ?? "Em análise";
   }
 
   function defaultDocStatus2() {
@@ -2098,7 +1557,7 @@ function AnalistaFunilBoard() {
     <div>
       <PageHeader
         title="Fila de Análise"
-        description="Processos de toda a imobiliária: pré-análise, em análise e com resultado."
+        description="Processos de toda a imobiliária: em análise e com resultado."
         actions={
           <Button size="sm" variant="outline" asChild>
             <Link to="/resultado">Abrir Análise</Link>

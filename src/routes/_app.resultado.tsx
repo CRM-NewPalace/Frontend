@@ -80,7 +80,7 @@ export const Route = createFileRoute("/_app/resultado")({
 const CORRETOR_RANKING_PAGE_SIZE = 8;
 
 const STATUS_LABEL: Record<AnaliseStatus, string> = {
-  pendente: "Pré-análise",
+  pendente: "Pendente",
   em_analise: "Em análise",
   aprovado: "Aprovado",
   reprovado: "Reprovado",
@@ -856,7 +856,7 @@ function AnalisePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pendente">Pré-análise</SelectItem>
+                      <SelectItem value="pendente">Pendente</SelectItem>
                       <SelectItem value="em_analise">Em análise</SelectItem>
                       <SelectItem value="aprovado">Aprovado</SelectItem>
                       <SelectItem value="reprovado">Reprovado</SelectItem>
