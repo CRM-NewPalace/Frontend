@@ -168,7 +168,9 @@ function ConstrutorasPage() {
   const [newLocalidadeNome, setNewLocalidadeNome] = useState("");
   const [savingLocalidade, setSavingLocalidade] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
-  const { value: search } = useHeaderSearch("Buscar construtora...");
+  const { value: search, setValue: setSearch } = useHeaderSearch(
+    "Buscar construtora...",
+  );
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -200,29 +202,32 @@ function ConstrutorasPage() {
   const searchQuery = search.trim().toLocaleLowerCase("pt-BR");
 
   const matchingItems = useMemo(() => {
-    if (!searchQuery) return items;
-    return items.filter((item) =>
-      item.nome.toLocaleLowerCase("pt-BR").includes(searchQuery),
-    );
-  }, [items, searchQuery]);
+    return items.filter((item) => {
+      if (
+        searchQuery &&
+        !item.nome.toLocaleLowerCase("pt-BR").includes(searchQuery)
+      ) {
+        return false;
+      }
+      if (driveFilterLocalidadeId) {
+        return (item.localidades ?? []).some(
+          (localidade) => localidade.id === driveFilterLocalidadeId,
+        );
+      }
+      return true;
+    });
+  }, [items, searchQuery, driveFilterLocalidadeId]);
 
-  const driveLocalidades = useMemo(
-    () =>
-      uniqueLocalidades(
-        matchingItems.filter((item) => Boolean(item.driveFolderUrl?.trim())),
-      ),
-    [matchingItems],
+  const filterLocalidades = useMemo(
+    () => uniqueLocalidades(items),
+    [items],
   );
 
-  const driveHubItems = useMemo(() => {
-    return matchingItems.filter((item) => {
-      if (!item.driveFolderUrl?.trim()) return false;
-      if (!driveFilterLocalidadeId) return true;
-      return (item.localidades ?? []).some(
-        (localidade) => localidade.id === driveFilterLocalidadeId,
-      );
-    });
-  }, [matchingItems, driveFilterLocalidadeId]);
+  const driveHubItems = useMemo(
+    () =>
+      matchingItems.filter((item) => Boolean(item.driveFolderUrl?.trim())),
+    [matchingItems],
+  );
 
   const sortedItems = useMemo(
     () =>
@@ -249,15 +254,13 @@ function ConstrutorasPage() {
   useEffect(() => {
     if (
       driveFilterLocalidadeId &&
-      !driveLocalidades.some((localidade) => localidade.id === driveFilterLocalidadeId)
+      !filterLocalidades.some(
+        (localidade) => localidade.id === driveFilterLocalidadeId,
+      )
     ) {
       setDriveFilterLocalidadeId("");
     }
-  }, [driveFilterLocalidadeId, driveLocalidades]);
-
-  const showDriveHub =
-    !loading &&
-    (driveHubItems.length > 0 || Boolean(driveFilterLocalidadeId));
+  }, [driveFilterLocalidadeId, filterLocalidades]);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -493,8 +496,8 @@ function ConstrutorasPage() {
         title="Construtoras"
         description={
           canCreate
-            ? "Cadastro de construtoras parceiras."
-            : "Consulta de construtoras parceiras."
+            ? "Cadastro de construtoras parceiras e books no Drive."
+            : "Books e pastas das construtoras parceiras."
         }
         actions={
           canCreate ? (
@@ -506,49 +509,64 @@ function ConstrutorasPage() {
         }
       />
 
-      {showDriveHub ? (
+      <div className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <Label htmlFor="buscar-construtora" className="mb-1.5 block text-xs">
+            Buscar
+          </Label>
+          <Input
+            id="buscar-construtora"
+            placeholder="Nome da construtora…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Localidade</Label>
+          <Select
+            value={driveFilterLocalidadeId || "__all__"}
+            onValueChange={(value) =>
+              setDriveFilterLocalidadeId(value === "__all__" ? "" : value)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas</SelectItem>
+              {filterLocalidades.map((localidade) => (
+                <SelectItem key={localidade.id} value={localidade.id}>
+                  {localidade.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filterLocalidades.length === 0 && canManage ? (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Vincule localidades nas construtoras para filtrar.
+            </p>
+          ) : null}
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Ordenar</Label>
+          <TableSortSelect value={sort} onChange={setSort} className="w-full" />
+        </div>
+      </div>
+
+      {!loading ? (
         <Card className="mb-4">
           <CardHeader className="pb-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="text-base">Arquivos no Drive</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Clique na construtora para abrir a pasta no Google Drive.
-                </p>
-              </div>
-              <div className="w-full sm:w-[220px]">
-                <Select
-                  value={driveFilterLocalidadeId || "__all__"}
-                  onValueChange={(value) =>
-                    setDriveFilterLocalidadeId(value === "__all__" ? "" : value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as localidades" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todas as localidades</SelectItem>
-                    {driveLocalidades.map((localidade) => (
-                      <SelectItem key={localidade.id} value={localidade.id}>
-                        {localidade.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {driveLocalidades.length === 0 ? (
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    Vincule localidades nas construtoras para filtrar.
-                  </p>
-                ) : null}
-              </div>
-            </div>
+            <CardTitle className="text-base">Books das construtoras</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Clique na construtora para abrir o book no Google Drive.
+            </p>
           </CardHeader>
           <CardContent>
             {sortedDriveItems.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                {driveFilterLocalidadeId
-                  ? "Nenhuma construtora com pasta do Drive nesta localidade."
-                  : "Nenhuma pasta do Drive encontrada."}
+                {searchQuery || driveFilterLocalidadeId
+                  ? "Nenhum book encontrado para estes filtros."
+                  : "Nenhuma pasta do Drive cadastrada."}
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -590,9 +608,6 @@ function ConstrutorasPage() {
         </Card>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <TableSortSelect value={sort} onChange={setSort} />
-      </div>
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
