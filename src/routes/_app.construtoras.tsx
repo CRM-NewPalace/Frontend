@@ -77,6 +77,8 @@ import {
   MapPin,
   User,
   FolderOpen,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -136,6 +138,14 @@ function uniqueLocalidades(items: Construtora[]) {
   );
 }
 
+function normalizePlaceName(value: string) {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR");
+}
+
 function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
@@ -158,6 +168,9 @@ function ConstrutorasPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
+  const [empreendimentosCatalog, setEmpreendimentosCatalog] = useState<
+    Empreendimento[]
+  >([]);
   const [selectedEmpreendimentos, setSelectedEmpreendimentos] = useState<
     string[]
   >([]);
@@ -166,7 +179,9 @@ function ConstrutorasPage() {
   const [selectedLocalidades, setSelectedLocalidades] = useState<string[]>([]);
   const [loadingLocalidades, setLoadingLocalidades] = useState(false);
   const [newLocalidadeNome, setNewLocalidadeNome] = useState("");
+  const [matrixCidadeNome, setMatrixCidadeNome] = useState("");
   const [savingLocalidade, setSavingLocalidade] = useState(false);
+  const [savingMatrixCidade, setSavingMatrixCidade] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
   const { value: search, setValue: setSearch } = useHeaderSearch(
     "Buscar construtora...",
@@ -175,7 +190,14 @@ function ConstrutorasPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await fetchConstrutoras());
+      const [construtoras, locs, emps] = await Promise.all([
+        fetchConstrutoras(),
+        fetchLocalidades(),
+        fetchEmpreendimentos({ ativo: true }),
+      ]);
+      setItems(construtoras);
+      setLocalidades(locs);
+      setEmpreendimentosCatalog(emps);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -190,14 +212,6 @@ function ConstrutorasPage() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
-
-  useEffect(() => {
-    void fetchLocalidades()
-      .then(setLocalidades)
-      .catch(() => {
-        toast.error("Não foi possível carregar as regiões.");
-      });
-  }, []);
 
   const searchQuery = search.trim().toLocaleLowerCase("pt-BR");
 
@@ -250,6 +264,53 @@ function ConstrutorasPage() {
       ),
     [driveHubItems, sort],
   );
+
+  const visibilityCities = useMemo(() => {
+    const map = new Map<string, { key: string; nome: string }>();
+    for (const localidade of localidades) {
+      const key = normalizePlaceName(localidade.nome);
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, { key, nome: localidade.nome });
+    }
+    for (const empreendimento of empreendimentosCatalog) {
+      const nome = empreendimento.cidade?.trim();
+      if (!nome) continue;
+      const key = normalizePlaceName(nome);
+      if (!key || map.has(key)) continue;
+      map.set(key, { key, nome });
+    }
+    let rows = [...map.values()].sort((a, b) =>
+      a.nome.localeCompare(b.nome, "pt-BR"),
+    );
+    if (driveFilterLocalidadeId) {
+      const selected = localidades.find(
+        (localidade) => localidade.id === driveFilterLocalidadeId,
+      );
+      if (selected) {
+        const key = normalizePlaceName(selected.nome);
+        rows = rows.filter((row) => row.key === key);
+      }
+    }
+    return rows;
+  }, [localidades, empreendimentosCatalog, driveFilterLocalidadeId]);
+
+  const presenceByConstrutora = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const empreendimento of empreendimentosCatalog) {
+      if (!empreendimento.construtoraId || !empreendimento.cidade?.trim()) {
+        continue;
+      }
+      const key = normalizePlaceName(empreendimento.cidade);
+      if (!key) continue;
+      let cities = map.get(empreendimento.construtoraId);
+      if (!cities) {
+        cities = new Set();
+        map.set(empreendimento.construtoraId, cities);
+      }
+      cities.add(key);
+    }
+    return map;
+  }, [empreendimentosCatalog]);
 
   useEffect(() => {
     if (
@@ -484,6 +545,43 @@ function ConstrutorasPage() {
     }
   }
 
+  async function handleAddMatrixCidade() {
+    if (!canManage) return;
+    const nome = matrixCidadeNome.trim();
+    if (nome.length < 2) {
+      toast.error("Informe o nome da cidade.");
+      return;
+    }
+    const already = localidades.find(
+      (item) =>
+        item.nome.localeCompare(nome, "pt-BR", { sensitivity: "base" }) === 0,
+    );
+    if (already) {
+      setMatrixCidadeNome("");
+      toast.success("Cidade já cadastrada.");
+      return;
+    }
+    setSavingMatrixCidade(true);
+    try {
+      const created = await createLocalidade(nome);
+      setLocalidades((previous) =>
+        [...previous, created].sort((a, b) =>
+          a.nome.localeCompare(b.nome, "pt-BR"),
+        ),
+      );
+      setMatrixCidadeNome("");
+      toast.success("Cidade cadastrada.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível cadastrar a cidade.",
+      );
+    } finally {
+      setSavingMatrixCidade(false);
+    }
+  }
+
   function toggleEmpreendimento(id: string, checked: boolean) {
     setSelectedEmpreendimentos((previous) =>
       checked ? [...previous, id] : previous.filter((itemId) => itemId !== id),
@@ -602,6 +700,138 @@ function ConstrutorasPage() {
                     </button>
                   );
                 })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!loading ? (
+        <Card className="mb-4 overflow-hidden">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle className="text-base">
+                  Visibilidade por cidade
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  V quando a construtora tem empreendimento na cidade; X quando
+                  não tem.
+                </p>
+              </div>
+              {canManage ? (
+                <form
+                  className="flex w-full gap-2 sm:max-w-sm"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleAddMatrixCidade();
+                  }}
+                >
+                  <Input
+                    placeholder="Nova cidade…"
+                    value={matrixCidadeNome}
+                    onChange={(event) =>
+                      setMatrixCidadeNome(event.target.value)
+                    }
+                    maxLength={80}
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={savingMatrixCidade}
+                    className="shrink-0"
+                  >
+                    {savingMatrixCidade ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="mr-1 h-4 w-4" />
+                    )}
+                    Cidade
+                  </Button>
+                </form>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {sortedItems.length === 0 ? (
+              <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+                Cadastre construtoras para ver a visibilidade por cidade.
+              </p>
+            ) : visibilityCities.length === 0 ? (
+              <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+                {canManage
+                  ? "Nenhuma cidade cadastrada. Adicione uma cidade para começar."
+                  : "Nenhuma cidade cadastrada."}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table className="min-w-max">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="sticky left-0 z-20 min-w-40 bg-muted text-foreground">
+                        Cidade
+                      </TableHead>
+                      {sortedItems.map((item) => (
+                        <TableHead
+                          key={item.id}
+                          className="min-w-24 max-w-32 bg-muted px-2 text-center text-foreground"
+                          title={item.nome}
+                        >
+                          <span className="line-clamp-2 text-xs font-medium leading-tight">
+                            {item.nome}
+                          </span>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibilityCities.map((cidade, index) => (
+                      <TableRow
+                        key={cidade.key}
+                        className={cn(
+                          "hover:bg-transparent",
+                          index % 2 === 1 ? "bg-muted/40" : "bg-background",
+                        )}
+                      >
+                        <TableCell
+                          className={cn(
+                            "sticky left-0 z-10 font-medium",
+                            index % 2 === 1 ? "bg-muted/40" : "bg-background",
+                          )}
+                        >
+                          {cidade.nome}
+                        </TableCell>
+                        {sortedItems.map((item) => {
+                          const present = Boolean(
+                            presenceByConstrutora
+                              .get(item.id)
+                              ?.has(cidade.key),
+                          );
+                          return (
+                            <TableCell
+                              key={item.id}
+                              className="px-2 text-center"
+                            >
+                              {present ? (
+                                <Check
+                                  className="mx-auto h-5 w-5 text-emerald-600"
+                                  strokeWidth={2.75}
+                                  aria-label={`${item.nome} tem empreendimento em ${cidade.nome}`}
+                                />
+                              ) : (
+                                <X
+                                  className="mx-auto h-5 w-5 text-red-500"
+                                  strokeWidth={2.75}
+                                  aria-label={`${item.nome} sem empreendimento em ${cidade.nome}`}
+                                />
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>
