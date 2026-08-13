@@ -7,6 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -144,6 +151,9 @@ function ConstrutorasPage() {
   const [loadingLocalidades, setLoadingLocalidades] = useState(false);
   const [newLocalidadeNome, setNewLocalidadeNome] = useState("");
   const [savingLocalidade, setSavingLocalidade] = useState(false);
+  const [driveItems, setDriveItems] = useState<Construtora[]>([]);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -160,12 +170,45 @@ function ConstrutorasPage() {
     }
   }, []);
 
+  const loadDriveItems = useCallback(async () => {
+    setDriveLoading(true);
+    try {
+      setDriveItems(
+        await fetchConstrutoras({
+          comDrive: true,
+          localidadeId: driveFilterLocalidadeId || undefined,
+        }),
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar as pastas do Drive.",
+      );
+      setDriveItems([]);
+    } finally {
+      setDriveLoading(false);
+    }
+  }, [driveFilterLocalidadeId]);
+
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
 
-  const driveHubItems = useMemo(
-    () => items.filter((item) => Boolean(item.driveFolderUrl?.trim())),
+  useEffect(() => {
+    void loadDriveItems();
+  }, [loadDriveItems]);
+
+  useEffect(() => {
+    void fetchLocalidades()
+      .then(setLocalidades)
+      .catch(() => {
+        toast.error("Não foi possível carregar as regiões.");
+      });
+  }, []);
+
+  const driveHubAvailable = useMemo(
+    () => items.some((item) => Boolean(item.driveFolderUrl?.trim())),
     [items],
   );
 
@@ -180,16 +223,18 @@ function ConstrutorasPage() {
     [items, sort],
   );
 
-  const sortedDriveHubItems = useMemo(
+  const sortedDriveItems = useMemo(
     () =>
       sortByTableOrder(
-        driveHubItems,
+        driveItems,
         sort,
         (item) => item.nome,
         (item) => item.createdAt,
       ),
-    [driveHubItems, sort],
+    [driveItems, sort],
   );
+
+  const showDriveHub = !loading && (driveHubAvailable || Boolean(driveFilterLocalidadeId));
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -338,7 +383,7 @@ function ConstrutorasPage() {
         toast.success("Construtora atualizada.");
       }
       setOpen(false);
-      await loadItems();
+      await Promise.all([loadItems(), loadDriveItems()]);
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível salvar.",
@@ -354,7 +399,7 @@ function ConstrutorasPage() {
       await deleteConstrutora(deleteId);
       toast.success("Construtora excluída.");
       setDeleteId(null);
-      await loadItems();
+      await Promise.all([loadItems(), loadDriveItems()]);
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível excluir.",
@@ -439,44 +484,77 @@ function ConstrutorasPage() {
         }
       />
 
-      {!loading && sortedDriveHubItems.length > 0 ? (
+      {showDriveHub ? (
         <Card className="mb-4">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Arquivos no Drive</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Clique na construtora para abrir a pasta no Google Drive.
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-base">Arquivos no Drive</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Clique na construtora para abrir a pasta no Google Drive.
+                </p>
+              </div>
+              <Select
+                value={driveFilterLocalidadeId || "__all__"}
+                onValueChange={(value) =>
+                  setDriveFilterLocalidadeId(value === "__all__" ? "" : value)
+                }
+              >
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Todas as regiões" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas as regiões</SelectItem>
+                  {localidades.map((localidade) => (
+                    <SelectItem key={localidade.id} value={localidade.id}>
+                      {localidade.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {sortedDriveHubItems.map((item) => {
-                const bg = item.cor || "#079ED4";
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => openDriveFolder(item.driveFolderUrl!)}
-                    className={cn(
-                      "group flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center transition-colors",
-                      "hover:border-[#079ED4]/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#079ED4]/35",
-                    )}
-                    title={`Abrir Drive de ${item.nome}`}
-                  >
-                    <span
-                      className="flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
-                      style={{ backgroundColor: bg }}
-                    >
-                      {construtoraIniciais(item.nome) || (
-                        <FolderOpen className="h-6 w-6" />
+            {driveLoading ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Carregando…
+              </div>
+            ) : sortedDriveItems.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Nenhuma pasta do Drive nesta região.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {sortedDriveItems.map((item) => {
+                  const bg = item.cor || "#079ED4";
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openDriveFolder(item.driveFolderUrl!)}
+                      className={cn(
+                        "group flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center transition-colors",
+                        "hover:border-[#079ED4]/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#079ED4]/35",
                       )}
-                    </span>
-                    <span className="line-clamp-2 text-sm font-medium text-foreground">
-                      {item.nome}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                      title={`Abrir Drive de ${item.nome}`}
+                    >
+                      <span
+                        className="flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
+                        style={{ backgroundColor: bg }}
+                      >
+                        {construtoraIniciais(item.nome) || (
+                          <FolderOpen className="h-6 w-6" />
+                        )}
+                      </span>
+                      <span className="line-clamp-2 text-sm font-medium text-foreground">
+                        {item.nome}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : null}

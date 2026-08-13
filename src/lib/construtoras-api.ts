@@ -65,9 +65,13 @@ export function construtoraBadgeStyle(
 
 export async function fetchConstrutoras(params?: {
   sort?: string;
+  localidadeId?: string;
+  comDrive?: boolean;
 }): Promise<Construtora[]> {
   const qs = new URLSearchParams();
   if (params?.sort) qs.set("sort", params.sort);
+  if (params?.localidadeId) qs.set("localidadeId", params.localidadeId);
+  if (params?.comDrive) qs.set("comDrive", "true");
   const query = qs.toString();
   return apiFetch<Construtora[]>(`/construtoras${query ? `?${query}` : ""}`);
 }
