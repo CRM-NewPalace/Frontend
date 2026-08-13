@@ -106,6 +106,10 @@ const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
   reprovado: "Análise reprovada",
 };
 
+function shouldShowAnaliseStatus(status: AnaliseStatus) {
+  return status === "aprovado" || status === "reprovado";
+}
+
 function analiseBadgeClass(status: AnaliseStatus) {
   if (status === "aprovado")
     return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
@@ -866,7 +870,7 @@ export function ComercialFunilBoard({
                         />
                       </div>
                     </div>
-                    {l.analise && (
+                    {l.analise && shouldShowAnaliseStatus(l.analise.status) && (
                       <Badge
                         variant="outline"
                         className={cn(
@@ -949,7 +953,8 @@ export function ComercialFunilBoard({
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detailLead.corretor} />
                   )}
-                  {detailLead.analise && (
+                  {detailLead.analise &&
+                    shouldShowAnaliseStatus(detailLead.analise.status) && (
                     <DetailField
                       label="Análise"
                       value={
