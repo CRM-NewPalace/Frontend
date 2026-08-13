@@ -191,6 +191,12 @@ export const Route = createFileRoute("/_app/documentacao")({
 const DOC_SOFT_BTN =
   "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
 
+function creditUserLabel(user: { name: string; role?: string | null }) {
+  if (user.role === "gerente") return `${user.name} · Gerente`;
+  if (user.role === "treinee") return `${user.name} · Treinee`;
+  return user.name;
+}
+
 type FormState = {
   contatoId: string;
   novoCliente: boolean;
@@ -315,8 +321,12 @@ function DocumentacaoPage() {
   const canOwnCarteira = isAdmin || isGerente;
 
   const canCreateDoc =
+    user?.role === "admin" ||
+    user?.role === "analista" ||
+    user?.role === "gerente" ||
+    user?.role === "treinee";
+  const canMutateDocs =
     user?.role === "admin" || user?.role === "analista";
-  const canMutateDocs = canCreateDoc;
   const {
     leads,
     assignees,
@@ -448,9 +458,8 @@ function DocumentacaoPage() {
       (a) =>
         !a.role ||
         isCorretorLike(a.role) ||
-        (canOwnCarteira &&
-          (a.role === "admin" || a.role === "gerente") &&
-          a.id === user?.id),
+        a.role === "gerente" ||
+        (canOwnCarteira && a.role === "admin" && a.id === user?.id),
     );
   }, [docCorretores, assignees, canOwnCarteira, user?.id]);
   const gerenteOptions = useMemo<EquipeOptionUser[]>(() => {
@@ -562,12 +571,28 @@ function DocumentacaoPage() {
       setConstrutoras(c);
       setEmpreendimentos(e);
       setDocCorretores(corretores);
+      const gerentesFromCredit = corretores
+        .filter((c) => c.role === "gerente")
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          email: "",
+          status: "ativo" as const,
+        }));
       if (user?.role === "admin") {
         try {
-          setGerentes(await fetchEquipeGerentes());
+          const listed = await fetchEquipeGerentes();
+          const merged = [...listed, ...gerentesFromCredit].filter(
+            (option, index, all) =>
+              all.findIndex((candidate) => candidate.id === option.id) ===
+              index,
+          );
+          setGerentes(merged);
         } catch {
-          setGerentes([]);
+          setGerentes(gerentesFromCredit);
         }
+      } else {
+        setGerentes(gerentesFromCredit);
       }
     } catch (err) {
       toast.error(
@@ -1035,6 +1060,12 @@ function DocumentacaoPage() {
     base.createdAt = todayDateInput();
     if (user?.role === "gerente") {
       base.gerenteId = user.id;
+    }
+    if (user?.role === "gerente" || user?.role === "treinee") {
+      base.corretorId = user.id;
+      if (!base.gerenteId) {
+        base.gerenteId = gerenteIdOfCorretor(user.id);
+      }
     }
     setForm(base);
   }
@@ -1712,7 +1743,7 @@ function DocumentacaoPage() {
                 }
               }}
             />
-            {canCreateDoc && (
+            {canMutateDocs && (
               <Button
                 variant="outline"
                 size="sm"
@@ -2704,7 +2735,7 @@ function DocumentacaoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Corretor</Label>
+                  <Label>Usuário</Label>
                   <Select
                     value={form.corretorId || "__none__"}
                     onValueChange={(v) => {
@@ -2726,7 +2757,7 @@ function DocumentacaoPage() {
                       <SelectItem value="__none__">—</SelectItem>
                       {corretorOptions.map((a) => (
                         <SelectItem key={a.id} value={a.id}>
-                          {a.name}
+                          {creditUserLabel(a)}
                         </SelectItem>
                       ))}
                     </SelectContent>

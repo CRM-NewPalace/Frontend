@@ -121,7 +121,7 @@ export async function fetchDocumentacoes(
   return apiFetch<Documentacao[]>(`/documentacao${query ? `?${query}` : ""}`);
 }
 
-/** Corretores ativos do tenant para o select na ficha (analista/admin/gerente: todos). */
+/** Usuários ativos do tenant para o select na ficha (analista/admin/gerente/treinee: todos). */
 export type DocumentacaoCorretor = {
   id: string;
   name: string;
