@@ -33,6 +33,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import {
   createEmpreendimento,
   deleteEmpreendimento,
@@ -87,6 +93,7 @@ function ImoveisPage() {
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [localidade, setLocalidade] = useState("");
   const [quartos, setQuartos] = useState("");
   const [construtoraId, setConstrutoraId] = useState("");
@@ -312,6 +319,17 @@ function ImoveisPage() {
     });
   }, [items, search, localidade, quartos, construtoraId, somenteLitoral]);
 
+  const sorted = useMemo(
+    () =>
+      sortByTableOrder(
+        filtered,
+        sort,
+        (item) => item.nome,
+        (item) => item.createdAt,
+      ),
+    [filtered, sort],
+  );
+
   return (
     <div>
       <PageHeader
@@ -331,7 +349,7 @@ function ImoveisPage() {
         }
       />
 
-      <div className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-6">
         <div className="sm:col-span-2 xl:col-span-1">
           <Label htmlFor="buscar-imovel" className="mb-1.5 block text-xs">
             Buscar
@@ -342,6 +360,10 @@ function ImoveisPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Ordenar</Label>
+          <TableSortSelect value={sort} onChange={setSort} className="w-full" />
         </div>
         <div>
           <Label className="mb-1.5 block text-xs">Localidade</Label>
@@ -428,7 +450,7 @@ function ImoveisPage() {
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           Carregando…
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
             <Building2 className="w-8 h-8 opacity-40" />
@@ -455,7 +477,7 @@ function ImoveisPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((item) => (
+          {sorted.map((item) => (
             <Card
               key={item.id}
               className="group overflow-hidden transition-shadow hover:shadow-lg"

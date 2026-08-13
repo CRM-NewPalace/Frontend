@@ -7,7 +7,7 @@ import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
  * - gerente: operação da equipe; carteira própria (/clientes) e vendas
  * - corretor: essencial (próprios leads/agenda/clientes)
  * - analista: funil de análise, documentação, resultado e catálogos (origens/tags/motivos)
- * - treinee: cadastro de construtoras, empreendimentos, origens e tags
+ * - treinee: mesmo acesso operacional do corretor + cadastro de construtoras/empreendimentos/origens/tags
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
   super_admin: [
@@ -97,7 +97,19 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/perfil",
   ],
   treinee: [
+    "/dashboard",
+    "/leads",
+    "/funil",
+    "/funil-clientes",
+    "/agenda",
     "/imoveis",
+    "/clientes",
+    "/clientes-perdidos",
+    "/metas",
+    "/triagem",
+    "/documentacao",
+    "/contratos",
+    "/financeiro/comissao",
     "/construtoras",
     "/configuracoes",
     "/perfil",
@@ -154,7 +166,6 @@ export function defaultRouteForRole(
 ): string {
   if (role === "super_admin") return "/tenants";
   if (role === "analista") return "/funil";
-  if (role === "treinee") return "/imoveis";
 
   const home = user?.tenant?.homePath?.trim();
   if (
@@ -179,8 +190,13 @@ export function canViewFinancial(role: Role): boolean {
 /**
  * Admin vê todos; gerente vê a própria equipe (escopo aplicado na API).
  * Analista tem visão global de processos de análise.
- * Corretor fica restrito aos próprios registros.
+ * Corretor e treinee ficam restritos aos próprios registros.
  */
 export function canViewTeamData(role: Role): boolean {
   return role === "admin" || role === "gerente" || role === "analista";
+}
+
+/** Mesmo escopo operacional do corretor (própria carteira). */
+export function isCorretorLike(role: string | null | undefined): boolean {
+  return role === "corretor" || role === "treinee";
 }

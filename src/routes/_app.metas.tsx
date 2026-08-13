@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getSession } from "@/lib/auth";
+import { isCorretorLike } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
@@ -118,7 +119,7 @@ function Page() {
     () =>
       equipes.flatMap((equipe) =>
         equipe.membros
-          .filter((membro) => membro.role === "corretor")
+          .filter((membro) => isCorretorLike(membro.role))
           .map((membro) => ({ ...membro, equipeNome: equipe.name })),
       ),
     [equipes],
@@ -287,7 +288,7 @@ function Page() {
   }
 
   const canCreate =
-    user?.role === "corretor" || isGerente || isAdmin;
+    isCorretorLike(user?.role) || isGerente || isAdmin;
 
   const canEditMeta = (meta: Meta) => {
     if (isAdmin) return meta.origem === "admin";

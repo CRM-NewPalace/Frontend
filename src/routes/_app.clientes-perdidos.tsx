@@ -39,6 +39,12 @@ import {
 } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import {
   getLostClientesCache,
   loadLostClientes,
@@ -76,6 +82,7 @@ function ClientesPerdidos() {
   const [loading, setLoading] = useState(!cached);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [detail, setDetail] = useState<LostLead | null>(null);
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
@@ -113,6 +120,17 @@ function ClientesPerdidos() {
         .includes(q),
     );
   }, [items, search]);
+
+  const sorted = useMemo(
+    () =>
+      sortByTableOrder(
+        filtered,
+        sort,
+        (l) => l.nome,
+        (l) => l.createdAt,
+      ),
+    [filtered, sort],
+  );
 
   return (
     <div>
@@ -173,14 +191,17 @@ function ClientesPerdidos() {
 
       <Card className="mb-4">
         <div className="p-3">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, motivo..."
-              className="pl-9 h-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative max-w-md flex-1 min-w-50">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, motivo..."
+                className="pl-9 h-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <TableSortSelect value={sort} onChange={setSort} />
           </div>
         </div>
       </Card>
@@ -216,7 +237,7 @@ function ClientesPerdidos() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((l) => (
+              sorted.map((l) => (
                 <TableRow key={l.id} className="hover:bg-muted/40">
                   <TableCell>
                     <div className="flex items-center gap-3">

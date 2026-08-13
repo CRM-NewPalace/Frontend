@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { getSession, type Role } from "@/lib/auth";
+import { isCorretorLike } from "@/lib/permissions";
 import { fetchDocumentacoes } from "@/lib/documentacao-api";
 import { isStatusVendido } from "@/lib/documentacao-status";
 import { fetchMetas, META_TIPO_LABEL, type Meta } from "@/lib/metas-api";
@@ -46,7 +47,7 @@ function celebrateToast(title: string, description: string) {
 }
 
 function shouldRunForRole(role: Role): boolean {
-  return role === "corretor" || role === "gerente" || role === "admin";
+  return isCorretorLike(role) || role === "gerente" || role === "admin";
 }
 
 /** Meta pessoal do corretor, ou meta ampla da imobiliária. */
@@ -63,7 +64,7 @@ function metaRelevant(
   }
   // Meta de gerente/equipe: gerente e admin veem; corretor da equipe também.
   if (meta.escopo === "gerente") {
-    return role === "gerente" || role === "admin" || role === "corretor";
+    return role === "gerente" || role === "admin" || isCorretorLike(role);
   }
   return false;
 }
@@ -81,11 +82,11 @@ export async function celebrateAfterDocumentacao(
 
   const corretorId =
     opts.corretorId?.trim() ||
-    (session.role === "corretor" ? session.id : "");
+    (isCorretorLike(session.role) ? session.id : "");
   if (!corretorId) return;
 
   // Corretor só celebra o próprio progresso.
-  if (session.role === "corretor" && corretorId !== session.id) return;
+  if (isCorretorLike(session.role) && corretorId !== session.id) return;
 
   try {
     const docs = await fetchDocumentacoes(corretorId);

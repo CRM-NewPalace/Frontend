@@ -150,7 +150,7 @@ function Config() {
   const isTreinee = user?.role === "treinee";
   const showOpsTabs = !isAnalista && !isTreinee;
   const showDocumentacao = !isTreinee;
-  const showMotivos = !isTreinee;
+  const showMotivos = true;
   const { catalog, loading, error, addItem, updateItem, removeItem } =
     useCatalog();
 

@@ -54,11 +54,13 @@ export async function fetchUsers(params?: {
   status?: UserStatus;
   page?: number;
   limit?: number;
+  sort?: string;
 }): Promise<PaginatedUsers> {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
   if (params?.role) qs.set("role", params.role);
   if (params?.status) qs.set("status", params.status);
+  if (params?.sort) qs.set("sort", params.sort);
   qs.set("page", String(params?.page ?? 1));
   qs.set("limit", String(params?.limit ?? 100));
   return apiFetch<PaginatedUsers>(`/users?${qs.toString()}`);

@@ -78,7 +78,13 @@ import {
   catalogColorBadgeStyle,
 } from "@/lib/catalog-colors";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
@@ -271,7 +277,7 @@ function LeadsPage() {
       assignees.filter(
         (a) =>
           !a.role ||
-          a.role === "corretor" ||
+          isCorretorLike(a.role) ||
           ((isAdmin || isGerente) &&
             (a.role === "admin" || a.role === "gerente") &&
             a.id === user?.id),
@@ -294,6 +300,7 @@ function LeadsPage() {
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
 
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   /** UUID do corretor ou "all". */
@@ -370,14 +377,14 @@ function LeadsPage() {
 
     if (formEquipe) {
       const membros = formEquipe.membros.filter(
-        (m) => m.role === "corretor" && m.status === "ativo",
+        (m) => isCorretorLike(m.role) && m.status === "ativo",
       );
       return [...selfOption, ...membros];
     }
 
     // Sem equipe: todos os corretores do tenant (assignees).
     const todos = corretorAssignees
-      .filter((a) => a.role === "corretor" || !a.role)
+      .filter((a) => isCorretorLike(a.role) || !a.role)
       .map((a) => ({
         id: a.id,
         name: a.name,
@@ -486,6 +493,17 @@ function LeadsPage() {
     isCorretor,
     canFilterEquipe,
   ]);
+
+  const sortedLeads = useMemo(
+    () =>
+      sortByTableOrder(
+        filteredLeads,
+        sort,
+        (l) => l.nome,
+        (l) => l.createdAt,
+      ),
+    [filteredLeads, sort],
+  );
 
   const distribuicaoCounts = useMemo(() => {
     let chegaram = 0;
@@ -1863,6 +1881,7 @@ function LeadsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <TableSortSelect value={sort} onChange={setSort} />
           <Select value={stageFilter} onValueChange={setStageFilter}>
             <SelectTrigger className="w-44 h-9">
               <SelectValue placeholder="Etapa" />
@@ -2137,7 +2156,7 @@ function LeadsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredLeads.map((l) => {
+              sortedLeads.map((l) => {
                 const stage = funnelStages.find((s) => s.id === l.stage) ?? {
                   id: l.stage,
                   name: l.stage,

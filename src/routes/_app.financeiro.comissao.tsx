@@ -74,6 +74,7 @@ import {
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { isCorretorLike } from "@/lib/permissions";
 import {
   createComissao,
   deleteComissao,
@@ -163,7 +164,7 @@ function Page() {
   const canManage = role === "admin" || role === "super_admin";
   const commissionValue = useCallback(
     (item: Comissao) =>
-      role === "corretor"
+      isCorretorLike(role)
         ? item.valorCorretor
         : role === "gerente"
           ? item.valorGerente

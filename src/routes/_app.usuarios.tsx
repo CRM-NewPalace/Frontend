@@ -68,7 +68,13 @@ import {
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { isAnalistaAllowed } from "@/lib/tenant-modules";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import { ApiError } from "@/lib/api";
 import { useLeads } from "@/lib/leads-store";
 import type { Lead } from "@/lib/crm-types";
@@ -299,6 +305,7 @@ function Usuarios() {
   // Só bloqueia com "Carregando..." na primeira visita sem cache.
   const [loading, setLoading] = useState(!cachedUsers);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [quota, setQuota] = useState<UsersQuota | null>(null);
@@ -409,6 +416,17 @@ function Usuarios() {
       return true;
     });
   }, [users, search, roleFilter, statusFilter]);
+
+  const sorted = useMemo(
+    () =>
+      sortByTableOrder(
+        filtered,
+        sort,
+        (u) => u.name,
+        (u) => u.createdAt,
+      ),
+    [filtered, sort],
+  );
 
   function openCreate() {
     if (quota && quota.restantes <= 0) {
@@ -659,6 +677,7 @@ function Usuarios() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <TableSortSelect value={sort} onChange={setSort} />
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-44 h-9">
               <SelectValue />
@@ -712,7 +731,7 @@ function Usuarios() {
                   Carregando usuários...
                 </TableCell>
               </TableRow>
-            ) : filtered.length === 0 ? (
+            ) : sorted.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={9}
@@ -722,7 +741,7 @@ function Usuarios() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((u) => (
+              sorted.map((u) => (
                 <TableRow key={u.id} className="hover:bg-muted/40">
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -779,7 +798,7 @@ function Usuarios() {
                           (u.role === "corretor" || u.role === "gerente")) ||
                           (isManager &&
                             session?.role === "gerente" &&
-                            u.role === "corretor")) && (
+                            isCorretorLike(u.role))) && (
                           <DropdownMenuItem
                             onClick={() =>
                               void navigate({
@@ -798,7 +817,7 @@ function Usuarios() {
                             Editar
                           </DropdownMenuItem>
                         )}
-                        {(isAdmin || (isManager && u.role === "corretor")) && (
+                        {(isAdmin || (isManager && isCorretorLike(u.role))) && (
                           <DropdownMenuItem
                             onClick={() => void handleResetPassword(u)}
                           >
@@ -1097,7 +1116,7 @@ function Usuarios() {
         icon={<Eye className="w-5 h-5" />}
         title={detail?.name ?? "Detalhes do usuário"}
         className={
-          detail?.role === "corretor"
+          isCorretorLike(detail?.role)
             ? "max-w-[min(96vw,78rem)]"
             : undefined
         }
@@ -1120,10 +1139,10 @@ function Usuarios() {
           <>
             <FormDialogBody
               className={cn(
-                detail.role === "corretor" && "bg-muted/20",
+                isCorretorLike(detail.role) && "bg-muted/20",
               )}
             >
-              {detail.role === "corretor" ? (
+              {isCorretorLike(detail.role) ? (
                 <BrokerPipeline brokerId={detail.id} leads={leads} />
               ) : null}
               <FormSection
@@ -1262,7 +1281,7 @@ function Usuarios() {
               {((isAdmin &&
                 (detail.role === "corretor" || detail.role === "gerente")) ||
                 (session?.role === "gerente" &&
-                  detail.role === "corretor")) && (
+                  isCorretorLike(detail.role))) && (
                 <Button
                   type="button"
                   variant="secondary"
@@ -1278,7 +1297,7 @@ function Usuarios() {
                   Ver agenda
                 </Button>
               )}
-              {(isAdmin || (isManager && detail.role === "corretor")) && (
+              {(isAdmin || (isManager && isCorretorLike(detail.role))) && (
                 <Button
                   type="button"
                   variant="secondary"

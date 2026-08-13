@@ -40,7 +40,7 @@ import {
   type StageId,
 } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
@@ -227,7 +227,7 @@ export function ComercialFunilBoard({
   }, [isAdmin]);
 
   const corretorOptions = useMemo(() => {
-    let list = assignees.filter((a) => !a.role || a.role === "corretor");
+    let list = assignees.filter((a) => !a.role || isCorretorLike(a.role));
     if (
       isAdmin &&
       filterEquipeId !== "__all__" &&

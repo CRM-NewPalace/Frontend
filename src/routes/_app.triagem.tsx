@@ -20,7 +20,7 @@ import {
   FormSection,
 } from "@/components/form-dialog";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import type { Lead } from "@/lib/crm-types";
 import { useLeads } from "@/lib/leads-store";
@@ -147,7 +147,7 @@ function HistoryTimeline({
   const canSeeOriginal =
     session?.role === "admin" || session?.role === "gerente";
   const canEditOwn =
-    session?.role === "corretor" && Boolean(session?.id);
+    isCorretorLike(session?.role) && Boolean(session?.id);
 
   const [editEvent, setEditEvent] = useState<TriagemEvent | null>(null);
   const [editTexto, setEditTexto] = useState("");
@@ -1052,7 +1052,7 @@ function ManagerTriagem() {
   }, [isAdmin]);
 
   const allCorretores = useMemo(
-    () => assignees.filter((a) => !a.role || a.role === "corretor"),
+    () => assignees.filter((a) => !a.role || isCorretorLike(a.role)),
     [assignees],
   );
 

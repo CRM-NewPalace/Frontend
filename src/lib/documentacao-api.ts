@@ -113,9 +113,11 @@ export type UpdateDocumentacaoInput = Partial<
 
 export async function fetchDocumentacoes(
   corretorId?: string,
+  sort?: string,
 ): Promise<Documentacao[]> {
   const qs = new URLSearchParams();
   if (corretorId) qs.set("corretorId", corretorId);
+  if (sort) qs.set("sort", sort);
   const query = qs.toString();
   return apiFetch<Documentacao[]>(`/documentacao${query ? `?${query}` : ""}`);
 }

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/chart";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { isCorretorLike } from "@/lib/permissions";
 import { useCatalog } from "@/lib/catalog-store";
 import {
   fetchDashboardAdmin,
@@ -171,7 +172,7 @@ function agoraBrasil() {
 function Page() {
   const user = getSession();
 
-  if (user?.role === "corretor") {
+  if (isCorretorLike(user?.role)) {
     return <DashboardCorretorView />;
   }
 

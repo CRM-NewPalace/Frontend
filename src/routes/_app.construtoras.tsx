@@ -32,6 +32,12 @@ import {
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import {
   fetchEmpreendimentos,
   updateEmpreendimento,
@@ -113,6 +119,7 @@ function ConstrutorasPage() {
   const canCreate = canManage;
 
   const [items, setItems] = useState<Construtora[]>([]);
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
@@ -150,6 +157,28 @@ function ConstrutorasPage() {
   const driveHubItems = useMemo(
     () => items.filter((item) => Boolean(item.driveFolderUrl?.trim())),
     [items],
+  );
+
+  const sortedItems = useMemo(
+    () =>
+      sortByTableOrder(
+        items,
+        sort,
+        (item) => item.nome,
+        (item) => item.createdAt,
+      ),
+    [items, sort],
+  );
+
+  const sortedDriveHubItems = useMemo(
+    () =>
+      sortByTableOrder(
+        driveHubItems,
+        sort,
+        (item) => item.nome,
+        (item) => item.createdAt,
+      ),
+    [driveHubItems, sort],
   );
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -333,7 +362,7 @@ function ConstrutorasPage() {
         }
       />
 
-      {!loading && driveHubItems.length > 0 ? (
+      {!loading && sortedDriveHubItems.length > 0 ? (
         <Card className="mb-4">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Arquivos no Drive</CardTitle>
@@ -343,7 +372,7 @@ function ConstrutorasPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {driveHubItems.map((item) => {
+              {sortedDriveHubItems.map((item) => {
                 const bg = item.cor || "#079ED4";
                 return (
                   <button
@@ -375,6 +404,9 @@ function ConstrutorasPage() {
         </Card>
       ) : null}
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <TableSortSelect value={sort} onChange={setSort} />
+      </div>
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
@@ -400,7 +432,7 @@ function ConstrutorasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
+                {sortedItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">
                       {item.cor ? (

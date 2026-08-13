@@ -56,7 +56,13 @@ import {
   DetailField,
 } from "@/components/form-dialog";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
@@ -217,13 +223,25 @@ function Clientes() {
     return scoped.filter((l) => l.tipo === "cliente");
   }, [allLeads, user]);
 
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
+  const sortedClientes = useMemo(
+    () =>
+      sortByTableOrder(
+        clientes,
+        sort,
+        (c) => c.nome,
+        (c) => c.createdAt,
+      ),
+    [clientes, sort],
+  );
+
   const corretorOptions = useMemo(
     () =>
       assignees
         .filter(
           (a) =>
             !a.role ||
-            a.role === "corretor" ||
+            isCorretorLike(a.role) ||
             (canOwnCarteira &&
               (a.role === "admin" || a.role === "gerente") &&
               a.id === user?.id),
@@ -642,6 +660,9 @@ function Clientes() {
           </>
         }
       />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <TableSortSelect value={sort} onChange={setSort} />
+      </div>
       <Card className="overflow-hidden">
         <Table>
           <TableHeader>
@@ -670,7 +691,7 @@ function Clientes() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clientes.map((l) => (
+            {sortedClientes.map((l) => (
               <TableRow
                 key={l.id}
                 className="hover:bg-muted/40 cursor-pointer"

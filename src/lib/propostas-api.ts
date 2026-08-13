@@ -259,10 +259,12 @@ export async function fetchEnderecoPorCep(cep: string): Promise<EnderecoCep> {
 export async function fetchPropostas(params?: {
   corretorId?: string;
   status?: PropostaStatus;
+  sort?: string;
 }): Promise<Proposta[]> {
   const qs = new URLSearchParams();
   if (params?.corretorId) qs.set("corretorId", params.corretorId);
   if (params?.status) qs.set("status", params.status);
+  if (params?.sort) qs.set("sort", params.sort);
   const query = qs.toString();
   return apiFetch<Proposta[]>(`/propostas${query ? `?${query}` : ""}`);
 }

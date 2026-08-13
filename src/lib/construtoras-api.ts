@@ -60,8 +60,13 @@ export function construtoraBadgeStyle(
   };
 }
 
-export async function fetchConstrutoras(): Promise<Construtora[]> {
-  return apiFetch<Construtora[]>("/construtoras");
+export async function fetchConstrutoras(params?: {
+  sort?: string;
+}): Promise<Construtora[]> {
+  const qs = new URLSearchParams();
+  if (params?.sort) qs.set("sort", params.sort);
+  const query = qs.toString();
+  return apiFetch<Construtora[]>(`/construtoras${query ? `?${query}` : ""}`);
 }
 
 export async function createConstrutora(

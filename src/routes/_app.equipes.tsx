@@ -40,6 +40,7 @@ import {
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { isCorretorLike } from "@/lib/permissions";
 import {
   createEquipe,
   deleteEquipe,
@@ -383,7 +384,7 @@ function EquipesPage() {
   }
 
   async function handleResetPassword(member: EquipeMember) {
-    if (!canResetMemberPassword || member.role !== "corretor") return;
+    if (!canResetMemberPassword || !isCorretorLike(member.role)) return;
     setResettingId(member.id);
     try {
       const result = await resetUserPassword(member.id);

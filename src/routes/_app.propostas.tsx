@@ -76,6 +76,12 @@ import { getSession } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { brl, type Lead } from "@/lib/crm-types";
 import { canViewTeamData } from "@/lib/permissions";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import { useLeads } from "@/lib/leads-store";
 import { fetchConstrutoras, type Construtora } from "@/lib/construtoras-api";
 import {
@@ -706,6 +712,7 @@ function Page() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [status, setStatus] = useState<PropostaStatus | "todos">("todos");
   const [corretorId, setCorretorId] = useState("todos");
   const [equipeId, setEquipeId] = useState("todos");
@@ -844,6 +851,17 @@ function Page() {
       return hay.includes(q);
     });
   }, [items, search, status, corretorId, equipeId]);
+
+  const sortedRows = useMemo(
+    () =>
+      sortByTableOrder(
+        rows,
+        sort,
+        (p) => p.clienteNome,
+        (p) => p.createdAt,
+      ),
+    [rows, sort],
+  );
 
   const kpis = useMemo(() => {
     const total = rows.length;
@@ -1259,6 +1277,7 @@ function Page() {
             className="pl-9"
           />
         </div>
+        <TableSortSelect value={sort} onChange={setSort} />
         <Select
           value={status}
           onValueChange={(v) => setStatus(v as PropostaStatus | "todos")}
@@ -1347,7 +1366,7 @@ function Page() {
                   Carregando…
                 </TableCell>
               </TableRow>
-            ) : rows.length === 0 ? (
+            ) : sortedRows.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={8}
@@ -1357,7 +1376,7 @@ function Page() {
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((p) => (
+              sortedRows.map((p) => (
                 <TableRow
                   key={p.id}
                   className="cursor-pointer"

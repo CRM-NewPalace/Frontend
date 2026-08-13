@@ -68,7 +68,13 @@ import {
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import { TableSortSelect } from "@/components/table-sort-select";
+import {
+  DEFAULT_TABLE_SORT,
+  sortByTableOrder,
+  type TableSort,
+} from "@/lib/table-sort";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { ApiError } from "@/lib/api";
@@ -313,7 +319,7 @@ function DocumentacaoPage() {
       return true;
     }
     // Corretor/gerente: só as próprias fichas comerciais.
-    if (user.role === "corretor" || user.role === "gerente") {
+    if (isCorretorLike(user.role) || user.role === "gerente") {
       return doc.autor.id === user.id;
     }
     return false;
@@ -345,7 +351,8 @@ function DocumentacaoPage() {
   const canQuickCreateEmpreendimento =
     user?.role === "admin" ||
     user?.role === "gerente" ||
-    user?.role === "analista";
+    user?.role === "analista" ||
+    user?.role === "treinee";
   const canCreateStatus = true;
 
   const [items, setItems] = useState<Documentacao[]>([]);
@@ -358,6 +365,7 @@ function DocumentacaoPage() {
   const [loading, setLoading] = useState(true);
   const [filterCorretorId, setFilterCorretorId] = useState<string>("__all__");
   const [filterSearch, setFilterSearch] = useState("");
+  const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [filterStatus1, setFilterStatus1] = useState("__all__");
   const [filterStatus2, setFilterStatus2] = useState("__all__");
   const [filterFonte, setFilterFonte] = useState("__all__");
@@ -444,7 +452,7 @@ function DocumentacaoPage() {
     return assignees.filter(
       (a) =>
         !a.role ||
-        a.role === "corretor" ||
+        isCorretorLike(a.role) ||
         (canOwnCarteira &&
           (a.role === "admin" || a.role === "gerente") &&
           a.id === user?.id),
@@ -680,6 +688,17 @@ function DocumentacaoPage() {
     periodRange,
     filterCampoData,
   ]);
+
+  const sortedItems = useMemo(
+    () =>
+      sortByTableOrder(
+        filteredItems,
+        sort,
+        (doc) => doc.nome,
+        (doc) => doc.createdAt,
+      ),
+    [filteredItems, sort],
+  );
 
   const pipelineSummary = useMemo(() => {
     const base = filteredItems.reduce(
@@ -1022,7 +1041,7 @@ function DocumentacaoPage() {
     base.createdAt = todayDateInput();
     // Admin/gerente/analista escolhem o corretor na ficha.
     // Só o corretor se auto-preenche.
-    if (user?.role === "corretor") {
+    if (user && isCorretorLike(user.role)) {
       base.corretorId = user.id;
       base.gerenteId = gerenteIdOfCorretor(user.id);
     } else if (user?.role === "gerente") {
@@ -1508,7 +1527,7 @@ function DocumentacaoPage() {
               /* cota / permissão */
             }
           }
-          if (!corretorId && user?.role === "corretor") {
+          if (!corretorId && user && isCorretorLike(user.role)) {
             corretorId = user.id;
           }
 
@@ -1751,6 +1770,13 @@ function DocumentacaoPage() {
                   className="pl-9"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                Ordenar
+              </Label>
+              <TableSortSelect value={sort} onChange={setSort} />
             </div>
 
             <div className="w-full sm:w-37.5">
@@ -2198,7 +2224,7 @@ function DocumentacaoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredItems.map((doc) => (
+                {sortedItems.map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell className="max-w-40">
                       <div

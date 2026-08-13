@@ -29,10 +29,12 @@ export type CreateEmpreendimentoInput = {
 export async function fetchEmpreendimentos(params?: {
   construtoraId?: string;
   ativo?: boolean;
+  sort?: string;
 }): Promise<Empreendimento[]> {
   const qs = new URLSearchParams();
   if (params?.construtoraId) qs.set("construtoraId", params.construtoraId);
   if (params?.ativo !== undefined) qs.set("ativo", String(params.ativo));
+  if (params?.sort) qs.set("sort", params.sort);
   const query = qs.toString();
   return apiFetch<Empreendimento[]>(
     `/empreendimentos${query ? `?${query}` : ""}`,

@@ -49,7 +49,7 @@ import {
 import { AgendaDayTable } from "@/components/agenda-day-table";
 import { TimePicker } from "@/components/time-picker";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
@@ -376,7 +376,7 @@ function AgendaPage() {
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     }
     return assignees
-      .filter((a) => a.role === "corretor")
+      .filter((a) => isCorretorLike(a.role))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   }, [assignees, assignUsers, isAdmin]);
 
@@ -385,6 +385,7 @@ function AgendaPage() {
     if (role === "gerente") return "Gerente";
     if (role === "analista") return "Analista";
     if (role === "corretor") return "Corretor";
+    if (role === "treinee") return "Treinee";
     return role;
   };
 
@@ -554,7 +555,7 @@ function AgendaPage() {
       );
       return;
     }
-    if (item.tipo === "bloqueio" && user?.role === "corretor") {
+    if (item.tipo === "bloqueio" && isCorretorLike(user?.role)) {
       toast.message("Horário bloqueado", {
         description: item.titulo,
       });
@@ -1686,7 +1687,7 @@ function AgendaPage() {
                     </Select>
                     <p className="text-[11px] text-muted-foreground">
                       {form.escopo === "com_gerente"
-                        ? user?.role === "corretor"
+                        ? isCorretorLike(user?.role)
                           ? "Será enviada solicitação ao gerente para aprovar."
                           : "Compromisso com participação do gerente."
                         : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
@@ -1723,7 +1724,7 @@ function AgendaPage() {
                       {corretorAssignOptions.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {isAdmin
-                            ? `${c.name} (${assignRoleLabel(c.role)})`
+                            ? `${c.name} (${assignRoleLabel(c.role ?? "")})`
                             : c.name}
                         </SelectItem>
                       ))}

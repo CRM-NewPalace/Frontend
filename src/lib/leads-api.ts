@@ -139,6 +139,7 @@ export async function fetchLeads(params?: {
   corretorId?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 }): Promise<PaginatedLeads> {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
@@ -148,6 +149,7 @@ export async function fetchLeads(params?: {
   if (params?.prioridade) qs.set("prioridade", params.prioridade);
   if (params?.origem) qs.set("origem", params.origem);
   if (params?.corretorId) qs.set("corretorId", params.corretorId);
+  if (params?.sort) qs.set("sort", params.sort);
   qs.set("page", String(params?.page ?? 1));
   qs.set("limit", String(params?.limit ?? 100));
   const query = qs.toString();
@@ -304,9 +306,11 @@ export async function fetchLostLeads(params?: {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 }): Promise<PaginatedLeads> {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
+  if (params?.sort) qs.set("sort", params.sort);
   qs.set("page", String(params?.page ?? 1));
   qs.set("limit", String(params?.limit ?? 100));
   return apiFetch<PaginatedLeads>(`/leads/perdidos?${qs.toString()}`);
@@ -317,9 +321,11 @@ export async function fetchLostClientes(params?: {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 }): Promise<PaginatedLeads> {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
+  if (params?.sort) qs.set("sort", params.sort);
   qs.set("page", String(params?.page ?? 1));
   qs.set("limit", String(params?.limit ?? 100));
   return apiFetch<PaginatedLeads>(`/leads/clientes-perdidos?${qs.toString()}`);
