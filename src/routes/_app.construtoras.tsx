@@ -138,14 +138,6 @@ function uniqueLocalidades(items: Construtora[]) {
   );
 }
 
-function normalizePlaceName(value: string) {
-  return value
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR");
-}
-
 function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
@@ -168,9 +160,6 @@ function ConstrutorasPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
-  const [empreendimentosCatalog, setEmpreendimentosCatalog] = useState<
-    Empreendimento[]
-  >([]);
   const [selectedEmpreendimentos, setSelectedEmpreendimentos] = useState<
     string[]
   >([]);
@@ -190,14 +179,12 @@ function ConstrutorasPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const [construtoras, locs, emps] = await Promise.all([
+      const [construtoras, locs] = await Promise.all([
         fetchConstrutoras(),
         fetchLocalidades(),
-        fetchEmpreendimentos({ ativo: true }),
       ]);
       setItems(construtoras);
       setLocalidades(locs);
-      setEmpreendimentosCatalog(emps);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -266,51 +253,16 @@ function ConstrutorasPage() {
   );
 
   const visibilityCities = useMemo(() => {
-    const map = new Map<string, { key: string; nome: string }>();
-    for (const localidade of localidades) {
-      const key = normalizePlaceName(localidade.nome);
-      if (!key) continue;
-      if (!map.has(key)) map.set(key, { key, nome: localidade.nome });
-    }
-    for (const empreendimento of empreendimentosCatalog) {
-      const nome = empreendimento.cidade?.trim();
-      if (!nome) continue;
-      const key = normalizePlaceName(nome);
-      if (!key || map.has(key)) continue;
-      map.set(key, { key, nome });
-    }
-    let rows = [...map.values()].sort((a, b) =>
+    let rows = [...localidades].sort((a, b) =>
       a.nome.localeCompare(b.nome, "pt-BR"),
     );
     if (driveFilterLocalidadeId) {
-      const selected = localidades.find(
+      rows = rows.filter(
         (localidade) => localidade.id === driveFilterLocalidadeId,
       );
-      if (selected) {
-        const key = normalizePlaceName(selected.nome);
-        rows = rows.filter((row) => row.key === key);
-      }
     }
     return rows;
-  }, [localidades, empreendimentosCatalog, driveFilterLocalidadeId]);
-
-  const presenceByConstrutora = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const empreendimento of empreendimentosCatalog) {
-      if (!empreendimento.construtoraId || !empreendimento.cidade?.trim()) {
-        continue;
-      }
-      const key = normalizePlaceName(empreendimento.cidade);
-      if (!key) continue;
-      let cities = map.get(empreendimento.construtoraId);
-      if (!cities) {
-        cities = new Set();
-        map.set(empreendimento.construtoraId, cities);
-      }
-      cities.add(key);
-    }
-    return map;
-  }, [empreendimentosCatalog]);
+  }, [localidades, driveFilterLocalidadeId]);
 
   useEffect(() => {
     if (
@@ -715,8 +667,8 @@ function ConstrutorasPage() {
                   Visibilidade por cidade
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  V quando a construtora tem empreendimento na cidade; X quando
-                  não tem.
+                  V quando a construtora já tem a localidade cadastrada; X
+                  quando não tem.
                 </p>
               </div>
               {canManage ? (
@@ -765,71 +717,74 @@ function ConstrutorasPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <Table className="min-w-max">
+                <Table className="min-w-max [&_th]:px-3 [&_td]:px-3">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="sticky left-0 z-20 min-w-40 bg-muted text-foreground">
-                        Cidade
+                      <TableHead className="sticky left-0 z-20 min-w-44">
+                        Construtora
                       </TableHead>
-                      {sortedItems.map((item) => (
+                      {visibilityCities.map((cidade) => (
                         <TableHead
-                          key={item.id}
-                          className="min-w-24 max-w-32 bg-muted px-2 text-center text-foreground"
-                          title={item.nome}
+                          key={cidade.id}
+                          className="min-w-24 max-w-36 px-2 text-center"
+                          title={cidade.nome}
                         >
                           <span className="line-clamp-2 text-xs font-medium leading-tight">
-                            {item.nome}
+                            {cidade.nome}
                           </span>
                         </TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visibilityCities.map((cidade, index) => (
-                      <TableRow
-                        key={cidade.key}
-                        className={cn(
-                          "hover:bg-transparent",
-                          index % 2 === 1 ? "bg-muted/40" : "bg-background",
-                        )}
-                      >
-                        <TableCell
+                    {sortedItems.map((item, index) => {
+                      const linkedIds = new Set(
+                        (item.localidades ?? []).map(
+                          (localidade) => localidade.id,
+                        ),
+                      );
+                      return (
+                        <TableRow
+                          key={item.id}
                           className={cn(
-                            "sticky left-0 z-10 font-medium",
+                            "hover:bg-transparent",
                             index % 2 === 1 ? "bg-muted/40" : "bg-background",
                           )}
                         >
-                          {cidade.nome}
-                        </TableCell>
-                        {sortedItems.map((item) => {
-                          const present = Boolean(
-                            presenceByConstrutora
-                              .get(item.id)
-                              ?.has(cidade.key),
-                          );
-                          return (
-                            <TableCell
-                              key={item.id}
-                              className="px-2 text-center"
-                            >
-                              {present ? (
-                                <Check
-                                  className="mx-auto h-5 w-5 text-emerald-600"
-                                  strokeWidth={2.75}
-                                  aria-label={`${item.nome} tem empreendimento em ${cidade.nome}`}
-                                />
-                              ) : (
-                                <X
-                                  className="mx-auto h-5 w-5 text-red-500"
-                                  strokeWidth={2.75}
-                                  aria-label={`${item.nome} sem empreendimento em ${cidade.nome}`}
-                                />
-                              )}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
+                          <TableCell
+                            className={cn(
+                              "sticky left-0 z-10 font-medium",
+                              index % 2 === 1 ? "bg-muted/40" : "bg-background",
+                            )}
+                          >
+                            {item.nome}
+                          </TableCell>
+                          {visibilityCities.map((cidade) => {
+                            const present = linkedIds.has(cidade.id);
+                            return (
+                              <TableCell
+                                key={cidade.id}
+                                className="px-2 text-center"
+                              >
+                                {present ? (
+                                  <Check
+                                    className="mx-auto h-5 w-5 text-emerald-600"
+                                    strokeWidth={2.75}
+                                    aria-label={`${item.nome} atua em ${cidade.nome}`}
+                                  />
+                                ) : (
+                                  <X
+                                    className="mx-auto h-5 w-5 text-red-500"
+                                    strokeWidth={2.75}
+                                    aria-label={`${item.nome} sem localidade em ${cidade.nome}`}
+                                  />
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
