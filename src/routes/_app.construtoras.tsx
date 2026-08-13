@@ -39,6 +39,7 @@ import {
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { useHeaderSearch } from "@/lib/header-search";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
   DEFAULT_TABLE_SORT,
@@ -151,9 +152,8 @@ function ConstrutorasPage() {
   const [loadingLocalidades, setLoadingLocalidades] = useState(false);
   const [newLocalidadeNome, setNewLocalidadeNome] = useState("");
   const [savingLocalidade, setSavingLocalidade] = useState(false);
-  const [driveItems, setDriveItems] = useState<Construtora[]>([]);
-  const [driveLoading, setDriveLoading] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
+  const { value: search } = useHeaderSearch("Buscar construtora...");
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -170,34 +170,9 @@ function ConstrutorasPage() {
     }
   }, []);
 
-  const loadDriveItems = useCallback(async () => {
-    setDriveLoading(true);
-    try {
-      setDriveItems(
-        await fetchConstrutoras({
-          comDrive: true,
-          localidadeId: driveFilterLocalidadeId || undefined,
-        }),
-      );
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível carregar as pastas do Drive.",
-      );
-      setDriveItems([]);
-    } finally {
-      setDriveLoading(false);
-    }
-  }, [driveFilterLocalidadeId]);
-
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
-
-  useEffect(() => {
-    void loadDriveItems();
-  }, [loadDriveItems]);
 
   useEffect(() => {
     void fetchLocalidades()
@@ -207,45 +182,60 @@ function ConstrutorasPage() {
       });
   }, []);
 
-  const driveHubAvailable = useMemo(
-    () => items.some((item) => Boolean(item.driveFolderUrl?.trim())),
-    [items],
-  );
+  const searchQuery = search.trim().toLocaleLowerCase("pt-BR");
+
+  const matchingItems = useMemo(() => {
+    if (!searchQuery) return items;
+    return items.filter((item) =>
+      item.nome.toLocaleLowerCase("pt-BR").includes(searchQuery),
+    );
+  }, [items, searchQuery]);
+
+  const driveHubItems = useMemo(() => {
+    return matchingItems.filter((item) => {
+      if (!item.driveFolderUrl?.trim()) return false;
+      if (!driveFilterLocalidadeId) return true;
+      return (item.localidades ?? []).some(
+        (localidade) => localidade.id === driveFilterLocalidadeId,
+      );
+    });
+  }, [matchingItems, driveFilterLocalidadeId]);
 
   const sortedItems = useMemo(
     () =>
       sortByTableOrder(
-        items,
+        matchingItems,
         sort,
         (item) => item.nome,
         (item) => item.createdAt,
       ),
-    [items, sort],
+    [matchingItems, sort],
   );
 
   const sortedDriveItems = useMemo(
     () =>
       sortByTableOrder(
-        driveItems,
+        driveHubItems,
         sort,
         (item) => item.nome,
         (item) => item.createdAt,
       ),
-    [driveItems, sort],
+    [driveHubItems, sort],
   );
 
-  const showDriveHub = !loading && (driveHubAvailable || Boolean(driveFilterLocalidadeId));
+  const showDriveHub =
+    !loading &&
+    (driveHubItems.length > 0 || Boolean(driveFilterLocalidadeId));
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function loadLocalidades(selectedIds: string[] = []) {
+    setSelectedLocalidades(selectedIds);
     setLoadingLocalidades(true);
     try {
-      const list = await fetchLocalidades();
-      setLocalidades(list);
-      setSelectedLocalidades(selectedIds);
+      setLocalidades(await fetchLocalidades());
     } catch {
       setLocalidades([]);
       toast.error("Não foi possível carregar as localidades.");
@@ -383,7 +373,7 @@ function ConstrutorasPage() {
         toast.success("Construtora atualizada.");
       }
       setOpen(false);
-      await Promise.all([loadItems(), loadDriveItems()]);
+      await loadItems();
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível salvar.",
@@ -399,7 +389,7 @@ function ConstrutorasPage() {
       await deleteConstrutora(deleteId);
       toast.success("Construtora excluída.");
       setDeleteId(null);
-      await Promise.all([loadItems(), loadDriveItems()]);
+      await loadItems();
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível excluir.",
@@ -515,12 +505,7 @@ function ConstrutorasPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {driveLoading ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Carregando…
-              </div>
-            ) : sortedDriveItems.length === 0 ? (
+            {sortedDriveItems.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 Nenhuma pasta do Drive nesta região.
               </p>
@@ -573,6 +558,11 @@ function ConstrutorasPage() {
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
               <Building className="w-8 h-8 opacity-40" />
               <p>Nenhuma construtora cadastrada.</p>
+            </div>
+          ) : matchingItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+              <Building className="w-8 h-8 opacity-40" />
+              <p>Nenhuma construtora encontrada.</p>
             </div>
           ) : (
             <Table className="[&_th]:px-4 [&_td]:px-4">
