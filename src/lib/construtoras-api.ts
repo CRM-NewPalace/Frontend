@@ -15,6 +15,27 @@ export type Construtora = {
   updatedAt: string;
   localidades?: Array<{ id: string; nome: string }>;
   _count?: { empreendimentos: number; documentacoes: number };
+  vendas?: number;
+  vgv?: number;
+};
+
+export type ConstrutoraVenda = {
+  id: string;
+  corretorId: string | null;
+  corretor: string;
+  creci: string | null;
+  gerente: string | null;
+  empreendimento: string | null;
+  vgv: number;
+  cliente: string;
+  clienteCpf: string | null;
+  dataVenda: string | null;
+};
+
+export type ConstrutoraVendas = {
+  construtora: { id: string; nome: string; cor: string | null };
+  totais: { vendas: number; vgv: number; corretores: number };
+  items: ConstrutoraVenda[];
 };
 
 export type CreateConstrutoraInput = {
@@ -100,8 +121,8 @@ export async function updateConstrutora(
   });
 }
 
-export async function deleteConstrutora(id: string): Promise<void> {
-  await apiFetch<{ ok: boolean }>(`/construtoras/${id}`, {
-    method: "DELETE",
-  });
+export async function fetchConstrutoraVendas(
+  id: string,
+): Promise<ConstrutoraVendas> {
+  return apiFetch<ConstrutoraVendas>(`/construtoras/${id}/vendas`);
 }

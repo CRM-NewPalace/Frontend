@@ -58,9 +58,11 @@ import {
   construtoraBadgeStyle,
   createConstrutora,
   deleteConstrutora,
+  fetchConstrutoraVendas,
   fetchConstrutoras,
   updateConstrutora,
   type Construtora,
+  type ConstrutoraVenda,
 } from "@/lib/construtoras-api";
 import {
   createLocalidade,
@@ -84,9 +86,10 @@ import {
   FolderOpen,
   Check,
   X,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCpfCnpj } from "@/lib/utils";
 import {
   formatPhone,
   isValidPhone,
@@ -99,7 +102,7 @@ export const Route = createFileRoute("/_app/construtoras")({
   component: ConstrutorasPage,
 });
 
-type ConstrutorasTab = "books" | "lista" | "visibilidade";
+type ConstrutorasTab = "books" | "lista" | "vendas" | "visibilidade";
 type FormTab =
   | "identidade"
   | "contato"
@@ -154,6 +157,16 @@ function uniqueLocalidades(items: Construtora[]) {
   );
 }
 
+function money(n: number) {
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function dateBr(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : "—";
+}
+
 function ConstrutorasPage() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
@@ -203,6 +216,14 @@ function ConstrutorasPage() {
   const [tab, setTab] = useState<ConstrutorasTab>("books");
   const [formTab, setFormTab] = useState<FormTab>("identidade");
   const [search, setSearch] = useState("");
+  const [vendasConstrutoraId, setVendasConstrutoraId] = useState("");
+  const [vendas, setVendas] = useState<ConstrutoraVenda[]>([]);
+  const [vendasTotais, setVendasTotais] = useState({
+    vendas: 0,
+    vgv: 0,
+    corretores: 0,
+  });
+  const [loadingVendas, setLoadingVendas] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -227,6 +248,38 @@ function ConstrutorasPage() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    if (!vendasConstrutoraId) {
+      setVendas([]);
+      setVendasTotais({ vendas: 0, vgv: 0, corretores: 0 });
+      return;
+    }
+    let cancelled = false;
+    setLoadingVendas(true);
+    void fetchConstrutoraVendas(vendasConstrutoraId)
+      .then((data) => {
+        if (cancelled) return;
+        setVendas(data.items);
+        setVendasTotais(data.totais);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setVendas([]);
+        setVendasTotais({ vendas: 0, vgv: 0, corretores: 0 });
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar as vendas da construtora.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingVendas(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [vendasConstrutoraId]);
 
   const searchQuery = search.trim().toLocaleLowerCase("pt-BR");
 
@@ -688,6 +741,11 @@ function ConstrutorasPage() {
     );
   }
 
+  function openVendas(item: Construtora) {
+    setVendasConstrutoraId(item.id);
+    setTab("vendas");
+  }
+
   return (
     <div>
       <PageHeader
@@ -763,6 +821,10 @@ function ConstrutorasPage() {
           <TabsTrigger value="lista" className="gap-1.5 rounded-full px-4">
             <Building className="h-3.5 w-3.5" />
             Lista
+          </TabsTrigger>
+          <TabsTrigger value="vendas" className="gap-1.5 rounded-full px-4">
+            <Wallet className="h-3.5 w-3.5" />
+            Vendas
           </TabsTrigger>
           <TabsTrigger value="visibilidade" className="gap-1.5 rounded-full px-4">
             <MapPin className="h-3.5 w-3.5" />
@@ -864,6 +926,8 @@ function ConstrutorasPage() {
                       <TableHead>Viabilizador</TableHead>
                       <TableHead>Localidades</TableHead>
                       <TableHead className="text-center">Empreend.</TableHead>
+                      <TableHead className="text-center">Vendas</TableHead>
+                      <TableHead className="text-right">VGV</TableHead>
                       <TableHead className="text-center">Docs</TableHead>
                       <TableHead className="w-30" />
                     </TableRow>
@@ -934,6 +998,22 @@ function ConstrutorasPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto px-2 py-0.5"
+                            onClick={() => openVendas(item)}
+                            title="Ver vendas"
+                          >
+                            <Badge variant="secondary">
+                              {item.vendas ?? 0}
+                            </Badge>
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {money(item.vgv ?? 0)}
+                        </TableCell>
+                        <TableCell className="text-center">
                           <Badge variant="secondary">
                             {item._count?.documentacoes ?? 0}
                           </Badge>
@@ -969,6 +1049,130 @@ function ConstrutorasPage() {
                               </Button>
                             )}
                           </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vendas" className="mt-0 space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Vendas por construtora</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Selecione a construtora para ver os corretores que venderam nela.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="max-w-md">
+                <Label className="mb-1.5 block text-xs">Construtora</Label>
+                <Select
+                  value={vendasConstrutoraId || "__none__"}
+                  onValueChange={(value) =>
+                    setVendasConstrutoraId(value === "__none__" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a construtora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Selecione…</SelectItem>
+                    {sortedItems.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.nome}
+                        {typeof item.vendas === "number"
+                          ? ` · ${item.vendas} venda${item.vendas === 1 ? "" : "s"}`
+                          : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {vendasConstrutoraId ? (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">Vendas</div>
+                    <div className="text-lg font-semibold tabular-nums">
+                      {vendasTotais.vendas}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">VGV</div>
+                    <div className="text-lg font-semibold tabular-nums">
+                      {money(vendasTotais.vgv)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">
+                      Corretores
+                    </div>
+                    <div className="text-lg font-semibold tabular-nums">
+                      {vendasTotais.corretores}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              {!vendasConstrutoraId ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
+                  <Wallet className="h-8 w-8 opacity-40" />
+                  <p>Selecione uma construtora para ver as vendas.</p>
+                </div>
+              ) : loadingVendas ? (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Carregando vendas…
+                </div>
+              ) : vendas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
+                  <Wallet className="h-8 w-8 opacity-40" />
+                  <p>Nenhuma venda nesta construtora.</p>
+                </div>
+              ) : (
+                <Table className="min-w-220 [&_th]:px-4 [&_td]:px-4">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Corretor</TableHead>
+                      <TableHead>CRECI</TableHead>
+                      <TableHead>Gerente</TableHead>
+                      <TableHead>Empreendimento</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>CPF</TableHead>
+                      <TableHead className="text-right">VGV</TableHead>
+                      <TableHead>Data de venda</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {vendas.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="font-medium">
+                          {row.corretor}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {row.creci || "—"}
+                        </TableCell>
+                        <TableCell>{row.gerente || "—"}</TableCell>
+                        <TableCell>{row.empreendimento || "—"}</TableCell>
+                        <TableCell>{row.cliente}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {row.clienteCpf
+                            ? formatCpfCnpj(row.clienteCpf)
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-medium">
+                          {money(row.vgv)}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {dateBr(row.dataVenda)}
                         </TableCell>
                       </TableRow>
                     ))}
