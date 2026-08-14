@@ -258,7 +258,7 @@ export function GuiaPlataformaPage() {
       </div>
 
       <div className="flex gap-6 lg:items-start">
-        <nav className="sticky top-20 hidden w-56 shrink-0 lg:block">
+        <nav className="sticky top-20 hidden w-56 shrink-0 self-start max-h-[calc(100dvh-6rem)] overflow-y-auto pr-1 lg:block">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Seções
           </p>

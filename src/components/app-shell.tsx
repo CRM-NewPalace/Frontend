@@ -1099,7 +1099,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-clip">
           {children}
         </main>
       </div>
