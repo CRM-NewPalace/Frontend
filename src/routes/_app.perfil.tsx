@@ -83,10 +83,10 @@ function Perfil() {
         description="Gerencie suas informações e preferências."
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Avatar className="w-24 h-24 mx-auto mb-3">
-              <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+        <Card className="flex h-full flex-col">
+          <CardContent className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <Avatar className="mb-3 h-24 w-24">
+              <AvatarFallback className="bg-primary text-2xl text-primary-foreground">
                 {initials}
               </AvatarFallback>
             </Avatar>

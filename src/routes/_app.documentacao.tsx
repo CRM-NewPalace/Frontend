@@ -106,10 +106,45 @@ import {
   isStatusVendido,
   matchesDocPipelineStatus,
   status1Group,
+  status2Group,
   statusesMatch,
   type DocPipelineStatus,
 } from "@/lib/documentacao-status";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
+
+const DOC_CHIP =
+  "inline-flex h-5 max-w-28 items-center justify-center truncate rounded-md border px-1.5 text-[10px] font-normal leading-none";
+
+function status1ChipClass(status: string) {
+  const group = status1Group(status);
+  if (group === "aprovado") {
+    return "border-emerald-200/80 bg-emerald-100 text-emerald-800";
+  }
+  if (group === "reprovado") {
+    return "border-red-200/80 bg-red-100 text-red-800";
+  }
+  if (group === "analise") {
+    return "border-amber-200/80 bg-amber-100 text-amber-900";
+  }
+  if (group === "pre_analise") {
+    return "border-sky-200/80 bg-sky-100 text-sky-900";
+  }
+  return "border-border/70 bg-muted text-foreground";
+}
+
+function status2ChipClass(status: string) {
+  const group = status2Group(status);
+  if (group === "vendido") {
+    return "border-emerald-200/80 bg-emerald-100 text-emerald-800";
+  }
+  if (group === "bacen") {
+    return "border-violet-200/80 bg-violet-100 text-violet-800";
+  }
+  if (group === "andamento") {
+    return "border-blue-200/80 bg-blue-100 text-blue-800";
+  }
+  return "border-border/70 bg-secondary text-secondary-foreground";
+}
 
 function docInVendaPeriod(
   doc: { dataVenda: string | null; createdAt: string },
@@ -358,8 +393,7 @@ function DocumentacaoPage() {
     user?.role === "analista" ||
     user?.role === "gerente" ||
     user?.role === "treinee";
-  const canMutateDocs =
-    user?.role === "admin" || user?.role === "analista";
+  const canMutateDocs = user?.role === "admin" || user?.role === "analista";
   const {
     leads,
     assignees,
@@ -376,14 +410,27 @@ function DocumentacaoPage() {
     documentacaoStatus2,
     addItem,
   } = useCatalog();
-  const fonteCatalog =
-    documentacaoFontes.length > 0
-      ? documentacaoFontes
-      : [...DEFAULT_DOCUMENTACAO_FONTES];
-  const status1Catalog =
-    documentacaoStatus1.length > 0 ? documentacaoStatus1 : [...DEFAULT_STATUS1];
-  const status2Catalog =
-    documentacaoStatus2.length > 0 ? documentacaoStatus2 : [...DEFAULT_STATUS2];
+  const fonteCatalog = useMemo(
+    () =>
+      documentacaoFontes.length > 0
+        ? documentacaoFontes
+        : [...DEFAULT_DOCUMENTACAO_FONTES],
+    [documentacaoFontes],
+  );
+  const status1Catalog = useMemo(
+    () =>
+      documentacaoStatus1.length > 0
+        ? documentacaoStatus1
+        : [...DEFAULT_STATUS1],
+    [documentacaoStatus1],
+  );
+  const status2Catalog = useMemo(
+    () =>
+      documentacaoStatus2.length > 0
+        ? documentacaoStatus2
+        : [...DEFAULT_STATUS2],
+    [documentacaoStatus2],
+  );
   const canQuickCreateEmpreendimento =
     user?.role === "admin" ||
     user?.role === "gerente" ||
@@ -402,8 +449,8 @@ function DocumentacaoPage() {
   const [filterCorretorId, setFilterCorretorId] = useState<string>("__all__");
   const [filterSearch, setFilterSearch] = useState("");
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
-  const [filterStatus1, setFilterStatus1] = useState(
-    () => status1FromPipeline(routeSearch.status),
+  const [filterStatus1, setFilterStatus1] = useState(() =>
+    status1FromPipeline(routeSearch.status),
   );
   const [filterStatus2, setFilterStatus2] = useState("__all__");
   const [filterFonte, setFilterFonte] = useState("__all__");
@@ -1014,6 +1061,7 @@ function DocumentacaoPage() {
     empreendimentos,
     corretorOptions,
     gerenteOptions,
+    navigate,
   ]);
 
   const activeFiltersCount = activeFilterChips.length;
@@ -2336,38 +2384,30 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="text-xs [&_th]:h-9 [&_th]:px-5 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:px-5 [&_td]:py-1.5">
+            <Table className="text-xs [&_th]:h-10 [&_th]:px-4 [&_th]:py-2.5 [&_th]:whitespace-nowrap [&_td]:px-4 [&_td]:py-1.5">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-30 max-w-40">
-                    Nome
-                  </TableHead>
-                  <TableHead className="min-w-18">Construtora</TableHead>
-                  <TableHead className="min-w-22 max-w-30">
-                    Empreend.
-                  </TableHead>
-                  <TableHead className="min-w-25">Status</TableHead>
-                  <TableHead className="min-w-18 max-w-24">
-                    Corretor
-                  </TableHead>
-                  <TableHead className="min-w-18 max-w-24">
-                    Gerente
-                  </TableHead>
-                  <TableHead className="min-w-18">Fonte</TableHead>
+                  <TableHead className="min-w-28 max-w-36">Nome</TableHead>
+                  <TableHead className="min-w-28">Construtora</TableHead>
+                  <TableHead className="min-w-32 max-w-40">Empreend.</TableHead>
+                  <TableHead className="min-w-32">Status</TableHead>
+                  <TableHead className="min-w-28 max-w-36">Corretor</TableHead>
+                  <TableHead className="min-w-28 max-w-36">Gerente</TableHead>
+                  <TableHead className="min-w-24">Fonte</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedItems.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell className="max-w-40">
+                  <TableRow key={doc.id} className="align-middle">
+                    <TableCell className="max-w-36">
                       <div
-                        className="table-person-name truncate"
+                        className="table-person-name truncate text-[13.5px]"
                         title={doc.nome}
                       >
                         {doc.nome}
                       </div>
-                      <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-0.5 mt-0.5">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
                         <span>
                           {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}
                         </span>
@@ -2375,10 +2415,8 @@ function DocumentacaoPage() {
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "text-[10px] px-1 py-0 h-4 font-normal",
-                              status1Group(doc.status1) === "reprovado"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-emerald-100 text-emerald-700",
+                              "h-5 border px-1.5 text-[10px] font-medium",
+                              status1ChipClass(doc.status1),
                             )}
                             title="Parecer da documentação"
                           >
@@ -2388,7 +2426,7 @@ function DocumentacaoPage() {
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "text-[10px] px-1 py-0 h-4 font-normal",
+                              "h-5 px-1.5 text-[10px] font-medium",
                               stageBadgeClass(doc.lead.stage),
                             )}
                             title="Etapa atual no funil"
@@ -2402,7 +2440,7 @@ function DocumentacaoPage() {
                       {doc.construtora?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-22 truncate"
+                          className={cn(DOC_CHIP, "border-transparent")}
                           style={construtoraBadgeStyle(doc.construtora.cor)}
                           title={doc.construtora.nome}
                         >
@@ -2416,7 +2454,7 @@ function DocumentacaoPage() {
                       {doc.empreendimento?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-30 truncate"
+                          className={cn(DOC_CHIP, "border-transparent")}
                           style={construtoraBadgeStyle(doc.empreendimento.cor)}
                           title={doc.empreendimento.nome}
                         >
@@ -2427,17 +2465,23 @@ function DocumentacaoPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-0.5">
+                      <div className="flex flex-wrap items-center gap-0.5">
                         <Badge
                           variant="outline"
-                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-22 truncate"
+                          className={cn(
+                            DOC_CHIP,
+                            status1ChipClass(doc.status1),
+                          )}
                           title={doc.status1}
                         >
                           {doc.status1}
                         </Badge>
                         <Badge
                           variant="secondary"
-                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-22 truncate"
+                          className={cn(
+                            DOC_CHIP,
+                            status2ChipClass(doc.status2),
+                          )}
                           title={doc.status2}
                         >
                           {doc.status2}
@@ -2452,7 +2496,7 @@ function DocumentacaoPage() {
                         return (
                           <Badge
                             variant="secondary"
-                            className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-24 truncate"
+                            className={cn(DOC_CHIP, "border-transparent")}
                             style={construtoraBadgeStyle(corretor.cor)}
                             title={corretor.name}
                           >
@@ -2462,13 +2506,13 @@ function DocumentacaoPage() {
                       })()}
                     </TableCell>
                     <TableCell
-                      className="table-person-name max-w-24 truncate text-sm"
+                      className="table-person-name max-w-36 truncate text-sm"
                       title={doc.gerente?.name ?? undefined}
                     >
                       {doc.gerente?.name ?? "—"}
                     </TableCell>
                     <TableCell
-                      className="max-w-24 truncate"
+                      className="max-w-28 truncate text-[11px]"
                       title={displayFonte(doc.fonte)}
                     >
                       {displayFonte(doc.fonte) || "—"}
@@ -3035,7 +3079,11 @@ function DocumentacaoPage() {
               variant="outline"
               onClick={requestCloseDocDialog}
             >
-              {readOnly ? "Fechar" : formMode === "create" && createLocked ? "Sair" : "Cancelar"}
+              {readOnly
+                ? "Fechar"
+                : formMode === "create" && createLocked
+                  ? "Sair"
+                  : "Cancelar"}
             </Button>
             {!readOnly && (
               <Button type="submit" disabled={saving}>

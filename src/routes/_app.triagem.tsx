@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -42,12 +43,15 @@ import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   ClipboardList,
+  Clock,
   Pencil,
   Plus,
+  Search,
   User,
   Users,
   FileText,
   Loader2,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -244,7 +248,7 @@ function HistoryTimeline({
                 {!isLast && (
                   <span
                     aria-hidden
-                    className="mt-1 w-px flex-1 min-h-[1.5rem] bg-border"
+                    className="mt-1 w-px flex-1 min-h-6 bg-border"
                   />
                 )}
               </div>
@@ -317,11 +321,11 @@ function HistoryTimeline({
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap pl-0 sm:pl-[2.625rem]">
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap pl-0 sm:pl-10.5">
                     {ev.texto}
                   </p>
                   {canSeeOriginal && ev.textoAnterior ? (
-                    <div className="pl-0 sm:pl-[2.625rem] space-y-2">
+                    <div className="pl-0 sm:pl-10.5 space-y-2">
                       <Button
                         type="button"
                         variant="link"
@@ -692,60 +696,62 @@ function CorretorTriagem() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Triagem"
-        description="Registre relatos a qualquer momento — avançar a etapa do funil é opcional."
-        actions={
-          <Button size="sm" onClick={openCreateManual}>
-            <Plus className="w-4 h-4 mr-1" />
-            Criar triagem
-          </Button>
-        }
-      />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0">
+        <PageHeader
+          title="Triagem"
+          description="Registre relatos a qualquer momento — avançar a etapa do funil é opcional."
+          actions={
+            <Button size="sm" onClick={openCreateManual}>
+              <Plus className="mr-1 h-4 w-4" />
+              Criar triagem
+            </Button>
+          }
+        />
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
-        <div className="w-full sm:w-[220px]">
-          <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Etapa do funil" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas as etapas</SelectItem>
-              {funnelStages
-                .filter((s) => s.papel !== "perdido")
-                .map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="w-full sm:w-55">
+            <Select value={stageFilter} onValueChange={setStageFilter}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Etapa do funil" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas as etapas</SelectItem>
+                {funnelStages
+                  .filter((s) => s.papel !== "perdido")
+                  .map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {stageFilter !== "__all__" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setStageFilter("__all__")}
+            >
+              Limpar filtro
+            </Button>
+          )}
         </div>
-        {stageFilter !== "__all__" && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setStageFilter("__all__")}
-          >
-            Limpar filtro
-          </Button>
-        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-5 space-y-4">
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Users className="w-4 h-4 text-primary" />
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-4 max-lg:min-h-80 lg:col-span-5">
+          <Card className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden p-4">
+            <div className="flex shrink-0 items-center gap-2 text-sm font-medium">
+              <Users className="h-4 w-4 text-primary" />
               Leads
-              <span className="text-xs text-muted-foreground font-normal">
+              <span className="text-xs font-normal text-muted-foreground">
                 ({filteredLeads.length}
                 {stageFilter !== "__all__" ? ` de ${leads.length}` : ""})
               </span>
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
               {filteredLeads.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   {stageFilter !== "__all__"
@@ -765,16 +771,16 @@ function CorretorTriagem() {
             </div>
           </Card>
 
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <User className="w-4 h-4 text-violet-600" />
+          <Card className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden p-4">
+            <div className="flex shrink-0 items-center gap-2 text-sm font-medium">
+              <User className="h-4 w-4 text-violet-600" />
               Clientes
-              <span className="text-xs text-muted-foreground font-normal">
+              <span className="text-xs font-normal text-muted-foreground">
                 ({filteredClientes.length}
                 {stageFilter !== "__all__" ? ` de ${clientes.length}` : ""})
               </span>
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
               {filteredClientes.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   {stageFilter !== "__all__"
@@ -795,27 +801,27 @@ function CorretorTriagem() {
           </Card>
         </div>
 
-        <Card className="lg:col-span-7 p-4 min-h-[28rem]">
+        <Card className="flex min-h-0 flex-col overflow-hidden p-4 max-lg:min-h-80 lg:col-span-7">
           {!selectedContact ? (
-            <div className="h-full min-h-[24rem] flex flex-col items-center justify-center text-center text-muted-foreground border border-dashed rounded-xl gap-2">
-              <ClipboardList className="w-8 h-8 opacity-40" />
+            <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-center text-muted-foreground">
+              <ClipboardList className="h-8 w-8 opacity-40" />
               <p className="text-sm">
                 Selecione um lead ou cliente para ver o histórico.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div>
+            <div className="flex h-full min-h-0 flex-col gap-4">
+              <div className="shrink-0">
                 <div className="text-base font-semibold">
                   {selectedContact.nome}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="mt-0.5 text-xs text-muted-foreground">
                   {selectedContact.tipo === "cliente" ? "Cliente" : "Lead"} ·{" "}
                   {stageName(selectedContact.stage)}
                 </div>
               </div>
 
-              <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+              <div className="shrink-0 space-y-2 rounded-xl border bg-muted/20 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="triagem-quick-texto" className="text-sm">
                     Adicionar relato
@@ -844,28 +850,30 @@ function CorretorTriagem() {
                     onClick={() => void submitQuickRelato()}
                   >
                     {quickSaving ? (
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     ) : (
-                      <Plus className="w-4 h-4 mr-1" />
+                      <Plus className="mr-1 h-4 w-4" />
                     )}
                     Registrar
                   </Button>
                 </div>
               </div>
 
-              <HistoryTimeline
-                events={events}
-                contactName={selectedContact.nome}
-                stageLabel={stageName}
-                fallbackStage={selectedContact.stage}
-                loading={historyLoading}
-                leadId={selectedId}
-                onEventUpdated={(updated) =>
-                  setEvents((prev) =>
-                    prev.map((e) => (e.id === updated.id ? updated : e)),
-                  )
-                }
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <HistoryTimeline
+                  events={events}
+                  contactName={selectedContact.nome}
+                  stageLabel={stageName}
+                  fallbackStage={selectedContact.stage}
+                  loading={historyLoading}
+                  leadId={selectedId}
+                  onEventUpdated={(updated) =>
+                    setEvents((prev) =>
+                      prev.map((e) => (e.id === updated.id ? updated : e)),
+                    )
+                  }
+                />
+              </div>
             </div>
           )}
         </Card>
@@ -1026,6 +1034,7 @@ function ManagerTriagem() {
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [equipesLoading, setEquipesLoading] = useState(false);
   const [selectedEquipeId, setSelectedEquipeId] = useState<string>("__all__");
+  const [corretorSearch, setCorretorSearch] = useState("");
   const [selectedCorretorId, setSelectedCorretorId] = useState<string | null>(
     null,
   );
@@ -1071,9 +1080,15 @@ function ManagerTriagem() {
   }, [isAdmin, selectedEquipeId, equipes, allCorretores]);
 
   const corretores = useMemo(() => {
-    if (!corretorIdsNaEquipe) return allCorretores;
-    return allCorretores.filter((c) => corretorIdsNaEquipe.has(c.id));
-  }, [allCorretores, corretorIdsNaEquipe]);
+    const byEquipe = !corretorIdsNaEquipe
+      ? allCorretores
+      : allCorretores.filter((c) => corretorIdsNaEquipe.has(c.id));
+    const q = corretorSearch.trim().toLocaleLowerCase("pt-BR");
+    if (!q) return byEquipe;
+    return byEquipe.filter((c) =>
+      c.name.toLocaleLowerCase("pt-BR").includes(q),
+    );
+  }, [allCorretores, corretorIdsNaEquipe, corretorSearch]);
 
   const leads = useMemo(() => {
     if (!selectedCorretorId) return [];
@@ -1093,16 +1108,26 @@ function ManagerTriagem() {
   const selectedLead = filteredLeads.find((l) => l.id === selectedLeadId) ??
     leads.find((l) => l.id === selectedLeadId) ??
     null;
-  const selectedCorretor = corretores.find((c) => c.id === selectedCorretorId);
+  const selectedCorretor =
+    allCorretores.find((c) => c.id === selectedCorretorId) ??
+    corretores.find((c) => c.id === selectedCorretorId);
 
   function selectEquipe(id: string) {
     setSelectedEquipeId(id);
+    setCorretorSearch("");
     setSelectedCorretorId(null);
     setSelectedLeadId(null);
     setStageFilter("__all__");
   }
 
   function selectCorretor(id: string) {
+    if (selectedCorretorId === id) {
+      setSelectedCorretorId(null);
+      setSelectedLeadId(null);
+      setStageFilter("__all__");
+      setQuickTexto("");
+      return;
+    }
     setSelectedCorretorId(id);
     setSelectedLeadId(null);
     setStageFilter("__all__");
@@ -1150,25 +1175,29 @@ function ManagerTriagem() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Triagem"
-        description={
-          canWrite
-            ? "Consulte e registre relatos dos leads da equipe — avançar etapa é opcional."
-            : "Consulte os relatos dos corretores por lead. Somente leitura."
-        }
-      />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0">
+        <PageHeader
+          title="Triagem"
+          description={
+            canWrite
+              ? "Consulte e registre relatos dos leads da equipe — avançar etapa é opcional."
+              : "Consulte os relatos dos corretores por lead. Somente leitura."
+          }
+        />
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <Card className="lg:col-span-3 p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Users className="w-4 h-4 text-primary" />
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:overflow-hidden">
+        <Card className="flex min-h-0 flex-col space-y-3 overflow-hidden p-4 max-lg:min-h-80 lg:col-span-3">
+          <div className="flex shrink-0 items-center gap-2.5 text-sm font-semibold text-brand-dark">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+              <Users className="h-4 w-4" />
+            </span>
             Corretores
           </div>
 
           {isAdmin && (
-            <div className="space-y-1.5">
+            <div className="shrink-0 space-y-1.5">
               <Label className="text-xs text-muted-foreground">Equipe</Label>
               <Select
                 value={selectedEquipeId}
@@ -1191,15 +1220,28 @@ function ManagerTriagem() {
             </div>
           )}
 
-          <div className="space-y-2 max-h-[32rem] overflow-y-auto">
+          <div className="relative shrink-0">
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={corretorSearch}
+              onChange={(e) => setCorretorSearch(e.target.value)}
+              placeholder="Buscar corretor…"
+              className="h-9 bg-background pl-8"
+              aria-label="Buscar corretor pelo nome"
+            />
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
             {(loading || equipesLoading) && corretores.length === 0 && (
               <p className="text-xs text-muted-foreground">Carregando...</p>
             )}
             {!loading && !equipesLoading && corretores.length === 0 && (
               <p className="text-xs text-muted-foreground">
-                {isAdmin && selectedEquipeId !== "__all__"
-                  ? "Nenhum corretor nesta equipe."
-                  : "Nenhum corretor."}
+                {corretorSearch.trim()
+                  ? "Nenhum corretor encontrado."
+                  : isAdmin && selectedEquipeId !== "__all__"
+                    ? "Nenhum corretor nesta equipe."
+                    : "Nenhum corretor."}
               </p>
             )}
             {corretores.map((c) => (
@@ -1207,39 +1249,53 @@ function ManagerTriagem() {
                 key={c.id}
                 type="button"
                 onClick={() => selectCorretor(c.id)}
-                className={`w-full text-left rounded-lg border p-3 text-sm transition-colors ${
+                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg border p-3 text-left text-sm transition-colors ${
                   selectedCorretorId === c.id
                     ? "border-primary bg-primary/5 font-medium"
                     : "bg-card hover:bg-muted/50"
                 }`}
               >
-                {c.name}
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarFallback className="avatar-fallback-brand text-[10px] font-semibold text-white">
+                    {initials(c.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 truncate">{c.name}</span>
               </button>
             ))}
           </div>
         </Card>
 
-        <Card className="lg:col-span-4 p-4 min-h-[28rem] space-y-3">
+        <Card className="flex min-h-0 flex-col space-y-3 overflow-hidden p-4 max-lg:min-h-80 lg:col-span-4">
           {!selectedCorretorId ? (
-            <div className="h-full min-h-[24rem] flex flex-col items-center justify-center text-center text-muted-foreground border border-dashed rounded-xl gap-2">
-              <ClipboardList className="w-8 h-8 opacity-40" />
-              <p className="text-sm">
-                Selecione um corretor para ver os leads.
-              </p>
-            </div>
+            <TriagemEmptyState
+              title="Leads do corretor"
+              icon={ClipboardList}
+              heading="Selecione um corretor"
+              description="Escolha um corretor na lista ao lado para visualizar os leads atribuídos a ele."
+              illustration={<LeadsEmptyIllustration />}
+            />
           ) : (
             <>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="text-sm font-medium">
-                  Leads de {selectedCorretor?.name ?? "—"}
-                  <span className="text-xs text-muted-foreground font-normal ml-1">
-                    ({filteredLeads.length}
-                    {stageFilter !== "__all__" ? ` de ${leads.length}` : ""})
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-brand-dark">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+                    <ClipboardList className="h-4 w-4" />
+                  </span>
+                  <span>
+                    Leads de{" "}
+                    <span className="font-bold text-brand-accent">
+                      {selectedCorretor?.name ?? "—"}
+                    </span>
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      ({filteredLeads.length}
+                      {stageFilter !== "__all__" ? ` de ${leads.length}` : ""})
+                    </span>
                   </span>
                 </div>
               </div>
               <Select value={stageFilter} onValueChange={setStageFilter}>
-                <SelectTrigger className="h-9 bg-background">
+                <SelectTrigger className="h-9 shrink-0 bg-background">
                   <SelectValue placeholder="Etapa do funil" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1253,7 +1309,7 @@ function ManagerTriagem() {
                     ))}
                 </SelectContent>
               </Select>
-              <div className="space-y-2 max-h-[28rem] overflow-y-auto">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 {filteredLeads.length === 0 && (
                   <p className="text-xs text-muted-foreground">
                     {stageFilter !== "__all__"
@@ -1278,29 +1334,36 @@ function ManagerTriagem() {
           )}
         </Card>
 
-        <Card className="lg:col-span-5 p-4 min-h-[28rem]">
-          {!selectedLead ? (
-            <div className="h-full min-h-[24rem] flex flex-col items-center justify-center text-center text-muted-foreground border border-dashed rounded-xl gap-2">
-              <FileText className="w-8 h-8 opacity-40" />
-              <p className="text-sm">
-                {selectedCorretorId
-                  ? "Selecione um lead para ver o histórico."
-                  : "O histórico aparece aqui."}
-              </p>
-            </div>
+        <Card className="flex min-h-0 flex-col overflow-hidden p-4 max-lg:min-h-80 lg:col-span-5">
+          {!selectedCorretorId ? (
+            <TriagemEmptyState
+              title="Histórico"
+              icon={FileText}
+              heading="O histórico aparece aqui"
+              description="Após selecionar um corretor, o histórico de atividades será exibido neste espaço."
+              illustration={<HistoryEmptyIllustration />}
+            />
+          ) : !selectedLead ? (
+            <TriagemEmptyState
+              title="Histórico"
+              icon={FileText}
+              heading="Selecione um lead para ver o histórico."
+              description="Escolha um lead na lista ao lado para visualizar o histórico de atividades."
+              illustration={<HistoryEmptyIllustration />}
+            />
           ) : (
-            <div className="space-y-4">
-              <div>
+            <div className="flex h-full min-h-0 flex-col gap-4">
+              <div className="shrink-0">
                 <div className="text-base font-semibold">
                   {selectedLead.nome}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="mt-0.5 text-xs text-muted-foreground">
                   Lead · {stageName(selectedLead.stage)}
                 </div>
               </div>
 
               {canWrite && (
-                <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+                <div className="shrink-0 space-y-2 rounded-xl border bg-muted/20 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <Label htmlFor="triagem-gerente-quick-texto" className="text-sm">
                       Adicionar relato
@@ -1329,9 +1392,9 @@ function ManagerTriagem() {
                       onClick={() => void submitQuickRelato()}
                     >
                       {quickSaving ? (
-                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                       ) : (
-                        <Plus className="w-4 h-4 mr-1" />
+                        <Plus className="mr-1 h-4 w-4" />
                       )}
                       Registrar
                     </Button>
@@ -1339,23 +1402,99 @@ function ManagerTriagem() {
                 </div>
               )}
 
-              <HistoryTimeline
-                events={events}
-                contactName={selectedLead.nome}
-                stageLabel={stageName}
-                fallbackStage={selectedLead.stage}
-                loading={historyLoading}
-                leadId={selectedLeadId}
-                onEventUpdated={(updated) =>
-                  setEvents((prev) =>
-                    prev.map((e) => (e.id === updated.id ? updated : e)),
-                  )
-                }
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <HistoryTimeline
+                  events={events}
+                  contactName={selectedLead.nome}
+                  stageLabel={stageName}
+                  fallbackStage={selectedLead.stage}
+                  loading={historyLoading}
+                  leadId={selectedLeadId}
+                  onEventUpdated={(updated) =>
+                    setEvents((prev) =>
+                      prev.map((e) => (e.id === updated.id ? updated : e)),
+                    )
+                  }
+                />
+              </div>
             </div>
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+function TriagemEmptyState({
+  title,
+  icon: Icon,
+  heading,
+  description,
+  illustration,
+}: {
+  title: string;
+  icon: LucideIcon;
+  heading: string;
+  description: string;
+  illustration: ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center gap-2.5 text-sm font-semibold text-brand-dark">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+          <Icon className="h-4 w-4" />
+        </span>
+        {title}
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 pb-2 text-center">
+        {illustration}
+        <div className="max-w-68 space-y-1.5">
+          <p className="text-sm font-semibold text-brand-dark">{heading}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeadsEmptyIllustration() {
+  return (
+    <div
+      aria-hidden
+      className="relative flex w-30 flex-col items-center gap-2"
+    >
+      <div className="h-3.5 w-18 rounded-full bg-brand-accent/15" />
+      <div className="flex w-full items-center gap-2 rounded-xl border border-brand-accent/20 bg-brand-accent/10 px-2.5 py-2.5 shadow-sm">
+        <span className="h-7 w-7 shrink-0 rounded-lg bg-brand-accent/25" />
+        <span className="h-2.5 flex-1 rounded-full bg-brand-accent" />
+      </div>
+      <div className="flex w-[90%] items-center gap-2 rounded-xl border border-brand-accent/15 bg-brand-accent/5 px-2.5 py-2">
+        <span className="h-6 w-6 shrink-0 rounded-lg bg-brand-accent/20" />
+        <span className="h-2 flex-1 rounded-full bg-brand-accent/35" />
+      </div>
+      <div className="flex w-[80%] items-center gap-2 rounded-xl border border-brand-accent/10 bg-brand-accent/3 px-2.5 py-1.5">
+        <span className="h-5 w-5 shrink-0 rounded-md bg-brand-accent/15" />
+        <span className="h-1.5 flex-1 rounded-full bg-brand-accent/25" />
+      </div>
+    </div>
+  );
+}
+
+function HistoryEmptyIllustration() {
+  return (
+    <div aria-hidden className="relative">
+      <div className="flex h-24 w-19 flex-col gap-2 rounded-xl border border-brand-accent/20 bg-brand-accent/10 px-3 py-3.5 shadow-sm">
+        <span className="h-1.5 w-full rounded-full bg-brand-accent/35" />
+        <span className="h-1.5 w-[85%] rounded-full bg-brand-accent/25" />
+        <span className="h-1.5 w-[70%] rounded-full bg-brand-accent/20" />
+        <span className="mt-1 h-1.5 w-full rounded-full bg-brand-accent/15" />
+        <span className="h-1.5 w-[60%] rounded-full bg-brand-accent/15" />
+      </div>
+      <span className="absolute -bottom-1.5 -right-2.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-brand-accent text-white shadow-sm">
+        <Clock className="h-4 w-4" />
+      </span>
     </div>
   );
 }

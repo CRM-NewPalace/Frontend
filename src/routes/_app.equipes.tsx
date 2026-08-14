@@ -1,18 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
 } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -61,13 +59,12 @@ import {
   Trash2,
   Users,
   UserCog,
-  ChevronLeft,
-  ChevronRight,
   Crown,
   KeyRound,
   Copy,
   Check,
   Shield,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -75,9 +72,6 @@ export const Route = createFileRoute("/_app/equipes")({
   head: () => ({ meta: [{ title: "Equipes — Zone Connection" }] }),
   component: EquipesPage,
 });
-
-/** Largura da coluna (w-72) + gap (gap-3). */
-const COLUMN_STEP_PX = 288 + 12;
 
 type FormState = {
   name: string;
@@ -103,7 +97,7 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function MemberCard({
+function MemberRow({
   member,
   roleLabel,
   accent,
@@ -117,68 +111,64 @@ function MemberCard({
   resetting?: boolean;
 }) {
   return (
-    <Card
+    <div
       className={cn(
-        "p-3 shadow-sm border-[#079ED4]/15 bg-[#e8f6fc]",
-        accent && "border-primary/30",
+        "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
+        accent
+          ? "bg-brand-accent/10 ring-1 ring-brand-accent/20"
+          : "hover:bg-muted/50",
       )}
     >
-      <div className="flex items-start gap-2.5">
-        <Avatar className="h-9 w-9 shrink-0">
-          <AvatarFallback
-            className={cn(
-              "text-[11px] font-semibold",
-              accent
-                ? "bg-primary/15 text-primary"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
-            {initials(member.name)}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-1">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                {accent && <Crown className="w-3 h-3 text-primary shrink-0" />}
-                <div className="table-person-name text-sm truncate">
-                  {member.name}
-                </div>
-              </div>
-              <div className="text-[11px] text-muted-foreground truncate mt-0.5">
-                {member.email}
-              </div>
-            </div>
-            {onResetPassword && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0"
-                title="Gerar senha temporária"
-                disabled={resetting}
-                onClick={onResetPassword}
-              >
-                {resetting ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <KeyRound className="w-3.5 h-3.5" />
-                )}
-              </Button>
-            )}
-          </div>
+      <Avatar className="h-9 w-9 shrink-0">
+        <AvatarFallback
+          className={cn(
+            "text-[11px] font-semibold",
+            accent
+              ? "avatar-fallback-brand text-white"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {initials(member.name)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          {accent && <Crown className="h-3.5 w-3.5 shrink-0 text-brand-accent" />}
+          <span className="table-person-name truncate text-sm font-medium">
+            {member.name}
+          </span>
           <Badge
             variant="outline"
             className={cn(
-              "mt-2 text-[10px] capitalize",
-              accent && "border-primary/30 text-primary",
+              "shrink-0 text-[10px] capitalize",
+              accent && "border-brand-accent/30 text-brand-accent",
             )}
           >
             {roleLabel}
           </Badge>
         </div>
+        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {member.email}
+        </div>
       </div>
-    </Card>
+      {onResetPassword && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          title="Gerar senha temporária"
+          disabled={resetting}
+          onClick={onResetPassword}
+        >
+          {resetting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <KeyRound className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -209,15 +199,22 @@ function EquipesPage() {
   const [gerentes, setGerentes] = useState<EquipeOptionUser[]>([]);
   const [corretores, setCorretores] = useState<EquipeOptionUser[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-
-  const boardRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await fetchEquipes());
+      const next = await fetchEquipes();
+      setItems(next);
+      setExpandedIds((prev) => {
+        if (prev.size > 0) {
+          const keep = new Set(
+            [...prev].filter((id) => next.some((eq) => eq.id === id)),
+          );
+          if (keep.size > 0) return keep;
+        }
+        return new Set(next.slice(0, 1).map((eq) => eq.id));
+      });
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -233,35 +230,12 @@ function EquipesPage() {
     void loadItems();
   }, [loadItems]);
 
-  const updateScrollButtons = useCallback(() => {
-    const el = boardRef.current;
-    if (!el) {
-      setCanScrollLeft(false);
-      setCanScrollRight(false);
-      return;
-    }
-    const max = el.scrollWidth - el.clientWidth;
-    setCanScrollLeft(el.scrollLeft > 2);
-    setCanScrollRight(el.scrollLeft < max - 2);
-  }, []);
-
-  useEffect(() => {
-    const el = boardRef.current;
-    if (!el) return;
-    updateScrollButtons();
-    el.addEventListener("scroll", updateScrollButtons, { passive: true });
-    const ro = new ResizeObserver(updateScrollButtons);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", updateScrollButtons);
-      ro.disconnect();
-    };
-  }, [items.length, updateScrollButtons]);
-
-  function scrollBoard(dir: -1 | 1) {
-    boardRef.current?.scrollBy({
-      left: dir * COLUMN_STEP_PX,
-      behavior: "smooth",
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   }
 
@@ -425,157 +399,170 @@ function EquipesPage() {
         title="Equipes"
         description={
           canManage
-            ? "Quadro das equipes — cada coluna é uma equipe com gerente e corretores."
+            ? "Organize gerentes e corretores por equipe."
             : "Membros da sua equipe — use a chave para gerar senha temporária se alguém esquecer."
         }
         actions={
-          <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-md border bg-background">
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 rounded-r-none"
-                disabled={!canScrollLeft}
-                aria-label="Coluna anterior"
-                title="Coluna anterior"
-                onClick={() => scrollBoard(-1)}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <div className="w-px h-4 bg-border" />
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 rounded-l-none"
-                disabled={!canScrollRight}
-                aria-label="Próxima coluna"
-                title="Próxima coluna"
-                onClick={() => scrollBoard(1)}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-            {canManage && (
-              <Button size="sm" onClick={() => void openCreate()}>
-                <Plus className="w-4 h-4 mr-1" />
-                Nova equipe
-              </Button>
-            )}
-          </div>
+          canManage ? (
+            <Button size="sm" onClick={() => void openCreate()}>
+              <Plus className="mr-1 h-4 w-4" />
+              Nova equipe
+            </Button>
+          ) : undefined
         }
       />
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
           Carregando equipes...
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 px-4 rounded-xl border border-dashed bg-muted/20">
-          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-            <Network className="w-5 h-5 text-muted-foreground" />
+        <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-16 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-accent/10">
+            <Network className="h-5 w-5 text-brand-accent" />
           </div>
           <p className="text-sm font-medium">
             {canManage
               ? "Nenhuma equipe cadastrada"
               : "Você ainda não lidera uma equipe"}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-xs text-muted-foreground">
             {canManage
               ? "Crie a primeira equipe e vincule um gerente com corretores."
               : "Peça ao administrador para vincular você como gerente de uma equipe."}
           </p>
         </div>
       ) : (
-        <div
-          ref={boardRef}
-          className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
-        >
-          {items.map((eq) => (
-            <div
-              key={eq.id}
-              className="w-72 shrink-0 flex flex-col rounded-xl p-3 min-h-112 bg-[#e8f6fc]"
-            >
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold truncate">
-                      {eq.name}
+        <div className="space-y-3">
+          {items.map((eq) => {
+            const expanded = expandedIds.has(eq.id);
+            return (
+              <section
+                key={eq.id}
+                className="overflow-hidden rounded-2xl border border-border/80 bg-card"
+              >
+                <div className="flex items-stretch gap-2 border-b border-border/60 bg-linear-to-r from-brand-accent/[0.07] to-transparent px-3 py-3 sm:px-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(eq.id)}
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                    aria-expanded={expanded}
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+                      <Users className="h-4 w-4" />
                     </span>
-                    <Badge
-                      variant={eq.status === "ativo" ? "default" : "outline"}
-                      className="capitalize text-[10px] shrink-0"
-                    >
-                      {eq.status}
-                    </Badge>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
-                    <Users className="w-3 h-3" />
-                    {eq.membros.length} corretor
-                    {eq.membros.length === 1 ? "" : "es"}
-                    <span className="text-muted-foreground/50">·</span>
-                    <span className="tabular-nums">
-                      {eq.leadsCount ?? 0} lead
-                      {(eq.leadsCount ?? 0) === 1 ? "" : "s"}
-                    </span>
-                    {(eq.leadsPool ?? 0) > 0 && (
-                      <span className="text-amber-600 dark:text-amber-400">
-                        ({eq.leadsPool} no pool)
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {canManage && (
-                  <div className="flex items-center shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => void openEdit(eq)}
-                      title="Editar"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => setDeleteId(eq.id)}
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2 flex-1">
-                <MemberCard member={eq.gerente} roleLabel="Gerente" accent />
-
-                {eq.membros.length === 0 ? (
-                  <div className="rounded-lg border border-dashed bg-background/50 px-3 py-6 text-center text-xs text-muted-foreground">
-                    Sem corretores nesta equipe
-                  </div>
-                ) : (
-                  eq.membros.map((m) => (
-                    <MemberCard
-                      key={m.id}
-                      member={m}
-                      roleLabel="Corretor"
-                      onResetPassword={
-                        canResetMemberPassword
-                          ? () => void handleResetPassword(m)
-                          : undefined
-                      }
-                      resetting={resettingId === m.id}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="truncate text-sm font-semibold text-brand-dark">
+                          {eq.name}
+                        </h2>
+                        <Badge
+                          variant={eq.status === "ativo" ? "default" : "outline"}
+                          className="shrink-0 text-[10px] capitalize"
+                        >
+                          {eq.status}
+                        </Badge>
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                        <span>
+                          {eq.membros.length} corretor
+                          {eq.membros.length === 1 ? "" : "es"}
+                        </span>
+                        <span className="text-muted-foreground/40">·</span>
+                        <span className="tabular-nums">
+                          {eq.leadsCount ?? 0} lead
+                          {(eq.leadsCount ?? 0) === 1 ? "" : "s"}
+                        </span>
+                        {(eq.leadsPool ?? 0) > 0 && (
+                          <span className="text-amber-600 dark:text-amber-400">
+                            ({eq.leadsPool} no pool)
+                          </span>
+                        )}
+                        <span className="text-muted-foreground/40">·</span>
+                        <span className="truncate">
+                          Gerente:{" "}
+                          <span className="font-medium text-foreground/80">
+                            {eq.gerente.name}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                        expanded && "rotate-180",
+                      )}
                     />
-                  ))
+                  </button>
+                  {canManage && (
+                    <div className="flex shrink-0 items-center gap-0.5 self-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => void openEdit(eq)}
+                        title="Editar"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => setDeleteId(eq.id)}
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {expanded && (
+                  <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(0,16rem)_1fr]">
+                    <div className="space-y-2">
+                      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-brand-accent">
+                        Gerente
+                      </p>
+                      <MemberRow
+                        member={eq.gerente}
+                        roleLabel="Gerente"
+                        accent
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Corretores ({eq.membros.length})
+                      </p>
+                      {eq.membros.length === 0 ? (
+                        <div className="rounded-xl border border-dashed px-3 py-8 text-center text-xs text-muted-foreground">
+                          Sem corretores nesta equipe
+                        </div>
+                      ) : (
+                        <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
+                          {eq.membros.map((m) => (
+                            <MemberRow
+                              key={m.id}
+                              member={m}
+                              roleLabel="Corretor"
+                              onResetPassword={
+                                canResetMemberPassword
+                                  ? () => void handleResetPassword(m)
+                                  : undefined
+                              }
+                              resetting={resettingId === m.id}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
-          ))}
+              </section>
+            );
+          })}
         </div>
       )}
 

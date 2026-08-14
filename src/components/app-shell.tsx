@@ -301,6 +301,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const headerSearch = useHeaderSearchInput();
+  const isTriagem = pathname === "/triagem";
 
   useEffect(() => {
     setUser(getSession());
@@ -948,8 +949,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-card/90 backdrop-blur sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
+      <div
+        className={cn(
+          "flex-1 flex flex-col min-w-0",
+          isTriagem && "lg:h-dvh lg:overflow-hidden",
+        )}
+      >
+        <header className="h-14 border-b bg-card/90 backdrop-blur sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0 shrink-0">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Button
               type="button"
@@ -961,15 +967,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Menu className="w-5 h-5" />
             </Button>
-            <div className="relative flex-1 max-w-md min-w-0">
-              <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={headerSearch.value}
-                onChange={(e) => headerSearch.setValue(e.target.value)}
-                placeholder={headerSearch.placeholder}
-                className="pl-8 sm:pl-9 h-9 rounded-md bg-background text-sm"
-              />
-            </div>
+            {pathname !== "/triagem" && (
+              <div className="relative flex-1 max-w-md min-w-0">
+                <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={headerSearch.value}
+                  onChange={(e) => headerSearch.setValue(e.target.value)}
+                  placeholder={headerSearch.placeholder}
+                  className="pl-8 sm:pl-9 h-9 rounded-md bg-background text-sm"
+                />
+              </div>
+            )}
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -1099,7 +1107,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-clip">
+        <main
+          className={cn(
+            "flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-clip",
+            isTriagem && "flex min-h-0 flex-col lg:overflow-hidden",
+          )}
+        >
           {children}
         </main>
       </div>
@@ -1159,23 +1172,23 @@ export function PageHeader({
 }) {
   const { brandName } = useTenantTheme();
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
-      <div className="min-w-0">
-        <p className="mb-1.5 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
-          <span className="size-1.5 rounded-full bg-brand-accent" />
-          {brandName}
+    <div className="mb-4 flex flex-col gap-3 sm:mb-6 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+      <div className="min-w-0 flex-1 space-y-1 lg:min-w-64">
+        <p className="mb-1.5 inline-flex max-w-full items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
+          <span className="size-1.5 shrink-0 rounded-full bg-brand-accent" />
+          <span className="truncate">{brandName}</span>
         </p>
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-xl font-semibold tracking-tight wrap-break-word text-foreground sm:text-2xl">
           {title}
         </h1>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+          <p className="mt-1 max-w-2xl text-sm text-pretty wrap-break-word text-muted-foreground">
             {description}
           </p>
         )}
       </div>
       {actions && (
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+        <div className="flex w-full flex-wrap items-end gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0 lg:justify-end">
           {actions}
         </div>
       )}

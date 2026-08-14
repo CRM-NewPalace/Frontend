@@ -1428,17 +1428,20 @@ function LeadsPage() {
                     {
                       value: "Alta" as const,
                       active:
-                        "border-destructive/40 bg-destructive/10 text-destructive",
+                        "border-red-300 bg-red-100 text-red-800 shadow-sm ring-1 ring-red-200/80",
+                      idle: "hover:border-red-200 hover:bg-red-50 hover:text-red-700",
                     },
                     {
                       value: "Média" as const,
                       active:
-                        "border-warning/50 bg-warning/15 text-warning-foreground",
+                        "border-amber-300 bg-amber-100 text-amber-900 shadow-sm ring-1 ring-amber-200/80",
+                      idle: "hover:border-amber-200 hover:bg-amber-50 hover:text-amber-800",
                     },
                     {
                       value: "Baixa" as const,
                       active:
-                        "border-primary/30 bg-secondary text-secondary-foreground",
+                        "border-sky-300 bg-sky-100 text-sky-800 shadow-sm ring-1 ring-sky-200/80",
+                      idle: "hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700",
                     },
                   ].map((opt) => (
                     <button
@@ -1449,7 +1452,7 @@ function LeadsPage() {
                         "h-10 rounded-lg border text-sm font-medium transition-colors",
                         form.prioridade === opt.value
                           ? opt.active
-                          : "bg-background text-muted-foreground hover:bg-accent",
+                          : cn("bg-background text-muted-foreground", opt.idle),
                       )}
                     >
                       {opt.value}
@@ -1466,16 +1469,20 @@ function LeadsPage() {
                     {
                       value: "Quente" as const,
                       active:
-                        "border-destructive/40 bg-destructive/10 text-destructive",
+                        "border-orange-300 bg-orange-100 text-orange-900 shadow-sm ring-1 ring-orange-200/80",
+                      idle: "hover:border-orange-200 hover:bg-orange-50 hover:text-orange-800",
                     },
                     {
                       value: "Morno" as const,
                       active:
-                        "border-warning/50 bg-warning/15 text-warning-foreground",
+                        "border-yellow-300 bg-yellow-100 text-yellow-900 shadow-sm ring-1 ring-yellow-200/80",
+                      idle: "hover:border-yellow-200 hover:bg-yellow-50 hover:text-yellow-800",
                     },
                     {
                       value: "Frio" as const,
-                      active: "border-info/40 bg-info/10 text-info",
+                      active:
+                        "border-cyan-300 bg-cyan-100 text-cyan-900 shadow-sm ring-1 ring-cyan-200/80",
+                      idle: "hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-800",
                     },
                   ].map((opt) => (
                     <button
@@ -1486,7 +1493,7 @@ function LeadsPage() {
                         "h-10 rounded-lg border text-sm font-medium transition-colors",
                         form.temperatura === opt.value
                           ? opt.active
-                          : "bg-background text-muted-foreground hover:bg-accent",
+                          : cn("bg-background text-muted-foreground", opt.idle),
                       )}
                     >
                       {opt.value}
