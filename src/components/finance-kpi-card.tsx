@@ -111,7 +111,6 @@ export function FinanceKpiCard({
   suffix,
   compact = false,
   showBar = true,
-  valueLabel,
 }: {
   label: string;
   value: number;
@@ -128,17 +127,14 @@ export function FinanceKpiCard({
   suffix?: string;
   compact?: boolean;
   showBar?: boolean;
-  /** Substitui o valor formatado (ex.: "1h 20min"). */
-  valueLabel?: string;
 }) {
   const t = TONE[tone];
   const display =
-    valueLabel ??
-    (format === "number"
+    format === "number"
       ? value.toLocaleString("pt-BR")
       : format === "percent"
         ? `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
-        : money(value));
+        : money(value);
 
   const len = display.length;
   const valueSize = compact

@@ -66,9 +66,6 @@ import {
   Clock3,
   Kanban,
   CalendarDays,
-  Users,
-  IdCard,
-  UserX,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { isAnalistaAllowed } from "@/lib/tenant-modules";
@@ -111,7 +108,6 @@ import {
 } from "@/lib/phone";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { FinanceKpiCard } from "@/components/finance-kpi-card";
 
 export const Route = createFileRoute("/_app/usuarios")({
   head: () => ({ meta: [{ title: "Usuários — Zone Connection" }] }),
@@ -445,49 +441,21 @@ function Usuarios() {
   const adminStats = useMemo(() => {
     const corretores = users.filter((u) => u.role === "corretor");
     const comCreci = corretores.filter((u) => Boolean(u.creci?.trim())).length;
-    const semCreci = corretores.length - comCreci;
-    const cadastrados = quota?.usados ?? users.length;
-    const loggedSeconds = users
-      .filter((u) => u.status === "ativo")
-      .map((u) => presenceByUser[u.id]?.secondsToday ?? 0)
-      .filter((seconds) => seconds > 0);
-    const avgSeconds =
-      loggedSeconds.length > 0
-        ? Math.round(
-            loggedSeconds.reduce((sum, seconds) => sum + seconds, 0) /
-              loggedSeconds.length,
-          )
-        : 0;
     return {
       corretores: corretores.length,
       comCreci,
-      semCreci,
-      cadastrados,
-      avgSeconds,
-      loggedInToday: loggedSeconds.length,
+      semCreci: corretores.length - comCreci,
     };
-  }, [users, quota, presenceByUser]);
-
-  const creciComActive = roleFilter === "corretor" && creciFilter === "com";
-  const creciSemActive = roleFilter === "corretor" && creciFilter === "sem";
+  }, [users]);
 
   function filterCorretoresCreci(kind: "com" | "sem") {
-    if (
-      roleFilter === "corretor" &&
-      creciFilter === kind
-    ) {
+    if (roleFilter === "corretor" && creciFilter === kind) {
       setRoleFilter("all");
       setCreciFilter("all");
       return;
     }
     setRoleFilter("corretor");
     setCreciFilter(kind);
-  }
-
-  function resetAdminFilters() {
-    setRoleFilter("all");
-    setStatusFilter("all");
-    setCreciFilter("all");
   }
 
   function openCreate() {
@@ -735,87 +703,35 @@ function Usuarios() {
         }
       />
 
-      {isAdmin ? (
-        <section className="mb-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
-          <FinanceKpiCard
-            label="Corretores com CRECI"
-            value={adminStats.comCreci}
-            icon={IdCard}
-            tone="teal"
-            format="number"
-            suffix={
-              adminStats.corretores > 0
-                ? `de ${adminStats.corretores}`
-                : undefined
-            }
-            active={creciComActive}
-            onClick={() => filterCorretoresCreci("com")}
-          />
-          <FinanceKpiCard
-            label="Corretores sem CRECI"
-            value={adminStats.semCreci}
-            icon={UserX}
-            tone="orange"
-            format="number"
-            suffix={
-              adminStats.corretores > 0
-                ? `de ${adminStats.corretores}`
-                : undefined
-            }
-            active={creciSemActive}
-            onClick={() => filterCorretoresCreci("sem")}
-          />
-          <FinanceKpiCard
-            label="Usuários cadastrados"
-            value={adminStats.cadastrados}
-            icon={Users}
-            tone="blue"
-            format="number"
-            suffix={quota ? `de ${quota.limite}` : undefined}
-            onClick={resetAdminFilters}
-          />
-          <FinanceKpiCard
-            label="Tempo médio logado"
-            value={adminStats.avgSeconds}
-            valueLabel={
-              adminStats.avgSeconds > 0
-                ? formatTimeToday(adminStats.avgSeconds)
-                : "—"
-            }
-            icon={Clock3}
-            tone="violet"
-            format="number"
-            suffix={
-              adminStats.loggedInToday > 0
-                ? `hoje · ${adminStats.loggedInToday} acessaram`
-                : "hoje"
-            }
-          />
-        </section>
-      ) : null}
-
       {isAdmin && adminStats.corretores > 0 ? (
         <Card className="mb-4 p-4">
-          <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>CRECI entre corretores</span>
-            <span>
-              {adminStats.comCreci} com · {adminStats.semCreci} sem
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-medium">Corretores com CRECI</span>
+            <span className="text-xs text-muted-foreground">
+              {adminStats.comCreci} com CRECI · {adminStats.semCreci} sem ·{" "}
+              {adminStats.corretores} corretores
             </span>
           </div>
-          <div className="flex h-2.5 overflow-hidden rounded-full bg-muted">
-            <div
-              className="bg-teal-600 transition-[width]"
+          <div className="flex h-3 overflow-hidden rounded-full bg-muted">
+            <button
+              type="button"
+              className="min-w-0 border-0 p-0 bg-teal-600 transition-[width] hover:opacity-90"
               style={{
                 width: `${(adminStats.comCreci / adminStats.corretores) * 100}%`,
               }}
-              title={`${adminStats.comCreci} com CRECI`}
+              title={`${adminStats.comCreci} corretores com CRECI`}
+              aria-label={`${adminStats.comCreci} corretores com CRECI`}
+              onClick={() => filterCorretoresCreci("com")}
             />
-            <div
-              className="bg-orange-400 transition-[width]"
+            <button
+              type="button"
+              className="min-w-0 border-0 p-0 bg-orange-400 transition-[width] hover:opacity-90"
               style={{
                 width: `${(adminStats.semCreci / adminStats.corretores) * 100}%`,
               }}
-              title={`${adminStats.semCreci} sem CRECI`}
+              title={`${adminStats.semCreci} corretores sem CRECI`}
+              aria-label={`${adminStats.semCreci} corretores sem CRECI`}
+              onClick={() => filterCorretoresCreci("sem")}
             />
           </div>
         </Card>
