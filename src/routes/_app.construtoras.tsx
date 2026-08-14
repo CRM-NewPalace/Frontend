@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,6 +94,8 @@ export const Route = createFileRoute("/_app/construtoras")({
   head: () => ({ meta: [{ title: "Construtoras — Zone Connection" }] }),
   component: ConstrutorasPage,
 });
+
+type ConstrutorasTab = "books" | "lista" | "visibilidade";
 
 type FormState = {
   nome: string;
@@ -172,6 +175,7 @@ function ConstrutorasPage() {
   const [savingLocalidade, setSavingLocalidade] = useState(false);
   const [savingMatrixCidade, setSavingMatrixCidade] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
+  const [tab, setTab] = useState<ConstrutorasTab>("books");
   const { value: search, setValue: setSearch } = useHeaderSearch(
     "Buscar construtora...",
   );
@@ -398,6 +402,7 @@ function ConstrutorasPage() {
           localidadeIds: payload.localidadeIds,
         });
         toast.success("Construtora cadastrada.");
+        setTab("lista");
       } else if (editingId) {
         await updateConstrutora(editingId, payload);
         const selected = new Set(selectedEmpreendimentos);
@@ -603,319 +608,359 @@ function ConstrutorasPage() {
         </div>
       </div>
 
-      {!loading ? (
-        <Card className="mb-4">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Books das construtoras</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Clique na construtora para abrir o book no Google Drive.
-            </p>
-          </CardHeader>
-          <CardContent>
-            {sortedDriveItems.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                {searchQuery || driveFilterLocalidadeId
-                  ? "Nenhum book encontrado para estes filtros."
-                  : "Nenhuma pasta do Drive cadastrada."}
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {sortedDriveItems.map((item) => {
-                  const bg = item.cor || "#079ED4";
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => openDriveFolder(item.driveFolderUrl!)}
-                      className={cn(
-                        "group flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center transition-colors",
-                        "hover:border-[#079ED4]/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#079ED4]/35",
-                      )}
-                      title={`Abrir Drive de ${item.nome}`}
-                    >
-                      <span
-                        className="flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
-                        style={{ backgroundColor: bg }}
-                      >
-                        {construtoraIniciais(item.nome) || (
-                          <FolderOpen className="h-6 w-6" />
-                        )}
-                      </span>
-                      <span className="line-clamp-2 text-sm font-medium text-foreground">
-                        {item.nome}
-                      </span>
-                      {item.localidades && item.localidades.length > 0 ? (
-                        <span className="line-clamp-1 text-[11px] text-muted-foreground">
-                          {item.localidades.map((loc) => loc.nome).join(", ")}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as ConstrutorasTab)}
+      >
+        <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1 sm:w-auto">
+          <TabsTrigger value="books" className="gap-1.5">
+            <FolderOpen className="h-3.5 w-3.5" />
+            Books
+          </TabsTrigger>
+          <TabsTrigger value="lista" className="gap-1.5">
+            <Building className="h-3.5 w-3.5" />
+            Lista
+          </TabsTrigger>
+          <TabsTrigger value="visibilidade" className="gap-1.5">
+            <MapPin className="h-3.5 w-3.5" />
+            Visibilidade
+          </TabsTrigger>
+        </TabsList>
 
-      {!loading ? (
-        <Card className="mb-4 overflow-hidden">
-          <CardHeader className="pb-3">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <CardTitle className="text-base">
-                  Visibilidade por cidade
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  V quando a construtora já tem a localidade cadastrada; X
-                  quando não tem.
+        <TabsContent value="books" className="mt-0">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Books das construtoras</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Clique na construtora para abrir o book no Google Drive.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Carregando…
+                </div>
+              ) : sortedDriveItems.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {searchQuery || driveFilterLocalidadeId
+                    ? "Nenhum book encontrado para estes filtros."
+                    : "Nenhuma pasta do Drive cadastrada."}
                 </p>
-              </div>
-              {canManage ? (
-                <form
-                  className="flex w-full gap-2 sm:max-w-sm"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void handleAddMatrixCidade();
-                  }}
-                >
-                  <Input
-                    placeholder="Nova cidade…"
-                    value={matrixCidadeNome}
-                    onChange={(event) =>
-                      setMatrixCidadeNome(event.target.value)
-                    }
-                    maxLength={80}
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={savingMatrixCidade}
-                    className="shrink-0"
-                  >
-                    {savingMatrixCidade ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="mr-1 h-4 w-4" />
-                    )}
-                    Cidade
-                  </Button>
-                </form>
-              ) : null}
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {sortedItems.length === 0 ? (
-              <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-                Cadastre construtoras para ver a visibilidade por cidade.
-              </p>
-            ) : visibilityCities.length === 0 ? (
-              <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-                {canManage
-                  ? "Nenhuma cidade cadastrada. Adicione uma cidade para começar."
-                  : "Nenhuma cidade cadastrada."}
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table className="min-w-max [&_th]:px-3 [&_td]:px-3">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="sticky left-0 z-20 min-w-44">
-                        Construtora
-                      </TableHead>
-                      {visibilityCities.map((cidade) => (
-                        <TableHead
-                          key={cidade.id}
-                          className="min-w-24 max-w-36 px-2 text-center"
-                          title={cidade.nome}
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {sortedDriveItems.map((item) => {
+                    const bg = item.cor || "#079ED4";
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => openDriveFolder(item.driveFolderUrl!)}
+                        className={cn(
+                          "group flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center transition-colors",
+                          "hover:border-[#079ED4]/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#079ED4]/35",
+                        )}
+                        title={`Abrir Drive de ${item.nome}`}
+                      >
+                        <span
+                          className="flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
+                          style={{ backgroundColor: bg }}
                         >
-                          <span className="line-clamp-2 text-xs font-medium leading-tight">
-                            {cidade.nome}
+                          {construtoraIniciais(item.nome) || (
+                            <FolderOpen className="h-6 w-6" />
+                          )}
+                        </span>
+                        <span className="line-clamp-2 text-sm font-medium text-foreground">
+                          {item.nome}
+                        </span>
+                        {item.localidades && item.localidades.length > 0 ? (
+                          <span className="line-clamp-1 text-[11px] text-muted-foreground">
+                            {item.localidades.map((loc) => loc.nome).join(", ")}
                           </span>
-                        </TableHead>
-                      ))}
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="lista" className="mt-0">
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Lista de construtoras</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Cadastro, contato, localidades e documentos de cada parceira.
+              </p>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Carregando…
+                </div>
+              ) : items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
+                  <Building className="h-8 w-8 opacity-40" />
+                  <p>Nenhuma construtora cadastrada.</p>
+                </div>
+              ) : matchingItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
+                  <Building className="h-8 w-8 opacity-40" />
+                  <p>Nenhuma construtora encontrada.</p>
+                </div>
+              ) : (
+                <Table className="[&_th]:px-4 [&_td]:px-4">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Viabilizador</TableHead>
+                      <TableHead>Localidades</TableHead>
+                      <TableHead className="text-center">Empreend.</TableHead>
+                      <TableHead className="text-center">Docs</TableHead>
+                      <TableHead className="w-30" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedItems.map((item, index) => {
-                      const linkedIds = new Set(
-                        (item.localidades ?? []).map(
-                          (localidade) => localidade.id,
-                        ),
-                      );
-                      return (
-                        <TableRow
-                          key={item.id}
-                          className={cn(
-                            "hover:bg-transparent",
-                            index % 2 === 1 ? "bg-muted/40" : "bg-background",
+                    {sortedItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">
+                          {item.cor ? (
+                            <Badge
+                              variant="secondary"
+                              className="border-transparent font-medium"
+                              style={construtoraBadgeStyle(item.cor)}
+                            >
+                              {item.nome}
+                            </Badge>
+                          ) : (
+                            item.nome
                           )}
-                        >
-                          <TableCell
+                        </TableCell>
+                        <TableCell>{item.contato || "—"}</TableCell>
+                        <TableCell>
+                          {item.viabilizadorNome ? (
+                            <div className="space-y-0.5">
+                              <div>{item.viabilizadorNome}</div>
+                              {item.viabilizadorContato && (
+                                <div className="text-xs text-muted-foreground">
+                                  {item.viabilizadorContato}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.localidades && item.localidades.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {item.localidades.map((loc) => (
+                                <Badge key={loc.id} variant="secondary">
+                                  {loc.nome}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary">
+                            {item._count?.empreendimentos ?? 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary">
+                            {item._count?.documentacoes ?? 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openView(item)}
+                              title="Ver"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {canManage && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEdit(item)}
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeleteId(item.id)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="visibilidade" className="mt-0">
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <CardTitle className="text-base">
+                    Visibilidade por cidade
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    V quando a construtora já tem a localidade cadastrada; X
+                    quando não tem.
+                  </p>
+                </div>
+                {canManage ? (
+                  <form
+                    className="flex w-full gap-2 sm:max-w-sm"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleAddMatrixCidade();
+                    }}
+                  >
+                    <Input
+                      placeholder="Nova cidade…"
+                      value={matrixCidadeNome}
+                      onChange={(event) =>
+                        setMatrixCidadeNome(event.target.value)
+                      }
+                      maxLength={80}
+                    />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={savingMatrixCidade}
+                      className="shrink-0"
+                    >
+                      {savingMatrixCidade ? (
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="mr-1 h-4 w-4" />
+                      )}
+                      Cidade
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Carregando…
+                </div>
+              ) : sortedItems.length === 0 ? (
+                <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+                  Cadastre construtoras para ver a visibilidade por cidade.
+                </p>
+              ) : visibilityCities.length === 0 ? (
+                <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+                  {canManage
+                    ? "Nenhuma cidade cadastrada. Adicione uma cidade para começar."
+                    : "Nenhuma cidade cadastrada."}
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table className="min-w-max [&_th]:px-3 [&_td]:px-3">
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="sticky left-0 z-20 min-w-44">
+                          Construtora
+                        </TableHead>
+                        {visibilityCities.map((cidade) => (
+                          <TableHead
+                            key={cidade.id}
+                            className="min-w-24 max-w-36 px-2 text-center"
+                            title={cidade.nome}
+                          >
+                            <span className="line-clamp-2 text-xs font-medium leading-tight">
+                              {cidade.nome}
+                            </span>
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedItems.map((item, index) => {
+                        const linkedIds = new Set(
+                          (item.localidades ?? []).map(
+                            (localidade) => localidade.id,
+                          ),
+                        );
+                        return (
+                          <TableRow
+                            key={item.id}
                             className={cn(
-                              "sticky left-0 z-10 font-medium",
+                              "hover:bg-transparent",
                               index % 2 === 1 ? "bg-muted/40" : "bg-background",
                             )}
                           >
-                            {item.nome}
-                          </TableCell>
-                          {visibilityCities.map((cidade) => {
-                            const present = linkedIds.has(cidade.id);
-                            return (
-                              <TableCell
-                                key={cidade.id}
-                                className="px-2 text-center"
-                              >
-                                {present ? (
-                                  <Check
-                                    className="mx-auto h-5 w-5 text-emerald-600"
-                                    strokeWidth={2.75}
-                                    aria-label={`${item.nome} atua em ${cidade.nome}`}
-                                  />
-                                ) : (
-                                  <X
-                                    className="mx-auto h-5 w-5 text-red-500"
-                                    strokeWidth={2.75}
-                                    aria-label={`${item.nome} sem localidade em ${cidade.nome}`}
-                                  />
-                                )}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              Carregando…
-            </div>
-          ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <Building className="w-8 h-8 opacity-40" />
-              <p>Nenhuma construtora cadastrada.</p>
-            </div>
-          ) : matchingItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <Building className="w-8 h-8 opacity-40" />
-              <p>Nenhuma construtora encontrada.</p>
-            </div>
-          ) : (
-            <Table className="[&_th]:px-4 [&_td]:px-4">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Viabilizador</TableHead>
-                  <TableHead>Localidades</TableHead>
-                  <TableHead className="text-center">Empreend.</TableHead>
-                  <TableHead className="text-center">Docs</TableHead>
-                  <TableHead className="w-30" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">
-                      {item.cor ? (
-                        <Badge
-                          variant="secondary"
-                          className="border-transparent font-medium"
-                          style={construtoraBadgeStyle(item.cor)}
-                        >
-                          {item.nome}
-                        </Badge>
-                      ) : (
-                        item.nome
-                      )}
-                    </TableCell>
-                    <TableCell>{item.contato || "—"}</TableCell>
-                    <TableCell>
-                      {item.viabilizadorNome ? (
-                        <div className="space-y-0.5">
-                          <div>{item.viabilizadorNome}</div>
-                          {item.viabilizadorContato && (
-                            <div className="text-xs text-muted-foreground">
-                              {item.viabilizadorContato}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {item.localidades && item.localidades.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {item.localidades.map((loc) => (
-                            <Badge key={loc.id} variant="secondary">
-                              {loc.nome}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">
-                        {item._count?.empreendimentos ?? 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">
-                        {item._count?.documentacoes ?? 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openView(item)}
-                          title="Ver"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {canManage && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(item)}
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                        )}
-                        {isAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteId(item.id)}
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                            <TableCell
+                              className={cn(
+                                "sticky left-0 z-10 font-medium",
+                                index % 2 === 1
+                                  ? "bg-muted/40"
+                                  : "bg-background",
+                              )}
+                            >
+                              {item.nome}
+                            </TableCell>
+                            {visibilityCities.map((cidade) => {
+                              const present = linkedIds.has(cidade.id);
+                              return (
+                                <TableCell
+                                  key={cidade.id}
+                                  className="px-2 text-center"
+                                >
+                                  {present ? (
+                                    <Check
+                                      className="mx-auto h-5 w-5 text-emerald-600"
+                                      strokeWidth={2.75}
+                                      aria-label={`${item.nome} atua em ${cidade.nome}`}
+                                    />
+                                  ) : (
+                                    <X
+                                      className="mx-auto h-5 w-5 text-red-500"
+                                      strokeWidth={2.75}
+                                      aria-label={`${item.nome} sem localidade em ${cidade.nome}`}
+                                    />
+                                  )}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <FormDialogShell
         open={open}
