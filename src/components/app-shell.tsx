@@ -41,6 +41,7 @@ import {
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSession, sendHeartbeat, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
+import { useHideImoveisFromSidebar } from "@/lib/imoveis-nav-prefs";
 import { useTenantTheme } from "@/lib/tenant-theme";
 import { ApiError } from "@/lib/api";
 import {
@@ -280,6 +281,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const { brandName, logoUrl, modules } = useTenantTheme();
+  const hideImoveisFromSidebar = useHideImoveisFromSidebar();
   const plano = user?.tenant?.plano ?? null;
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
@@ -572,6 +574,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 );
                 return children.length ? { ...item, children } : null;
               }
+              if (item.to === "/imoveis" && hideImoveisFromSidebar) {
+                return null;
+              }
               return canAccessRoute(user.role, item.to, modules, plano)
                 ? item
                 : null;
@@ -580,7 +585,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         };
       })
       .filter((section) => section.items.length > 0);
-  }, [user, modules, plano]);
+  }, [user, modules, plano, hideImoveisFromSidebar]);
 
   useEffect(() => {
     const active = navSections.find((section) =>

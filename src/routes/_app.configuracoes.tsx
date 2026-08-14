@@ -6,10 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -34,6 +32,12 @@ import {
 } from "@/lib/financeiro-prefs";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { canAccessRoute } from "@/lib/permissions";
+import {
+  getHideImoveisFromSidebar,
+  setHideImoveisFromSidebar,
+} from "@/lib/imoveis-nav-prefs";
+import { ImoveisPage } from "@/routes/_app.imoveis";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -151,12 +155,24 @@ function Config() {
   const showOpsTabs = !isAnalista && !isTreinee;
   const showDocumentacao = !isTreinee;
   const showMotivos = true;
+  const showImoveis = Boolean(
+    user &&
+      canAccessRoute(
+        user.role,
+        "/imoveis",
+        user.tenant?.modules ?? null,
+        user.tenant?.plano ?? null,
+      ),
+  );
   const { catalog, loading, error, addItem, updateItem, removeItem } =
     useCatalog();
 
   const [saving, setSaving] = useState(false);
   const [vistaParcelas, setVistaParcelasState] = useState<VistaParcelas>(() =>
     getVistaParcelas(),
+  );
+  const [hideImoveisFromSidebar, setHideImoveisFromSidebarState] = useState(
+    () => getHideImoveisFromSidebar(),
   );
 
   const [listOpen, setListOpen] = useState(false);
@@ -295,6 +311,9 @@ function Config() {
           {showOpsTabs ? (
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           ) : null}
+          {showImoveis ? (
+            <TabsTrigger value="imoveis">Imóveis</TabsTrigger>
+          ) : null}
           <TabsTrigger value="origens">Origens</TabsTrigger>
           {showMotivos ? (
             <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
@@ -377,6 +396,43 @@ function Config() {
               </Card>
             </TabsContent>
           </>
+        ) : null}
+
+        {showImoveis ? (
+          <TabsContent value="imoveis" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Menu lateral</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">
+                      Ocultar Imóveis do menu
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Ligado: some do menu e fica só nesta aba. Desligado:
+                      aparece no menu e em Configurações.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={hideImoveisFromSidebar}
+                    onCheckedChange={(checked) => {
+                      setHideImoveisFromSidebarState(checked);
+                      setHideImoveisFromSidebar(checked);
+                      toast.success(
+                        checked
+                          ? "Imóveis oculto do menu. Use esta aba para cadastrar."
+                          : "Imóveis voltou a aparecer no menu e em Configurações.",
+                      );
+                    }}
+                    aria-label="Ocultar Imóveis do menu lateral"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            <ImoveisPage embedded />
+          </TabsContent>
         ) : null}
 
         {showDocumentacao ? (

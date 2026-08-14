@@ -79,7 +79,11 @@ const IMOVEIS_SOFT_BTN =
 const IMOVEIS_SOFT_BTN_ACTIVE =
   "border-2 border-[#079ED4]/40 bg-[#079ED4]/20 text-[#053647] hover:bg-[#079ED4]/25 hover:text-[#053647]";
 
-function ImoveisPage() {
+export function ImoveisPage({
+  embedded = false,
+}: {
+  embedded?: boolean;
+} = {}) {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const isAnalista = user?.role === "analista";
@@ -332,11 +336,15 @@ function ImoveisPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Imóveis"
-        description="Cadastre e gerencie os empreendimentos desta imobiliária."
-        actions={
-          canCreate ? (
+      {embedded ? (
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Cadastro de imóveis</h2>
+            <p className="text-sm text-muted-foreground">
+              Empreendimentos desta imobiliária.
+            </p>
+          </div>
+          {canCreate ? (
             <Button
               onClick={() => void openQuickCreate()}
               className={IMOVEIS_GRADIENT_BTN}
@@ -345,9 +353,26 @@ function ImoveisPage() {
               <Plus className="w-4 h-4 mr-1" />
               Novo imóvel
             </Button>
-          ) : undefined
-        }
-      />
+          ) : null}
+        </div>
+      ) : (
+        <PageHeader
+          title="Imóveis"
+          description="Cadastre e gerencie os empreendimentos desta imobiliária."
+          actions={
+            canCreate ? (
+              <Button
+                onClick={() => void openQuickCreate()}
+                className={IMOVEIS_GRADIENT_BTN}
+                style={IMOVEIS_GRADIENT_STYLE}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Novo imóvel
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
 
       <div className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-6">
         <div className="sm:col-span-2 xl:col-span-1">

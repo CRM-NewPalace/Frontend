@@ -99,6 +99,13 @@ export const Route = createFileRoute("/_app/construtoras")({
 });
 
 type ConstrutorasTab = "books" | "lista" | "visibilidade";
+type FormTab =
+  | "identidade"
+  | "contato"
+  | "viabilizador"
+  | "book"
+  | "localidades"
+  | "empreendimentos";
 
 type FormState = {
   nome: string;
@@ -188,6 +195,7 @@ function ConstrutorasPage() {
   const [deletingLocalidade, setDeletingLocalidade] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
   const [tab, setTab] = useState<ConstrutorasTab>("books");
+  const [formTab, setFormTab] = useState<FormTab>("identidade");
   const [search, setSearch] = useState("");
 
   const loadItems = useCallback(async () => {
@@ -316,6 +324,7 @@ function ConstrutorasPage() {
     setEditingLocalidadeId(null);
     setEditingLocalidadeNome("");
     setDeleteLocalidadeId(null);
+    setFormTab("identidade");
     setOpen(true);
     void loadLocalidades([]);
   }
@@ -338,6 +347,7 @@ function ConstrutorasPage() {
     setEditingLocalidadeId(null);
     setEditingLocalidadeNome("");
     setDeleteLocalidadeId(null);
+    setFormTab("identidade");
     void loadLocalidades((item.localidades ?? []).map((loc) => loc.id));
     setLoadingEmpreendimentos(true);
     void fetchEmpreendimentos()
@@ -371,11 +381,13 @@ function ConstrutorasPage() {
     if (formMode === "create" && !canCreate) return;
     if (formMode === "edit" && !canManage) return;
     if (form.nome.trim().length < 2) {
+      setFormTab("identidade");
       toast.error("Informe o nome da construtora.");
       return;
     }
 
     if (form.contato.trim() && !isValidPhone(form.contato)) {
+      setFormTab("contato");
       toast.error(PHONE_INVALID_MESSAGE);
       return;
     }
@@ -383,12 +395,14 @@ function ConstrutorasPage() {
       form.viabilizadorContato.trim() &&
       !isValidPhone(form.viabilizadorContato)
     ) {
+      setFormTab("viabilizador");
       toast.error("Contato do viabilizador inválido. " + PHONE_INVALID_MESSAGE);
       return;
     }
 
     const driveFolderUrl = form.driveFolderUrl.trim();
     if (driveFolderUrl && !/^https:\/\//i.test(driveFolderUrl)) {
+      setFormTab("book");
       toast.error("A pasta do Drive deve ser uma URL https válida.");
       return;
     }
@@ -732,16 +746,16 @@ function ConstrutorasPage() {
         value={tab}
         onValueChange={(value) => setTab(value as ConstrutorasTab)}
       >
-        <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1 sm:w-auto">
-          <TabsTrigger value="books" className="gap-1.5">
+        <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1 rounded-full bg-muted p-1 sm:w-auto">
+          <TabsTrigger value="books" className="gap-1.5 rounded-full px-4">
             <FolderOpen className="h-3.5 w-3.5" />
             Books
           </TabsTrigger>
-          <TabsTrigger value="lista" className="gap-1.5">
+          <TabsTrigger value="lista" className="gap-1.5 rounded-full px-4">
             <Building className="h-3.5 w-3.5" />
             Lista
           </TabsTrigger>
-          <TabsTrigger value="visibilidade" className="gap-1.5">
+          <TabsTrigger value="visibilidade" className="gap-1.5 rounded-full px-4">
             <MapPin className="h-3.5 w-3.5" />
             Visibilidade
           </TabsTrigger>
@@ -1085,7 +1099,7 @@ function ConstrutorasPage() {
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
-        className="max-w-2xl"
+        className="max-w-3xl"
         icon={<Building className="w-5 h-5" />}
         title={
           formMode === "create"
@@ -1101,7 +1115,56 @@ function ConstrutorasPage() {
         }
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <FormDialogBody>
+          <FormDialogBody className="bg-muted/40">
+            <Tabs
+              value={formTab}
+              onValueChange={(value) => setFormTab(value as FormTab)}
+            >
+              <TabsList className="mb-1 flex h-auto w-full flex-wrap justify-start gap-1 rounded-full bg-muted p-1">
+                <TabsTrigger
+                  value="identidade"
+                  className="gap-1.5 rounded-full px-3"
+                >
+                  <Palette className="h-3.5 w-3.5" />
+                  Identidade
+                </TabsTrigger>
+                <TabsTrigger
+                  value="contato"
+                  className="gap-1.5 rounded-full px-3"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  Contato
+                </TabsTrigger>
+                <TabsTrigger
+                  value="viabilizador"
+                  className="gap-1.5 rounded-full px-3"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Viabilizador
+                </TabsTrigger>
+                <TabsTrigger value="book" className="gap-1.5 rounded-full px-3">
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  Book
+                </TabsTrigger>
+                <TabsTrigger
+                  value="localidades"
+                  className="gap-1.5 rounded-full px-3"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  Cidades
+                </TabsTrigger>
+                {formMode !== "create" ? (
+                  <TabsTrigger
+                    value="empreendimentos"
+                    className="gap-1.5 rounded-full px-3"
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    Empreend.
+                  </TabsTrigger>
+                ) : null}
+              </TabsList>
+
+              <TabsContent value="identidade" className="mt-4">
             <FormSection
               icon={<Palette className="h-4 w-4" />}
               title="Identidade"
@@ -1124,20 +1187,20 @@ function ConstrutorasPage() {
                       value={form.nome}
                       onChange={(e) => setField("nome", e.target.value)}
                       disabled={readOnly}
-                      required
                       placeholder="Ex.: Usina de Obras"
                     />
                   </div>
                   <CorPicker
                     value={form.cor}
                     onChange={(hex) => setField("cor", hex)}
-                    previewLabel={form.nome}
                     disabled={readOnly}
                   />
                 </div>
               </div>
             </FormSection>
+              </TabsContent>
 
+              <TabsContent value="contato" className="mt-4">
             <FormSection
               icon={<Phone className="h-4 w-4" />}
               title="Contato"
@@ -1171,7 +1234,9 @@ function ConstrutorasPage() {
                 </div>
               </div>
             </FormSection>
+              </TabsContent>
 
+              <TabsContent value="viabilizador" className="mt-4">
             <FormSection
               icon={<User className="h-4 w-4" />}
               title="Viabilizador"
@@ -1209,7 +1274,9 @@ function ConstrutorasPage() {
                 </div>
               </div>
             </FormSection>
+              </TabsContent>
 
+              <TabsContent value="book" className="mt-4">
             <FormSection
               icon={<FolderOpen className="h-4 w-4" />}
               title="Book no Drive"
@@ -1219,7 +1286,7 @@ function ConstrutorasPage() {
                 <Label htmlFor="driveFolderUrl">Link da pasta</Label>
                 <Input
                   id="driveFolderUrl"
-                  type="url"
+                  type="text"
                   inputMode="url"
                   placeholder="https://drive.google.com/drive/folders/..."
                   value={form.driveFolderUrl}
@@ -1228,7 +1295,9 @@ function ConstrutorasPage() {
                 />
               </div>
             </FormSection>
+              </TabsContent>
 
+              <TabsContent value="localidades" className="mt-4">
             <FormSection
               icon={<MapPin className="h-4 w-4" />}
               title="Localidades"
@@ -1384,8 +1453,10 @@ function ConstrutorasPage() {
                 </div>
               )}
             </FormSection>
+              </TabsContent>
 
             {formMode !== "create" && (
+              <TabsContent value="empreendimentos" className="mt-4">
               <FormSection
                 icon={<Building2 className="h-4 w-4" />}
                 title="Empreendimentos vinculados"
@@ -1443,7 +1514,9 @@ function ConstrutorasPage() {
                   </div>
                 )}
               </FormSection>
+              </TabsContent>
             )}
+            </Tabs>
           </FormDialogBody>
           <FormDialogActions
             hint={

@@ -71,7 +71,7 @@ export function CorPicker({
               key={hex}
               type="button"
               title={hex}
-              className="h-6 w-6 rounded-md border border-border"
+              className="h-7 w-7 rounded-full border border-border"
               style={{ backgroundColor: hex }}
               onClick={() => onChange(hex)}
               disabled={disabled}
