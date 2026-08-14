@@ -10,8 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import { useCatalog } from "@/lib/catalog-store";
 import { nextCatalogColor } from "@/lib/catalog-colors";
+import { isCorretorLike } from "@/lib/permissions";
 import { Loader2, Pencil, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,7 +27,8 @@ type Props = {
 };
 
 /**
- * Seleção de motivo de perda a partir do catálogo, com criação/edição rápida.
+ * Seleção de motivo de perda a partir do catálogo.
+ * Gerência/analista podem criar e editar; corretor e treinee só escolhem.
  */
 export function LostMotivoFields({
   value,
@@ -35,6 +38,7 @@ export function LostMotivoFields({
   selectId = "lost-motivo",
   outroId = "lost-motivo-outro",
 }: Props) {
+  const canManage = !isCorretorLike(getSession()?.role);
   const { catalog, addItem, updateItem } = useCatalog();
   const motivos = catalog.motivo_perda;
   const selected = motivos.find((m) => m.label === value) ?? null;
@@ -44,11 +48,13 @@ export function LostMotivoFields({
   const [editorSaving, setEditorSaving] = useState(false);
 
   function openCreate() {
+    if (!canManage) return;
     setEditorMode("create");
     setEditorLabel("");
   }
 
   function openEdit() {
+    if (!canManage) return;
     if (!selected) {
       toast.error("Selecione um motivo cadastrado para editar.");
       return;
@@ -63,6 +69,7 @@ export function LostMotivoFields({
   }
 
   async function saveEditor() {
+    if (!canManage) return;
     const label = editorLabel.trim();
     if (label.length < 2) {
       toast.error("Informe o motivo (mín. 2 caracteres).");
@@ -102,29 +109,31 @@ export function LostMotivoFields({
           <Label htmlFor={selectId} className="text-xs text-muted-foreground">
             Motivo
           </Label>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={openCreate}
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              Novo
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              disabled={!selected}
-              onClick={openEdit}
-            >
-              <Pencil className="w-3.5 h-3.5 mr-1" />
-              Editar
-            </Button>
-          </div>
+          {canManage ? (
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={openCreate}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Novo
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={!selected}
+                onClick={openEdit}
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1" />
+                Editar
+              </Button>
+            </div>
+          ) : null}
         </div>
         <Select value={value || undefined} onValueChange={onChange}>
           <SelectTrigger id={selectId} className="h-10">
@@ -136,18 +145,21 @@ export function LostMotivoFields({
                 {m.label}
               </SelectItem>
             ))}
-            <SelectItem value="__outro__">Outro…</SelectItem>
+            {canManage ? (
+              <SelectItem value="__outro__">Outro…</SelectItem>
+            ) : null}
           </SelectContent>
         </Select>
         {motivos.length === 0 && (
           <p className="text-[11px] text-muted-foreground">
-            Nenhum motivo cadastrado ainda. Use &quot;Novo&quot; ou
-            Configurações.
+            {canManage
+              ? 'Nenhum motivo cadastrado ainda. Use "Novo" ou Configurações.'
+              : "Nenhum motivo cadastrado. Peça à gerência para cadastrar em Configurações."}
           </p>
         )}
       </div>
 
-      {value === "__outro__" && (
+      {canManage && value === "__outro__" && (
         <div className="space-y-1.5">
           <Label htmlFor={outroId} className="text-xs text-muted-foreground">
             Descreva o motivo
@@ -162,7 +174,7 @@ export function LostMotivoFields({
         </div>
       )}
 
-      {editorMode && (
+      {canManage && editorMode && (
         <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium">

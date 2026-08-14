@@ -154,7 +154,7 @@ function Config() {
   const isTreinee = user?.role === "treinee";
   const showOpsTabs = !isAnalista && !isTreinee;
   const showDocumentacao = !isTreinee;
-  const showMotivos = true;
+  const showMotivos = !isTreinee;
   const showImoveis = Boolean(
     user &&
       canAccessRoute(
