@@ -403,7 +403,8 @@ function DashboardAdminView() {
           icon={UserX}
           tone="orange"
           format="number"
-          href="/leads?distribuicao=chegaram"
+          href="/leads"
+          search={{ distribuicao: "chegaram" }}
         />
         <FinanceKpiCard
           label={`Parados (${summary.atencao.diasParado}d)`}
@@ -412,6 +413,7 @@ function DashboardAdminView() {
           tone="rose"
           format="number"
           href="/leads"
+          search={{ parados: "1" }}
         />
         <FinanceKpiCard
           label="Perdidos no mês"

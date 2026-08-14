@@ -44,6 +44,8 @@ export interface Lead {
   /** Data de cadastro (ISO). */
   createdAt?: string;
   updatedAt: string;
+  /** Timestamp ISO da última atualização (quando a API envia). */
+  updatedAtIso?: string;
   tags: string[];
   /** Ficha de análise, se existir. */
   analise?: {

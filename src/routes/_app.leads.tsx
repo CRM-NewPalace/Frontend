@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -125,16 +125,38 @@ import {
 
 type LeadsSearch = {
   distribuicao?: "all" | "chegaram" | "distribuidos";
+  parados?: boolean;
 };
+
+const DIAS_PARADO = 7;
+
+function isLeadParado(lead: Lead, dias = DIAS_PARADO): boolean {
+  const raw = lead.updatedAtIso || lead.updatedAt;
+  if (!raw) return false;
+  const br = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const t = br
+    ? new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1])).getTime()
+    : new Date(raw).getTime();
+  if (Number.isNaN(t)) return false;
+  return t < Date.now() - dias * 24 * 60 * 60 * 1000;
+}
 
 export const Route = createFileRoute("/_app/leads")({
   head: () => ({ meta: [{ title: "Leads — Zone Connection" }] }),
   validateSearch: (search: Record<string, unknown>): LeadsSearch => {
+    const result: LeadsSearch = {};
     const d = search.distribuicao;
     if (d === "chegaram" || d === "distribuidos" || d === "all") {
-      return { distribuicao: d };
+      result.distribuicao = d;
     }
-    return {};
+    if (
+      search.parados === true ||
+      search.parados === "1" ||
+      search.parados === "true"
+    ) {
+      result.parados = true;
+    }
+    return result;
   },
   component: LeadsPage,
 });
@@ -227,6 +249,7 @@ const LEADS_SOFT_BTN =
   "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
 
 function LeadsPage() {
+  const navigate = useNavigate();
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
@@ -317,12 +340,19 @@ function LeadsPage() {
   const [distribuicaoFilter, setDistribuicaoFilter] = useState<
     "all" | "chegaram" | "distribuidos"
   >(routeSearch.distribuicao ?? "all");
+  const [paradosFilter, setParadosFilter] = useState(
+    () => Boolean(routeSearch.parados),
+  );
 
   useEffect(() => {
     if (routeSearch.distribuicao) {
       setDistribuicaoFilter(routeSearch.distribuicao);
     }
   }, [routeSearch.distribuicao]);
+
+  useEffect(() => {
+    setParadosFilter(Boolean(routeSearch.parados));
+  }, [routeSearch.parados]);
 
   /** Filtro de corretor: gerente só vê a própria equipe (não outras). */
   const corretorFilterOptions = useMemo(() => {
@@ -407,7 +437,8 @@ function LeadsPage() {
     prioridadeFilter !== "all" ||
     tipoRendaFilter !== "all" ||
     origemFilter !== "all" ||
-    (!isCorretor && distribuicaoFilter !== "all");
+    (!isCorretor && distribuicaoFilter !== "all") ||
+    paradosFilter;
 
   const isLeadChegou = (l: Lead) => !l.corretorId && !l.equipeId;
   const isLeadDistribuido = (l: Lead) => Boolean(l.corretorId || l.equipeId);
@@ -476,6 +507,7 @@ function LeadsPage() {
         !isLeadDistribuido(l)
       )
         return false;
+      if (paradosFilter && !isLeadParado(l)) return false;
       return true;
     });
   }, [
@@ -490,6 +522,7 @@ function LeadsPage() {
     tipoRendaFilter,
     origemFilter,
     distribuicaoFilter,
+    paradosFilter,
     isCorretor,
     canFilterEquipe,
   ]);
@@ -646,6 +679,8 @@ function LeadsPage() {
     setTipoRendaFilter("all");
     setOrigemFilter("all");
     setDistribuicaoFilter("all");
+    setParadosFilter(false);
+    void navigate({ to: "/leads", search: {}, replace: true });
   }
 
   function equipeLabel(lead: Lead): string {
@@ -1752,6 +1787,8 @@ function LeadsPage() {
             setDistribuicaoFilter("all");
             setPrioridadeFilter("all");
             setStageFilter("all");
+            setParadosFilter(false);
+            void navigate({ to: "/leads", search: {}, replace: true });
           }}
         >
           <FinanceKpiCard
@@ -1764,6 +1801,7 @@ function LeadsPage() {
               distribuicaoFilter === "all" &&
                 prioridadeFilter === "all" &&
                 stageFilter === "all" &&
+                !paradosFilter &&
                 "shadow-md",
             )}
           />
@@ -1776,6 +1814,12 @@ function LeadsPage() {
               onClick={() => {
                 setDistribuicaoFilter("chegaram");
                 setPrioridadeFilter("all");
+                setParadosFilter(false);
+                void navigate({
+                  to: "/leads",
+                  search: { distribuicao: "chegaram" },
+                  replace: true,
+                });
               }}
             >
               <FinanceKpiCard
@@ -1793,6 +1837,12 @@ function LeadsPage() {
               onClick={() => {
                 setDistribuicaoFilter("distribuidos");
                 setPrioridadeFilter("all");
+                setParadosFilter(false);
+                void navigate({
+                  to: "/leads",
+                  search: { distribuicao: "distribuidos" },
+                  replace: true,
+                });
               }}
             >
               <FinanceKpiCard
@@ -1971,6 +2021,7 @@ function LeadsPage() {
             corretorFilter !== "all" ||
             (canFilterEquipe && equipeFilter !== "all") ||
             distribuicaoFilter !== "all" ||
+            paradosFilter ||
             extraFiltersActive) && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="w-4 h-4 mr-1" />
@@ -2100,11 +2151,13 @@ function LeadsPage() {
             })}
           </div>
           <p className="text-xs text-muted-foreground">
-            {distribuicaoFilter === "chegaram"
-              ? "Leads no pool, ainda sem equipe nem corretor."
-              : distribuicaoFilter === "distribuidos"
-                ? "Leads já atribuídos a uma equipe ou corretor."
-                : "Visão completa do funil."}
+            {paradosFilter
+              ? `Somente leads sem atualização há ${DIAS_PARADO} dias ou mais.`
+              : distribuicaoFilter === "chegaram"
+                ? "Leads no pool, ainda sem equipe nem corretor."
+                : distribuicaoFilter === "distribuidos"
+                  ? "Leads já atribuídos a uma equipe ou corretor."
+                  : "Visão completa do funil."}
           </p>
         </div>
       )}

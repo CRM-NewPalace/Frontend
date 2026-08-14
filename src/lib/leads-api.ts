@@ -109,6 +109,7 @@ export function mapApiLead(api: ApiLead): Lead {
     estadoCivil: api.estadoCivil ?? null,
     createdAt: api.createdAt,
     updatedAt: formatUpdatedAt(api.updatedAt),
+    updatedAtIso: api.updatedAt,
     tags: api.tags ?? [],
     analise: api.analise ?? null,
   };
