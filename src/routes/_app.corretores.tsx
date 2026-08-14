@@ -305,16 +305,40 @@ function Page() {
           </p>
 
           <section className={isGerente ? "mt-5 mb-6" : "mt-5"}>
-            <PodioCorretores
-              corretores={data.corretores}
-              onSelect={(row) =>
-                setVendasAlvo({
-                  kind: "corretor",
+            <div className="grid gap-4 xl:grid-cols-2">
+              <PodioVendas
+                title="Pódio de vendas · corretores"
+                items={data.corretores.map((row) => ({
                   id: row.corretorId,
                   nome: row.nome,
-                })
-              }
-            />
+                  vendas: row.vendas.valor,
+                  vgv: row.vgv.valor,
+                }))}
+                onSelect={(item) =>
+                  setVendasAlvo({
+                    kind: "corretor",
+                    id: item.id,
+                    nome: item.nome,
+                  })
+                }
+              />
+              <PodioVendas
+                title="Pódio de vendas · construtoras"
+                items={data.construtoras.map((item) => ({
+                  id: item.construtoraId,
+                  nome: item.nome,
+                  vendas: item.vendas,
+                  vgv: item.vgv,
+                }))}
+                onSelect={(item) =>
+                  setVendasAlvo({
+                    kind: "construtora",
+                    id: item.id,
+                    nome: item.nome,
+                  })
+                }
+              />
+            </div>
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
               <RankingList
                 corretores={data.corretores}
@@ -417,16 +441,23 @@ function initials(name: string) {
     .join("");
 }
 
-function PodioCorretores({
-  corretores,
+function PodioVendas({
+  title,
+  items,
   onSelect,
 }: {
-  corretores: DashboardRankingCorretor[];
-  onSelect: (row: DashboardRankingCorretor) => void;
+  title: string;
+  items: Array<{ id: string; nome: string; vendas: number; vgv: number }>;
+  onSelect: (item: {
+    id: string;
+    nome: string;
+    vendas: number;
+    vgv: number;
+  }) => void;
 }) {
   const slots = [
     {
-      row: corretores[1],
+      row: items[1],
       place: 2 as const,
       step: "h-24 sm:h-28",
       avatar:
@@ -435,7 +466,7 @@ function PodioCorretores({
         "bg-linear-to-b from-slate-200 to-slate-400 text-slate-800 rounded-tl-2xl",
     },
     {
-      row: corretores[0],
+      row: items[0],
       place: 1 as const,
       step: "h-36 sm:h-44",
       avatar:
@@ -444,7 +475,7 @@ function PodioCorretores({
         "bg-linear-to-b from-amber-300 to-amber-500 text-amber-950 rounded-t-2xl shadow-md z-[1]",
     },
     {
-      row: corretores[2],
+      row: items[2],
       place: 3 as const,
       step: "h-20 sm:h-24",
       avatar:
@@ -454,14 +485,27 @@ function PodioCorretores({
     },
   ].filter((s) => Boolean(s.row));
 
-  if (slots.length === 0) return null;
+  if (slots.length === 0) {
+    return (
+      <Card className="overflow-hidden border-border/70 bg-linear-to-br from-card via-card to-primary/5 text-foreground">
+        <CardContent className="relative flex min-h-72 flex-col items-center justify-center p-5 sm:p-7">
+          <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
+            <Trophy className="h-4 w-4" /> {title}
+          </div>
+          <p className="mt-6 text-sm text-muted-foreground">
+            Nenhuma venda no período.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="overflow-hidden border-border/70 bg-linear-to-br from-card via-card to-primary/5 text-foreground">
       <CardContent className="relative p-5 sm:p-7">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(ellipse_at_top,var(--color-primary)_0%,transparent_70%)] opacity-10" />
         <div className="relative flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-          <Trophy className="h-4 w-4" /> Pódio de vendas · corretores
+          <Trophy className="h-4 w-4" /> {title}
         </div>
 
         <div className="relative mx-auto mt-7 max-w-lg">
@@ -471,7 +515,7 @@ function PodioCorretores({
 
               return (
                 <button
-                  key={row.corretorId}
+                  key={row.id}
                   type="button"
                   onClick={() => onSelect(row)}
                   className="flex min-w-0 flex-1 flex-col items-center transition-transform hover:-translate-y-0.5"
@@ -507,11 +551,11 @@ function PodioCorretores({
                       {row.nome}
                     </p>
                     <p className="text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
-                      {row.vendas.valor} venda
-                      {row.vendas.valor === 1 ? "" : "s"}
+                      {row.vendas} venda
+                      {row.vendas === 1 ? "" : "s"}
                       <br className="sm:hidden" />
                       <span className="hidden sm:inline"> · </span>
-                      {money(row.vgv.valor)}
+                      {money(row.vgv)}
                     </p>
                   </div>
 
