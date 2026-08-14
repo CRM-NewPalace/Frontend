@@ -240,37 +240,37 @@ function ReciboPreviewCard({
   value: (key: string) => string;
 }) {
   return (
-    <div className="relative rounded-2xl border border-foreground/80 p-3 text-left not-italic">
-      <div className="mb-1 text-[9px] uppercase tracking-wide text-muted-foreground">
+    <div className="relative rounded-2xl border border-foreground/80 px-4 pb-3 pt-2 text-left not-italic">
+      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
         {viaLabel}
       </div>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h3 className="pt-1 text-sm font-bold leading-tight">
+      <div className="relative mb-6 mt-1 min-h-10">
+        <h3 className="text-center text-[15px] font-bold leading-tight">
           Recibo de Pagamento
         </h3>
-        <div className="shrink-0 rounded-md border border-foreground/80 px-2.5 py-1 text-xs font-bold">
+        <div className="absolute right-0 top-5 shrink-0 rounded-md border border-foreground/80 px-2.5 py-1 text-xs font-bold">
           {moneyPreview(values.valor ?? "")}
         </div>
       </div>
-      <p className="text-justify">
+      <p className="text-justify leading-relaxed">
         Recebi(emos) de <strong>{value("pagadorNome")}</strong> - CPF{" "}
         <strong>{value("pagadorCpf")}</strong>, a importância de{" "}
         <strong>{value("valorExtenso")}</strong>, referente à{" "}
         <strong>{value("referente")}</strong>.
       </p>
-      <p className="mt-2 text-justify">
+      <p className="mt-3 text-justify leading-relaxed">
         Para maior clareza, firmo(amos) o presente recibo, que comprova o
         recebimento integral do valor mencionado, concedendo{" "}
         <strong>quitação plena, geral e irrevogável</strong> pela quantia
         recebida.
       </p>
-      <p className="mt-4 text-right font-semibold">
+      <p className="mt-5 text-right font-semibold">
         {value("cidade")},{" "}
         {values.data?.trim()
           ? formatLongDatePt(values.data)
           : "____ de ________ de ________"}
       </p>
-      <div className="mt-6 space-y-0.5 text-center text-[10px]">
+      <div className="mt-8 space-y-0.5 text-center text-[10px]">
         <div className="mx-auto w-40 border-t border-foreground/70" />
         <div className="pt-1.5 font-bold uppercase">{value("empresaNome")}</div>
         {values.empresaTelefone?.trim() ? (

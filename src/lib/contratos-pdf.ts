@@ -387,6 +387,86 @@ function writeRich(
   return y + lineH + 4;
 }
 
+/** Parágrafo justificado (última linha à esquerda), com trechos em negrito. */
+function writeJustifiedRich(
+  doc: jsPDF,
+  parts: Array<string | { b: string }>,
+  startY: number,
+  opts: {
+    fontSize: number;
+    lineH: number;
+    x: number;
+    maxW: number;
+  },
+) {
+  const { fontSize, lineH, x: left, maxW } = opts;
+  doc.setFontSize(fontSize);
+  doc.setTextColor(30, 30, 30);
+
+  const words: Array<{ text: string; bold: boolean; width: number }> = [];
+  for (const part of parts) {
+    const bold = typeof part !== "string";
+    const content = typeof part === "string" ? part : String(part.b ?? "");
+    for (const word of content.split(/\s+/)) {
+      if (!word) continue;
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      const pieces =
+        doc.getTextWidth(word) <= maxW
+          ? [word]
+          : (doc.splitTextToSize(word, maxW) as string[]);
+      for (const piece of pieces) {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        words.push({
+          text: piece,
+          bold,
+          width: doc.getTextWidth(piece),
+        });
+      }
+    }
+  }
+
+  const lines: Array<typeof words> = [];
+  let current: typeof words = [];
+  let lineW = 0;
+  const spaceW = (() => {
+    doc.setFont("helvetica", "normal");
+    return doc.getTextWidth(" ");
+  })();
+
+  for (const word of words) {
+    const extra = current.length ? spaceW : 0;
+    if (current.length && lineW + extra + word.width > maxW) {
+      lines.push(current);
+      current = [word];
+      lineW = word.width;
+      continue;
+    }
+    current.push(word);
+    lineW += extra + word.width;
+  }
+  if (current.length) lines.push(current);
+
+  let y = startY;
+  lines.forEach((line, index) => {
+    const isLast = index === lines.length - 1;
+    const textW = line.reduce((sum, word) => sum + word.width, 0);
+    const gaps = Math.max(line.length - 1, 0);
+    const gapW =
+      !isLast && gaps > 0
+        ? (maxW - textW) / gaps
+        : spaceW;
+    let x = left;
+    for (const word of line) {
+      doc.setFont("helvetica", word.bold ? "bold" : "normal");
+      doc.text(word.text, x, y);
+      x += word.width + gapW;
+    }
+    y += lineH;
+  });
+
+  return y + 4;
+}
+
 function writeParagraph(doc: jsPDF, y: number, text: string, bold = false) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 48;
@@ -502,7 +582,7 @@ function drawReciboCopy(
   viaLabel: string,
 ) {
   const pageW = doc.internal.pageSize.getWidth();
-  const pad = 20;
+  const pad = 28;
 
   doc.setDrawColor(40, 40, 40);
   doc.setLineWidth(1);
@@ -515,30 +595,32 @@ function drawReciboCopy(
 
   let y = box.y + 18;
   if (logo) y = writeLogo(doc, logo, y, true);
-  else y += 10;
+  else y += 8;
 
-  const valorW = 118;
-  const valorH = 30;
-  const valorX = box.x + box.w - valorW - pad;
-  const valorY = y;
-  doc.setDrawColor(40, 40, 40);
-  doc.setLineWidth(0.85);
-  doc.roundedRect(valorX, valorY, valorW, valorH, 7, 7);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
+  doc.setFontSize(16);
   doc.setTextColor(20, 20, 20);
-  doc.text(moneyLabel(v(values, "valor")), valorX + valorW / 2, valorY + 20, {
+  doc.text("Recibo de Pagamento", box.x + box.w / 2, y + 14, {
     align: "center",
   });
 
+  const valorW = 118;
+  const valorH = 28;
+  const valorX = box.x + box.w - valorW - pad;
+  const valorY = y + 22;
+  doc.setDrawColor(40, 40, 40);
+  doc.setLineWidth(0.85);
+  doc.roundedRect(valorX, valorY, valorW, valorH, 6, 6);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.text("Recibo de Pagamento", box.x + pad, valorY + 20);
+  doc.setFontSize(12);
+  doc.text(moneyLabel(v(values, "valor")), valorX + valorW / 2, valorY + 18, {
+    align: "center",
+  });
 
-  const textMargin = box.x + pad;
+  const textX = box.x + pad;
   const textMaxW = box.w - pad * 2;
-  y = valorY + 48;
-  y = writeRich(
+  y = valorY + valorH + 28;
+  y = writeJustifiedRich(
     doc,
     [
       "Recebi(emos) de ",
@@ -552,17 +634,11 @@ function drawReciboCopy(
       ".",
     ],
     y,
-    {
-      fontSize: 10,
-      lineH: 15,
-      margin: textMargin,
-      maxW: textMaxW,
-      noPageBreak: true,
-    },
+    { fontSize: 11, lineH: 17, x: textX, maxW: textMaxW },
   );
 
-  y += 4;
-  writeRich(
+  y += 10;
+  y = writeJustifiedRich(
     doc,
     [
       "Para maior clareza, firmo(amos) o presente recibo, que comprova o recebimento integral do valor mencionado, concedendo ",
@@ -570,23 +646,18 @@ function drawReciboCopy(
       " pela quantia recebida.",
     ],
     y,
-    {
-      fontSize: 10,
-      lineH: 15,
-      margin: textMargin,
-      maxW: textMaxW,
-      noPageBreak: true,
-    },
+    { fontSize: 11, lineH: 17, x: textX, maxW: textMaxW },
   );
 
-  const dateY = box.y + box.h - 78;
+  const sigTop = box.y + box.h - 52;
+  y = Math.min(y + 22, sigTop - 18);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setTextColor(20, 20, 20);
   doc.text(
     `${v(values, "cidade")}, ${formatLongDatePt(values.data ?? "")}`,
     box.x + box.w - pad,
-    dateY,
+    y,
     { align: "right" },
   );
 
