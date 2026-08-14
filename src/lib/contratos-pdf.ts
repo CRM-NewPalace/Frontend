@@ -338,11 +338,17 @@ function writeRich(
   doc: jsPDF,
   parts: Array<string | { b: string }>,
   startY: number,
-  opts?: { fontSize?: number; lineH?: number },
+  opts?: {
+    fontSize?: number;
+    lineH?: number;
+    margin?: number;
+    maxW?: number;
+    noPageBreak?: boolean;
+  },
 ) {
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 48;
-  const maxW = pageW - margin * 2;
+  const margin = opts?.margin ?? 48;
+  const maxW = opts?.maxW ?? pageW - margin * 2;
   const fontSize = opts?.fontSize ?? 10;
   const lineH = opts?.lineH ?? 14;
   let y = startY;
@@ -370,7 +376,7 @@ function writeRich(
     const w = doc.getTextWidth(text);
     if (x + w > margin + maxW && !/^\s+$/.test(text)) {
       y += lineH;
-      y = ensureSpace(doc, y, lineH);
+      if (!opts?.noPageBreak) y = ensureSpace(doc, y, lineH);
       x = margin;
     }
     if (/^\s+$/.test(text) && x === margin) continue;
@@ -487,49 +493,51 @@ function moneyLabel(raw: string) {
   return trimmed.startsWith("R$") ? trimmed : `R$ ${trimmed}`;
 }
 
-async function pdfReciboPagamento(
+function drawReciboCopy(
+  doc: jsPDF,
   values: Values,
-  opts?: { logoUrl?: string | null; primaryColor?: string | null },
+  box: { x: number; y: number; w: number; h: number },
+  logo: LoadedLogo | null,
+  color: Rgb,
+  viaLabel: string,
 ) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const logo = opts?.logoUrl?.trim()
-    ? await loadLogoForPdf(opts.logoUrl)
-    : null;
-  const color =
-    parseHexColor(logo?.primaryHex) ??
-    parseHexColor(opts?.primaryColor) ??
-    [20, 20, 20];
-  const innerX = 36;
-  const innerY = 120;
-  const innerW = pageW - innerX * 2;
-  const innerH = pageH - innerY - 72;
-
-  if (logo) writeLogo(doc, logo, 36);
+  const pad = 20;
 
   doc.setDrawColor(40, 40, 40);
-  doc.setLineWidth(1.1);
-  doc.roundedRect(innerX, innerY, innerW, innerH, 18, 18);
+  doc.setLineWidth(1);
+  doc.roundedRect(box.x, box.y, box.w, box.h, 14, 14);
 
-  const boxW = 132;
-  const boxH = 36;
-  const boxX = innerX + innerW - boxW - 22;
-  const boxY = innerY + 22;
-  doc.setLineWidth(0.9);
-  doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(110, 110, 110);
+  doc.text(viaLabel, box.x + pad, box.y + 16);
+
+  let y = box.y + 18;
+  if (logo) y = writeLogo(doc, logo, y, true);
+  else y += 10;
+
+  const valorW = 118;
+  const valorH = 30;
+  const valorX = box.x + box.w - valorW - pad;
+  const valorY = y;
+  doc.setDrawColor(40, 40, 40);
+  doc.setLineWidth(0.85);
+  doc.roundedRect(valorX, valorY, valorW, valorH, 7, 7);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setTextColor(20, 20, 20);
-  doc.text(moneyLabel(v(values, "valor")), boxX + boxW / 2, boxY + 23, {
+  doc.text(moneyLabel(v(values, "valor")), valorX + valorW / 2, valorY + 20, {
     align: "center",
   });
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Recibo de Pagamento", innerX + 28, boxY + 24);
+  doc.setFontSize(15);
+  doc.text("Recibo de Pagamento", box.x + pad, valorY + 20);
 
-  let y = innerY + 92;
+  const textMargin = box.x + pad;
+  const textMaxW = box.w - pad * 2;
+  y = valorY + 48;
   y = writeRich(
     doc,
     [
@@ -544,11 +552,17 @@ async function pdfReciboPagamento(
       ".",
     ],
     y,
-    { fontSize: 11, lineH: 18 },
+    {
+      fontSize: 10,
+      lineH: 15,
+      margin: textMargin,
+      maxW: textMaxW,
+      noPageBreak: true,
+    },
   );
 
-  y += 10;
-  y = writeRich(
+  y += 4;
+  writeRich(
     doc,
     [
       "Para maior clareza, firmo(amos) o presente recibo, que comprova o recebimento integral do valor mencionado, concedendo ",
@@ -556,38 +570,96 @@ async function pdfReciboPagamento(
       " pela quantia recebida.",
     ],
     y,
-    { fontSize: 11, lineH: 18 },
+    {
+      fontSize: 10,
+      lineH: 15,
+      margin: textMargin,
+      maxW: textMaxW,
+      noPageBreak: true,
+    },
   );
 
-  y += 28;
+  const dateY = box.y + box.h - 78;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
+  doc.setTextColor(20, 20, 20);
   doc.text(
     `${v(values, "cidade")}, ${formatLongDatePt(values.data ?? "")}`,
-    innerX + innerW - 28,
-    y,
+    box.x + box.w - pad,
+    dateY,
     { align: "right" },
   );
 
-  y += 86;
-  const lineW = 260;
+  const lineW = 230;
   const lineX = (pageW - lineW) / 2;
+  const lineY = box.y + box.h - 42;
   doc.setDrawColor(...color);
   doc.setLineWidth(0.7);
-  doc.line(lineX, y, lineX + lineW, y);
-  y += 16;
+  doc.line(lineX, lineY, lineX + lineW, lineY);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(20, 20, 20);
-  doc.text(v(values, "empresaNome").toUpperCase(), pageW / 2, y, {
+  doc.text(v(values, "empresaNome").toUpperCase(), pageW / 2, lineY + 13, {
     align: "center",
   });
   if (values.empresaTelefone?.trim()) {
-    y += 14;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(values.empresaTelefone.trim(), pageW / 2, y, { align: "center" });
+    doc.setFontSize(9);
+    doc.text(values.empresaTelefone.trim(), pageW / 2, lineY + 25, {
+      align: "center",
+    });
   }
+}
+
+async function pdfReciboPagamento(
+  values: Values,
+  opts?: { logoUrl?: string | null; primaryColor?: string | null },
+) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const logo = opts?.logoUrl?.trim()
+    ? await loadLogoForPdf(opts.logoUrl)
+    : null;
+  const color =
+    parseHexColor(logo?.primaryHex) ??
+    parseHexColor(opts?.primaryColor) ??
+    [20, 20, 20];
+
+  const outerX = 28;
+  const outerY = 20;
+  const gap = 20;
+  const copyW = pageW - outerX * 2;
+  const copyH = (pageH - outerY * 2 - gap) / 2;
+
+  drawReciboCopy(
+    doc,
+    values,
+    { x: outerX, y: outerY, w: copyW, h: copyH },
+    logo,
+    color,
+    "1ª via",
+  );
+
+  const cutY = outerY + copyH + gap / 2;
+  doc.setDrawColor(160, 160, 160);
+  doc.setLineWidth(0.6);
+  doc.setLineDashPattern([3, 3], 0);
+  doc.line(outerX, cutY, pageW - outerX, cutY);
+  doc.setLineDashPattern([], 0);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text("recorte", pageW / 2, cutY - 4, { align: "center" });
+
+  drawReciboCopy(
+    doc,
+    values,
+    { x: outerX, y: outerY + copyH + gap, w: copyW, h: copyH },
+    logo,
+    color,
+    "2ª via",
+  );
 
   doc.save(`recibo-pagamento-${safeName(v(values, "pagadorNome"))}.pdf`);
 }

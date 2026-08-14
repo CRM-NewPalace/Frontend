@@ -63,7 +63,7 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
     id: "recibo-pagamento",
     titulo: "Recibo de pagamento",
     descricao:
-      "Comprovante de recebimento com valor, pagador e referência do pagamento.",
+      "Comprovante de recebimento com valor, pagador e referência — duas vias por página.",
     fields: [
       {
         key: "pagadorNome",

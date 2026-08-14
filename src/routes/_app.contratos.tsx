@@ -230,6 +230,57 @@ function moneyPreview(raw: string) {
   return trimmed.startsWith("R$") ? trimmed : `R$ ${trimmed}`;
 }
 
+function ReciboPreviewCard({
+  viaLabel,
+  values,
+  value,
+}: {
+  viaLabel: string;
+  values: Record<string, string>;
+  value: (key: string) => string;
+}) {
+  return (
+    <div className="relative rounded-2xl border border-foreground/80 p-3 text-left not-italic">
+      <div className="mb-1 text-[9px] uppercase tracking-wide text-muted-foreground">
+        {viaLabel}
+      </div>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h3 className="pt-1 text-sm font-bold leading-tight">
+          Recibo de Pagamento
+        </h3>
+        <div className="shrink-0 rounded-md border border-foreground/80 px-2.5 py-1 text-xs font-bold">
+          {moneyPreview(values.valor ?? "")}
+        </div>
+      </div>
+      <p className="text-justify">
+        Recebi(emos) de <strong>{value("pagadorNome")}</strong> - CPF{" "}
+        <strong>{value("pagadorCpf")}</strong>, a importância de{" "}
+        <strong>{value("valorExtenso")}</strong>, referente à{" "}
+        <strong>{value("referente")}</strong>.
+      </p>
+      <p className="mt-2 text-justify">
+        Para maior clareza, firmo(amos) o presente recibo, que comprova o
+        recebimento integral do valor mencionado, concedendo{" "}
+        <strong>quitação plena, geral e irrevogável</strong> pela quantia
+        recebida.
+      </p>
+      <p className="mt-4 text-right font-semibold">
+        {value("cidade")},{" "}
+        {values.data?.trim()
+          ? formatLongDatePt(values.data)
+          : "____ de ________ de ________"}
+      </p>
+      <div className="mt-6 space-y-0.5 text-center text-[10px]">
+        <div className="mx-auto w-40 border-t border-foreground/70" />
+        <div className="pt-1.5 font-bold uppercase">{value("empresaNome")}</div>
+        {values.empresaTelefone?.trim() ? (
+          <div>{values.empresaTelefone.trim()}</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function ContratoPreview({
   template,
   values,
@@ -383,42 +434,12 @@ function ContratoPreview({
         </p>
       </div>
     ) : template.id === "recibo-pagamento" ? (
-      <div className="rounded-2xl border border-foreground/80 p-4 text-left not-italic">
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <h3 className="pt-1.5 text-base font-bold leading-tight">
-            Recibo de Pagamento
-          </h3>
-          <div className="shrink-0 rounded-md border border-foreground/80 px-3 py-1.5 text-sm font-bold">
-            {moneyPreview(values.valor ?? "")}
-          </div>
+      <div className="flex flex-col gap-2">
+        <ReciboPreviewCard viaLabel="1ª via" values={values} value={value} />
+        <div className="border-t border-dashed border-muted-foreground/50 py-0.5 text-center text-[8px] uppercase tracking-widest text-muted-foreground">
+          recorte
         </div>
-        <p className="text-justify">
-          Recebi(emos) de <strong>{value("pagadorNome")}</strong> - CPF{" "}
-          <strong>{value("pagadorCpf")}</strong>, a importância de{" "}
-          <strong>{value("valorExtenso")}</strong>, referente à{" "}
-          <strong>{value("referente")}</strong>.
-        </p>
-        <p className="mt-4 text-justify">
-          Para maior clareza, firmo(amos) o presente recibo, que comprova o
-          recebimento integral do valor mencionado, concedendo{" "}
-          <strong>quitação plena, geral e irrevogável</strong> pela quantia
-          recebida.
-        </p>
-        <p className="mt-6 text-right font-semibold">
-          {value("cidade")},{" "}
-          {values.data?.trim()
-            ? formatLongDatePt(values.data)
-            : "____ de ________ de ________"}
-        </p>
-        <div className="mt-12 space-y-1 text-center text-[11px]">
-          <div className="mx-auto w-48 border-t border-foreground/70" />
-          <div className="pt-2 font-bold uppercase">
-            {value("empresaNome")}
-          </div>
-          {values.empresaTelefone?.trim() ? (
-            <div>{values.empresaTelefone.trim()}</div>
-          ) : null}
-        </div>
+        <ReciboPreviewCard viaLabel="2ª via" values={values} value={value} />
       </div>
     ) : (
       <>
