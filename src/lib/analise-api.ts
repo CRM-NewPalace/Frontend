@@ -69,6 +69,31 @@ export async function fetchAnalises(params?: {
   return apiFetch<Analise[]>(`/analise${query ? `?${query}` : ""}`);
 }
 
+export type AnaliseRankingRow = {
+  corretorId: string | null;
+  nome: string;
+  total: number;
+  emAnalise: number;
+  aprovados: number;
+  reprovados: number;
+  vendidos: number;
+};
+
+export type AnaliseResumo = {
+  totais: {
+    emAnalise: number;
+    aprovado: number;
+    reprovado: number;
+    vendidos: number;
+  };
+  ranking: AnaliseRankingRow[];
+  vendaSlugs: string[];
+};
+
+export async function fetchAnaliseResumo(): Promise<AnaliseResumo> {
+  return apiFetch<AnaliseResumo>("/analise/resumo");
+}
+
 export async function fetchAnalise(id: string): Promise<Analise> {
   return apiFetch<Analise>(`/analise/${id}`);
 }

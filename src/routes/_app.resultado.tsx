@@ -41,15 +41,16 @@ import {
 import { brl } from "@/lib/crm-types";
 import { ApiError } from "@/lib/api";
 import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
-import { useLeads } from "@/lib/leads-store";
 import {
   fetchAnalises,
+  fetchAnaliseResumo,
   updateAnalise,
   assumirAnalise,
   type Analise,
+  type AnaliseRankingRow,
+  type AnaliseResumo,
   type AnaliseStatus,
 } from "@/lib/analise-api";
-import { getSession } from "@/lib/auth";
 import {
   SearchCheck,
   Loader2,
@@ -114,20 +115,58 @@ const KPI_FILTER_LABEL: Record<KpiFilter, string> = {
   vendidos: "Vendidos",
 };
 
-function matchesKpiFilter(item: Analise, filter: KpiFilter): boolean {
+function matchesKpiFilter(
+  item: Analise,
+  filter: KpiFilter,
+  vendaSlugs: string[],
+): boolean {
   if (filter === "emAnalise") {
     return item.status === "em_analise" || item.status === "pendente";
   }
   if (filter === "aprovado") return item.status === "aprovado";
   if (filter === "reprovado") return item.status === "reprovado";
+  if (vendaSlugs.length > 0) {
+    return (
+      vendaSlugs.includes(item.lead.stage) ||
+      vendaSlugs.includes(item.stageSituacao)
+    );
+  }
   return (
     isLeadVendido(item.lead.stage) || isLeadVendido(item.stageSituacao)
   );
 }
 
+function rankingFromItems(items: Analise[]): AnaliseRankingRow[] {
+  const byCorretor = new Map<string, AnaliseRankingRow>();
+  for (const item of items) {
+    const key = item.lead.corretorId ?? "__none__";
+    const bucket = byCorretor.get(key) ?? {
+      corretorId: item.lead.corretorId,
+      nome: item.lead.corretor?.name ?? "Sem corretor",
+      total: 0,
+      emAnalise: 0,
+      aprovados: 0,
+      reprovados: 0,
+      vendidos: 0,
+    };
+    bucket.total += 1;
+    if (item.status === "em_analise" || item.status === "pendente") {
+      bucket.emAnalise += 1;
+    } else if (item.status === "aprovado") {
+      bucket.aprovados += 1;
+    } else if (item.status === "reprovado") {
+      bucket.reprovados += 1;
+    }
+    byCorretor.set(key, bucket);
+  }
+  return [...byCorretor.values()].sort(
+    (a, b) => b.total - a.total || a.nome.localeCompare(b.nome, "pt-BR"),
+  );
+}
+
 function AnalisePage() {
-  const { assignees, loading: leadsLoading } = useLeads();
   const [items, setItems] = useState<Analise[]>([]);
+  const [resumo, setResumo] = useState<AnaliseResumo | null>(null);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Analise | null>(null);
   const [statusDraft, setStatusDraft] = useState<AnaliseStatus>("pendente");
@@ -142,22 +181,15 @@ function AnalisePage() {
     null,
   );
 
-  /** Colunas: corretores + admin/gerente com carteira própria. */
-  const corretores = useMemo(
-    () =>
-      assignees.filter(
-        (a) =>
-          a.role === "corretor" ||
-          a.role === "admin" ||
-          a.role === "gerente",
-      ),
-    [assignees],
-  );
-
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await fetchAnalises());
+      const [analises, summary] = await Promise.all([
+        fetchAnalises(),
+        fetchAnaliseResumo().catch(() => null),
+      ]);
+      setItems(analises);
+      setResumo(summary);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -173,42 +205,10 @@ function AnalisePage() {
     void loadItems();
   }, [loadItems]);
 
-  const columns = useMemo(() => {
-    const byCorretor = new Map<string, Analise[]>();
-    for (const item of items) {
-      const id = item.lead.corretorId ?? "__none__";
-      const list = byCorretor.get(id) ?? [];
-      list.push(item);
-      byCorretor.set(id, list);
-    }
-
-    const cols = corretores.map((c) => ({
-      id: c.id,
-      name: c.name,
-      items: byCorretor.get(c.id) ?? [],
-    }));
-
-    // Processos sem corretor (legado) — só se existirem
-    const orphan = byCorretor.get("__none__") ?? [];
-    if (orphan.length > 0) {
-      cols.push({ id: "__none__", name: "Sem corretor", items: orphan });
-    }
-
-    // Admin: corretores que têm análise mas não estão em assignees (raro)
-    for (const [id, list] of byCorretor) {
-      if (id === "__none__") continue;
-      if (cols.some((c) => c.id === id)) continue;
-      cols.push({
-        id,
-        name: list[0]?.lead.corretor?.name ?? "Corretor",
-        items: list,
-      });
-    }
-
-    return cols;
-  }, [items, corretores]);
+  const vendaSlugs = resumo?.vendaSlugs ?? [];
 
   const pipelineSummary = useMemo(() => {
+    if (resumo) return resumo.totais;
     let emAnalise = 0;
     let aprovado = 0;
     let reprovado = 0;
@@ -226,14 +226,14 @@ function AnalisePage() {
       }
     }
     return { emAnalise, aprovado, reprovado, vendidos };
-  }, [items]);
+  }, [items, resumo]);
 
   const filteredByKpi = useMemo(() => {
     if (!kpiFilter) return [];
     return items
-      .filter((item) => matchesKpiFilter(item, kpiFilter))
+      .filter((item) => matchesKpiFilter(item, kpiFilter, vendaSlugs))
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [items, kpiFilter]);
+  }, [items, kpiFilter, vendaSlugs]);
 
   function toggleKpiFilter(next: KpiFilter) {
     setKpiFilter((prev) => (prev === next ? null : next));
@@ -241,28 +241,12 @@ function AnalisePage() {
   }
 
   const corretorRanking = useMemo(() => {
-    return columns
-      .map((col) => {
-        let emAnalise = 0;
-        let aprovados = 0;
-        for (const item of col.items) {
-          if (item.status === "em_analise" || item.status === "pendente") {
-            emAnalise += 1;
-          } else if (item.status === "aprovado") {
-            aprovados += 1;
-          }
-        }
-        return {
-          id: col.id,
-          nome: col.name,
-          total: col.items.length,
-          emAnalise,
-          aprovados,
-        };
-      })
-      .filter((row) => row.total > 0)
-      .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [columns]);
+    const rows = resumo?.ranking ?? rankingFromItems(items);
+    return rows.map((row) => ({
+      ...row,
+      id: row.corretorId ?? "__none__",
+    }));
+  }, [resumo, items]);
 
   const corretorRankingFiltered = useMemo(() => {
     const q = corretorSearch.trim().toLowerCase();
@@ -354,6 +338,9 @@ function AnalisePage() {
       setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
       setDetail(updated);
       setVgvValor("");
+      void fetchAnaliseResumo()
+        .then(setResumo)
+        .catch(() => undefined);
 
       const isResultado =
         updated.status === "aprovado" || updated.status === "reprovado";
@@ -413,7 +400,7 @@ function AnalisePage() {
     );
   }
 
-  const busy = loading || leadsLoading;
+  const busy = loading;
 
   return (
     <div>
@@ -899,6 +886,9 @@ function AnalisePage() {
                         );
                         setDetail(updated);
                         setStatusDraft(updated.status);
+                        void fetchAnaliseResumo()
+                          .then(setResumo)
+                          .catch(() => undefined);
                         toast.success("Processo assumido (Em análise).");
                       } catch (err) {
                         toast.error(

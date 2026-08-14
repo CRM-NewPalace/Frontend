@@ -9,6 +9,7 @@ export type ApiUser = {
   whatsapp: string | null;
   dataNascimento: string | null;
   cargo: string | null;
+  creci: string | null;
   cor: string | null;
   role: Role;
   status: UserStatus;
@@ -31,6 +32,7 @@ export type CreateUserInput = {
   whatsapp?: string;
   dataNascimento?: string | null;
   cargo?: string;
+  creci?: string | null;
   cor?: string | null;
   role: Role;
   status?: UserStatus;
@@ -43,6 +45,7 @@ export type UpdateUserInput = {
   whatsapp?: string | null;
   dataNascimento?: string | null;
   cargo?: string | null;
+  creci?: string | null;
   cor?: string | null;
   role?: Role;
   status?: UserStatus;
@@ -52,6 +55,7 @@ export async function fetchUsers(params?: {
   search?: string;
   role?: Role;
   status?: UserStatus;
+  comCreci?: boolean;
   page?: number;
   limit?: number;
   sort?: string;
@@ -60,6 +64,7 @@ export async function fetchUsers(params?: {
   if (params?.search) qs.set("search", params.search);
   if (params?.role) qs.set("role", params.role);
   if (params?.status) qs.set("status", params.status);
+  if (params?.comCreci) qs.set("comCreci", "true");
   if (params?.sort) qs.set("sort", params.sort);
   qs.set("page", String(params?.page ?? 1));
   qs.set("limit", String(params?.limit ?? 100));

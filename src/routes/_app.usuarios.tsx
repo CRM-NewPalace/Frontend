@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -114,7 +114,7 @@ export const Route = createFileRoute("/_app/usuarios")({
 });
 
 /** Cache da lista para abrir a tela sem esperar a API (sincroniza em background). */
-const USERS_CACHE_KEY = "crm_users_cache_v2";
+const USERS_CACHE_KEY = "crm_users_cache_v3";
 let usersMemoryCache: ApiUser[] | null = null;
 
 function getUsersCache(): ApiUser[] | null {
@@ -166,6 +166,8 @@ type FormState = {
   whatsapp: string;
   dataNascimento: string;
   cargo: string;
+  temCreci: boolean;
+  creci: string;
   cor: string;
   role: Role;
   status: UserStatus;
@@ -179,6 +181,8 @@ const emptyForm = (): FormState => ({
   whatsapp: "",
   dataNascimento: "",
   cargo: "",
+  temCreci: false,
+  creci: "",
   cor: "",
   role: "corretor",
   status: "ativo",
@@ -204,6 +208,8 @@ function userToForm(u: ApiUser): FormState {
     whatsapp: u.whatsapp ? formatPhone(u.whatsapp) : "",
     dataNascimento: toDateInput(u.dataNascimento),
     cargo: u.cargo ?? "",
+    temCreci: Boolean(u.creci?.trim()),
+    creci: u.creci ?? "",
     cor: u.cor ?? "",
     role: u.role,
     status: u.status,
@@ -308,6 +314,7 @@ function Usuarios() {
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [creciFilter, setCreciFilter] = useState("all");
   const [quota, setQuota] = useState<UsersQuota | null>(null);
   const [presenceByUser, setPresenceByUser] = useState<
     Record<string, UserPresenceToday>
@@ -408,14 +415,15 @@ function Usuarios() {
     return users.filter((u) => {
       if (q) {
         const hay =
-          `${u.name} ${u.email} ${u.phone ?? ""} ${u.cargo ?? ""}`.toLowerCase();
+          `${u.name} ${u.email} ${u.phone ?? ""} ${u.cargo ?? ""} ${u.creci ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (roleFilter !== "all" && u.role !== roleFilter) return false;
       if (statusFilter !== "all" && u.status !== statusFilter) return false;
+      if (creciFilter === "com" && !u.creci?.trim()) return false;
       return true;
     });
-  }, [users, search, roleFilter, statusFilter]);
+  }, [users, search, roleFilter, statusFilter, creciFilter]);
 
   const sorted = useMemo(
     () =>
@@ -488,6 +496,7 @@ function Usuarios() {
     const phone = form.phone.trim();
     const whatsapp = form.whatsapp.trim();
     const cargo = form.cargo.trim();
+    const creci = form.temCreci ? form.creci.trim() : "";
     const cor = form.cor.trim();
 
     if (!name || !email) {
@@ -500,6 +509,10 @@ function Usuarios() {
     }
     if (whatsapp && !isValidPhone(whatsapp)) {
       toast.error("Informe um WhatsApp válido com DDD.");
+      return;
+    }
+    if (form.temCreci && creci.length < 3) {
+      toast.error("Informe o CRECI do usuário.");
       return;
     }
     if (formMode === "create" && !isStrongPassword(form.password)) {
@@ -518,6 +531,7 @@ function Usuarios() {
           whatsapp: whatsapp || undefined,
           dataNascimento: form.dataNascimento || null,
           cargo: cargo || undefined,
+          creci: creci || undefined,
           cor: cor || undefined,
           role: form.role,
           status: form.status,
@@ -544,6 +558,7 @@ function Usuarios() {
           whatsapp: whatsapp || null,
           dataNascimento: form.dataNascimento || null,
           cargo: cargo || null,
+          creci: creci || null,
           cor: cor || null,
           role: form.role,
           status: form.status,
@@ -671,7 +686,7 @@ function Usuarios() {
           <div className="relative flex-1 min-w-220px">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, e-mail, telefone..."
+              placeholder="Buscar por nome, e-mail, telefone ou CRECI..."
               className="pl-9 h-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -703,6 +718,15 @@ function Usuarios() {
               <SelectItem value="inativo">Inativo</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={creciFilter} onValueChange={setCreciFilter}>
+            <SelectTrigger className="w-40 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">CRECI: todos</SelectItem>
+              <SelectItem value="com">Com CRECI</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
@@ -714,6 +738,7 @@ function Usuarios() {
               <TableHead>Email</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Cargo</TableHead>
+              <TableHead>CRECI</TableHead>
               <TableHead>Perfil</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Último acesso</TableHead>
@@ -725,7 +750,7 @@ function Usuarios() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Carregando usuários...
@@ -734,7 +759,7 @@ function Usuarios() {
             ) : sorted.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum usuário encontrado.
@@ -756,6 +781,7 @@ function Usuarios() {
                   <TableCell className="text-sm">{u.email}</TableCell>
                   <TableCell className="text-sm">{u.phone || "—"}</TableCell>
                   <TableCell className="text-sm">{u.cargo || "—"}</TableCell>
+                  <TableCell className="text-sm">{u.creci || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={roleBadgeClass(u.role)}>
                       {ROLE_LABEL[u.role]}
@@ -996,6 +1022,42 @@ function Usuarios() {
                   className="h-10 bg-background"
                 />
               </div>
+              <label
+                htmlFor="usr-tem-creci"
+                className="flex cursor-pointer items-center gap-3 rounded-lg border bg-background px-3 py-2.5"
+              >
+                <Checkbox
+                  id="usr-tem-creci"
+                  checked={form.temCreci}
+                  onCheckedChange={(value) => {
+                    const checked = value === true;
+                    setForm((prev) => ({
+                      ...prev,
+                      temCreci: checked,
+                      creci: checked ? prev.creci : "",
+                    }));
+                  }}
+                />
+                <span className="text-sm">Este usuário tem CRECI</span>
+              </label>
+              {form.temCreci ? (
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="usr-creci"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Número do CRECI
+                  </Label>
+                  <Input
+                    id="usr-creci"
+                    value={form.creci}
+                    onChange={(e) => setField("creci", e.target.value)}
+                    placeholder="Ex.: 12345-J"
+                    className="h-10 bg-background"
+                    maxLength={40}
+                  />
+                </div>
+              ) : null}
               <CorPicker
                 id="usr-cor"
                 value={form.cor}
@@ -1184,6 +1246,7 @@ function Usuarios() {
                     value={formatBirthDate(detail.dataNascimento)}
                   />
                   <DetailField label="Cargo" value={detail.cargo || "—"} />
+                  <DetailField label="CRECI" value={detail.creci || "—"} />
                   <DetailField
                     label="Último acesso"
                     value={formatLastAccess(detail.lastLoginAt)}
