@@ -66,6 +66,7 @@ import {
   Clock3,
   Kanban,
   CalendarDays,
+  Users,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { isAnalistaAllowed } from "@/lib/tenant-modules";
@@ -108,6 +109,7 @@ import {
 } from "@/lib/phone";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FinanceKpiCard } from "@/components/finance-kpi-card";
 
 export const Route = createFileRoute("/_app/usuarios")({
   head: () => ({ meta: [{ title: "Usuários — Zone Connection" }] }),
@@ -261,6 +263,38 @@ function formatTimeToday(seconds: number | undefined): string {
   if (h === 0) return `${m} min`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}min`;
+}
+
+function CreciRatioBar({
+  label,
+  count,
+  total,
+  colorClass,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  colorClass: string;
+  onClick: () => void;
+}) {
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  return (
+    <button type="button" onClick={onClick} className="w-full text-left">
+      <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+        <span className="font-medium">{label}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {count} de {total} ({Math.round(pct)}%)
+        </span>
+      </div>
+      <div className="h-3 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full transition-[width]", colorClass)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </button>
+  );
 }
 
 const WEEKDAY_LABEL: Record<number, string> = {
@@ -441,12 +475,24 @@ function Usuarios() {
   const adminStats = useMemo(() => {
     const corretores = users.filter((u) => u.role === "corretor");
     const comCreci = corretores.filter((u) => Boolean(u.creci?.trim())).length;
+    const loggedSeconds = corretores
+      .map((u) => presenceByUser[u.id]?.secondsToday ?? 0)
+      .filter((seconds) => seconds > 0);
+    const avgSeconds =
+      loggedSeconds.length > 0
+        ? Math.round(
+            loggedSeconds.reduce((sum, seconds) => sum + seconds, 0) /
+              loggedSeconds.length,
+          )
+        : 0;
     return {
       corretores: corretores.length,
       comCreci,
       semCreci: corretores.length - comCreci,
+      avgSeconds,
+      loggedInToday: loggedSeconds.length,
     };
-  }, [users]);
+  }, [users, presenceByUser]);
 
   function filterCorretoresCreci(kind: "com" | "sem") {
     if (roleFilter === "corretor" && creciFilter === kind) {
@@ -703,37 +749,55 @@ function Usuarios() {
         }
       />
 
+      {isAdmin ? (
+        <section className="mb-4 grid gap-3 grid-cols-1 sm:grid-cols-2">
+          <FinanceKpiCard
+            label="Total de corretores"
+            value={adminStats.corretores}
+            icon={Users}
+            tone="blue"
+            format="number"
+            onClick={() => {
+              setRoleFilter("corretor");
+              setCreciFilter("all");
+            }}
+          />
+          <FinanceKpiCard
+            label="Tempo médio dos corretores"
+            value={adminStats.avgSeconds}
+            valueLabel={
+              adminStats.avgSeconds > 0
+                ? formatTimeToday(adminStats.avgSeconds)
+                : "—"
+            }
+            icon={Clock3}
+            tone="violet"
+            format="number"
+            suffix={
+              adminStats.loggedInToday > 0
+                ? `hoje · ${adminStats.loggedInToday} logados`
+                : "hoje"
+            }
+          />
+        </section>
+      ) : null}
+
       {isAdmin && adminStats.corretores > 0 ? (
-        <Card className="mb-4 p-4">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-medium">Corretores com CRECI</span>
-            <span className="text-xs text-muted-foreground">
-              {adminStats.comCreci} com CRECI · {adminStats.semCreci} sem ·{" "}
-              {adminStats.corretores} corretores
-            </span>
-          </div>
-          <div className="flex h-3 overflow-hidden rounded-full bg-muted">
-            <button
-              type="button"
-              className="min-w-0 border-0 p-0 bg-teal-600 transition-[width] hover:opacity-90"
-              style={{
-                width: `${(adminStats.comCreci / adminStats.corretores) * 100}%`,
-              }}
-              title={`${adminStats.comCreci} corretores com CRECI`}
-              aria-label={`${adminStats.comCreci} corretores com CRECI`}
-              onClick={() => filterCorretoresCreci("com")}
-            />
-            <button
-              type="button"
-              className="min-w-0 border-0 p-0 bg-orange-400 transition-[width] hover:opacity-90"
-              style={{
-                width: `${(adminStats.semCreci / adminStats.corretores) * 100}%`,
-              }}
-              title={`${adminStats.semCreci} corretores sem CRECI`}
-              aria-label={`${adminStats.semCreci} corretores sem CRECI`}
-              onClick={() => filterCorretoresCreci("sem")}
-            />
-          </div>
+        <Card className="mb-4 space-y-4 p-4">
+          <CreciRatioBar
+            label="Com CRECI"
+            count={adminStats.comCreci}
+            total={adminStats.corretores}
+            colorClass="bg-emerald-500"
+            onClick={() => filterCorretoresCreci("com")}
+          />
+          <CreciRatioBar
+            label="Sem CRECI"
+            count={adminStats.semCreci}
+            total={adminStats.corretores}
+            colorClass="bg-orange-400"
+            onClick={() => filterCorretoresCreci("sem")}
+          />
         </Card>
       ) : null}
 
