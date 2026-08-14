@@ -122,6 +122,12 @@ export async function updateConstrutora(
   });
 }
 
+export async function deleteConstrutora(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/construtoras/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchConstrutoraVendas(
   id: string,
   params?: { mes?: number; ano?: number },
