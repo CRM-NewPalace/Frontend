@@ -76,11 +76,13 @@ export function FormDialogShell({
 export function FormSection({
   icon,
   title,
+  description,
   children,
   className,
 }: {
   icon?: ReactNode;
   title: string;
+  description?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -91,9 +93,20 @@ export function FormSection({
         className,
       )}
     >
-      <div className="flex items-center gap-2 text-sm font-medium">
-        {icon}
-        {title}
+      <div className="flex items-start gap-2.5">
+        {icon ? (
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            {icon}
+          </span>
+        ) : null}
+        <div className="min-w-0 space-y-0.5">
+          <div className="text-sm font-medium">{title}</div>
+          {description ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
       </div>
       {children}
     </section>

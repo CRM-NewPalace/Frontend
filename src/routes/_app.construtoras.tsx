@@ -40,7 +40,6 @@ import {
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
-import { useHeaderSearch } from "@/lib/header-search";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
   DEFAULT_TABLE_SORT,
@@ -53,8 +52,8 @@ import {
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CorPicker } from "@/components/cor-picker";
 import {
-  CONSTRUTORA_CORES_PRESET,
   construtoraBadgeStyle,
   createConstrutora,
   deleteConstrutora,
@@ -64,11 +63,14 @@ import {
 } from "@/lib/construtoras-api";
 import {
   createLocalidade,
+  deleteLocalidade,
   fetchLocalidades,
+  updateLocalidade,
   type Localidade,
 } from "@/lib/localidades-api";
 import {
   Building,
+  Building2,
   Plus,
   Loader2,
   Pencil,
@@ -76,6 +78,7 @@ import {
   Eye,
   Phone,
   MapPin,
+  Palette,
   User,
   FolderOpen,
   Check,
@@ -174,11 +177,18 @@ function ConstrutorasPage() {
   const [matrixCidadeNome, setMatrixCidadeNome] = useState("");
   const [savingLocalidade, setSavingLocalidade] = useState(false);
   const [savingMatrixCidade, setSavingMatrixCidade] = useState(false);
+  const [editingLocalidadeId, setEditingLocalidadeId] = useState<string | null>(
+    null,
+  );
+  const [editingLocalidadeNome, setEditingLocalidadeNome] = useState("");
+  const [savingLocalidadeEdit, setSavingLocalidadeEdit] = useState(false);
+  const [deleteLocalidadeId, setDeleteLocalidadeId] = useState<string | null>(
+    null,
+  );
+  const [deletingLocalidade, setDeletingLocalidade] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
   const [tab, setTab] = useState<ConstrutorasTab>("books");
-  const { value: search, setValue: setSearch } = useHeaderSearch(
-    "Buscar construtora...",
-  );
+  const [search, setSearch] = useState("");
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -303,6 +313,9 @@ function ConstrutorasPage() {
     setEmpreendimentos([]);
     setSelectedEmpreendimentos([]);
     setNewLocalidadeNome("");
+    setEditingLocalidadeId(null);
+    setEditingLocalidadeNome("");
+    setDeleteLocalidadeId(null);
     setOpen(true);
     void loadLocalidades([]);
   }
@@ -322,6 +335,9 @@ function ConstrutorasPage() {
       driveFolderUrl: item.driveFolderUrl ?? "",
     });
     setNewLocalidadeNome("");
+    setEditingLocalidadeId(null);
+    setEditingLocalidadeNome("");
+    setDeleteLocalidadeId(null);
     void loadLocalidades((item.localidades ?? []).map((loc) => loc.id));
     setLoadingEmpreendimentos(true);
     void fetchEmpreendimentos()
@@ -538,6 +554,110 @@ function ConstrutorasPage() {
       setSavingMatrixCidade(false);
     }
   }
+
+  function startEditLocalidade(localidade: Localidade) {
+    setEditingLocalidadeId(localidade.id);
+    setEditingLocalidadeNome(localidade.nome);
+  }
+
+  function cancelEditLocalidade() {
+    setEditingLocalidadeId(null);
+    setEditingLocalidadeNome("");
+  }
+
+  function syncLocalidadeNome(id: string, nome: string) {
+    setItems((previous) =>
+      previous.map((item) => ({
+        ...item,
+        localidades: (item.localidades ?? []).map((localidade) =>
+          localidade.id === id ? { ...localidade, nome } : localidade,
+        ),
+      })),
+    );
+  }
+
+  function removeLocalidadeFromItems(id: string) {
+    setItems((previous) =>
+      previous.map((item) => ({
+        ...item,
+        localidades: (item.localidades ?? []).filter(
+          (localidade) => localidade.id !== id,
+        ),
+      })),
+    );
+    setSelectedLocalidades((previous) =>
+      previous.filter((itemId) => itemId !== id),
+    );
+    if (driveFilterLocalidadeId === id) {
+      setDriveFilterLocalidadeId("");
+    }
+  }
+
+  async function handleUpdateLocalidade() {
+    if (!canManage || !editingLocalidadeId) return;
+    const nome = editingLocalidadeNome.trim();
+    if (nome.length < 2) {
+      toast.error("Informe o nome da localidade.");
+      return;
+    }
+    const duplicate = localidades.find(
+      (item) =>
+        item.id !== editingLocalidadeId &&
+        item.nome.localeCompare(nome, "pt-BR", { sensitivity: "base" }) === 0,
+    );
+    if (duplicate) {
+      toast.error("Já existe uma localidade com esse nome.");
+      return;
+    }
+    setSavingLocalidadeEdit(true);
+    try {
+      const updated = await updateLocalidade(editingLocalidadeId, nome);
+      setLocalidades((previous) =>
+        [...previous.filter((item) => item.id !== updated.id), updated].sort(
+          (a, b) => a.nome.localeCompare(b.nome, "pt-BR"),
+        ),
+      );
+      syncLocalidadeNome(updated.id, updated.nome);
+      cancelEditLocalidade();
+      toast.success("Localidade atualizada.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível atualizar a localidade.",
+      );
+    } finally {
+      setSavingLocalidadeEdit(false);
+    }
+  }
+
+  async function handleDeleteLocalidade() {
+    if (!canManage || !deleteLocalidadeId) return;
+    setDeletingLocalidade(true);
+    try {
+      const id = deleteLocalidadeId;
+      await deleteLocalidade(id);
+      setLocalidades((previous) => previous.filter((item) => item.id !== id));
+      removeLocalidadeFromItems(id);
+      if (editingLocalidadeId === id) {
+        cancelEditLocalidade();
+      }
+      setDeleteLocalidadeId(null);
+      toast.success("Localidade excluída.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível excluir a localidade.",
+      );
+    } finally {
+      setDeletingLocalidade(false);
+    }
+  }
+
+  const localidadeToDelete = localidades.find(
+    (item) => item.id === deleteLocalidadeId,
+  );
 
   function toggleEmpreendimento(id: string, checked: boolean) {
     setSelectedEmpreendimentos((previous) =>
@@ -965,6 +1085,7 @@ function ConstrutorasPage() {
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
+        className="max-w-2xl"
         icon={<Building className="w-5 h-5" />}
         title={
           formMode === "create"
@@ -973,103 +1094,58 @@ function ConstrutorasPage() {
               ? "Editar construtora"
               : "Construtora"
         }
+        description={
+          formMode === "view"
+            ? "Dados, book, cidades de atuação e empreendimentos vinculados."
+            : "Preencha cada seção: identidade, contato, book no Drive e cidades."
+        }
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <FormDialogBody>
-            <FormSection title="Dados">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="nome">Nome *</Label>
-                  <Input
-                    id="nome"
-                    value={form.nome}
-                    onChange={(e) => setField("nome", e.target.value)}
-                    disabled={readOnly}
-                    required
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="cor">Cor do nome</Label>
-                  <div className="flex flex-wrap items-center gap-2">
+            <FormSection
+              icon={<Palette className="h-4 w-4" />}
+              title="Identidade"
+              description="Nome e cor que aparecem nos cards, na lista e nos books."
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <span
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
+                  style={{ backgroundColor: form.cor || "#079ED4" }}
+                >
+                  {construtoraIniciais(form.nome) || (
+                    <Building className="h-6 w-6" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome *</Label>
                     <Input
-                      id="cor"
-                      type="color"
-                      value={form.cor || "#3b82f6"}
-                      onChange={(e) => setField("cor", e.target.value)}
+                      id="nome"
+                      value={form.nome}
+                      onChange={(e) => setField("nome", e.target.value)}
                       disabled={readOnly}
-                      className="h-10 w-14 cursor-pointer p-1"
+                      required
+                      placeholder="Ex.: Usina de Obras"
                     />
-                    <Input
-                      value={form.cor}
-                      onChange={(e) => setField("cor", e.target.value)}
-                      disabled={readOnly}
-                      placeholder="#3b82f6"
-                      maxLength={7}
-                      className="max-w-35 font-mono text-sm"
-                    />
-                    {!readOnly ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setField("cor", "")}
-                      >
-                        Limpar
-                      </Button>
-                    ) : null}
-                    {form.nome.trim() && form.cor ? (
-                      <Badge
-                        variant="secondary"
-                        className="border-transparent"
-                        style={construtoraBadgeStyle(form.cor)}
-                      >
-                        {form.nome.trim()}
-                      </Badge>
-                    ) : null}
                   </div>
-                  {!readOnly ? (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {CONSTRUTORA_CORES_PRESET.map((hex) => (
-                        <button
-                          key={hex}
-                          type="button"
-                          title={hex}
-                          className="h-6 w-6 rounded-md border border-border"
-                          style={{ backgroundColor: hex }}
-                          onClick={() => setField("cor", hex)}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="driveFolderUrl">
-                    <span className="inline-flex items-center gap-1">
-                      <FolderOpen className="w-3.5 h-3.5" /> Pasta Google Drive
-                    </span>
-                  </Label>
-                  <Input
-                    id="driveFolderUrl"
-                    type="url"
-                    inputMode="url"
-                    placeholder="https://drive.google.com/drive/folders/..."
-                    value={form.driveFolderUrl}
-                    onChange={(e) =>
-                      setField("driveFolderUrl", e.target.value)
-                    }
+                  <CorPicker
+                    value={form.cor}
+                    onChange={(hex) => setField("cor", hex)}
+                    previewLabel={form.nome}
                     disabled={readOnly}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Link da pasta da construtora no Google Drive. Aparece na
-                    grade de arquivos desta página.
-                  </p>
                 </div>
+              </div>
+            </FormSection>
+
+            <FormSection
+              icon={<Phone className="h-4 w-4" />}
+              title="Contato"
+              description="Telefone e endereço da construtora."
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="contato">
-                    <span className="inline-flex items-center gap-1">
-                      <Phone className="w-3.5 h-3.5" /> Contato
-                    </span>
-                  </Label>
+                  <Label htmlFor="contato">Telefone</Label>
                   <Input
                     id="contato"
                     inputMode="tel"
@@ -1084,24 +1160,26 @@ function ConstrutorasPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endereco">
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" /> Endereço
-                    </span>
-                  </Label>
+                  <Label htmlFor="endereco">Endereço</Label>
                   <Input
                     id="endereco"
                     value={form.endereco}
                     onChange={(e) => setField("endereco", e.target.value)}
                     disabled={readOnly}
+                    placeholder="Cidade, bairro ou endereço"
                   />
                 </div>
+              </div>
+            </FormSection>
+
+            <FormSection
+              icon={<User className="h-4 w-4" />}
+              title="Viabilizador"
+              description="Pessoa de referência para viabilizar propostas nesta construtora."
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="viabilizadorNome">
-                    <span className="inline-flex items-center gap-1">
-                      <User className="w-3.5 h-3.5" /> Viabilizador
-                    </span>
-                  </Label>
+                  <Label htmlFor="viabilizadorNome">Nome</Label>
                   <Input
                     id="viabilizadorNome"
                     value={form.viabilizadorNome}
@@ -1112,9 +1190,7 @@ function ConstrutorasPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="viabilizadorContato">
-                    Contato do viabilizador
-                  </Label>
+                  <Label htmlFor="viabilizadorContato">Telefone</Label>
                   <Input
                     id="viabilizadorContato"
                     inputMode="tel"
@@ -1133,16 +1209,33 @@ function ConstrutorasPage() {
                 </div>
               </div>
             </FormSection>
+
             <FormSection
-              icon={<MapPin className="w-3.5 h-3.5 text-primary" />}
-              title="Localidades"
+              icon={<FolderOpen className="h-4 w-4" />}
+              title="Book no Drive"
+              description="Pasta da construtora no Google Drive. Aparece na aba Books."
             >
-              <p className="mb-3 text-sm text-muted-foreground">
-                Vincule as regiões de atuação desta construtora. A mesma
-                localidade pode ser usada em várias construtoras.
-              </p>
-              {canManage && !readOnly && (
-                <div className="mb-3 flex flex-wrap gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="driveFolderUrl">Link da pasta</Label>
+                <Input
+                  id="driveFolderUrl"
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://drive.google.com/drive/folders/..."
+                  value={form.driveFolderUrl}
+                  onChange={(e) => setField("driveFolderUrl", e.target.value)}
+                  disabled={readOnly}
+                />
+              </div>
+            </FormSection>
+
+            <FormSection
+              icon={<MapPin className="h-4 w-4" />}
+              title="Localidades"
+              description="Marque as cidades de atuação. Você também pode cadastrar, editar ou excluir o nome da região."
+            >
+              {canManage ? (
+                <div className="flex flex-wrap gap-2">
                   <Input
                     value={newLocalidadeNome}
                     onChange={(e) => setNewLocalidadeNome(e.target.value)}
@@ -1171,7 +1264,7 @@ function ConstrutorasPage() {
                     Cadastrar região
                   </Button>
                 </div>
-              )}
+              ) : null}
               {loadingLocalidades ? (
                 <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1182,13 +1275,14 @@ function ConstrutorasPage() {
                   Nenhuma localidade cadastrada.
                 </p>
               ) : (
-                <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">
+                <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border bg-muted/20 p-2">
                   {localidades.map((localidade) => {
                     const checked = selectedLocalidades.includes(localidade.id);
+                    const isEditing = editingLocalidadeId === localidade.id;
                     return (
-                      <label
+                      <div
                         key={localidade.id}
-                        className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 hover:bg-muted"
+                        className="flex items-center gap-2 rounded-lg border bg-background px-2 py-1.5"
                       >
                         <Checkbox
                           checked={checked}
@@ -1196,19 +1290,107 @@ function ConstrutorasPage() {
                             toggleLocalidade(localidade.id, value === true)
                           }
                           disabled={readOnly}
+                          aria-label={`Atua em ${localidade.nome}`}
                         />
-                        <span className="truncate text-sm">{localidade.nome}</span>
-                      </label>
+                        {isEditing ? (
+                          <Input
+                            value={editingLocalidadeNome}
+                            onChange={(e) =>
+                              setEditingLocalidadeNome(e.target.value)
+                            }
+                            className="h-8 flex-1"
+                            autoFocus
+                            maxLength={80}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void handleUpdateLocalidade();
+                              }
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                cancelEditLocalidade();
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span className="min-w-0 flex-1 truncate text-sm">
+                            {localidade.nome}
+                          </span>
+                        )}
+                        {canManage ? (
+                          <div className="flex shrink-0 items-center">
+                            {isEditing ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="Salvar nome"
+                                  disabled={savingLocalidadeEdit}
+                                  onClick={() => void handleUpdateLocalidade()}
+                                >
+                                  {savingLocalidadeEdit ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Check className="h-4 w-4 text-emerald-600" />
+                                  )}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="Cancelar"
+                                  disabled={savingLocalidadeEdit}
+                                  onClick={cancelEditLocalidade}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="Editar nome"
+                                  onClick={() =>
+                                    startEditLocalidade(localidade)
+                                  }
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="Excluir localidade"
+                                  onClick={() =>
+                                    setDeleteLocalidadeId(localidade.id)
+                                  }
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   })}
                 </div>
               )}
             </FormSection>
+
             {formMode !== "create" && (
-              <FormSection title="Empreendimentos vinculados">
-                <p className="mb-3 text-sm text-muted-foreground">
-                  Selecione os empreendimentos desta construtora.
-                </p>
+              <FormSection
+                icon={<Building2 className="h-4 w-4" />}
+                title="Empreendimentos vinculados"
+                description="Selecione os empreendimentos desta construtora."
+              >
                 {loadingEmpreendimentos ? (
                   <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1219,7 +1401,7 @@ function ConstrutorasPage() {
                     Nenhum empreendimento disponível.
                   </p>
                 ) : (
-                  <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">
+                  <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border bg-muted/20 p-2">
                     {empreendimentos.map((empreendimento) => {
                       const checked = selectedEmpreendimentos.includes(
                         empreendimento.id,
@@ -1227,7 +1409,7 @@ function ConstrutorasPage() {
                       return (
                         <label
                           key={empreendimento.id}
-                          className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 hover:bg-muted"
+                          className="flex cursor-pointer items-center gap-3 rounded-lg border bg-background px-2 py-2 hover:bg-muted/50"
                         >
                           <Checkbox
                             checked={checked}
@@ -1263,7 +1445,13 @@ function ConstrutorasPage() {
               </FormSection>
             )}
           </FormDialogBody>
-          <FormDialogActions>
+          <FormDialogActions
+            hint={
+              selectedLocalidades.length
+                ? `${selectedLocalidades.length} cidade${selectedLocalidades.length === 1 ? "" : "s"} selecionada${selectedLocalidades.length === 1 ? "" : "s"}`
+                : undefined
+            }
+          >
             <Button
               type="button"
               variant="outline"
@@ -1297,6 +1485,40 @@ function ConstrutorasPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => void handleDelete()}>
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!deleteLocalidadeId}
+        onOpenChange={(v) => !v && !deletingLocalidade && setDeleteLocalidadeId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir localidade?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {localidadeToDelete
+                ? `A cidade “${localidadeToDelete.nome}” será removida de todas as construtoras.`
+                : "Esta localidade será removida de todas as construtoras."}
+              {localidadeToDelete?._count?.construtoras
+                ? ` Hoje ela está vinculada a ${localidadeToDelete._count.construtoras} construtora${localidadeToDelete._count.construtoras === 1 ? "" : "s"}.`
+                : ""}{" "}
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingLocalidade}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingLocalidade}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteLocalidade();
+              }}
+            >
+              {deletingLocalidade ? "Excluindo…" : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
