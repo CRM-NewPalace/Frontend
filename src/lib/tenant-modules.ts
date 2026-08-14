@@ -69,7 +69,7 @@ export const TENANT_MODULE_GROUPS: TenantModuleGroup[] = [
         keepOnAdminBulkOff: true,
       },
       { key: "equipes", label: "Equipes" },
-      { key: "corretores", label: "Corretores" },
+      { key: "corretores", label: "Ranking" },
       { key: "documentacao", label: "Documentação" },
       { key: "analise", label: "Análise" },
       { key: "metas", label: "Metas" },

@@ -48,7 +48,7 @@ import { cn } from "@/lib/utils";
 import { fetchConstrutoraVendas, type ConstrutoraVenda } from "@/lib/construtoras-api";
 
 export const Route = createFileRoute("/_app/corretores")({
-  head: () => ({ meta: [{ title: "Corretores — Zone Connection" }] }),
+  head: () => ({ meta: [{ title: "Ranking — Zone Connection" }] }),
   component: Page,
 });
 
@@ -220,7 +220,7 @@ function Page() {
     return (
       <div>
         <PageHeader
-          title="Corretores"
+          title="Ranking"
           description="Ranking e métricas mensais da imobiliária."
         />
         <SemConexao
@@ -234,7 +234,7 @@ function Page() {
   return (
     <div>
       <PageHeader
-        title="Corretores"
+        title="Ranking"
         description={
           isGerente
             ? `Ranking dos corretores da sua equipe · ${mesLabel}.`
@@ -621,7 +621,7 @@ function ConstrutorasRanking({
           <Building2 className="h-4 w-4 text-primary" /> Top construtoras · VGV
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Clique na construtora para ver os corretores que venderam.
+          Clique na construtora para ver os corretores e o VGV de cada venda.
         </p>
       </CardHeader>
       <CardContent className="space-y-0 p-0">

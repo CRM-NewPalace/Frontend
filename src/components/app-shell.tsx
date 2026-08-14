@@ -244,7 +244,7 @@ const NAV_SECTIONS: {
       { to: "/guia", label: "Guia", icon: BookOpen },
       { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/equipes", label: "Equipes", icon: Network },
-      { to: "/corretores", label: "Corretores", icon: UsersRound },
+      { to: "/corretores", label: "Ranking", icon: UsersRound },
       { to: "/documentacao", label: "Documentação", icon: FolderOpen },
       { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/metas", label: "Metas", icon: Target },

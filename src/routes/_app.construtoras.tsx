@@ -90,7 +90,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatCpfCnpj } from "@/lib/utils";
-import { VendasResumoDialog } from "@/components/vendas-resumo-dialog";
 import {
   formatPhone,
   isValidPhone,
@@ -237,7 +236,7 @@ function ConstrutorasPage() {
   const [deletingLocalidade, setDeletingLocalidade] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
   const [tab, setTab] = useState<ConstrutorasTab>(
-    routeSearch.tab ?? "books",
+    routeSearch.tab ?? "lista",
   );
   const [formTab, setFormTab] = useState<FormTab>("identidade");
   const [search, setSearch] = useState("");
@@ -251,7 +250,6 @@ function ConstrutorasPage() {
     corretores: 0,
   });
   const [loadingVendas, setLoadingVendas] = useState(false);
-  const [vendasModalOpen, setVendasModalOpen] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -356,6 +354,12 @@ function ConstrutorasPage() {
         (item) => item.createdAt,
       ),
     [matchingItems, sort],
+  );
+
+  const vendasConstrutoras = useMemo(
+    () =>
+      [...items].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [items],
   );
 
   const sortedDriveItems = useMemo(
@@ -779,7 +783,11 @@ function ConstrutorasPage() {
 
   function openVendas(item: Construtora) {
     setVendasConstrutoraId(item.id);
-    setVendasModalOpen(true);
+    setTab("vendas");
+    void navigate({
+      search: { tab: "vendas", id: item.id },
+      replace: true,
+    });
   }
 
   return (
@@ -788,8 +796,8 @@ function ConstrutorasPage() {
         title="Construtoras"
         description={
           canCreate
-            ? "Cadastro, books e vendas dos corretores por construtora."
-            : "Books, pastas e vendas dos corretores por construtora."
+            ? "Cadastro, books e vendas por construtora."
+            : "Books, pastas e vendas por construtora."
         }
         actions={
           canCreate ? (
@@ -863,17 +871,17 @@ function ConstrutorasPage() {
         }}
       >
         <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1 rounded-full bg-muted p-1 sm:w-auto">
-          <TabsTrigger value="books" className="gap-1.5 rounded-full px-4">
-            <FolderOpen className="h-3.5 w-3.5" />
-            Books
-          </TabsTrigger>
           <TabsTrigger value="lista" className="gap-1.5 rounded-full px-4">
             <Building className="h-3.5 w-3.5" />
             Lista
           </TabsTrigger>
           <TabsTrigger value="vendas" className="gap-1.5 rounded-full px-4">
             <Wallet className="h-3.5 w-3.5" />
-            Vendas dos corretores
+            Vendas
+          </TabsTrigger>
+          <TabsTrigger value="books" className="gap-1.5 rounded-full px-4">
+            <FolderOpen className="h-3.5 w-3.5" />
+            Books
           </TabsTrigger>
           <TabsTrigger value="visibilidade" className="gap-1.5 rounded-full px-4">
             <MapPin className="h-3.5 w-3.5" />
@@ -1118,9 +1126,9 @@ function ConstrutorasPage() {
         <TabsContent value="vendas" className="mt-0 space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Vendas por construtora</CardTitle>
+              <CardTitle className="text-base">Vendas</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Selecione a construtora para ver os corretores que venderam nela.
+                Selecione a construtora para ver as vendas feitas nela.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1145,7 +1153,7 @@ function ConstrutorasPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Selecione…</SelectItem>
-                    {sortedItems.map((item) => (
+                    {vendasConstrutoras.map((item) => (
                       <SelectItem key={item.id} value={item.id}>
                         {item.nome}
                         {typeof item.vendas === "number"
@@ -1939,18 +1947,6 @@ function ConstrutorasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <VendasResumoDialog
-        open={vendasModalOpen}
-        onOpenChange={setVendasModalOpen}
-        title={
-          items.find((item) => item.id === vendasConstrutoraId)?.nome
-            ? `Vendas de ${items.find((item) => item.id === vendasConstrutoraId)?.nome}`
-            : "Vendas"
-        }
-        items={vendas}
-        loading={loadingVendas}
-        mode="construtora"
-      />
     </div>
   );
 }
