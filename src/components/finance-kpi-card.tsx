@@ -112,12 +112,14 @@ export function FinanceKpiCard({
   compact = false,
   showBar = true,
   valueLabel,
+  search,
 }: {
   label: string;
   value: number;
   icon: LucideIcon;
   tone: FinanceKpiTone;
   href?: string;
+  search?: Record<string, string | undefined>;
   onClick?: () => void;
   active?: boolean;
   className?: string;
@@ -219,7 +221,11 @@ export function FinanceKpiCard({
 
   if (href) {
     return (
-      <Link to={href} className="block h-full min-w-0">
+      <Link
+        to={href}
+        {...(search ? { search: search as never } : {})}
+        className="block h-full min-w-0"
+      >
         {card}
       </Link>
     );

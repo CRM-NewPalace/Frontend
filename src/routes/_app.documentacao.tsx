@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   useCallback,
   useEffect,
@@ -100,11 +100,14 @@ import {
 } from "@/lib/documentacao-api";
 import {
   dedupeStatusOptions,
+  docPipelineFromStatus1,
   isStatusAnalise,
   isStatusParecerFinal,
   isStatusVendido,
+  matchesDocPipelineStatus,
   status1Group,
   statusesMatch,
+  type DocPipelineStatus,
 } from "@/lib/documentacao-status";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 
@@ -183,8 +186,36 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+type DocumentacaoSearch = {
+  status?: DocPipelineStatus;
+};
+
+function parseDocStatusSearch(value: unknown): DocPipelineStatus | undefined {
+  if (value === "aprovado" || value === "reprovado" || value === "analise") {
+    return value;
+  }
+  return undefined;
+}
+
+function status1FromPipeline(status: DocPipelineStatus | undefined): string {
+  if (status === "aprovado") return "Aprovado";
+  if (status === "reprovado") return "Reprovado";
+  if (status === "analise") return "Em análise";
+  return "__all__";
+}
+
+function matchesStatus1Filter(docStatus: string, filter: string): boolean {
+  if (filter === "__all__") return true;
+  const pipeline = docPipelineFromStatus1(filter);
+  if (pipeline) return matchesDocPipelineStatus(docStatus, pipeline);
+  return statusesMatch(docStatus, filter);
+}
+
 export const Route = createFileRoute("/_app/documentacao")({
   head: () => ({ meta: [{ title: "Documentação — Zone Connection" }] }),
+  validateSearch: (search: Record<string, unknown>): DocumentacaoSearch => ({
+    status: parseDocStatusSearch(search.status),
+  }),
   component: DocumentacaoPage,
 });
 
@@ -314,6 +345,8 @@ function formatDayBr(iso: string) {
 }
 
 function DocumentacaoPage() {
+  const navigate = useNavigate();
+  const routeSearch = Route.useSearch();
   const user = getSession();
   const isManager = user ? canViewTeamData(user.role) : false;
   const isAdmin = user?.role === "admin";
@@ -369,7 +402,9 @@ function DocumentacaoPage() {
   const [filterCorretorId, setFilterCorretorId] = useState<string>("__all__");
   const [filterSearch, setFilterSearch] = useState("");
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
-  const [filterStatus1, setFilterStatus1] = useState("__all__");
+  const [filterStatus1, setFilterStatus1] = useState(
+    () => status1FromPipeline(routeSearch.status),
+  );
   const [filterStatus2, setFilterStatus2] = useState("__all__");
   const [filterFonte, setFilterFonte] = useState("__all__");
   const [filterConstrutoraId, setFilterConstrutoraId] = useState("__all__");
@@ -626,10 +661,7 @@ function DocumentacaoPage() {
   const filteredItems = useMemo(() => {
     const q = filterSearch.trim().toLowerCase();
     return items.filter((doc) => {
-      if (
-        filterStatus1 !== "__all__" &&
-        !statusesMatch(doc.status1, filterStatus1)
-      ) {
+      if (!matchesStatus1Filter(doc.status1, filterStatus1)) {
         return false;
       }
       if (
@@ -738,10 +770,7 @@ function DocumentacaoPage() {
     // VGV: mesmo critério do dashboard (status vendido + data venda ou cadastro no período)
     const vgvItems = items.filter((doc) => {
       if (!isStatusVendido(doc.status2)) return false;
-      if (
-        filterStatus1 !== "__all__" &&
-        !statusesMatch(doc.status1, filterStatus1)
-      ) {
+      if (!matchesStatus1Filter(doc.status1, filterStatus1)) {
         return false;
       }
       if (
@@ -899,7 +928,10 @@ function DocumentacaoPage() {
       chips.push({
         id: "status1",
         label: `Status 1: ${filterStatus1}`,
-        onClear: () => setFilterStatus1("__all__"),
+        onClear: () => {
+          setFilterStatus1("__all__");
+          void navigate({ to: "/documentacao", search: {}, replace: true });
+        },
       });
     }
     if (filterStatus2 !== "__all__") {
@@ -1000,7 +1032,14 @@ function DocumentacaoPage() {
     setFilterCampoData("createdAt");
     setFilterDataDe("");
     setFilterDataAte("");
+    void navigate({ to: "/documentacao", search: {}, replace: true });
   }
+
+  useEffect(() => {
+    if (routeSearch.status) {
+      setFilterStatus1(status1FromPipeline(routeSearch.status));
+    }
+  }, [routeSearch.status]);
 
   useEffect(() => {
     void loadItems();
@@ -2205,6 +2244,20 @@ function DocumentacaoPage() {
           icon={CheckCircle2}
           tone="blue-1"
           format="number"
+          active={filterStatus1 === "Aprovado"}
+          onClick={() => {
+            if (filterStatus1 === "Aprovado") {
+              setFilterStatus1("__all__");
+              void navigate({ to: "/documentacao", search: {}, replace: true });
+              return;
+            }
+            setFilterStatus1("Aprovado");
+            void navigate({
+              to: "/documentacao",
+              search: { status: "aprovado" },
+              replace: true,
+            });
+          }}
         />
         <FinanceKpiCard
           label="Reprovadas"
@@ -2212,6 +2265,20 @@ function DocumentacaoPage() {
           icon={XCircle}
           tone="blue-2"
           format="number"
+          active={filterStatus1 === "Reprovado"}
+          onClick={() => {
+            if (filterStatus1 === "Reprovado") {
+              setFilterStatus1("__all__");
+              void navigate({ to: "/documentacao", search: {}, replace: true });
+              return;
+            }
+            setFilterStatus1("Reprovado");
+            void navigate({
+              to: "/documentacao",
+              search: { status: "reprovado" },
+              replace: true,
+            });
+          }}
         />
         <FinanceKpiCard
           label="Em análise"
@@ -2219,6 +2286,20 @@ function DocumentacaoPage() {
           icon={Clock3}
           tone="blue-3"
           format="number"
+          active={filterStatus1 === "Em análise"}
+          onClick={() => {
+            if (filterStatus1 === "Em análise") {
+              setFilterStatus1("__all__");
+              void navigate({ to: "/documentacao", search: {}, replace: true });
+              return;
+            }
+            setFilterStatus1("Em análise");
+            void navigate({
+              to: "/documentacao",
+              search: { status: "analise" },
+              replace: true,
+            });
+          }}
         />
         <FinanceKpiCard
           label="VGV vendido"

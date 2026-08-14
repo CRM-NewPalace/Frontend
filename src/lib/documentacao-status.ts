@@ -136,6 +136,34 @@ export function canonicalizeStatus2(status: string): string {
   return status.trim();
 }
 
+export type DocPipelineStatus = "aprovado" | "reprovado" | "analise";
+
+/** Mesmo critério dos cards de pipeline (dashboard / documentação). */
+export function matchesDocPipelineStatus(
+  status1: string | null | undefined,
+  pipeline: DocPipelineStatus,
+): boolean {
+  const raw = (status1 ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (!raw) return false;
+  if (pipeline === "reprovado") return raw.startsWith("reprov");
+  if (pipeline === "aprovado") return raw.startsWith("aprov");
+  return raw.includes("analise");
+}
+
+export function docPipelineFromStatus1(
+  status1: string | null | undefined,
+): DocPipelineStatus | null {
+  if (!status1 || status1 === "__all__") return null;
+  if (isStatusAprovadoDoc(status1)) return "aprovado";
+  if (status1Group(status1) === "reprovado") return "reprovado";
+  if (isStatusAnalise(status1)) return "analise";
+  return null;
+}
+
 const STATUS1_PREFERRED: Record<DocStatus1Group, string> = {
   aprovado: "Aprovado",
   reprovado: "Reprovado",

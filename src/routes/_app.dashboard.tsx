@@ -458,6 +458,7 @@ function DashboardAdminView() {
           tone="emerald"
           format="number"
           href="/documentacao"
+          search={{ status: "aprovado" }}
         />
         <FinanceKpiCard
           label="Reprovadas"
@@ -471,6 +472,7 @@ function DashboardAdminView() {
           tone="red"
           format="number"
           href="/documentacao"
+          search={{ status: "reprovado" }}
         />
         <FinanceKpiCard
           label="Em análise"
@@ -483,6 +485,7 @@ function DashboardAdminView() {
           tone="orange"
           format="number"
           href="/documentacao"
+          search={{ status: "analise" }}
         />
       </section>
 
