@@ -12,7 +12,6 @@ import {
   Settings,
   User as UserIcon,
   LogOut,
-  Search,
   Bell,
   ChevronsLeft,
   ChevronDown,
@@ -57,8 +56,6 @@ import {
   type AgendaUrgencia,
 } from "@/lib/agenda-api";
 import { AgendaLembretesDialog } from "@/components/agenda-lembretes-dialog";
-import { Input } from "@/components/ui/input";
-import { useHeaderSearchInput } from "@/lib/header-search";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -300,7 +297,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [analiseAlert, setAnaliseAlert] = useState<Notificacao | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const headerSearch = useHeaderSearchInput();
   const isTriagem = pathname === "/triagem";
 
   useEffect(() => {
@@ -967,17 +963,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Menu className="w-5 h-5" />
             </Button>
-            {pathname !== "/triagem" && (
-              <div className="relative flex-1 max-w-md min-w-0">
-                <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                <Input
-                  value={headerSearch.value}
-                  onChange={(e) => headerSearch.setValue(e.target.value)}
-                  placeholder={headerSearch.placeholder}
-                  className="pl-8 sm:pl-9 h-9 rounded-md bg-background text-sm"
-                />
-              </div>
-            )}
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">

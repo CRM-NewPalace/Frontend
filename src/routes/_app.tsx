@@ -9,7 +9,6 @@ import {
 import { canAccessRoute, defaultRouteForRole } from "@/lib/permissions";
 import { LeadsProvider } from "@/lib/leads-store";
 import { CatalogProvider } from "@/lib/catalog-store";
-import { HeaderSearchProvider } from "@/lib/header-search";
 import { TenantThemeProvider } from "@/lib/tenant-theme";
 
 function guardUser(user: AuthUser, pathname: string) {
@@ -51,11 +50,9 @@ function AppLayout() {
     <TenantThemeProvider user={user}>
       <CatalogProvider>
         <LeadsProvider>
-          <HeaderSearchProvider>
-            <AppShell>
-              <Outlet />
-            </AppShell>
-          </HeaderSearchProvider>
+          <AppShell>
+            <Outlet />
+          </AppShell>
         </LeadsProvider>
       </CatalogProvider>
     </TenantThemeProvider>
