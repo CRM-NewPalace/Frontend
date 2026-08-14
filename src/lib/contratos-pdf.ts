@@ -185,6 +185,14 @@ async function loadLogoForPdf(src: string): Promise<LoadedLogo | null> {
   }
 }
 
+export async function resolveContratoBrandHex(
+  logoUrl?: string | null,
+  fallback?: string | null,
+): Promise<string> {
+  const logo = logoUrl?.trim() ? await loadLogoForPdf(logoUrl) : null;
+  return logo?.primaryHex ?? fallback ?? "#079ED4";
+}
+
 function writeLogo(doc: jsPDF, logo: LoadedLogo, y: number) {
   const pageW = doc.internal.pageSize.getWidth();
   const maxW = 130;
@@ -480,16 +488,19 @@ async function pdfReciboPagamento(
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const color = parseHexColor(opts?.primaryColor) ?? [20, 20, 20];
+  const logo = opts?.logoUrl?.trim()
+    ? await loadLogoForPdf(opts.logoUrl)
+    : null;
+  const color =
+    parseHexColor(logo?.primaryHex) ??
+    parseHexColor(opts?.primaryColor) ??
+    [20, 20, 20];
   const innerX = 36;
   const innerY = 120;
   const innerW = pageW - innerX * 2;
   const innerH = pageH - innerY - 72;
 
-  if (opts?.logoUrl?.trim()) {
-    const logo = await loadLogoForPdf(opts.logoUrl);
-    if (logo) writeLogo(doc, logo, 36);
-  }
+  if (logo) writeLogo(doc, logo, 36);
 
   doc.setDrawColor(40, 40, 40);
   doc.setLineWidth(1.1);
@@ -573,6 +584,246 @@ async function pdfReciboPagamento(
   }
 
   doc.save(`recibo-pagamento-${safeName(v(values, "pagadorNome"))}.pdf`);
+}
+
+function dash(raw: string) {
+  return raw.trim() || "----";
+}
+
+function isOn(values: Values, key: string) {
+  const raw = (values[key] ?? "").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "sim";
+}
+
+function yesNoValue(values: Values, key: string): "sim" | "nao" | "" {
+  const raw = (values[key] ?? "").trim().toLowerCase();
+  if (raw === "sim" || raw === "true" || raw === "1") return "sim";
+  if (raw === "nao" || raw === "não" || raw === "false" || raw === "0") {
+    return "nao";
+  }
+  return "";
+}
+
+function writeSectionTitle(doc: jsPDF, y: number, title: string, color: Rgb) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 48;
+  y = ensureSpace(doc, y, 28);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...color);
+  doc.text(title.toUpperCase(), margin, y);
+  y += 8;
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.6);
+  doc.line(margin, y, pageW - margin, y);
+  return y + 14;
+}
+
+function writeField(
+  doc: jsPDF,
+  y: number,
+  label: string,
+  value: string,
+  color: Rgb,
+) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 48;
+  y = ensureSpace(doc, y, 28);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...color);
+  doc.text(label.toUpperCase(), margin, y);
+  y += 12;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  const lines = doc.splitTextToSize(value, pageW - margin * 2);
+  for (const line of lines) {
+    y = ensureSpace(doc, y, 14);
+    doc.text(String(line), margin, y);
+    y += 13;
+  }
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.35);
+  doc.line(margin, y, pageW - margin, y);
+  return y + 10;
+}
+
+function writeYesNo(
+  doc: jsPDF,
+  y: number,
+  label: string,
+  value: "sim" | "nao" | "",
+  color: Rgb,
+) {
+  y = ensureSpace(doc, y, 32);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(30, 30, 30);
+  doc.text(label, 48, y);
+  y += 16;
+  writeCheckbox(doc, 48, y, value === "sim", "Sim", color);
+  writeCheckbox(doc, 118, y, value === "nao", "Não", color);
+  return y + 18;
+}
+
+function writeCheckbox(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  checked: boolean,
+  label: string,
+  color: Rgb,
+) {
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.8);
+  doc.rect(x, y - 8, 9, 9);
+  if (checked) {
+    doc.setFillColor(...color);
+    doc.rect(x + 1.6, y - 6.4, 5.8, 5.8, "F");
+  }
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(30, 30, 30);
+  doc.text(label, x + 14, y);
+}
+
+function writeCheckLine(
+  doc: jsPDF,
+  y: number,
+  checked: boolean,
+  label: string,
+  color: Rgb,
+) {
+  y = ensureSpace(doc, y, 18);
+  writeCheckbox(doc, 48, y, checked, label, color);
+  return y + 16;
+}
+
+async function pdfChecklistRenda(values: Values, logoUrl?: string | null) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const header = await startBrandedDocument(
+    doc,
+    "CHECKLIST RENDA INFORMAL / MISTA",
+    { logoUrl },
+  );
+  let y = header.y;
+  const color = header.color;
+  const pageH = doc.internal.pageSize.getHeight();
+
+  y = writeSectionTitle(doc, y, "Dados do cliente", color);
+  y = writeField(doc, y, "Nome", dash(v(values, "nome")), color);
+  y = writeField(doc, y, "CPF", dash(v(values, "cpf")), color);
+  y = writeField(
+    doc,
+    y,
+    "Renda solicitada",
+    v(values, "rendaSolicitada").trim()
+      ? moneyLabel(v(values, "rendaSolicitada"))
+      : "----",
+    color,
+  );
+  y = writeField(doc, y, "Profissão exata", dash(v(values, "profissao")), color);
+  y = writeField(
+    doc,
+    y,
+    "Renda parcial apurada nos extratos",
+    v(values, "rendaParcialExtratos").trim()
+      ? moneyLabel(v(values, "rendaParcialExtratos"))
+      : "----",
+    color,
+  );
+  y = writeYesNo(
+    doc,
+    y,
+    "Cliente possui Bolsa Família?",
+    yesNoValue(values, "bolsaFamilia"),
+    color,
+  );
+  y = writeField(
+    doc,
+    y,
+    "Valor mensal do Bolsa Família",
+    v(values, "bolsaFamiliaValor").trim()
+      ? moneyLabel(v(values, "bolsaFamiliaValor"))
+      : "----",
+    color,
+  );
+
+  y = writeSectionTitle(doc, y, "Renda mista", color);
+  y = writeYesNo(
+    doc,
+    y,
+    "Possui vínculo empregatício?",
+    yesNoValue(values, "vinculoEmpregaticio"),
+    color,
+  );
+  y = writeField(doc, y, "Empresa", dash(v(values, "empresa")), color);
+  y = writeField(
+    doc,
+    y,
+    "Salário (conforme contracheque)",
+    v(values, "salarioContracheque").trim()
+      ? moneyLabel(v(values, "salarioContracheque"))
+      : "----",
+    color,
+  );
+
+  y = writeSectionTitle(doc, y, "Documentação anexada", color);
+  y = writeCheckLine(
+    doc,
+    y,
+    isOn(values, "docExtratos"),
+    "Extratos bancários dos últimos 6 meses",
+    color,
+  );
+  y = writeCheckLine(
+    doc,
+    y,
+    isOn(values, "docContracheques"),
+    "Contracheques (renda mista)",
+    color,
+  );
+  y = writeCheckLine(
+    doc,
+    y,
+    isOn(values, "docFgts"),
+    "Extrato do FGTS com recolhimento do mesmo mês do contracheque",
+    color,
+  );
+  y = writeCheckLine(
+    doc,
+    y,
+    isOn(values, "docIdentidade"),
+    "Documento de identificação",
+    color,
+  );
+  y = writeCheckLine(
+    doc,
+    y,
+    isOn(values, "docOutros"),
+    values.docOutrosTexto?.trim()
+      ? `Outros documentos: ${values.docOutrosTexto.trim()}`
+      : "Outros documentos",
+    color,
+  );
+
+  y = writeSectionTitle(doc, y, "Observações", color);
+  y = writeParagraph(doc, y, values.observacoes?.trim() || "—");
+  y = writeParagraph(
+    doc,
+    y,
+    `${dash(v(values, "cidade"))}, ${formatDateBr(values.data ?? "")}`,
+  );
+  y = writeCenteredSignature(
+    doc,
+    y,
+    "Assinatura",
+    v(values, "nome"),
+    color,
+  );
+  drawOrnament(doc, pageH - 50, color);
+  doc.save(`checklist-renda-${safeName(v(values, "nome"))}.pdf`);
 }
 
 async function pdfCartaCancelamento(
@@ -1029,8 +1280,7 @@ export async function downloadContratoPdf(
       await pdfReciboPagamento(values, opts);
       break;
     case "checklist-renda-informal":
-      throw new Error(
-        "Este modelo é gerado pela API. Use downloadContratoApiPdf.",
-      );
+      await pdfChecklistRenda(values, opts?.logoUrl);
+      break;
   }
 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import {
   FormDialogActions,
@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { downloadContratoPdf } from "@/lib/contratos-pdf";
-import { downloadContratoApiPdf } from "@/lib/contratos-api";
+import { downloadContratoPdf, resolveContratoBrandHex } from "@/lib/contratos-pdf";
 import {
   CONTRATO_TEMPLATES,
   emptyContratoForm,
@@ -161,6 +160,23 @@ function brandHex(color?: string | null) {
   return color && /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#079ED4";
 }
 
+function PreviewSection({
+  title,
+  color,
+}: {
+  title: string;
+  color: string;
+}) {
+  return (
+    <div
+      className="border-b pb-1 text-[10px] font-bold uppercase tracking-wide"
+      style={{ color, borderColor: color }}
+    >
+      {title}
+    </div>
+  );
+}
+
 function PreviewMark({
   checked,
   label,
@@ -282,12 +298,7 @@ function ContratoPreview({
       </>
     ) : template.id === "checklist-renda-informal" ? (
       <div className="space-y-3 text-left not-italic">
-        <div
-          className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white"
-          style={{ backgroundColor: accent }}
-        >
-          Dados do cliente
-        </div>
+        <PreviewSection title="Dados do cliente" color={accent} />
         <p>
           Nome: <strong>{value("nome")}</strong>
         </p>
@@ -318,12 +329,7 @@ function ContratoPreview({
         <p>
           Valor Bolsa Família: <strong>{value("bolsaFamiliaValor")}</strong>
         </p>
-        <div
-          className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white"
-          style={{ backgroundColor: accent }}
-        >
-          Renda mista
-        </div>
+        <PreviewSection title="Renda mista" color={accent} />
         <div className="flex flex-wrap gap-4">
           <PreviewMark
             checked={yes("vinculoEmpregaticio")}
@@ -342,12 +348,7 @@ function ContratoPreview({
         <p>
           Salário: <strong>{value("salarioContracheque")}</strong>
         </p>
-        <div
-          className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white"
-          style={{ backgroundColor: accent }}
-        >
-          Documentação anexada
-        </div>
+        <PreviewSection title="Documentação anexada" color={accent} />
         <PreviewMark
           checked={checked("docExtratos")}
           label="Extratos bancários (6 meses)"
@@ -373,12 +374,7 @@ function ContratoPreview({
           label={`Outros${values.docOutrosTexto?.trim() ? `: ${values.docOutrosTexto.trim()}` : ""}`}
           color={accent}
         />
-        <div
-          className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white"
-          style={{ backgroundColor: accent }}
-        >
-          Observações
-        </div>
+        <PreviewSection title="Observações" color={accent} />
         <p className="whitespace-pre-wrap min-h-10">
           {values.observacoes?.trim() || "—"}
         </p>
@@ -493,11 +489,22 @@ function ContratoPreview({
 
 function ContratosPage() {
   const { logoUrl, tenant } = useTenantTheme();
+  const [logoColor, setLogoColor] = useState<string | null>(null);
   const [selected, setSelected] = useState<ContratoTemplate | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
   const [intermediacaoSection, setIntermediacaoSection] =
     useState<IntermediacaoSectionId>("contratante");
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveContratoBrandHex(logoUrl, tenant?.primaryColor).then((hex) => {
+      if (!cancelled) setLogoColor(hex);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [logoUrl, tenant?.primaryColor]);
 
   const openTemplate = (template: ContratoTemplate) => {
     setSelected(template);
@@ -531,14 +538,10 @@ function ContratosPage() {
     }
     setGenerating(true);
     try {
-      if (selected.id === "checklist-renda-informal") {
-        await downloadContratoApiPdf(selected.id, form);
-      } else {
-        await downloadContratoPdf(selected.id as ContratoTemplateId, form, {
-          logoUrl,
-          primaryColor: tenant?.primaryColor,
-        });
-      }
+      await downloadContratoPdf(selected.id as ContratoTemplateId, form, {
+        logoUrl,
+        primaryColor: logoColor ?? tenant?.primaryColor,
+      });
       toast.success("PDF gerado e baixado.");
       setSelected(null);
     } catch (err) {
@@ -786,7 +789,7 @@ function ContratosPage() {
                     template={selected}
                     values={form}
                     logoUrl={logoUrl}
-                    primaryColor={tenant?.primaryColor}
+                    primaryColor={logoColor ?? tenant?.primaryColor}
                   />
                 </div>
               ) : null}
