@@ -193,15 +193,20 @@ export async function resolveContratoBrandHex(
   return logo?.primaryHex ?? fallback ?? "#079ED4";
 }
 
-function writeLogo(doc: jsPDF, logo: LoadedLogo, y: number) {
+function writeLogo(
+  doc: jsPDF,
+  logo: LoadedLogo,
+  y: number,
+  compact = false,
+) {
   const pageW = doc.internal.pageSize.getWidth();
-  const maxW = 130;
-  const maxH = 52;
+  const maxW = compact ? 96 : 130;
+  const maxH = compact ? 36 : 52;
   const scale = Math.min(maxW / logo.width, maxH / logo.height, 1);
   const w = Math.max(24, logo.width * scale);
   const h = Math.max(16, logo.height * scale);
   doc.addImage(logo.dataUrl, logo.format, (pageW - w) / 2, y, w, h);
-  return y + h + 14;
+  return y + h + (compact ? 8 : 14);
 }
 
 function writeTitle(
@@ -297,7 +302,7 @@ function drawOrnament(doc: jsPDF, y: number, color: Rgb) {
 async function startBrandedDocument(
   doc: jsPDF,
   title: string,
-  opts?: { logoUrl?: string | null },
+  opts?: { logoUrl?: string | null; compact?: boolean },
 ) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -311,11 +316,12 @@ async function startBrandedDocument(
   doc.setLineWidth(0.55);
   doc.rect(23, 23, pageW - 46, pageH - 46);
 
-  let y = 40;
-  if (logo) y = writeLogo(doc, logo, y);
-  y = writeTitle(doc, title, y + 6, color);
+  const compact = Boolean(opts?.compact);
+  let y = compact ? 32 : 40;
+  if (logo) y = writeLogo(doc, logo, y, compact);
+  y = writeTitle(doc, title, compact ? y + 2 : y + 6, color);
   drawOrnament(doc, y, color);
-  return { y: y + 28, color };
+  return { y: y + (compact ? 16 : 28), color };
 }
 
 function ensureSpace(doc: jsPDF, y: number, need: number) {
@@ -604,19 +610,20 @@ function yesNoValue(values: Values, key: string): "sim" | "nao" | "" {
   return "";
 }
 
+const TITLE_BLACK: Rgb = [20, 20, 20];
+
 function writeSectionTitle(doc: jsPDF, y: number, title: string, color: Rgb) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 48;
-  y = ensureSpace(doc, y, 28);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(...color);
+  doc.setFontSize(9.5);
+  doc.setTextColor(...TITLE_BLACK);
   doc.text(title.toUpperCase(), margin, y);
-  y += 8;
+  y += 6;
   doc.setDrawColor(...color);
-  doc.setLineWidth(0.6);
+  doc.setLineWidth(0.5);
   doc.line(margin, y, pageW - margin, y);
-  return y + 14;
+  return y + 10;
 }
 
 function writeField(
@@ -628,25 +635,23 @@ function writeField(
 ) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 48;
-  y = ensureSpace(doc, y, 28);
+  const labelText = `${label.toUpperCase()}:  `;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(...color);
-  doc.text(label.toUpperCase(), margin, y);
-  y += 12;
+  doc.text(labelText, margin, y);
+  const labelW = doc.getTextWidth(labelText);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(30, 30, 30);
-  const lines = doc.splitTextToSize(value, pageW - margin * 2);
-  for (const line of lines) {
-    y = ensureSpace(doc, y, 14);
-    doc.text(String(line), margin, y);
-    y += 13;
+  const lines = doc.splitTextToSize(value, pageW - margin * 2 - labelW);
+  doc.text(String(lines[0] ?? ""), margin + labelW, y);
+  y += 11;
+  for (const line of lines.slice(1)) {
+    doc.text(String(line), margin + labelW, y);
+    y += 11;
   }
-  doc.setDrawColor(...color);
-  doc.setLineWidth(0.35);
-  doc.line(margin, y, pageW - margin, y);
-  return y + 10;
+  return y + 2;
 }
 
 function writeYesNo(
@@ -656,15 +661,14 @@ function writeYesNo(
   value: "sim" | "nao" | "",
   color: Rgb,
 ) {
-  y = ensureSpace(doc, y, 32);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(30, 30, 30);
   doc.text(label, 48, y);
-  y += 16;
-  writeCheckbox(doc, 48, y, value === "sim", "Sim", color);
-  writeCheckbox(doc, 118, y, value === "nao", "Não", color);
-  return y + 18;
+  const labelW = doc.getTextWidth(label);
+  writeCheckbox(doc, 56 + labelW, y, value === "sim", "Sim", color);
+  writeCheckbox(doc, 108 + labelW, y, value === "nao", "Não", color);
+  return y + 14;
 }
 
 function writeCheckbox(
@@ -695,9 +699,8 @@ function writeCheckLine(
   label: string,
   color: Rgb,
 ) {
-  y = ensureSpace(doc, y, 18);
   writeCheckbox(doc, 48, y, checked, label, color);
-  return y + 16;
+  return y + 13;
 }
 
 async function pdfChecklistRenda(values: Values, logoUrl?: string | null) {
@@ -705,7 +708,7 @@ async function pdfChecklistRenda(values: Values, logoUrl?: string | null) {
   const header = await startBrandedDocument(
     doc,
     "CHECKLIST RENDA INFORMAL / MISTA",
-    { logoUrl },
+    { logoUrl, compact: true },
   );
   let y = header.y;
   const color = header.color;
@@ -809,20 +812,42 @@ async function pdfChecklistRenda(values: Values, logoUrl?: string | null) {
   );
 
   y = writeSectionTitle(doc, y, "Observações", color);
-  y = writeParagraph(doc, y, values.observacoes?.trim() || "—");
-  y = writeParagraph(
-    doc,
-    y,
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(30, 30, 30);
+  const notes = values.observacoes?.trim() || "—";
+  const noteLines = doc.splitTextToSize(notes, doc.internal.pageSize.getWidth() - 96);
+  for (const line of noteLines.slice(0, 3)) {
+    doc.text(String(line), 48, y);
+    y += 12;
+  }
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(
     `${dash(v(values, "cidade"))}, ${formatDateBr(values.data ?? "")}`,
-  );
-  y = writeCenteredSignature(
-    doc,
+    doc.internal.pageSize.getWidth() / 2,
     y,
-    "Assinatura",
-    v(values, "nome"),
-    color,
+    { align: "center" },
   );
-  drawOrnament(doc, pageH - 50, color);
+  y += 28;
+  const lineW = 220;
+  const lineX = (doc.internal.pageSize.getWidth() - lineW) / 2;
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.6);
+  doc.line(lineX, y, lineX + lineW, y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(30, 30, 30);
+  doc.text("ASSINATURA", doc.internal.pageSize.getWidth() / 2, y + 12, {
+    align: "center",
+  });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(v(values, "nome"), doc.internal.pageSize.getWidth() / 2, y + 24, {
+    align: "center",
+  });
+  drawOrnament(doc, pageH - 42, color);
   doc.save(`checklist-renda-${safeName(v(values, "nome"))}.pdf`);
 }
 

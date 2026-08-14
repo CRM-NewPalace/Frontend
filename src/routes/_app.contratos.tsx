@@ -298,7 +298,7 @@ function ContratoPreview({
       </>
     ) : template.id === "checklist-renda-informal" ? (
       <div className="space-y-3 text-left not-italic">
-        <PreviewSection title="Dados do cliente" color={accent} />
+        <PreviewSection title="Dados do cliente" color="#111111" />
         <p>
           Nome: <strong>{value("nome")}</strong>
         </p>
@@ -329,7 +329,7 @@ function ContratoPreview({
         <p>
           Valor Bolsa Família: <strong>{value("bolsaFamiliaValor")}</strong>
         </p>
-        <PreviewSection title="Renda mista" color={accent} />
+        <PreviewSection title="Renda mista" color="#111111" />
         <div className="flex flex-wrap gap-4">
           <PreviewMark
             checked={yes("vinculoEmpregaticio")}
@@ -348,7 +348,7 @@ function ContratoPreview({
         <p>
           Salário: <strong>{value("salarioContracheque")}</strong>
         </p>
-        <PreviewSection title="Documentação anexada" color={accent} />
+        <PreviewSection title="Documentação anexada" color="#111111" />
         <PreviewMark
           checked={checked("docExtratos")}
           label="Extratos bancários (6 meses)"
@@ -374,7 +374,7 @@ function ContratoPreview({
           label={`Outros${values.docOutrosTexto?.trim() ? `: ${values.docOutrosTexto.trim()}` : ""}`}
           color={accent}
         />
-        <PreviewSection title="Observações" color={accent} />
+        <PreviewSection title="Observações" color="#111111" />
         <p className="whitespace-pre-wrap min-h-10">
           {values.observacoes?.trim() || "—"}
         </p>
