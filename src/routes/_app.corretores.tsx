@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { canViewRankingVendas } from "@/lib/permissions";
 import {
   fetchDashboardRanking,
   fetchCorretorVendas,
@@ -32,13 +34,13 @@ import {
 } from "@/lib/dashboard-api";
 import {
   Building2,
+  Crown,
   Goal,
   Loader2,
   Medal,
   TrendingUp,
   Trophy,
   UsersRound,
-  UserRound,
   Wallet,
 } from "lucide-react";
 import { SemConexao } from "@/components/sem-conexao";
@@ -88,7 +90,7 @@ function agoraBrasil() {
 
 function Page() {
   const user = getSession();
-  const canView = user?.role === "admin" || user?.role === "gerente";
+  const canView = canViewRankingVendas(user?.role);
   const isGerente = user?.role === "gerente";
   /** Ranking entre gerentes: só admin. */
   const showRankingGerentes = user?.role === "admin";
@@ -406,6 +408,15 @@ function Page() {
   );
 }
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 function PodioCorretores({
   corretores,
   onSelect,
@@ -419,55 +430,51 @@ function PodioCorretores({
       place: 2 as const,
       step: "h-24 sm:h-28",
       avatar:
-        "border-slate-300 bg-slate-200 text-slate-800 ring-slate-300/60",
+        "border-slate-200 bg-linear-to-br from-slate-100 to-slate-300 text-slate-800 ring-slate-300/40 dark:from-slate-400 dark:to-slate-600",
       stepBg:
-        "bg-gradient-to-b from-slate-200 to-slate-400 text-slate-800 rounded-tl-2xl",
+        "bg-linear-to-b from-slate-200 to-slate-400 text-slate-800 rounded-tl-2xl",
     },
     {
       row: corretores[0],
       place: 1 as const,
       step: "h-36 sm:h-44",
       avatar:
-        "border-amber-300 bg-amber-400 text-amber-950 ring-amber-300/50",
+        "border-amber-200 bg-linear-to-br from-amber-300 to-amber-500 text-amber-950 ring-amber-300/50 shadow-lg shadow-amber-500/20",
       stepBg:
-        "bg-gradient-to-b from-amber-300 to-amber-500 text-amber-950 rounded-t-2xl shadow-md z-[1]",
+        "bg-linear-to-b from-amber-300 to-amber-500 text-amber-950 rounded-t-2xl shadow-md z-[1]",
     },
     {
       row: corretores[2],
       place: 3 as const,
       step: "h-20 sm:h-24",
       avatar:
-        "border-orange-300 bg-orange-500 text-orange-950 ring-orange-300/50",
+        "border-orange-200 bg-linear-to-br from-orange-300 to-orange-500 text-orange-950 ring-orange-300/40",
       stepBg:
-        "bg-gradient-to-b from-orange-300 to-orange-500 text-orange-950 rounded-tr-2xl",
+        "bg-linear-to-b from-orange-300 to-orange-500 text-orange-950 rounded-tr-2xl",
     },
   ].filter((s) => Boolean(s.row));
 
   if (slots.length === 0) return null;
 
   return (
-    <Card className="overflow-hidden bg-linear-to-br from-card via-card to-muted/70 text-foreground">
-      <CardContent className="p-5 sm:p-6">
-        <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+    <Card className="overflow-hidden border-border/70 bg-linear-to-br from-card via-card to-primary/5 text-foreground">
+      <CardContent className="relative p-5 sm:p-7">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(ellipse_at_top,var(--color-primary)_0%,transparent_70%)] opacity-10" />
+        <div className="relative flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
           <Trophy className="h-4 w-4" /> Pódio de vendas · corretores
         </div>
 
-        <div className="mx-auto mt-6 max-w-lg">
+        <div className="relative mx-auto mt-7 max-w-lg">
           <div className="flex items-end justify-center gap-0">
             {slots.map(({ row, place, step, avatar, stepBg }) => {
               if (!row) return null;
-              const initials = row.nome
-                .split(" ")
-                .slice(0, 2)
-                .map((name) => name[0])
-                .join("");
 
               return (
                 <button
                   key={row.corretorId}
                   type="button"
                   onClick={() => onSelect(row)}
-                  className="flex min-w-0 flex-1 flex-col items-center"
+                  className="flex min-w-0 flex-1 flex-col items-center transition-transform hover:-translate-y-0.5"
                 >
                   <div className="mb-3 flex w-full flex-col items-center px-1 text-center sm:px-2">
                     <div
@@ -480,14 +487,23 @@ function PodioCorretores({
                         place === 1 && "h-14 w-14 sm:h-16 sm:w-16 text-base",
                       )}
                     >
-                      {initials}
-                      {place === 1 ? (
-                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold leading-none text-amber-950 shadow-sm sm:text-xs">
-                          1º
-                        </span>
-                      ) : null}
+                      {initials(row.nome)}
+                      <span
+                        className={cn(
+                          "absolute -top-2 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black shadow-sm",
+                          place === 1 && "bg-amber-500 text-amber-950",
+                          place === 2 && "bg-slate-400 text-slate-950",
+                          place === 3 && "bg-orange-500 text-orange-950",
+                        )}
+                      >
+                        {place === 1 ? (
+                          <Crown className="h-3 w-3" />
+                        ) : (
+                          `${place}º`
+                        )}
+                      </span>
                     </div>
-                    <p className="mt-2 w-full truncate text-xs font-semibold sm:text-sm">
+                    <p className="mt-2.5 w-full truncate text-xs font-semibold sm:text-sm">
                       {row.nome}
                     </p>
                     <p className="text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
@@ -511,30 +527,19 @@ function PodioCorretores({
                     </span>
                     {place === 1 ? (
                       <Trophy className="h-4 w-4 opacity-80" />
-                    ) : null}
+                    ) : (
+                      <Medal className="h-3.5 w-3.5 opacity-70" />
+                    )}
                   </div>
                 </button>
               );
             })}
           </div>
-          <div className="h-2.5 rounded-b-2xl bg-[#032b43]/25 shadow-inner" />
+          <div className="h-2.5 rounded-b-2xl bg-primary/20 shadow-inner" />
         </div>
       </CardContent>
     </Card>
   );
-}
-
-function rankTextClass(place: number) {
-  if (place === 1) {
-    return "text-amber-500 dark:text-amber-400";
-  }
-  if (place === 2) {
-    return "text-slate-400 dark:text-slate-300";
-  }
-  if (place === 3) {
-    return "text-[#8B6914] dark:text-[#C4A35A]";
-  }
-  return "text-muted-foreground";
 }
 
 function RankingList({
@@ -544,6 +549,7 @@ function RankingList({
   corretores: DashboardRankingCorretor[];
   onSelect: (row: DashboardRankingCorretor) => void;
 }) {
+  const maxVgv = Math.max(...corretores.map((row) => row.vgv.valor ?? 0), 1);
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
@@ -558,35 +564,67 @@ function RankingList({
         {corretores.slice(0, 8).map((row) => {
           const place = row.posicao;
           const topThree = place <= 3;
+          const pct = Math.max(6, ((row.vgv.valor ?? 0) / maxVgv) * 100);
           return (
             <button
               key={row.corretorId}
               type="button"
               onClick={() => onSelect(row)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
             >
               <span
                 className={cn(
-                  "w-5 text-xs font-bold",
-                  topThree ? rankTextClass(place) : "text-muted-foreground",
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black",
+                  place === 1 && "bg-amber-400/20 text-amber-600",
+                  place === 2 && "bg-slate-400/20 text-slate-500",
+                  place === 3 && "bg-orange-400/20 text-orange-600",
+                  !topThree && "bg-muted text-muted-foreground",
                 )}
               >
-                #{place}
+                {place}
               </span>
-              <span
-                className={cn(
-                  "min-w-0 flex-1 truncate text-sm text-foreground",
-                  topThree ? "font-bold" : "font-medium",
-                )}
-              >
-                {row.nome}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {row.vendas.valor} vendas
-              </span>
-              <span className="text-xs font-semibold tabular-nums">
-                {money(row.vgv.valor)}
-              </span>
+              <Avatar className="h-8 w-8">
+                <AvatarFallback
+                  className={cn(
+                    "text-[11px] font-semibold",
+                    topThree ? "bg-primary/10 text-primary" : "bg-muted",
+                  )}
+                >
+                  {initials(row.nome)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={cn(
+                      "truncate text-sm",
+                      topThree ? "font-bold" : "font-medium",
+                    )}
+                  >
+                    {row.nome}
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums">
+                    {money(row.vgv.valor)}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        place === 1 && "bg-amber-500",
+                        place === 2 && "bg-slate-400",
+                        place === 3 && "bg-orange-500",
+                        !topThree && "bg-primary/70",
+                      )}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {row.vendas.valor} {row.vendas.valor === 1 ? "venda" : "vendas"}
+                  </span>
+                </div>
+              </div>
             </button>
           );
         })}
@@ -614,6 +652,7 @@ function ConstrutorasRanking({
     vgv: number;
   }) => void;
 }) {
+  const maxVgv = Math.max(...items.map((item) => item.vgv), 1);
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
@@ -630,38 +669,60 @@ function ConstrutorasRanking({
             const place = index + 1;
             const topThree = place <= 3;
             const selected = item.construtoraId === selectedId;
+            const pct = Math.max(6, (item.vgv / maxVgv) * 100);
             return (
               <button
                 key={item.construtoraId}
                 type="button"
                 onClick={() => onSelect(item)}
                 className={cn(
-                  "flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60",
-                  selected && "bg-muted",
+                  "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60",
+                  selected && "bg-primary/5",
                 )}
               >
                 <span
                   className={cn(
-                    "w-5 text-xs font-bold",
-                    topThree ? rankTextClass(place) : "text-muted-foreground",
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black",
+                    place === 1 && "bg-amber-400/20 text-amber-600",
+                    place === 2 && "bg-slate-400/20 text-slate-500",
+                    place === 3 && "bg-orange-400/20 text-orange-600",
+                    !topThree && "bg-muted text-muted-foreground",
                   )}
                 >
-                  #{place}
+                  {place}
                 </span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-sm text-foreground",
-                    topThree ? "font-bold" : "font-medium",
-                  )}
-                >
-                  {item.nome}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {item.vendas} {item.vendas === 1 ? "venda" : "vendas"}
-                </span>
-                <span className="text-xs font-semibold tabular-nums">
-                  {money(item.vgv)}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={cn(
+                        "truncate text-sm",
+                        topThree ? "font-bold" : "font-medium",
+                      )}
+                    >
+                      {item.nome}
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums">
+                      {money(item.vgv)}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn(
+                          "h-full rounded-full",
+                          place === 1 && "bg-amber-500",
+                          place === 2 && "bg-slate-400",
+                          place === 3 && "bg-orange-500",
+                          !topThree && "bg-primary/70",
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      {item.vendas} {item.vendas === 1 ? "venda" : "vendas"}
+                    </span>
+                  </div>
+                </div>
               </button>
             );
           })

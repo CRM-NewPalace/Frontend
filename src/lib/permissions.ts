@@ -189,6 +189,11 @@ export function canViewFinancial(role: Role): boolean {
   return role === "admin";
 }
 
+/** Ranking, VGV e vendas por construtora: só gestão. */
+export function canViewRankingVendas(role: Role | null | undefined): boolean {
+  return role === "admin" || role === "gerente";
+}
+
 /**
  * Admin vê todos; gerente vê a própria equipe (escopo aplicado na API).
  * Analista tem visão global de processos de análise.

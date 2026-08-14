@@ -14,8 +14,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCpfCnpj } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { formatCpfCnpj, cn } from "@/lib/utils";
+import {
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 
 export type VendaResumoItem = {
   id: string;
@@ -41,9 +50,20 @@ function dateBr(iso: string | null | undefined) {
   return year && month && day ? `${day}/${month}/${year}` : "—";
 }
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 type CorretorGrupo = {
   key: string;
   corretor: string;
+  creci: string | null;
+  gerente: string | null;
   vendas: VendaResumoItem[];
   vgv: number;
 };
@@ -60,6 +80,8 @@ function groupByCorretor(items: VendaResumoItem[]): CorretorGrupo[] {
       map.set(key, {
         key,
         corretor: item.corretor,
+        creci: item.creci,
+        gerente: item.gerente,
         vendas: [item],
         vgv: item.vgv,
       });
@@ -70,7 +92,13 @@ function groupByCorretor(items: VendaResumoItem[]): CorretorGrupo[] {
   );
 }
 
-function ConstrutoraVendasTable({ items }: { items: VendaResumoItem[] }) {
+export function ConstrutoraVendasTable({
+  items,
+  detailed = false,
+}: {
+  items: VendaResumoItem[];
+  detailed?: boolean;
+}) {
   const grupos = useMemo(() => groupByCorretor(items), [items]);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
@@ -90,10 +118,19 @@ function ConstrutoraVendasTable({ items }: { items: VendaResumoItem[] }) {
   return (
     <Table>
       <TableHeader>
-        <TableRow>
+        <TableRow className="hover:bg-transparent">
           <TableHead>Corretor</TableHead>
+          {detailed ? (
+            <>
+              <TableHead>CRECI</TableHead>
+              <TableHead>Gerente</TableHead>
+              <TableHead>Empreendimento</TableHead>
+            </>
+          ) : null}
           <TableHead>Cliente</TableHead>
+          {detailed ? <TableHead>CPF</TableHead> : null}
           <TableHead className="text-right">VGV</TableHead>
+          {detailed ? <TableHead>Data</TableHead> : null}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -102,11 +139,39 @@ function ConstrutoraVendasTable({ items }: { items: VendaResumoItem[] }) {
             const venda = grupo.vendas[0];
             return (
               <TableRow key={grupo.key}>
-                <TableCell className="font-medium">{grupo.corretor}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2.5">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
+                        {initials(grupo.corretor)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{grupo.corretor}</span>
+                  </div>
+                </TableCell>
+                {detailed ? (
+                  <>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {grupo.creci || "—"}
+                    </TableCell>
+                    <TableCell>{grupo.gerente || "—"}</TableCell>
+                    <TableCell>{venda.empreendimento || "—"}</TableCell>
+                  </>
+                ) : null}
                 <TableCell>{venda.cliente}</TableCell>
-                <TableCell className="text-right tabular-nums font-medium">
+                {detailed ? (
+                  <TableCell className="tabular-nums">
+                    {venda.clienteCpf ? formatCpfCnpj(venda.clienteCpf) : "—"}
+                  </TableCell>
+                ) : null}
+                <TableCell className="text-right tabular-nums font-semibold">
                   {money(venda.vgv)}
                 </TableCell>
+                {detailed ? (
+                  <TableCell className="tabular-nums text-muted-foreground">
+                    {dateBr(venda.dataVenda)}
+                  </TableCell>
+                ) : null}
               </TableRow>
             );
           }
@@ -115,36 +180,87 @@ function ConstrutoraVendasTable({ items }: { items: VendaResumoItem[] }) {
           return (
             <Fragment key={grupo.key}>
               <TableRow
-                className="cursor-pointer hover:bg-muted/60"
+                className="cursor-pointer bg-muted/30 hover:bg-muted/60"
                 onClick={() => toggleGrupo(grupo.key)}
               >
-                <TableCell className="font-medium">
-                  <span className="inline-flex items-center gap-1.5">
+                <TableCell>
+                  <div className="flex items-center gap-2.5">
                     {expanded ? (
                       <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                     ) : (
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                     )}
-                    {grupo.corretor}
-                  </span>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
+                        {initials(grupo.corretor)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="font-medium">{grupo.corretor}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {grupo.vendas.length} vendas
+                      </div>
+                    </div>
+                  </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {grupo.vendas.length} vendas
+                {detailed ? (
+                  <>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {grupo.creci || "—"}
+                    </TableCell>
+                    <TableCell>{grupo.gerente || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">—</TableCell>
+                  </>
+                ) : null}
+                <TableCell>
+                  <Badge variant="secondary" className="font-normal">
+                    {grupo.vendas.length} vendas
+                  </Badge>
                 </TableCell>
-                <TableCell className="text-right tabular-nums font-medium">
+                {detailed ? (
+                  <TableCell className="text-muted-foreground">—</TableCell>
+                ) : null}
+                <TableCell className="text-right tabular-nums font-semibold">
                   {money(grupo.vgv)}
                 </TableCell>
+                {detailed ? (
+                  <TableCell className="text-muted-foreground">—</TableCell>
+                ) : null}
               </TableRow>
               {expanded
                 ? grupo.vendas.map((venda) => (
-                    <TableRow key={venda.id} className="bg-muted/20">
-                      <TableCell className="pl-9 text-sm text-muted-foreground">
-                        {venda.empreendimento || dateBr(venda.dataVenda)}
+                    <TableRow key={venda.id} className="bg-muted/10">
+                      <TableCell
+                        className={cn(
+                          "text-sm text-muted-foreground",
+                          detailed ? "pl-14" : "pl-12",
+                        )}
+                      >
+                        {detailed ? "Venda" : venda.empreendimento || dateBr(venda.dataVenda)}
                       </TableCell>
+                      {detailed ? (
+                        <>
+                          <TableCell />
+                          <TableCell />
+                          <TableCell>{venda.empreendimento || "—"}</TableCell>
+                        </>
+                      ) : null}
                       <TableCell>{venda.cliente}</TableCell>
+                      {detailed ? (
+                        <TableCell className="tabular-nums">
+                          {venda.clienteCpf
+                            ? formatCpfCnpj(venda.clienteCpf)
+                            : "—"}
+                        </TableCell>
+                      ) : null}
                       <TableCell className="text-right tabular-nums">
                         {money(venda.vgv)}
                       </TableCell>
+                      {detailed ? (
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {dateBr(venda.dataVenda)}
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   ))
                 : null}
@@ -187,21 +303,59 @@ export function VendasResumoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+      <DialogContent className="max-h-[88vh] gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogHeader className="border-b bg-linear-to-br from-primary/10 via-background to-background px-6 py-5 pr-12">
+          <DialogTitle className="text-lg">{title}</DialogTitle>
           <DialogDescription>
             {description ?? defaultDescription}
           </DialogDescription>
+          {!loading && items.length > 0 ? (
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border bg-background/80 px-3 py-2">
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Wallet className="h-3.5 w-3.5" />
+                  Vendas
+                </div>
+                <div className="mt-0.5 text-base font-semibold tabular-nums">
+                  {items.length}
+                </div>
+              </div>
+              <div className="rounded-xl border bg-background/80 px-3 py-2">
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Wallet className="h-3.5 w-3.5" />
+                  VGV
+                </div>
+                <div className="mt-0.5 text-base font-semibold tabular-nums">
+                  {money(totalVgv)}
+                </div>
+              </div>
+              <div className="col-span-2 rounded-xl border bg-background/80 px-3 py-2 sm:col-span-1">
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  {mode === "construtora" ? (
+                    <UserRound className="h-3.5 w-3.5" />
+                  ) : (
+                    <Building2 className="h-3.5 w-3.5" />
+                  )}
+                  {mode === "construtora" ? "Corretores" : "Construtoras"}
+                </div>
+                <div className="mt-0.5 text-base font-semibold tabular-nums">
+                  {mode === "construtora"
+                    ? corretoresCount
+                    : new Set(items.map((item) => item.construtora).filter(Boolean))
+                        .size}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </DialogHeader>
-        <div className="max-h-[60vh] overflow-auto">
+        <div className="max-h-[58vh] overflow-auto px-1 pb-2">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-muted-foreground">
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Carregando vendas…
             </div>
           ) : items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-12 text-center text-sm text-muted-foreground">
               Nenhuma venda encontrada.
             </p>
           ) : mode === "construtora" ? (
@@ -209,7 +363,7 @@ export function VendasResumoDialog({
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="hover:bg-transparent">
                   <TableHead>Construtora</TableHead>
                   <TableHead>Empreendimento</TableHead>
                   <TableHead>Cliente</TableHead>
@@ -221,16 +375,18 @@ export function VendasResumoDialog({
               <TableBody>
                 {items.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell>{row.construtora || "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      {row.construtora || "—"}
+                    </TableCell>
                     <TableCell>{row.empreendimento || "—"}</TableCell>
                     <TableCell>{row.cliente}</TableCell>
                     <TableCell className="tabular-nums">
                       {row.clienteCpf ? formatCpfCnpj(row.clienteCpf) : "—"}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">
+                    <TableCell className="text-right tabular-nums font-semibold">
                       {money(row.vgv)}
                     </TableCell>
-                    <TableCell className="tabular-nums">
+                    <TableCell className="tabular-nums text-muted-foreground">
                       {dateBr(row.dataVenda)}
                     </TableCell>
                   </TableRow>

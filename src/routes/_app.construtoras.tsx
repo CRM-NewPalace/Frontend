@@ -40,6 +40,7 @@ import {
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { canViewRankingVendas } from "@/lib/permissions";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
   DEFAULT_TABLE_SORT,
@@ -53,6 +54,8 @@ import {
 } from "@/lib/empreendimentos-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CorPicker } from "@/components/cor-picker";
+import { FinanceKpiCard } from "@/components/finance-kpi-card";
+import { ConstrutoraVendasTable } from "@/components/vendas-resumo-dialog";
 import { useCatalog } from "@/lib/catalog-store";
 import {
   construtoraBadgeStyle,
@@ -87,9 +90,10 @@ import {
   Check,
   X,
   Wallet,
+  UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn, formatCpfCnpj } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   formatPhone,
   isValidPhone,
@@ -181,17 +185,12 @@ function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function dateBr(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const [year, month, day] = iso.slice(0, 10).split("-");
-  return year && month && day ? `${day}/${month}/${year}` : "—";
-}
-
 function ConstrutorasPage() {
   const routeSearch = Route.useSearch();
   const navigate = Route.useNavigate();
   const user = getSession();
   const isAdmin = user?.role === "admin";
+  const canViewVendas = canViewRankingVendas(user?.role);
   const canManage =
     isAdmin ||
     user?.role === "gerente" ||
@@ -276,15 +275,20 @@ function ConstrutorasPage() {
   }, [loadItems]);
 
   useEffect(() => {
+    if (!canViewVendas) {
+      setTab((current) => (current === "vendas" ? "lista" : current));
+      setVendasConstrutoraId("");
+      return;
+    }
     if (routeSearch.tab) setTab(routeSearch.tab);
     if (routeSearch.id) {
       setVendasConstrutoraId(routeSearch.id);
       setTab("vendas");
     }
-  }, [routeSearch.tab, routeSearch.id]);
+  }, [canViewVendas, routeSearch.tab, routeSearch.id]);
 
   useEffect(() => {
-    if (!vendasConstrutoraId) {
+    if (!canViewVendas || !vendasConstrutoraId) {
       setVendas([]);
       setVendasTotais({ vendas: 0, vgv: 0, corretores: 0 });
       return;
@@ -313,7 +317,7 @@ function ConstrutorasPage() {
     return () => {
       cancelled = true;
     };
-  }, [vendasConstrutoraId]);
+  }, [canViewVendas, vendasConstrutoraId]);
 
   const searchQuery = search.trim().toLocaleLowerCase("pt-BR");
 
@@ -360,6 +364,9 @@ function ConstrutorasPage() {
     () =>
       [...items].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [items],
+  );
+  const vendasConstrutoraSelecionada = vendasConstrutoras.find(
+    (item) => item.id === vendasConstrutoraId,
   );
 
   const sortedDriveItems = useMemo(
@@ -782,6 +789,10 @@ function ConstrutorasPage() {
   }
 
   function openVendas(item: Construtora) {
+    if (!canViewVendas) {
+      openView(item);
+      return;
+    }
     setVendasConstrutoraId(item.id);
     setTab("vendas");
     void navigate({
@@ -795,9 +806,11 @@ function ConstrutorasPage() {
       <PageHeader
         title="Construtoras"
         description={
-          canCreate
-            ? "Cadastro, books e vendas por construtora."
-            : "Books, pastas e vendas por construtora."
+          canViewVendas
+            ? canCreate
+              ? "Cadastro, books e vendas por construtora."
+              : "Books, pastas e vendas por construtora."
+            : "Books e pastas das construtoras."
         }
         actions={
           canCreate ? (
@@ -857,6 +870,7 @@ function ConstrutorasPage() {
         value={tab}
         onValueChange={(value) => {
           const next = value as ConstrutorasTab;
+          if (next === "vendas" && !canViewVendas) return;
           setTab(next);
           void navigate({
             search: {
@@ -875,10 +889,12 @@ function ConstrutorasPage() {
             <Building className="h-3.5 w-3.5" />
             Lista
           </TabsTrigger>
-          <TabsTrigger value="vendas" className="gap-1.5 rounded-full px-4">
-            <Wallet className="h-3.5 w-3.5" />
-            Vendas
-          </TabsTrigger>
+          {canViewVendas ? (
+            <TabsTrigger value="vendas" className="gap-1.5 rounded-full px-4">
+              <Wallet className="h-3.5 w-3.5" />
+              Vendas
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="books" className="gap-1.5 rounded-full px-4">
             <FolderOpen className="h-3.5 w-3.5" />
             Books
@@ -983,8 +999,12 @@ function ConstrutorasPage() {
                       <TableHead>Viabilizador</TableHead>
                       <TableHead>Localidades</TableHead>
                       <TableHead className="text-center">Empreend.</TableHead>
-                      <TableHead className="text-center">Vendas</TableHead>
-                      <TableHead className="text-right">VGV</TableHead>
+                      {canViewVendas ? (
+                        <>
+                          <TableHead className="text-center">Vendas</TableHead>
+                          <TableHead className="text-right">VGV</TableHead>
+                        </>
+                      ) : null}
                       <TableHead className="text-center">Docs</TableHead>
                       <TableHead className="w-30" />
                     </TableRow>
@@ -993,24 +1013,36 @@ function ConstrutorasPage() {
                     {sortedItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">
-                          <button
-                            type="button"
-                            className="text-left hover:underline"
-                            onClick={() => openVendas(item)}
-                            title="Ver vendas"
-                          >
-                            {item.cor ? (
-                              <Badge
-                                variant="secondary"
-                                className="border-transparent font-medium"
-                                style={construtoraBadgeStyle(item.cor)}
-                              >
-                                {item.nome}
-                              </Badge>
-                            ) : (
-                              item.nome
-                            )}
-                          </button>
+                          {canViewVendas ? (
+                            <button
+                              type="button"
+                              className="text-left hover:underline"
+                              onClick={() => openVendas(item)}
+                              title="Ver vendas"
+                            >
+                              {item.cor ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="border-transparent font-medium"
+                                  style={construtoraBadgeStyle(item.cor)}
+                                >
+                                  {item.nome}
+                                </Badge>
+                              ) : (
+                                item.nome
+                              )}
+                            </button>
+                          ) : item.cor ? (
+                            <Badge
+                              variant="secondary"
+                              className="border-transparent font-medium"
+                              style={construtoraBadgeStyle(item.cor)}
+                            >
+                              {item.nome}
+                            </Badge>
+                          ) : (
+                            item.nome
+                          )}
                         </TableCell>
                         <TableCell>
                           {item.cca ? (
@@ -1061,22 +1093,26 @@ function ConstrutorasPage() {
                             {item._count?.empreendimentos ?? 0}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto px-2 py-0.5"
-                            onClick={() => openVendas(item)}
-                            title="Ver vendas"
-                          >
-                            <Badge variant="secondary">
-                              {item.vendas ?? 0}
-                            </Badge>
-                          </Button>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {money(item.vgv ?? 0)}
-                        </TableCell>
+                        {canViewVendas ? (
+                          <>
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-2 py-0.5"
+                                onClick={() => openVendas(item)}
+                                title="Ver vendas"
+                              >
+                                <Badge variant="secondary">
+                                  {item.vendas ?? 0}
+                                </Badge>
+                              </Button>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {money(item.vgv ?? 0)}
+                            </TableCell>
+                          </>
+                        ) : null}
                         <TableCell className="text-center">
                           <Badge variant="secondary">
                             {item._count?.documentacoes ?? 0}
@@ -1123,81 +1159,105 @@ function ConstrutorasPage() {
           </Card>
         </TabsContent>
 
+        {canViewVendas ? (
         <TabsContent value="vendas" className="mt-0 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Vendas</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Selecione a construtora para ver as vendas feitas nela.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="max-w-md">
-                <Label className="mb-1.5 block text-xs">Construtora</Label>
-                <Select
-                  value={vendasConstrutoraId || "__none__"}
-                  onValueChange={(value) => {
-                    const nextId = value === "__none__" ? "" : value;
-                    setVendasConstrutoraId(nextId);
-                    void navigate({
-                      search: {
-                        tab: "vendas",
-                        id: nextId || undefined,
-                      },
-                      replace: true,
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a construtora" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Selecione…</SelectItem>
-                    {vendasConstrutoras.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.nome}
-                        {typeof item.vendas === "number"
-                          ? ` · ${item.vendas} venda${item.vendas === 1 ? "" : "s"}`
-                          : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <Card className="overflow-hidden border-border/70">
+            <CardHeader className="bg-linear-to-br from-primary/10 via-background to-background pb-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <CardTitle className="text-base">Vendas por construtora</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Selecione a construtora para ver as vendas feitas nela.
+                  </p>
+                </div>
+                <div className="w-full max-w-md">
+                  <Label className="mb-1.5 block text-xs">Construtora</Label>
+                  <Select
+                    value={vendasConstrutoraId || "__none__"}
+                    onValueChange={(value) => {
+                      const nextId = value === "__none__" ? "" : value;
+                      setVendasConstrutoraId(nextId);
+                      void navigate({
+                        search: {
+                          tab: "vendas",
+                          id: nextId || undefined,
+                        },
+                        replace: true,
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="h-10 bg-background">
+                      <SelectValue placeholder="Selecione a construtora" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Selecione…</SelectItem>
+                      {vendasConstrutoras.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.nome}
+                          {typeof item.vendas === "number"
+                            ? ` · ${item.vendas} venda${item.vendas === 1 ? "" : "s"}`
+                            : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-
-              {vendasConstrutoraId ? (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">Vendas</div>
-                    <div className="text-lg font-semibold tabular-nums">
-                      {vendasTotais.vendas}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">VGV</div>
-                    <div className="text-lg font-semibold tabular-nums">
-                      {money(vendasTotais.vgv)}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">
-                      Corretores
-                    </div>
-                    <div className="text-lg font-semibold tabular-nums">
-                      {vendasTotais.corretores}
-                    </div>
-                  </div>
+              {vendasConstrutoraSelecionada ? (
+                <div className="pt-1">
+                  {vendasConstrutoraSelecionada.cor ? (
+                    <Badge
+                      variant="secondary"
+                      className="border-transparent"
+                      style={construtoraBadgeStyle(vendasConstrutoraSelecionada.cor)}
+                    >
+                      {vendasConstrutoraSelecionada.nome}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">
+                      {vendasConstrutoraSelecionada.nome}
+                    </Badge>
+                  )}
                 </div>
               ) : null}
-            </CardContent>
+            </CardHeader>
+            {vendasConstrutoraId ? (
+              <CardContent className="grid gap-3 pt-4 sm:grid-cols-3">
+                <FinanceKpiCard
+                  label="Vendas"
+                  value={vendasTotais.vendas}
+                  icon={Wallet}
+                  tone="blue-1"
+                  format="number"
+                />
+                <FinanceKpiCard
+                  label="VGV"
+                  value={vendasTotais.vgv}
+                  icon={Wallet}
+                  tone="blue-3"
+                  format="money"
+                />
+                <FinanceKpiCard
+                  label="Corretores"
+                  value={vendasTotais.corretores}
+                  icon={UsersRound}
+                  tone="blue-4"
+                  format="number"
+                />
+              </CardContent>
+            ) : null}
           </Card>
 
           <Card className="overflow-hidden">
             <CardContent className="p-0">
               {!vendasConstrutoraId ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-                  <Wallet className="h-8 w-8 opacity-40" />
-                  <p>Selecione uma construtora para ver as vendas.</p>
+                <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                    <Wallet className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="text-sm">
+                    Selecione uma construtora para ver as vendas.
+                  </p>
                 </div>
               ) : loadingVendas ? (
                 <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -1205,55 +1265,21 @@ function ConstrutorasPage() {
                   Carregando vendas…
                 </div>
               ) : vendas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-                  <Wallet className="h-8 w-8 opacity-40" />
-                  <p>Nenhuma venda nesta construtora.</p>
+                <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                    <Wallet className="h-6 w-6 opacity-50" />
+                  </div>
+                  <p className="text-sm">Nenhuma venda nesta construtora.</p>
                 </div>
               ) : (
-                <Table className="min-w-220 [&_th]:px-4 [&_td]:px-4">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Corretor</TableHead>
-                      <TableHead>CRECI</TableHead>
-                      <TableHead>Gerente</TableHead>
-                      <TableHead>Empreendimento</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>CPF</TableHead>
-                      <TableHead className="text-right">VGV</TableHead>
-                      <TableHead>Data de venda</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {vendas.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="font-medium">
-                          {row.corretor}
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {row.creci || "—"}
-                        </TableCell>
-                        <TableCell>{row.gerente || "—"}</TableCell>
-                        <TableCell>{row.empreendimento || "—"}</TableCell>
-                        <TableCell>{row.cliente}</TableCell>
-                        <TableCell className="tabular-nums">
-                          {row.clienteCpf
-                            ? formatCpfCnpj(row.clienteCpf)
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums font-medium">
-                          {money(row.vgv)}
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {dateBr(row.dataVenda)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <ConstrutoraVendasTable items={vendas} detailed />
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
+        ) : null}
 
         <TabsContent value="visibilidade" className="mt-0">
           <Card className="overflow-hidden">
