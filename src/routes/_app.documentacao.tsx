@@ -215,6 +215,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SOFT_BTN } from "@/lib/soft-btn";
 import {
   Popover,
   PopoverContent,
@@ -254,8 +255,6 @@ export const Route = createFileRoute("/_app/documentacao")({
   component: DocumentacaoPage,
 });
 
-const DOC_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
 
 function creditUserLabel(user: { name: string; role?: string | null }) {
   if (user.role === "gerente") return `${user.name} · Gerente`;
@@ -1836,7 +1835,7 @@ function DocumentacaoPage() {
                 size="sm"
                 disabled={importParsing}
                 onClick={() => setImportHelpOpen(true)}
-                className={DOC_SOFT_BTN}
+                className={SOFT_BTN}
               >
                 {importParsing ? (
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1852,7 +1851,7 @@ function DocumentacaoPage() {
                   variant="outline"
                   size="sm"
                   disabled={filteredItems.length === 0}
-                  className={DOC_SOFT_BTN}
+                  className={SOFT_BTN}
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -2000,8 +1999,8 @@ function DocumentacaoPage() {
                     type="button"
                     variant="outline"
                     className={cn(
-                      DOC_SOFT_BTN,
-                      advancedFiltersCount > 0 && "border-[#079ED4]/40",
+                      SOFT_BTN,
+                      advancedFiltersCount > 0 && "border-primary/40",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />

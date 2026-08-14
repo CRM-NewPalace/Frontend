@@ -342,7 +342,7 @@ function Page() {
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-semibold">Imobiliária</h2>
+                <h2 className="font-semibold text-primary">Imobiliária</h2>
               </div>
               {metasImobiliaria.length > 0 ? (
                 <MetaList
@@ -363,7 +363,7 @@ function Page() {
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <UserRound className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-semibold">Gerentes / equipes</h2>
+                <h2 className="font-semibold text-primary">Gerentes / equipes</h2>
               </div>
               {metasGerentes.length > 0 ? (
                 <div className="space-y-4">
@@ -409,7 +409,7 @@ function Page() {
           <section className="space-y-5">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <h2 className="font-semibold">Corretores</h2>
+              <h2 className="font-semibold text-primary">Corretores</h2>
             </div>
             {gruposCorretores.length === 0 ? (
               <EmptyState admin={isAdmin} />
@@ -625,7 +625,7 @@ function MetasPorOrigem({
     <div className="space-y-6">
       <section className="space-y-3">
         <div>
-          <h3 className="font-medium">Metas atribuídas</h3>
+          <h3 className="font-medium text-primary">Metas atribuídas</h3>
           <p className="text-sm text-muted-foreground">
             Metas definidas pela gerência ou administração.
           </p>
@@ -645,7 +645,7 @@ function MetasPorOrigem({
       </section>
       <section className="space-y-3">
         <div>
-          <h3 className="font-medium">Metas pessoais</h3>
+          <h3 className="font-medium text-primary">Metas pessoais</h3>
           <p className="text-sm text-muted-foreground">
             Metas definidas pelo próprio corretor.
           </p>
@@ -694,7 +694,7 @@ function MetaList({
         return (
           <Card
             key={meta.id}
-            className="group relative overflow-hidden border-border/70 bg-gradient-to-br from-card via-card to-muted/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg"
+            className="group relative overflow-hidden border-border/70 bg-linear-to-br from-card via-card to-muted/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg"
           >
             <div
               className={`absolute inset-x-0 top-0 h-1 ${visual.progress}`}
@@ -721,10 +721,10 @@ function MetaList({
                 <Badge
                   className={
                     meta.origem === "admin"
-                      ? "border-violet-500/25 bg-violet-500/15 text-violet-700 dark:text-violet-300"
+                      ? "border-primary/30 bg-primary/15 text-primary"
                       : meta.origem === "gerente"
-                        ? "border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                        : "border-sky-500/25 bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                        ? "border-primary/25 bg-primary/10 text-primary"
+                        : "border-primary/20 bg-primary/5 text-primary"
                   }
                   variant="outline"
                 >
@@ -813,24 +813,27 @@ function getMetaVisual(tipo: MetaTipo) {
   if (tipo === "documentacoes") {
     return {
       icon: FileText,
-      iconBg: "bg-sky-500/15",
-      iconColor: "text-sky-600 dark:text-sky-400",
-      progress: "bg-sky-500",
+      iconBg:
+        "bg-[color-mix(in_srgb,var(--kpi-seq-1,#5BC4E8)_15%,transparent)]",
+      iconColor: "text-[var(--kpi-seq-1,#5BC4E8)]",
+      progress: "bg-[var(--kpi-seq-1,#5BC4E8)]",
     };
   }
   if (tipo === "vgv") {
     return {
       icon: Wallet,
-      iconBg: "bg-violet-500/15",
-      iconColor: "text-violet-600 dark:text-violet-400",
-      progress: "bg-violet-500",
+      iconBg:
+        "bg-[color-mix(in_srgb,var(--kpi-seq-2,#079ED4)_15%,transparent)]",
+      iconColor: "text-[var(--kpi-seq-2,#079ED4)]",
+      progress: "bg-[var(--kpi-seq-2,#079ED4)]",
     };
   }
   return {
     icon: Target,
-    iconBg: "bg-amber-500/15",
-    iconColor: "text-amber-600 dark:text-amber-400",
-    progress: "bg-amber-500",
+    iconBg:
+      "bg-[color-mix(in_srgb,var(--kpi-seq-3,#0689BD)_15%,transparent)]",
+    iconColor: "text-[var(--kpi-seq-3,#0689BD)]",
+    progress: "bg-[var(--kpi-seq-3,#0689BD)]",
   };
 }
 

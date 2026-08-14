@@ -101,6 +101,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SOFT_BTN } from "@/lib/soft-btn";
 import {
   Popover,
   PopoverContent,
@@ -134,8 +135,6 @@ export const Route = createFileRoute("/_app/agenda")({
   component: AgendaPage,
 });
 
-const AGENDA_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
 
 type FormState = {
   leadId: string;
@@ -1052,7 +1051,7 @@ function AgendaPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className={AGENDA_SOFT_BTN}
+                        className={SOFT_BTN}
                         disabled={actingId === s.id}
                         onClick={() => void handleRecusar(s.id)}
                       >
@@ -1087,7 +1086,7 @@ function AgendaPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className={AGENDA_SOFT_BTN}
+                className={SOFT_BTN}
                 onClick={goToday}
               >
                 Hoje
@@ -1122,7 +1121,7 @@ function AgendaPage() {
                 variant={layoutMode === "calendario" ? "default" : "outline"}
                 size="sm"
                 className={
-                  layoutMode === "calendario" ? undefined : AGENDA_SOFT_BTN
+                  layoutMode === "calendario" ? undefined : SOFT_BTN
                 }
                 onClick={() =>
                   setLayoutMode((m) =>
@@ -1169,8 +1168,8 @@ function AgendaPage() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      AGENDA_SOFT_BTN,
-                      activeFiltersCount > 0 && "border-[#079ED4]/40",
+                      SOFT_BTN,
+                      activeFiltersCount > 0 && "border-primary/40",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />
@@ -1389,7 +1388,7 @@ function AgendaPage() {
             <Button
               type="button"
               variant="outline"
-              className={AGENDA_SOFT_BTN}
+              className={SOFT_BTN}
               onClick={() => setOpen(false)}
               disabled={saving}
             >

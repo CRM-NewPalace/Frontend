@@ -117,6 +117,8 @@ import {
   DetailField,
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
+import { SOFT_BTN } from "@/lib/soft-btn";
+import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -242,11 +244,7 @@ const TIPO_RENDA_OPTIONS = [
 
 const LEADS_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110 disabled:opacity-50";
-const LEADS_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
-} as const;
-const LEADS_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+const LEADS_GRADIENT_STYLE = BRAND_GRADIENT_STYLE;
 
 function LeadsPage() {
   const navigate = useNavigate();
@@ -1044,7 +1042,7 @@ function LeadsPage() {
               size="sm"
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
-              className={LEADS_SOFT_BTN}
+              className={SOFT_BTN}
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1058,7 +1056,7 @@ function LeadsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setDistribuirOpen(true)}
-                className={LEADS_SOFT_BTN}
+                className={SOFT_BTN}
               >
                 <Share2 className="w-4 h-4 mr-1" />
                 Distribuir
@@ -1070,7 +1068,7 @@ function LeadsPage() {
                   variant="outline"
                   size="sm"
                   disabled={filteredLeads.length === 0}
-                  className={LEADS_SOFT_BTN}
+                  className={SOFT_BTN}
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -2003,8 +2001,8 @@ function LeadsPage() {
             variant="outline"
             size="sm"
             className={cn(
-              LEADS_SOFT_BTN,
-              extraFiltersActive && "border-[#079ED4]/40",
+              SOFT_BTN,
+              extraFiltersActive && "border-primary/40",
             )}
             onClick={() => setShowExtraFilters((v) => !v)}
           >
@@ -2145,10 +2143,10 @@ function LeadsPage() {
                   <Badge
                     variant={selected ? "secondary" : "outline"}
                     className={cn(
-                      "h-5 px-1.5 tabular-nums text-[10px]",
+                      "h-5 px-1.5 tabular-nums text-[11px]",
                       selected
-                        ? "border-transparent bg-white/20 text-white"
-                        : "border-transparent bg-[#079ED4]/15 text-brand-dark",
+                        ? "border-transparent bg-black/15 text-current"
+                        : "border-transparent bg-primary/15 text-foreground",
                     )}
                   >
                     {opt.count}

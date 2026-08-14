@@ -45,6 +45,7 @@ import {
 import { isStatusVendido } from "@/lib/documentacao-status";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { toast } from "sonner";
+import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 
 export const Route = createFileRoute("/_app/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Zone Connection" }] }),
@@ -78,9 +79,7 @@ function dateBr(value: string | null | undefined) {
 
 const APPLY_FILTERS_BTN =
   "rounded-md border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
-const APPLY_FILTERS_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
-} as const;
+const APPLY_FILTERS_STYLE = BRAND_GRADIENT_STYLE;
 
 function VendasPage() {
   const user = getSession();
@@ -422,7 +421,7 @@ function VendasPage() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-accent transition-colors hover:text-brand-accent/80 cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:text-primary/80 cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Limpar filtros

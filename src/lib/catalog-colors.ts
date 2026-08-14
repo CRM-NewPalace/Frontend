@@ -205,26 +205,26 @@ export function catalogColorToChartHex(
 
 /** Tons progressivos derivados do aside (#032b43), da 1ª → última coluna. */
 const FUNNEL_COLUMN_ASIDE_SCALE = [
-  "bg-[#d0dbe3]",
-  "bg-[#c2d0db]",
-  "bg-[#b3c4d2]",
-  "bg-[#a4b9c9]",
-  "bg-[#95adc0]",
-  "bg-[#86a2b7]",
-  "bg-[#7796ae]",
-  "bg-[#688ba5]",
+  "bg-[#d0dbe3] dark:bg-[#15202b]",
+  "bg-[#c2d0db] dark:bg-[#172430]",
+  "bg-[#b3c4d2] dark:bg-[#1a2836]",
+  "bg-[#a4b9c9] dark:bg-[#1d2c3c]",
+  "bg-[#95adc0] dark:bg-[#203042]",
+  "bg-[#86a2b7] dark:bg-[#233448]",
+  "bg-[#7796ae] dark:bg-[#26384e]",
+  "bg-[#688ba5] dark:bg-[#293c54]",
 ] as const;
 
 /** Versão mais clara (equipes). */
 const FUNNEL_COLUMN_ASIDE_SCALE_LIGHT = [
-  "bg-[#eef3f6]",
-  "bg-[#e5ecf1]",
-  "bg-[#dce5ec]",
-  "bg-[#d2dee6]",
-  "bg-[#c9d7e1]",
-  "bg-[#bfd0db]",
-  "bg-[#b6c9d6]",
-  "bg-[#adc2d0]",
+  "bg-[#eef3f6] dark:bg-[#141c26]",
+  "bg-[#e5ecf1] dark:bg-[#16202b]",
+  "bg-[#dce5ec] dark:bg-[#182430]",
+  "bg-[#d2dee6] dark:bg-[#1a2835]",
+  "bg-[#c9d7e1] dark:bg-[#1c2c3a]",
+  "bg-[#bfd0db] dark:bg-[#1e3040]",
+  "bg-[#b6c9d6] dark:bg-[#203445]",
+  "bg-[#adc2d0] dark:bg-[#22384a]",
 ] as const;
 
 /**

@@ -115,7 +115,7 @@ function MemberRow({
       className={cn(
         "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
         accent
-          ? "bg-brand-accent/10 ring-1 ring-brand-accent/20"
+          ? "bg-primary/10 ring-1 ring-primary/20"
           : "hover:bg-muted/50",
       )}
     >
@@ -133,7 +133,7 @@ function MemberRow({
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          {accent && <Crown className="h-3.5 w-3.5 shrink-0 text-brand-accent" />}
+          {accent && <Crown className="h-3.5 w-3.5 shrink-0 text-primary" />}
           <span className="table-person-name truncate text-sm font-medium">
             {member.name}
           </span>
@@ -141,7 +141,7 @@ function MemberRow({
             variant="outline"
             className={cn(
               "shrink-0 text-[10px] capitalize",
-              accent && "border-brand-accent/30 text-brand-accent",
+              accent && "border-primary/30 text-primary",
             )}
           >
             {roleLabel}
@@ -419,8 +419,8 @@ function EquipesPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-16 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-accent/10">
-            <Network className="h-5 w-5 text-brand-accent" />
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Network className="h-5 w-5 text-primary" />
           </div>
           <p className="text-sm font-medium">
             {canManage
@@ -442,14 +442,14 @@ function EquipesPage() {
                 key={eq.id}
                 className="overflow-hidden rounded-2xl border border-border/80 bg-card"
               >
-                <div className="flex items-stretch gap-2 border-b border-border/60 bg-linear-to-r from-brand-accent/[0.07] to-transparent px-3 py-3 sm:px-4">
+                <div className="flex items-stretch gap-2 border-b border-border/60 bg-linear-to-r from-primary/[0.07] to-transparent px-3 py-3 sm:px-4">
                   <button
                     type="button"
                     onClick={() => toggleExpanded(eq.id)}
                     className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
                     aria-expanded={expanded}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
                       <Users className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -522,7 +522,7 @@ function EquipesPage() {
                 {expanded && (
                   <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(0,16rem)_1fr]">
                     <div className="space-y-2">
-                      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-brand-accent">
+                      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
                         Gerente
                       </p>
                       <MemberRow

@@ -63,6 +63,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SOFT_BTN, SOFT_BTN_ACTIVE } from "@/lib/soft-btn";
+import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 
 export const Route = createFileRoute("/_app/imoveis")({
   head: () => ({ meta: [{ title: "Imóveis — Zone Connection" }] }),
@@ -71,13 +73,7 @@ export const Route = createFileRoute("/_app/imoveis")({
 
 const IMOVEIS_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
-const IMOVEIS_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
-} as const;
-const IMOVEIS_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
-const IMOVEIS_SOFT_BTN_ACTIVE =
-  "border-2 border-[#079ED4]/40 bg-[#079ED4]/20 text-[#053647] hover:bg-[#079ED4]/25 hover:text-[#053647]";
+const IMOVEIS_GRADIENT_STYLE = BRAND_GRADIENT_STYLE;
 
 export function ImoveisPage({
   embedded = false,
@@ -457,7 +453,7 @@ export function ImoveisPage({
           <Button
             type="button"
             variant="outline"
-            className={`flex-1 ${somenteLitoral ? IMOVEIS_SOFT_BTN_ACTIVE : IMOVEIS_SOFT_BTN}`}
+            className={`flex-1 ${somenteLitoral ? SOFT_BTN_ACTIVE : SOFT_BTN}`}
             onClick={() => setSomenteLitoral((current) => !current)}
           >
             Litoral

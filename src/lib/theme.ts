@@ -1,3 +1,8 @@
+import {
+  initAppearance,
+  syncBackgroundWithTheme,
+} from "@/lib/appearance";
+
 const KEY = "crm_theme";
 const ZONE_LIGHT_MIGRATION = "crm_theme_zone_light_v1";
 
@@ -20,7 +25,21 @@ export function applyTheme(theme: Theme) {
 export function setTheme(theme: Theme) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(KEY, theme);
-  applyTheme(theme);
+  // Fundo Escuro e modo escuro ficam sempre alinhados.
+  syncBackgroundWithTheme(theme);
+  // Só aplica no DOM se estiver no painel; marketing/login ficam claros.
+  const path = window.location.pathname;
+  const isPublic =
+    path === "/" ||
+    path === "/login" ||
+    path === "/demonstracao" ||
+    path === "/termos" ||
+    path === "/privacidade" ||
+    path.startsWith("/produtos/");
+  if (!isPublic) {
+    applyTheme(theme);
+    initAppearance();
+  }
 }
 
 /** Tema padrão do CRM = claro, como o site Zone Connection. */

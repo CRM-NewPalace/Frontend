@@ -743,8 +743,8 @@ function CorretorTriagem() {
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:overflow-hidden">
         <div className="flex min-h-0 flex-col gap-4 max-lg:min-h-80 lg:col-span-5">
           <Card className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden p-4">
-            <div className="flex shrink-0 items-center gap-2 text-sm font-medium">
-              <Users className="h-4 w-4 text-primary" />
+            <div className="flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">
+              <Users className="h-4 w-4" />
               Leads
               <span className="text-xs font-normal text-muted-foreground">
                 ({filteredLeads.length}
@@ -772,8 +772,8 @@ function CorretorTriagem() {
           </Card>
 
           <Card className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden p-4">
-            <div className="flex shrink-0 items-center gap-2 text-sm font-medium">
-              <User className="h-4 w-4 text-violet-600" />
+            <div className="flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">
+              <User className="h-4 w-4" />
               Clientes
               <span className="text-xs font-normal text-muted-foreground">
                 ({filteredClientes.length}
@@ -803,9 +803,9 @@ function CorretorTriagem() {
 
         <Card className="flex min-h-0 flex-col overflow-hidden p-4 max-lg:min-h-80 lg:col-span-7">
           {!selectedContact ? (
-            <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-center text-muted-foreground">
-              <ClipboardList className="h-8 w-8 opacity-40" />
-              <p className="text-sm">
+            <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-center text-primary">
+              <ClipboardList className="h-8 w-8 opacity-50" />
+              <p className="text-sm font-semibold">
                 Selecione um lead ou cliente para ver o histórico.
               </p>
             </div>
@@ -1189,8 +1189,8 @@ function ManagerTriagem() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:overflow-hidden">
         <Card className="flex min-h-0 flex-col space-y-3 overflow-hidden p-4 max-lg:min-h-80 lg:col-span-3">
-          <div className="flex shrink-0 items-center gap-2.5 text-sm font-semibold text-brand-dark">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+          <div className="flex shrink-0 items-center gap-2.5 text-sm font-semibold text-primary">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
               <Users className="h-4 w-4" />
             </span>
             Corretores
@@ -1278,13 +1278,13 @@ function ManagerTriagem() {
           ) : (
             <>
               <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-brand-dark">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-primary">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
                     <ClipboardList className="h-4 w-4" />
                   </span>
                   <span>
                     Leads de{" "}
-                    <span className="font-bold text-brand-accent">
+                    <span className="font-bold text-primary">
                       {selectedCorretor?.name ?? "—"}
                     </span>
                     <span className="ml-1 text-xs font-normal text-muted-foreground">
@@ -1440,8 +1440,8 @@ function TriagemEmptyState({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2.5 text-sm font-semibold text-brand-dark">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+      <div className="flex items-center gap-2.5 text-sm font-semibold text-primary">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Icon className="h-4 w-4" />
         </span>
         {title}
@@ -1449,7 +1449,7 @@ function TriagemEmptyState({
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 pb-2 text-center">
         {illustration}
         <div className="max-w-68 space-y-1.5">
-          <p className="text-sm font-semibold text-brand-dark">{heading}</p>
+          <p className="text-sm font-semibold text-primary">{heading}</p>
           <p className="text-xs leading-relaxed text-muted-foreground">
             {description}
           </p>
@@ -1465,18 +1465,18 @@ function LeadsEmptyIllustration() {
       aria-hidden
       className="relative flex w-30 flex-col items-center gap-2"
     >
-      <div className="h-3.5 w-18 rounded-full bg-brand-accent/15" />
-      <div className="flex w-full items-center gap-2 rounded-xl border border-brand-accent/20 bg-brand-accent/10 px-2.5 py-2.5 shadow-sm">
-        <span className="h-7 w-7 shrink-0 rounded-lg bg-brand-accent/25" />
-        <span className="h-2.5 flex-1 rounded-full bg-brand-accent" />
+      <div className="h-3.5 w-18 rounded-full bg-primary/15" />
+      <div className="flex w-full items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-2.5 shadow-sm">
+        <span className="h-7 w-7 shrink-0 rounded-lg bg-primary/25" />
+        <span className="h-2.5 flex-1 rounded-full bg-primary" />
       </div>
-      <div className="flex w-[90%] items-center gap-2 rounded-xl border border-brand-accent/15 bg-brand-accent/5 px-2.5 py-2">
-        <span className="h-6 w-6 shrink-0 rounded-lg bg-brand-accent/20" />
-        <span className="h-2 flex-1 rounded-full bg-brand-accent/35" />
+      <div className="flex w-[90%] items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-2.5 py-2">
+        <span className="h-6 w-6 shrink-0 rounded-lg bg-primary/20" />
+        <span className="h-2 flex-1 rounded-full bg-primary/35" />
       </div>
-      <div className="flex w-[80%] items-center gap-2 rounded-xl border border-brand-accent/10 bg-brand-accent/3 px-2.5 py-1.5">
-        <span className="h-5 w-5 shrink-0 rounded-md bg-brand-accent/15" />
-        <span className="h-1.5 flex-1 rounded-full bg-brand-accent/25" />
+      <div className="flex w-[80%] items-center gap-2 rounded-xl border border-primary/10 bg-primary/3 px-2.5 py-1.5">
+        <span className="h-5 w-5 shrink-0 rounded-md bg-primary/15" />
+        <span className="h-1.5 flex-1 rounded-full bg-primary/25" />
       </div>
     </div>
   );
@@ -1485,14 +1485,14 @@ function LeadsEmptyIllustration() {
 function HistoryEmptyIllustration() {
   return (
     <div aria-hidden className="relative">
-      <div className="flex h-24 w-19 flex-col gap-2 rounded-xl border border-brand-accent/20 bg-brand-accent/10 px-3 py-3.5 shadow-sm">
-        <span className="h-1.5 w-full rounded-full bg-brand-accent/35" />
-        <span className="h-1.5 w-[85%] rounded-full bg-brand-accent/25" />
-        <span className="h-1.5 w-[70%] rounded-full bg-brand-accent/20" />
-        <span className="mt-1 h-1.5 w-full rounded-full bg-brand-accent/15" />
-        <span className="h-1.5 w-[60%] rounded-full bg-brand-accent/15" />
+      <div className="flex h-24 w-19 flex-col gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-3.5 shadow-sm">
+        <span className="h-1.5 w-full rounded-full bg-primary/35" />
+        <span className="h-1.5 w-[85%] rounded-full bg-primary/25" />
+        <span className="h-1.5 w-[70%] rounded-full bg-primary/20" />
+        <span className="mt-1 h-1.5 w-full rounded-full bg-primary/15" />
+        <span className="h-1.5 w-[60%] rounded-full bg-primary/15" />
       </div>
-      <span className="absolute -bottom-1.5 -right-2.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-brand-accent text-white shadow-sm">
+      <span className="absolute -bottom-1.5 -right-2.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-primary text-white shadow-sm">
         <Clock className="h-4 w-4" />
       </span>
     </div>

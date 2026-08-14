@@ -677,7 +677,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SectionIcon
                   className={cn(
                     "w-4 h-4 shrink-0",
-                    sectionActive && "text-brand-accent",
+                    sectionActive
+                      ? "text-sidebar-foreground"
+                      : "text-sidebar-foreground/75",
                   )}
                 />
                 {!collapsedView && (
@@ -709,7 +711,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             className={cn(
                               "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors cursor-pointer",
                               groupActive
-                                ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                                 : "hover:bg-white/6 text-sidebar-foreground/75",
                             )}
                           >
@@ -738,7 +740,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     className={cn(
                                       "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                                       active
-                                        ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                                        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                                         : "hover:bg-white/6 text-sidebar-foreground/75",
                                     )}
                                   >
@@ -768,7 +770,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         className={cn(
                           "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                           active
-                            ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                             : "hover:bg-white/6 text-sidebar-foreground/75",
                         )}
                       >
@@ -839,7 +841,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="text-sm font-semibold leading-tight truncate">
                 {brandName === "Zone Connection" ? (
                   <>
-                    Zone <span className="text-brand-accent">Connection</span>
+                    Zone <span className="text-primary">Connection</span>
                   </>
                 ) : (
                   brandName
@@ -911,7 +913,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="text-sm font-semibold leading-tight truncate">
               {brandName === "Zone Connection" ? (
                 <>
-                  Zone <span className="text-brand-accent">Connection</span>
+                  Zone <span className="text-primary">Connection</span>
                 </>
               ) : (
                 brandName
@@ -1159,11 +1161,11 @@ export function PageHeader({
   return (
     <div className="mb-4 flex flex-col gap-3 sm:mb-6 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
       <div className="min-w-0 flex-1 space-y-1 lg:min-w-64">
-        <p className="mb-1.5 inline-flex max-w-full items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
-          <span className="size-1.5 shrink-0 rounded-full bg-brand-accent" />
+        <p className="mb-1.5 inline-flex max-w-full items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+          <span className="size-1.5 shrink-0 rounded-full bg-primary" />
           <span className="truncate">{brandName}</span>
         </p>
-        <h1 className="text-xl font-semibold tracking-tight wrap-break-word text-foreground sm:text-2xl">
+        <h1 className="text-xl font-semibold tracking-tight wrap-break-word text-module-title sm:text-2xl">
           {title}
         </h1>
         {description && (
