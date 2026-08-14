@@ -38,6 +38,7 @@ import {
 } from "@/lib/dashboard-api";
 import { cn } from "@/lib/utils";
 import {
+  FileText,
   Goal,
   Loader2,
   Percent,
@@ -57,10 +58,10 @@ export const Route = createFileRoute("/_app/taxa-conversao")({
   component: Page,
 });
 
-type SortKey = "taxa" | "vendas" | "entradas" | "vgv" | "nome";
+type SortKey = "taxa" | "vendas" | "docs" | "vgv" | "nome";
 
 const chartConfig = {
-  entradas: { label: "Entradas", color: "hsl(199 89% 48%)" },
+  documentacoes: { label: "Documentações", color: "hsl(199 89% 48%)" },
   vendas: { label: "Vendas", color: "hsl(160 84% 39%)" },
   taxa: { label: "Taxa %", color: "hsl(262 83% 58%)" },
 } satisfies ChartConfig;
@@ -155,8 +156,8 @@ function Page() {
       switch (sortBy) {
         case "vendas":
           return b.vendas.valor - a.vendas.valor;
-        case "entradas":
-          return b.entradas.valor - a.entradas.valor;
+        case "docs":
+          return b.documentacoes - a.documentacoes;
         case "vgv":
           return b.vgv.valor - a.vgv.valor;
         case "nome":
@@ -183,7 +184,7 @@ function Page() {
           (c.nome.split(" ").length > 1
             ? ` ${c.nome.split(" ").at(-1)?.[0]}.`
             : ""),
-        entradas: c.entradas.valor,
+        documentacoes: c.documentacoes,
         vendas: c.vendas.valor,
         taxa: c.taxaConversao.valor,
       }));
@@ -239,21 +240,21 @@ function Page() {
     <div>
       <PageHeader
         title="Taxa de conversão"
-        description={`Leads do mês × vendas · ${mes} · comparação com o mês anterior.`}
+        description={`Documentações do mês × vendas · ${mes} · comparação com o mês anterior.`}
       />
 
       <section className="grid gap-3 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 mb-4">
         <FinanceKpiCard
-          label="Leads no mês"
-          value={conv.entradas.valor}
-          evolucaoPct={conv.entradas.evolucaoPct}
-          valorMesAnterior={conv.entradas.valorMesAnterior}
-          icon={UsersRound}
+          label="Documentações"
+          value={conv.documentacoes.valor}
+          evolucaoPct={conv.documentacoes.evolucaoPct}
+          valorMesAnterior={conv.documentacoes.valorMesAnterior}
+          icon={FileText}
           tone="blue-1"
           format="number"
         />
         <FinanceKpiCard
-          label="Vendas (desses leads)"
+          label="Vendas"
           value={conv.vendas.valor}
           evolucaoPct={conv.vendas.evolucaoPct}
           valorMesAnterior={conv.vendas.valorMesAnterior}
@@ -302,11 +303,11 @@ function Page() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Funil do mês</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Dos{" "}
+            Das{" "}
             <span className="table-person-name tabular-nums">
-              {conv.entradas.valor}
+              {conv.documentacoes.valor}
             </span>{" "}
-            leads que entraram,{" "}
+            documentações do mês,{" "}
             <span className="table-person-name tabular-nums">
               {conv.vendas.valor}
             </span>{" "}
@@ -322,21 +323,25 @@ function Page() {
         </CardHeader>
         <CardContent className="space-y-3">
           <FunilBar
-            label="Entradas"
-            value={conv.entradas.valor}
-            max={Math.max(conv.entradas.valor, 1)}
+            label="Documentações"
+            value={conv.documentacoes.valor}
+            max={Math.max(conv.documentacoes.valor, 1)}
             tone="sky"
           />
           <FunilBar
             label="Vendas"
             value={conv.vendas.valor}
-            max={Math.max(conv.entradas.valor, 1)}
+            max={Math.max(conv.documentacoes.valor, 1)}
             tone="emerald"
           />
           <FunilBar
             label="Perdidos no mês"
             value={admin.perdidos.mes.valor}
-            max={Math.max(conv.entradas.valor, admin.perdidos.mes.valor, 1)}
+            max={Math.max(
+              conv.documentacoes.valor,
+              admin.perdidos.mes.valor,
+              1,
+            )}
             tone="rose"
           />
         </CardContent>
@@ -378,7 +383,7 @@ function Page() {
           <SelectContent>
             <SelectItem value="taxa">Maior conversão</SelectItem>
             <SelectItem value="vendas">Mais vendas</SelectItem>
-            <SelectItem value="entradas">Mais entradas</SelectItem>
+            <SelectItem value="docs">Mais documentações</SelectItem>
             <SelectItem value="vgv">Maior VGV</SelectItem>
             <SelectItem value="nome">Nome A–Z</SelectItem>
           </SelectContent>
@@ -402,7 +407,7 @@ function Page() {
       <div className="grid gap-4 lg:grid-cols-2 mb-4 min-w-0">
         <Card className="min-w-0 overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Entradas × vendas</CardTitle>
+            <CardTitle className="text-base">Documentações × vendas</CardTitle>
             <p className="text-sm text-muted-foreground">
               Top 8 corretores por taxa (filtro aplicado).
             </p>
@@ -440,8 +445,8 @@ function Page() {
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Legend />
                     <Bar
-                      dataKey="entradas"
-                      fill="var(--color-entradas)"
+                      dataKey="documentacoes"
+                      fill="var(--color-documentacoes)"
                       radius={[3, 3, 0, 0]}
                     />
                     <Bar
@@ -460,7 +465,7 @@ function Page() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Taxa por corretor (%)</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Conversão = vendas ÷ entradas do mês.
+              Conversão = vendas ÷ documentações do mês.
             </p>
           </CardHeader>
           <CardContent className="min-w-0">
@@ -540,12 +545,11 @@ function Page() {
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 pr-2 font-medium w-10">#</th>
                   <th className="pb-2 pr-2 font-medium">Corretor</th>
-                  <th className="pb-2 pr-2 font-medium text-right">Entradas</th>
+                  <th className="pb-2 pr-2 font-medium text-right">Docs</th>
                   <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
                   <th className="pb-2 pr-2 font-medium text-right">Taxa</th>
                   <th className="pb-2 pr-2 font-medium text-right">VGV</th>
                   <th className="pb-2 pr-2 font-medium text-right">Visitas</th>
-                  <th className="pb-2 pr-2 font-medium text-right">Docs</th>
                   <th className="pb-2 font-medium text-right">Perdidos</th>
                 </tr>
               </thead>
@@ -586,7 +590,7 @@ function Page() {
                       Corretores
                     </th>
                     <th className="pb-2 pr-2 font-medium text-right">
-                      Entradas
+                      Docs
                     </th>
                     <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
                     <th className="pb-2 pr-2 font-medium text-right">Taxa</th>
@@ -619,12 +623,8 @@ function Page() {
                         </td>
                         <td className="py-2.5 pr-2 text-right">
                           <div className="tabular-nums font-medium">
-                            {g.entradas.valor}
+                            {g.documentacoes ?? 0}
                           </div>
-                          <EvolucaoBadge
-                            value={g.entradas.evolucaoPct}
-                            previous={g.entradas.valorMesAnterior}
-                          />
                         </td>
                         <td className="py-2.5 pr-2 text-right">
                           <div className="tabular-nums font-medium">
@@ -719,11 +719,7 @@ function CorretorConversaoRow({
         </div>
       </td>
       <td className="py-2.5 pr-2 text-right">
-        <div className="tabular-nums font-medium">{row.entradas.valor}</div>
-        <EvolucaoBadge
-          value={row.entradas.evolucaoPct}
-          previous={row.entradas.valorMesAnterior}
-        />
+        <div className="tabular-nums font-medium">{row.documentacoes}</div>
       </td>
       <td className="py-2.5 pr-2 text-right">
         <div className="tabular-nums font-medium">{row.vendas.valor}</div>
@@ -754,9 +750,6 @@ function CorretorConversaoRow({
         {money(row.vgv.valor)}
       </td>
       <td className="py-2.5 pr-2 text-right tabular-nums">{row.visitas}</td>
-      <td className="py-2.5 pr-2 text-right tabular-nums">
-        {row.documentacoes}
-      </td>
       <td className="py-2.5 text-right tabular-nums">{row.perdidos}</td>
     </tr>
   );

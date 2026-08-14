@@ -65,9 +65,11 @@ export type DashboardAdmin = {
   conversao: {
     /** Leads que entraram no mês. */
     entradas: DashboardMetric;
-    /** Desses leads, quantos já viraram venda. */
+    /** Fichas de documentação criadas no mês. */
+    documentacoes: DashboardMetric;
+    /** Vendas do mês (documentação vendida). */
     vendas: DashboardMetric;
-    /** Regra: vendas / entradas × 100. */
+    /** Regra: vendas / documentações × 100. */
     taxa: DashboardMetric;
     vgv: DashboardMetric;
   };
@@ -218,6 +220,7 @@ export type DashboardRankingGerente = {
   leads: number;
   entradas: DashboardMetric;
   visitas: number;
+  documentacoes: number;
   vendas: DashboardMetric;
   vgv: DashboardMetric;
   taxaConversao: DashboardMetric;
@@ -231,6 +234,7 @@ export type DashboardRanking = {
   };
   totais: {
     entradas: number;
+    documentacoes: number;
     vendas: number;
     vgv: number;
     visitas: number;

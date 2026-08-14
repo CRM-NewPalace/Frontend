@@ -427,7 +427,7 @@ function DashboardAdminView() {
           href="/leads-perdidos"
         />
         <FinanceKpiCard
-          label="Conversão (entrada → venda)"
+          label="Conversão (doc → venda)"
           value={summary.conversao.taxa.valor}
           evolucaoPct={summary.conversao.taxa.evolucaoPct}
           valorMesAnterior={summary.conversao.taxa.valorMesAnterior}
@@ -574,7 +574,7 @@ function DashboardAdminView() {
           <CardHeader className="px-4 sm:px-6">
             <CardTitle className="text-base">Conversão do mês</CardTitle>
             <p className="text-sm text-muted-foreground">
-              % dos leads que entraram e viraram venda (vs mês anterior).
+              % das documentações do mês que viraram venda (vs mês anterior).
             </p>
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6">
@@ -596,9 +596,11 @@ function DashboardAdminView() {
               <p className="mt-2 text-xs text-muted-foreground leading-relaxed px-1">
                 {summary.conversao.vendas.valor} venda
                 {summary.conversao.vendas.valor === 1 ? "" : "s"} de{" "}
-                {summary.conversao.entradas.valor} lead
-                {summary.conversao.entradas.valor === 1 ? "" : "s"} que entraram
-                no mês calendário
+                {summary.conversao.documentacoes.valor}{" "}
+                {summary.conversao.documentacoes.valor === 1
+                  ? "documentação"
+                  : "documentações"}{" "}
+                do mês
               </p>
               {summary.entradas.semana > summary.entradas.mes.valor ? (
                 <p className="mt-1 text-xs text-amber-700 dark:text-amber-300 leading-relaxed px-1">
@@ -611,15 +613,15 @@ function DashboardAdminView() {
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">Leads que entraram</div>
+                  <div className="text-sm font-medium">Documentações</div>
                   <EvolucaoBadge
-                    value={summary.conversao.entradas.evolucaoPct}
-                    previous={summary.conversao.entradas.valorMesAnterior}
+                    value={summary.conversao.documentacoes.evolucaoPct}
+                    previous={summary.conversao.documentacoes.valorMesAnterior}
                     className="mt-0.5"
                   />
                 </div>
                 <span className="shrink-0 font-semibold tabular-nums pt-0.5">
-                  {summary.conversao.entradas.valor}
+                  {summary.conversao.documentacoes.valor}
                 </span>
               </div>
               <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
