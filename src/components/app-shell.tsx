@@ -36,6 +36,7 @@ import {
   Network,
   Menu,
   X,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -240,6 +241,7 @@ const NAV_SECTIONS: {
     icon: Shield,
     items: [
       { to: "/tenants", label: "Clientes", icon: Building2 },
+      { to: "/guia", label: "Guia", icon: BookOpen },
       { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/corretores", label: "Corretores", icon: UsersRound },
