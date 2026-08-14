@@ -1,5 +1,13 @@
 export type ContratoFieldType =
-  "text" | "cpf" | "cnpj" | "phone" | "date" | "money";
+  | "text"
+  | "cpf"
+  | "cnpj"
+  | "phone"
+  | "date"
+  | "money"
+  | "yesno"
+  | "textarea"
+  | "check";
 
 export type ContratoField = {
   key: string;
@@ -12,9 +20,11 @@ export type ContratoField = {
 
 export type ContratoTemplateId =
   | "carta-cancelamento"
+  | "recibo-pagamento"
   | "parentesco-sem-conjuge"
   | "parentesco-com-conjuge"
-  | "intermediacao";
+  | "intermediacao"
+  | "checklist-renda-informal";
 
 export type ContratoTemplate = {
   id: ContratoTemplateId;
@@ -47,6 +57,65 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
         defaultValue: "Paulista",
       },
       { key: "data", label: "Data", type: "date", required: true },
+    ],
+  },
+  {
+    id: "recibo-pagamento",
+    titulo: "Recibo de pagamento",
+    descricao:
+      "Comprovante de recebimento com valor, pagador e referência do pagamento.",
+    fields: [
+      {
+        key: "pagadorNome",
+        label: "Nome do pagador",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "pagadorCpf",
+        label: "CPF do pagador",
+        type: "cpf",
+        required: true,
+      },
+      {
+        key: "valor",
+        label: "Valor (R$)",
+        type: "money",
+        required: true,
+      },
+      {
+        key: "valorExtenso",
+        label: "Valor por extenso",
+        type: "text",
+        required: true,
+        placeholder: "mil reais",
+      },
+      {
+        key: "referente",
+        label: "Referente à",
+        type: "textarea",
+        required: true,
+        placeholder: "Sinal do imóvel, honorários, taxa…",
+      },
+      {
+        key: "cidade",
+        label: "Cidade",
+        type: "text",
+        required: true,
+      },
+      { key: "data", label: "Data", type: "date", required: true },
+      {
+        key: "empresaNome",
+        label: "Quem recebe (imobiliária)",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "empresaTelefone",
+        label: "Telefone",
+        type: "phone",
+        required: false,
+      },
     ],
   },
   {
@@ -363,6 +432,113 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
         type: "cpf",
         required: false,
       },
+    ],
+  },
+  {
+    id: "checklist-renda-informal",
+    titulo: "Checklist renda informal / mista",
+    descricao:
+      "Checklist de renda informal ou mista para análise habitacional.",
+    fields: [
+      { key: "nome", label: "Nome", type: "text", required: true },
+      { key: "cpf", label: "CPF", type: "cpf", required: true },
+      {
+        key: "rendaSolicitada",
+        label: "Renda solicitada",
+        type: "money",
+        required: true,
+      },
+      {
+        key: "profissao",
+        label: "Profissão exata",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "rendaParcialExtratos",
+        label: "Renda parcial apurada nos extratos",
+        type: "money",
+        required: true,
+      },
+      {
+        key: "bolsaFamilia",
+        label: "Cliente possui Bolsa Família?",
+        type: "yesno",
+        required: true,
+      },
+      {
+        key: "bolsaFamiliaValor",
+        label: "Valor mensal do Bolsa Família",
+        type: "money",
+        required: false,
+      },
+      {
+        key: "vinculoEmpregaticio",
+        label: "Possui vínculo empregatício?",
+        type: "yesno",
+        required: false,
+      },
+      {
+        key: "empresa",
+        label: "Empresa",
+        type: "text",
+        required: false,
+      },
+      {
+        key: "salarioContracheque",
+        label: "Salário (conforme contracheque)",
+        type: "money",
+        required: false,
+      },
+      {
+        key: "docExtratos",
+        label: "Extratos bancários dos últimos 6 meses",
+        type: "check",
+        required: false,
+      },
+      {
+        key: "docContracheques",
+        label: "Contracheques (renda mista)",
+        type: "check",
+        required: false,
+      },
+      {
+        key: "docFgts",
+        label: "Extrato do FGTS com recolhimento do mesmo mês do contracheque",
+        type: "check",
+        required: false,
+      },
+      {
+        key: "docIdentidade",
+        label: "Documento de identificação",
+        type: "check",
+        required: false,
+      },
+      {
+        key: "docOutros",
+        label: "Outros documentos",
+        type: "check",
+        required: false,
+      },
+      {
+        key: "docOutrosTexto",
+        label: "Quais outros documentos",
+        type: "text",
+        required: false,
+      },
+      {
+        key: "observacoes",
+        label: "Observações",
+        type: "textarea",
+        required: false,
+      },
+      {
+        key: "cidade",
+        label: "Cidade",
+        type: "text",
+        required: true,
+      },
+      { key: "data", label: "Data", type: "date", required: true },
     ],
   },
 ];

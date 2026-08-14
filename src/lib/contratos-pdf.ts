@@ -443,6 +443,138 @@ function writeCenteredSignature(
   return y + 48;
 }
 
+function formatLongDatePt(iso: string) {
+  if (!iso) return "____ de ________ de ________";
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  const monthIndex = Number(month) - 1;
+  const months = [
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro",
+  ];
+  if (!year || !day || !Number.isInteger(monthIndex) || !months[monthIndex]) {
+    return iso;
+  }
+  return `${Number(day)} de ${months[monthIndex]} de ${year}`;
+}
+
+function moneyLabel(raw: string) {
+  const trimmed = raw.trim();
+  if (!trimmed) return "R$ 0,00";
+  return trimmed.startsWith("R$") ? trimmed : `R$ ${trimmed}`;
+}
+
+async function pdfReciboPagamento(
+  values: Values,
+  opts?: { logoUrl?: string | null; primaryColor?: string | null },
+) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const color = parseHexColor(opts?.primaryColor) ?? [20, 20, 20];
+  const innerX = 36;
+  const innerY = 120;
+  const innerW = pageW - innerX * 2;
+  const innerH = pageH - innerY - 72;
+
+  if (opts?.logoUrl?.trim()) {
+    const logo = await loadLogoForPdf(opts.logoUrl);
+    if (logo) writeLogo(doc, logo, 36);
+  }
+
+  doc.setDrawColor(40, 40, 40);
+  doc.setLineWidth(1.1);
+  doc.roundedRect(innerX, innerY, innerW, innerH, 18, 18);
+
+  const boxW = 132;
+  const boxH = 36;
+  const boxX = innerX + innerW - boxW - 22;
+  const boxY = innerY + 22;
+  doc.setLineWidth(0.9);
+  doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(20, 20, 20);
+  doc.text(moneyLabel(v(values, "valor")), boxX + boxW / 2, boxY + 23, {
+    align: "center",
+  });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Recibo de Pagamento", innerX + 28, boxY + 24);
+
+  let y = innerY + 92;
+  y = writeRich(
+    doc,
+    [
+      "Recebi(emos) de ",
+      { b: v(values, "pagadorNome") },
+      " - CPF ",
+      { b: v(values, "pagadorCpf") },
+      ", a importância de ",
+      { b: v(values, "valorExtenso") },
+      ", referente à ",
+      { b: v(values, "referente") },
+      ".",
+    ],
+    y,
+    { fontSize: 11, lineH: 18 },
+  );
+
+  y += 10;
+  y = writeRich(
+    doc,
+    [
+      "Para maior clareza, firmo(amos) o presente recibo, que comprova o recebimento integral do valor mencionado, concedendo ",
+      { b: "quitação plena, geral e irrevogável" },
+      " pela quantia recebida.",
+    ],
+    y,
+    { fontSize: 11, lineH: 18 },
+  );
+
+  y += 28;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(
+    `${v(values, "cidade")}, ${formatLongDatePt(values.data ?? "")}`,
+    innerX + innerW - 28,
+    y,
+    { align: "right" },
+  );
+
+  y += 86;
+  const lineW = 260;
+  const lineX = (pageW - lineW) / 2;
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.7);
+  doc.line(lineX, y, lineX + lineW, y);
+  y += 16;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(20, 20, 20);
+  doc.text(v(values, "empresaNome").toUpperCase(), pageW / 2, y, {
+    align: "center",
+  });
+  if (values.empresaTelefone?.trim()) {
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(values.empresaTelefone.trim(), pageW / 2, y, { align: "center" });
+  }
+
+  doc.save(`recibo-pagamento-${safeName(v(values, "pagadorNome"))}.pdf`);
+}
+
 async function pdfCartaCancelamento(
   values: Values,
   opts?: { logoUrl?: string | null; primaryColor?: string | null },
@@ -893,5 +1025,12 @@ export async function downloadContratoPdf(
     case "intermediacao":
       await pdfIntermediacao(values, opts?.logoUrl);
       break;
+    case "recibo-pagamento":
+      await pdfReciboPagamento(values, opts);
+      break;
+    case "checklist-renda-informal":
+      throw new Error(
+        "Este modelo é gerado pela API. Use downloadContratoApiPdf.",
+      );
   }
 }

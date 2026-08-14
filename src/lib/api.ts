@@ -165,10 +165,10 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
   skipAuth?: boolean;
 }
 
-export async function apiFetch<T>(
+async function requestWithAuth(
   path: string,
   options: RequestOptions = {},
-): Promise<T> {
+): Promise<Response> {
   const { body, skipAuth, headers, ...rest } = options;
   const method = (rest.method ?? "GET").toString().toUpperCase();
   const isMutation = !["GET", "HEAD", "OPTIONS"].includes(method);
@@ -187,7 +187,6 @@ export async function apiFetch<T>(
     });
   };
 
-  // Mutações sem CSRF no jar → renova sessão antes (evita 403 intermitente).
   if (!skipAuth && isMutation && !readCsrfToken()) {
     refreshInFlight ??= refreshSession().finally(() => {
       refreshInFlight = null;
@@ -207,7 +206,6 @@ export async function apiFetch<T>(
     }
   }
 
-  // 403 em mutação: renova CSRF/sessão e tenta uma vez (CSRF desatualizado ou sessão parcial).
   if (response.status === 403 && !skipAuth && isMutation) {
     refreshInFlight ??= refreshSession().finally(() => {
       refreshInFlight = null;
@@ -219,7 +217,6 @@ export async function apiFetch<T>(
   }
 
   if (!response.ok) {
-    // Sessão morta (cookie ausente/expirado): limpa cache e manda pro login.
     if (response.status === 401 && !skipAuth) {
       sessionCache.clear();
       if (isBrowser() && !window.location.pathname.startsWith("/login")) {
@@ -229,9 +226,30 @@ export async function apiFetch<T>(
     throw new ApiError(await parseError(response), response.status);
   }
 
+  return response;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const response = await requestWithAuth(path, options);
   if (response.status === 204) {
     return undefined as T;
   }
-
   return (await response.json()) as T;
+}
+
+export async function apiFetchFile(
+  path: string,
+  options: RequestOptions = {},
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await requestWithAuth(path, options);
+  const blob = await response.blob();
+  const header = response.headers.get("Content-Disposition") ?? "";
+  const match = header.match(/filename\*?=(?:UTF-8''|"?)([^";]+)/i);
+  const filename = match
+    ? decodeURIComponent(match[1].replace(/"/g, "").trim())
+    : "documento.pdf";
+  return { blob, filename };
 }
