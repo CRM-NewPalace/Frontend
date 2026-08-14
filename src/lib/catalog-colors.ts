@@ -24,6 +24,12 @@ export const CATALOG_COLORS = [
 
 export type CatalogColor = (typeof CATALOG_COLORS)[number];
 
+export function isHexColor(color: string | null | undefined): boolean {
+  return Boolean(color && /^#[0-9A-Fa-f]{6}$/.test(color));
+}
+
+export const DEFAULT_CCA_COLOR = "#3B82F6";
+
 export const DEFAULT_CATALOG_COLOR: CatalogColor =
   "bg-slate-200 text-slate-700";
 

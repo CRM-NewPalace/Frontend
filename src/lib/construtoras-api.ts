@@ -9,6 +9,7 @@ export type Construtora = {
   endereco: string | null;
   viabilizadorNome: string | null;
   viabilizadorContato: string | null;
+  cca: string | null;
   driveFolderUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +24,7 @@ export type CreateConstrutoraInput = {
   endereco?: string;
   viabilizadorNome?: string;
   viabilizadorContato?: string;
+  cca?: string | null;
   driveFolderUrl?: string | null;
   localidadeIds?: string[];
 };
@@ -34,6 +36,7 @@ export type UpdateConstrutoraInput = {
   endereco?: string | null;
   viabilizadorNome?: string | null;
   viabilizadorContato?: string | null;
+  cca?: string | null;
   driveFolderUrl?: string | null;
   localidadeIds?: string[];
 };

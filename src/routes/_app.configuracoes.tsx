@@ -22,7 +22,9 @@ import type { CatalogItem, CatalogType } from "@/lib/catalog-api";
 import {
   CATALOG_COLORS,
   DEFAULT_CATALOG_COLOR,
+  DEFAULT_CCA_COLOR,
   catalogColorSwatch,
+  isHexColor,
   nextCatalogColor,
 } from "@/lib/catalog-colors";
 import {
@@ -43,6 +45,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfigFunisPanel } from "@/components/config-funis-panel";
 import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
+import { CorPicker } from "@/components/cor-picker";
+import {
+  CONSTRUTORA_CORES_PRESET,
+  construtoraBadgeStyle,
+} from "@/lib/construtoras-api";
 
 export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Zone Connection" }] }),
@@ -53,6 +60,7 @@ type ListKind =
   | "origens"
   | "motivos"
   | "tags"
+  | "cca"
   | "docFontes"
   | "docStatus1"
   | "docStatus2";
@@ -78,6 +86,12 @@ const LIST_META: Record<
     singular: "tag",
     addLabel: "Adicionar tag",
     type: "tag",
+  },
+  cca: {
+    title: "CCAs",
+    singular: "CCA",
+    addLabel: "Adicionar CCA",
+    type: "cca",
   },
   docFontes: {
     title: "Fontes da documentação",
@@ -148,6 +162,25 @@ function ColorSwatchPicker({
   );
 }
 
+function CatalogItemBadge({ item }: { item: CatalogItem }) {
+  if (isHexColor(item.color)) {
+    return (
+      <Badge
+        variant="secondary"
+        className="border-transparent text-sm py-1 px-3"
+        style={construtoraBadgeStyle(item.color)}
+      >
+        {item.label}
+      </Badge>
+    );
+  }
+  return (
+    <Badge className={cn("text-sm py-1 px-3", item.color ?? DEFAULT_CATALOG_COLOR)}>
+      {item.label}
+    </Badge>
+  );
+}
+
 function Config() {
   const user = getSession();
   const isAnalista = user?.role === "analista";
@@ -189,14 +222,24 @@ function Config() {
     const count = catalog[LIST_META[kind].type].length;
     setListKind(kind);
     setListValue("");
-    setListColor(nextCatalogColor(count));
+    setListColor(
+      kind === "cca"
+        ? CONSTRUTORA_CORES_PRESET[count % CONSTRUTORA_CORES_PRESET.length]
+        : nextCatalogColor(count),
+    );
     setListOpen(true);
   }
 
   function openEditItem(item: CatalogItem) {
     setEditItem(item);
     setEditLabel(item.label);
-    setEditColor(item.color ?? DEFAULT_CATALOG_COLOR);
+    setEditColor(
+      item.type === "cca"
+        ? isHexColor(item.color)
+          ? item.color!
+          : DEFAULT_CCA_COLOR
+        : (item.color ?? DEFAULT_CATALOG_COLOR),
+    );
     setEditOpen(true);
   }
 
@@ -205,7 +248,13 @@ function Config() {
     const value = listValue.trim();
     const meta = LIST_META[listKind];
     if (!value) {
-      toast.error(`Informe a ${meta.singular}.`);
+      toast.error(
+        listKind === "cca" ? "Informe o CCA." : `Informe a ${meta.singular}.`,
+      );
+      return;
+    }
+    if (listKind === "cca" && !isHexColor(listColor)) {
+      toast.error("Informe a cor hexadecimal do CCA (#RRGGBB).");
       return;
     }
     setSaving(true);
@@ -231,6 +280,10 @@ function Config() {
     const label = editLabel.trim();
     if (!label) {
       toast.error("Informe um nome.");
+      return;
+    }
+    if (editItem.type === "cca" && !isHexColor(editColor)) {
+      toast.error("Informe a cor hexadecimal do CCA (#RRGGBB).");
       return;
     }
     const colorChanged =
@@ -277,6 +330,7 @@ function Config() {
     origens: catalog.origem,
     motivos: catalog.motivo_perda,
     tags: catalog.tag,
+    cca: catalog.cca,
     docFontes: catalog.documentacao_fonte,
     docStatus1: catalog.documentacao_status1,
     docStatus2: catalog.documentacao_status2,
@@ -288,10 +342,10 @@ function Config() {
         title="Configurações"
         description={
           isTreinee
-            ? "Gerencie origens e tags."
+            ? "Gerencie origens, tags e CCAs."
             : isAnalista
-              ? "Gerencie documentação, origens, motivos de perda e tags."
-              : "Personalize imobiliária, funil, documentação, origens, motivos e tags."
+              ? "Gerencie documentação, origens, motivos de perda, tags e CCAs."
+              : "Personalize imobiliária, funil, documentação, origens, motivos, tags e CCAs."
         }
       />
 
@@ -327,6 +381,7 @@ function Config() {
             <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
           ) : null}
           <TabsTrigger value="tags">Tags</TabsTrigger>
+          <TabsTrigger value="cca">CCA</TabsTrigger>
         </TabsList>
 
         {showOpsTabs ? (
@@ -475,14 +530,7 @@ function Config() {
                       key={item.id}
                       className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40"
                     >
-                      <Badge
-                        className={cn(
-                          "text-sm py-1 px-3",
-                          item.color ?? DEFAULT_CATALOG_COLOR,
-                        )}
-                      >
-                        {item.label}
-                      </Badge>
+                      <CatalogItemBadge item={item} />
                       <div className="ml-auto flex items-center gap-1">
                         <Button
                           variant="ghost"
@@ -515,6 +563,7 @@ function Config() {
             "origens",
             ...(showMotivos ? (["motivos"] as const) : []),
             "tags",
+            "cca",
           ] as ListKind[]
         ).map((kind) => (
           <TabsContent key={kind} value={kind}>
@@ -542,14 +591,7 @@ function Config() {
                     key={item.id}
                     className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40"
                   >
-                    <Badge
-                      className={cn(
-                        "text-sm py-1 px-3",
-                        item.color ?? DEFAULT_CATALOG_COLOR,
-                      )}
-                    >
-                      {item.label}
-                    </Badge>
+                    <CatalogItemBadge item={item} />
                     <div className="ml-auto flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -595,11 +637,21 @@ function Config() {
                 autoFocus
               />
             </div>
-            <ColorSwatchPicker
-              value={listColor}
-              onChange={setListColor}
-              previewLabel={listValue || "Prévia"}
-            />
+            {listKind === "cca" ? (
+              <CorPicker
+                id="list-cca-cor"
+                label="Cor hexadecimal"
+                value={listColor}
+                onChange={setListColor}
+                previewLabel={listValue || "Prévia"}
+              />
+            ) : (
+              <ColorSwatchPicker
+                value={listColor}
+                onChange={setListColor}
+                previewLabel={listValue || "Prévia"}
+              />
+            )}
             <DialogFooter>
               <Button
                 type="button"
@@ -635,11 +687,21 @@ function Config() {
                 autoFocus
               />
             </div>
-            <ColorSwatchPicker
-              value={editColor}
-              onChange={setEditColor}
-              previewLabel={editLabel || "Prévia"}
-            />
+            {editItem?.type === "cca" ? (
+              <CorPicker
+                id="edit-cca-cor"
+                label="Cor hexadecimal"
+                value={editColor}
+                onChange={setEditColor}
+                previewLabel={editLabel || "Prévia"}
+              />
+            ) : (
+              <ColorSwatchPicker
+                value={editColor}
+                onChange={setEditColor}
+                previewLabel={editLabel || "Prévia"}
+              />
+            )}
             <DialogFooter>
               <Button
                 type="button"

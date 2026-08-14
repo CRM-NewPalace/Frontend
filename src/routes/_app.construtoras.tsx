@@ -53,6 +53,7 @@ import {
 } from "@/lib/empreendimentos-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CorPicker } from "@/components/cor-picker";
+import { useCatalog } from "@/lib/catalog-store";
 import {
   construtoraBadgeStyle,
   createConstrutora,
@@ -114,6 +115,7 @@ type FormState = {
   endereco: string;
   viabilizadorNome: string;
   viabilizadorContato: string;
+  cca: string;
   driveFolderUrl: string;
 };
 
@@ -124,6 +126,7 @@ const emptyForm = (): FormState => ({
   endereco: "",
   viabilizadorNome: "",
   viabilizadorContato: "",
+  cca: "",
   driveFolderUrl: "",
 });
 
@@ -160,6 +163,9 @@ function ConstrutorasPage() {
     user?.role === "analista" ||
     user?.role === "treinee";
   const canCreate = canManage;
+  const canSeeViabilizadorContato = user?.role !== "corretor";
+  const { catalog } = useCatalog();
+  const ccas = catalog.cca ?? [];
 
   const [items, setItems] = useState<Construtora[]>([]);
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
@@ -341,6 +347,7 @@ function ConstrutorasPage() {
       viabilizadorContato: item.viabilizadorContato
         ? formatPhone(item.viabilizadorContato)
         : "",
+      cca: item.cca ?? "",
       driveFolderUrl: item.driveFolderUrl ?? "",
     });
     setNewLocalidadeNome("");
@@ -414,6 +421,7 @@ function ConstrutorasPage() {
       endereco: form.endereco.trim() || null,
       viabilizadorNome: form.viabilizadorNome.trim() || null,
       viabilizadorContato: form.viabilizadorContato.trim() || null,
+      cca: form.cca.trim() || null,
       driveFolderUrl: driveFolderUrl || null,
       localidadeIds: selectedLocalidades,
     };
@@ -428,6 +436,7 @@ function ConstrutorasPage() {
           endereco: payload.endereco ?? undefined,
           viabilizadorNome: payload.viabilizadorNome ?? undefined,
           viabilizadorContato: payload.viabilizadorContato ?? undefined,
+          cca: payload.cca,
           driveFolderUrl: payload.driveFolderUrl,
           localidadeIds: payload.localidadeIds,
         });
@@ -850,6 +859,7 @@ function ConstrutorasPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
+                      <TableHead>CCA</TableHead>
                       <TableHead>Contato</TableHead>
                       <TableHead>Viabilizador</TableHead>
                       <TableHead>Localidades</TableHead>
@@ -874,16 +884,32 @@ function ConstrutorasPage() {
                             item.nome
                           )}
                         </TableCell>
+                        <TableCell>
+                          {item.cca ? (
+                            <Badge
+                              variant="secondary"
+                              className="border-transparent font-medium"
+                              style={construtoraBadgeStyle(
+                                ccas.find((c) => c.label === item.cca)?.color,
+                              )}
+                            >
+                              {item.cca}
+                            </Badge>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
                         <TableCell>{item.contato || "—"}</TableCell>
                         <TableCell>
                           {item.viabilizadorNome ? (
                             <div className="space-y-0.5">
                               <div>{item.viabilizadorNome}</div>
-                              {item.viabilizadorContato && (
-                                <div className="text-xs text-muted-foreground">
-                                  {item.viabilizadorContato}
-                                </div>
-                              )}
+                              {canSeeViabilizadorContato &&
+                                item.viabilizadorContato && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.viabilizadorContato}
+                                  </div>
+                                )}
                             </div>
                           ) : (
                             "—"
@@ -1195,6 +1221,47 @@ function ConstrutorasPage() {
                     onChange={(hex) => setField("cor", hex)}
                     disabled={readOnly}
                   />
+                  <div className="space-y-2">
+                    <Label>CCA</Label>
+                    <Select
+                      value={form.cca || "__none__"}
+                      onValueChange={(value) =>
+                        setField("cca", value === "__none__" ? "" : value)
+                      }
+                      disabled={readOnly}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Selecione o CCA" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sem CCA</SelectItem>
+                        {form.cca && !ccas.some((c) => c.label === form.cca) ? (
+                          <SelectItem value={form.cca}>{form.cca}</SelectItem>
+                        ) : null}
+                        {ccas.map((item) => (
+                          <SelectItem key={item.id} value={item.label}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {form.cca ? (
+                      <Badge
+                        variant="secondary"
+                        className="border-transparent"
+                        style={construtoraBadgeStyle(
+                          ccas.find((c) => c.label === form.cca)?.color,
+                        )}
+                      >
+                        {form.cca}
+                      </Badge>
+                    ) : null}
+                    {!readOnly && ccas.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Cadastre CCAs em Configurações para selecionar aqui.
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </FormSection>
@@ -1242,7 +1309,13 @@ function ConstrutorasPage() {
               title="Viabilizador"
               description="Pessoa de referência para viabilizar propostas nesta construtora."
             >
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div
+                className={
+                  canSeeViabilizadorContato
+                    ? "grid gap-4 sm:grid-cols-2"
+                    : "grid gap-4"
+                }
+              >
                 <div className="space-y-2">
                   <Label htmlFor="viabilizadorNome">Nome</Label>
                   <Input
@@ -1254,24 +1327,26 @@ function ConstrutorasPage() {
                     disabled={readOnly}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="viabilizadorContato">Telefone</Label>
-                  <Input
-                    id="viabilizadorContato"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    placeholder={PHONE_PLACEHOLDER}
-                    value={form.viabilizadorContato}
-                    onChange={(e) =>
-                      setField(
-                        "viabilizadorContato",
-                        formatPhone(e.target.value),
-                      )
-                    }
-                    disabled={readOnly}
-                    maxLength={15}
-                  />
-                </div>
+                {canSeeViabilizadorContato ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="viabilizadorContato">Telefone</Label>
+                    <Input
+                      id="viabilizadorContato"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder={PHONE_PLACEHOLDER}
+                      value={form.viabilizadorContato}
+                      onChange={(e) =>
+                        setField(
+                          "viabilizadorContato",
+                          formatPhone(e.target.value),
+                        )
+                      }
+                      disabled={readOnly}
+                      maxLength={15}
+                    />
+                  </div>
+                ) : null}
               </div>
             </FormSection>
               </TabsContent>
