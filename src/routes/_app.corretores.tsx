@@ -25,6 +25,7 @@ import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import {
   fetchDashboardRanking,
+  fetchCorretorVendas,
   type DashboardRanking,
   type DashboardRankingCorretor,
   type DashboardRankingGerente,
@@ -41,8 +42,10 @@ import {
   Wallet,
 } from "lucide-react";
 import { SemConexao } from "@/components/sem-conexao";
+import { VendasResumoDialog } from "@/components/vendas-resumo-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { fetchConstrutoraVendas, type ConstrutoraVenda } from "@/lib/construtoras-api";
 
 export const Route = createFileRoute("/_app/corretores")({
   head: () => ({ meta: [{ title: "Corretores — Zone Connection" }] }),
@@ -94,6 +97,13 @@ function Page() {
   const [ano, setAno] = useState(agora.ano);
   const [data, setData] = useState<DashboardRanking | null>(null);
   const [loading, setLoading] = useState(true);
+  const [vendasAlvo, setVendasAlvo] = useState<{
+    kind: "construtora" | "corretor";
+    id: string;
+    nome: string;
+  } | null>(null);
+  const [vendasItems, setVendasItems] = useState<ConstrutoraVenda[]>([]);
+  const [loadingVendas, setLoadingVendas] = useState(false);
 
   const anosDisponiveis = useMemo(() => {
     const list: number[] = [];
@@ -124,6 +134,42 @@ function Page() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!vendasAlvo) {
+      setVendasItems([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingVendas(true);
+    const request =
+      vendasAlvo.kind === "construtora"
+        ? fetchConstrutoraVendas(vendasAlvo.id, { mes, ano }).then(
+            (result) => result.items,
+          )
+        : fetchCorretorVendas(vendasAlvo.id, { mes, ano }).then(
+            (result) => result.items,
+          );
+    void request
+      .then((items) => {
+        if (!cancelled) setVendasItems(items);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setVendasItems([]);
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar as vendas.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingVendas(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [vendasAlvo, mes, ano]);
 
   const mesLabel = useMemo(
     () =>
@@ -257,10 +303,40 @@ function Page() {
           </p>
 
           <section className={isGerente ? "mt-5 mb-6" : "mt-5"}>
-            <PodioCorretores corretores={data.corretores} />
+            <PodioCorretores
+              corretores={data.corretores}
+              onSelect={(row) =>
+                setVendasAlvo({
+                  kind: "corretor",
+                  id: row.corretorId,
+                  nome: row.nome,
+                })
+              }
+            />
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
-              <RankingList corretores={data.corretores} />
-              <ConstrutorasRanking items={data.construtoras} />
+              <RankingList
+                corretores={data.corretores}
+                onSelect={(row) =>
+                  setVendasAlvo({
+                    kind: "corretor",
+                    id: row.corretorId,
+                    nome: row.nome,
+                  })
+                }
+              />
+              <ConstrutorasRanking
+                items={data.construtoras}
+                selectedId={
+                  vendasAlvo?.kind === "construtora" ? vendasAlvo.id : undefined
+                }
+                onSelect={(item) =>
+                  setVendasAlvo({
+                    kind: "construtora",
+                    id: item.construtoraId,
+                    nome: item.nome,
+                  })
+                }
+              />
             </div>
           </section>
 
@@ -312,14 +388,30 @@ function Page() {
           )}
         </>
       )}
+      <VendasResumoDialog
+        open={Boolean(vendasAlvo)}
+        onOpenChange={(open) => {
+          if (!open) setVendasAlvo(null);
+        }}
+        title={
+          vendasAlvo
+            ? `Vendas de ${vendasAlvo.nome}`
+            : "Vendas"
+        }
+        items={vendasItems}
+        loading={loadingVendas}
+        mode={vendasAlvo?.kind === "corretor" ? "corretor" : "construtora"}
+      />
     </div>
   );
 }
 
 function PodioCorretores({
   corretores,
+  onSelect,
 }: {
   corretores: DashboardRankingCorretor[];
+  onSelect: (row: DashboardRankingCorretor) => void;
 }) {
   const slots = [
     {
@@ -371,8 +463,10 @@ function PodioCorretores({
                 .join("");
 
               return (
-                <div
+                <button
                   key={row.corretorId}
+                  type="button"
+                  onClick={() => onSelect(row)}
                   className="flex min-w-0 flex-1 flex-col items-center"
                 >
                   <div className="mb-3 flex w-full flex-col items-center px-1 text-center sm:px-2">
@@ -419,7 +513,7 @@ function PodioCorretores({
                       <Trophy className="h-4 w-4 opacity-80" />
                     ) : null}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -443,22 +537,33 @@ function rankTextClass(place: number) {
   return "text-muted-foreground";
 }
 
-function RankingList({ corretores }: { corretores: DashboardRankingCorretor[] }) {
+function RankingList({
+  corretores,
+  onSelect,
+}: {
+  corretores: DashboardRankingCorretor[];
+  onSelect: (row: DashboardRankingCorretor) => void;
+}) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Medal className="h-4 w-4 text-amber-500" /> Ranking geral · corretores por venda
         </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Clique no corretor para ver as vendas.
+        </p>
       </CardHeader>
       <CardContent className="space-y-0 p-0">
         {corretores.slice(0, 8).map((row) => {
           const place = row.posicao;
           const topThree = place <= 3;
           return (
-            <div
+            <button
               key={row.corretorId}
-              className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/60"
+              type="button"
+              onClick={() => onSelect(row)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60"
             >
               <span
                 className={cn(
@@ -482,7 +587,7 @@ function RankingList({ corretores }: { corretores: DashboardRankingCorretor[] })
               <span className="text-xs font-semibold tabular-nums">
                 {money(row.vgv.valor)}
               </span>
-            </div>
+            </button>
           );
         })}
       </CardContent>
@@ -492,8 +597,22 @@ function RankingList({ corretores }: { corretores: DashboardRankingCorretor[] })
 
 function ConstrutorasRanking({
   items,
+  selectedId,
+  onSelect,
 }: {
-  items: Array<{ nome: string; vendas: number; vgv: number }>;
+  items: Array<{
+    construtoraId: string;
+    nome: string;
+    vendas: number;
+    vgv: number;
+  }>;
+  selectedId?: string;
+  onSelect: (item: {
+    construtoraId: string;
+    nome: string;
+    vendas: number;
+    vgv: number;
+  }) => void;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -501,16 +620,25 @@ function ConstrutorasRanking({
         <CardTitle className="flex items-center gap-2 text-sm">
           <Building2 className="h-4 w-4 text-primary" /> Top construtoras · VGV
         </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Clique na construtora para ver os corretores que venderam.
+        </p>
       </CardHeader>
       <CardContent className="space-y-0 p-0">
         {items.length ? (
           items.map((item, index) => {
             const place = index + 1;
             const topThree = place <= 3;
+            const selected = item.construtoraId === selectedId;
             return (
-              <div
-                key={item.nome}
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/60"
+              <button
+                key={item.construtoraId}
+                type="button"
+                onClick={() => onSelect(item)}
+                className={cn(
+                  "flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60",
+                  selected && "bg-muted",
+                )}
               >
                 <span
                   className={cn(
@@ -529,12 +657,12 @@ function ConstrutorasRanking({
                   {item.nome}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {item.vendas} vendas
+                  {item.vendas} {item.vendas === 1 ? "venda" : "vendas"}
                 </span>
                 <span className="text-xs font-semibold tabular-nums">
                   {money(item.vgv)}
                 </span>
-              </div>
+              </button>
             );
           })
         ) : (

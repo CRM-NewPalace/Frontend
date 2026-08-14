@@ -90,6 +90,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatCpfCnpj } from "@/lib/utils";
+import { VendasResumoDialog } from "@/components/vendas-resumo-dialog";
 import {
   formatPhone,
   isValidPhone,
@@ -97,12 +98,32 @@ import {
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
 
+type ConstrutorasTab = "books" | "lista" | "vendas" | "visibilidade";
+type ConstrutorasSearch = {
+  tab?: ConstrutorasTab;
+  id?: string;
+};
+
+function parseConstrutorasTab(value: unknown): ConstrutorasTab | undefined {
+  if (
+    value === "books" ||
+    value === "lista" ||
+    value === "vendas" ||
+    value === "visibilidade"
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
 export const Route = createFileRoute("/_app/construtoras")({
   head: () => ({ meta: [{ title: "Construtoras — Zone Connection" }] }),
+  validateSearch: (search: Record<string, unknown>): ConstrutorasSearch => ({
+    tab: parseConstrutorasTab(search.tab),
+    id: typeof search.id === "string" && search.id ? search.id : undefined,
+  }),
   component: ConstrutorasPage,
 });
-
-type ConstrutorasTab = "books" | "lista" | "vendas" | "visibilidade";
 type FormTab =
   | "identidade"
   | "contato"
@@ -168,6 +189,8 @@ function dateBr(iso: string | null | undefined) {
 }
 
 function ConstrutorasPage() {
+  const routeSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const canManage =
@@ -213,10 +236,14 @@ function ConstrutorasPage() {
   );
   const [deletingLocalidade, setDeletingLocalidade] = useState(false);
   const [driveFilterLocalidadeId, setDriveFilterLocalidadeId] = useState("");
-  const [tab, setTab] = useState<ConstrutorasTab>("books");
+  const [tab, setTab] = useState<ConstrutorasTab>(
+    routeSearch.tab ?? "books",
+  );
   const [formTab, setFormTab] = useState<FormTab>("identidade");
   const [search, setSearch] = useState("");
-  const [vendasConstrutoraId, setVendasConstrutoraId] = useState("");
+  const [vendasConstrutoraId, setVendasConstrutoraId] = useState(
+    routeSearch.id ?? "",
+  );
   const [vendas, setVendas] = useState<ConstrutoraVenda[]>([]);
   const [vendasTotais, setVendasTotais] = useState({
     vendas: 0,
@@ -224,6 +251,7 @@ function ConstrutorasPage() {
     corretores: 0,
   });
   const [loadingVendas, setLoadingVendas] = useState(false);
+  const [vendasModalOpen, setVendasModalOpen] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -248,6 +276,14 @@ function ConstrutorasPage() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    if (routeSearch.tab) setTab(routeSearch.tab);
+    if (routeSearch.id) {
+      setVendasConstrutoraId(routeSearch.id);
+      setTab("vendas");
+    }
+  }, [routeSearch.tab, routeSearch.id]);
 
   useEffect(() => {
     if (!vendasConstrutoraId) {
@@ -743,7 +779,7 @@ function ConstrutorasPage() {
 
   function openVendas(item: Construtora) {
     setVendasConstrutoraId(item.id);
-    setTab("vendas");
+    setVendasModalOpen(true);
   }
 
   return (
@@ -752,8 +788,8 @@ function ConstrutorasPage() {
         title="Construtoras"
         description={
           canCreate
-            ? "Cadastro de construtoras parceiras e books no Drive."
-            : "Books e pastas das construtoras parceiras."
+            ? "Cadastro, books e vendas dos corretores por construtora."
+            : "Books, pastas e vendas dos corretores por construtora."
         }
         actions={
           canCreate ? (
@@ -811,7 +847,20 @@ function ConstrutorasPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(value) => setTab(value as ConstrutorasTab)}
+        onValueChange={(value) => {
+          const next = value as ConstrutorasTab;
+          setTab(next);
+          void navigate({
+            search: {
+              tab: next,
+              id:
+                next === "vendas"
+                  ? vendasConstrutoraId || undefined
+                  : undefined,
+            },
+            replace: true,
+          });
+        }}
       >
         <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1 rounded-full bg-muted p-1 sm:w-auto">
           <TabsTrigger value="books" className="gap-1.5 rounded-full px-4">
@@ -824,7 +873,7 @@ function ConstrutorasPage() {
           </TabsTrigger>
           <TabsTrigger value="vendas" className="gap-1.5 rounded-full px-4">
             <Wallet className="h-3.5 w-3.5" />
-            Vendas
+            Vendas dos corretores
           </TabsTrigger>
           <TabsTrigger value="visibilidade" className="gap-1.5 rounded-full px-4">
             <MapPin className="h-3.5 w-3.5" />
@@ -936,17 +985,24 @@ function ConstrutorasPage() {
                     {sortedItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">
-                          {item.cor ? (
-                            <Badge
-                              variant="secondary"
-                              className="border-transparent font-medium"
-                              style={construtoraBadgeStyle(item.cor)}
-                            >
-                              {item.nome}
-                            </Badge>
-                          ) : (
-                            item.nome
-                          )}
+                          <button
+                            type="button"
+                            className="text-left hover:underline"
+                            onClick={() => openVendas(item)}
+                            title="Ver vendas"
+                          >
+                            {item.cor ? (
+                              <Badge
+                                variant="secondary"
+                                className="border-transparent font-medium"
+                                style={construtoraBadgeStyle(item.cor)}
+                              >
+                                {item.nome}
+                              </Badge>
+                            ) : (
+                              item.nome
+                            )}
+                          </button>
                         </TableCell>
                         <TableCell>
                           {item.cca ? (
@@ -1072,9 +1128,17 @@ function ConstrutorasPage() {
                 <Label className="mb-1.5 block text-xs">Construtora</Label>
                 <Select
                   value={vendasConstrutoraId || "__none__"}
-                  onValueChange={(value) =>
-                    setVendasConstrutoraId(value === "__none__" ? "" : value)
-                  }
+                  onValueChange={(value) => {
+                    const nextId = value === "__none__" ? "" : value;
+                    setVendasConstrutoraId(nextId);
+                    void navigate({
+                      search: {
+                        tab: "vendas",
+                        id: nextId || undefined,
+                      },
+                      replace: true,
+                    });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a construtora" />
@@ -1875,6 +1939,18 @@ function ConstrutorasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <VendasResumoDialog
+        open={vendasModalOpen}
+        onOpenChange={setVendasModalOpen}
+        title={
+          items.find((item) => item.id === vendasConstrutoraId)?.nome
+            ? `Vendas de ${items.find((item) => item.id === vendasConstrutoraId)?.nome}`
+            : "Vendas"
+        }
+        items={vendas}
+        loading={loadingVendas}
+        mode="construtora"
+      />
     </div>
   );
 }

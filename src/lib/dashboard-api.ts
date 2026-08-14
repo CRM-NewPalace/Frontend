@@ -262,6 +262,33 @@ export async function fetchDashboardRanking(
   );
 }
 
+export type CorretorVendas = {
+  corretor: { id: string; name: string; creci: string | null };
+  totais: { vendas: number; vgv: number };
+  items: Array<{
+    id: string;
+    corretorId: string | null;
+    corretor: string;
+    creci: string | null;
+    gerente: string | null;
+    construtora: string | null;
+    empreendimento: string | null;
+    vgv: number;
+    cliente: string;
+    clienteCpf: string | null;
+    dataVenda: string | null;
+  }>;
+};
+
+export async function fetchCorretorVendas(
+  corretorId: string,
+  params?: DashboardFiltros,
+): Promise<CorretorVendas> {
+  return apiFetch<CorretorVendas>(
+    `/dashboard/corretor/${corretorId}/vendas${dashboardQuery(params)}`,
+  );
+}
+
 export type DashboardEsteiraCorretor = {
   corretor: { id: string; name: string };
   periodo: { inicio: string; fim: string };

@@ -25,6 +25,7 @@ export type ConstrutoraVenda = {
   corretor: string;
   creci: string | null;
   gerente: string | null;
+  construtora?: string | null;
   empreendimento: string | null;
   vgv: number;
   cliente: string;
@@ -123,6 +124,13 @@ export async function updateConstrutora(
 
 export async function fetchConstrutoraVendas(
   id: string,
+  params?: { mes?: number; ano?: number },
 ): Promise<ConstrutoraVendas> {
-  return apiFetch<ConstrutoraVendas>(`/construtoras/${id}/vendas`);
+  const qs = new URLSearchParams();
+  if (params?.mes) qs.set("mes", String(params.mes));
+  if (params?.ano) qs.set("ano", String(params.ano));
+  const query = qs.toString();
+  return apiFetch<ConstrutoraVendas>(
+    `/construtoras/${id}/vendas${query ? `?${query}` : ""}`,
+  );
 }
