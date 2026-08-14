@@ -164,20 +164,7 @@ export function docPipelineFromStatus1(
   return null;
 }
 
-const STATUS1_PREFERRED: Record<DocStatus1Group, string> = {
-  aprovado: "Aprovado",
-  reprovado: "Reprovado",
-  pre_analise: "Pré-análise",
-  analise: "Em análise",
-};
-
-const STATUS2_PREFERRED: Record<DocStatus2Group, string> = {
-  vendido: "Vendido",
-  andamento: "Andamento",
-  bacen: "Bacen",
-};
-
-/** Deduplica opções de filtro/form, preferindo labels canônicos. */
+/** Deduplica opções de filtro/form, preservando o primeiro rótulo (catálogo). */
 export function dedupeStatusOptions(
   labels: string[],
   kind: "status1" | "status2",
@@ -188,11 +175,11 @@ export function dedupeStatusOptions(
     if (kind === "status1") {
       const group = status1Group(label);
       const key = group ?? normalizeDocStatus(label);
-      byKey.set(key, group ? STATUS1_PREFERRED[group] : label.trim());
+      if (!byKey.has(key)) byKey.set(key, label.trim());
     } else {
       const group = status2Group(label);
       const key = group ?? normalizeDocStatus(label);
-      byKey.set(key, group ? STATUS2_PREFERRED[group] : label.trim());
+      if (!byKey.has(key)) byKey.set(key, label.trim());
     }
   }
   return [...byKey.values()].sort((a, b) => a.localeCompare(b, "pt-BR"));

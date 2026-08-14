@@ -248,7 +248,15 @@ function Config() {
       });
       setEditOpen(false);
       setEditItem(null);
-      toast.success("Item atualizado.");
+      const isDocStatus =
+        editItem.type === "documentacao_status1" ||
+        editItem.type === "documentacao_status2" ||
+        editItem.type === "documentacao_fonte";
+      toast.success(
+        isDocStatus && labelChanged
+          ? "Status atualizado nas configurações e nas documentações."
+          : "Item atualizado.",
+      );
     } catch (err) {
       toast.error(errorMessage(err, "Não foi possível atualizar o item."));
     } finally {
