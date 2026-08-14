@@ -255,6 +255,15 @@ function formatLastAccess(iso: string | null): string {
   return d.toLocaleDateString("pt-BR");
 }
 
+function userHasCreci(u: Pick<ApiUser, "creci">) {
+  return Boolean(u.creci?.trim());
+}
+
+/** Corretor do sistema ou qualquer usuário com CRECI cadastrado. */
+function isBrokerForStats(u: ApiUser) {
+  return u.role === "corretor" || userHasCreci(u);
+}
+
 function formatTimeToday(seconds: number | undefined): string {
   if (seconds == null || seconds <= 0) return "—";
   if (seconds < 60) return "< 1 min";
@@ -473,8 +482,8 @@ function Usuarios() {
   );
 
   const adminStats = useMemo(() => {
-    const corretores = users.filter((u) => u.role === "corretor");
-    const comCreci = corretores.filter((u) => Boolean(u.creci?.trim())).length;
+    const corretores = users.filter(isBrokerForStats);
+    const comCreci = corretores.filter(userHasCreci).length;
     const loggedSeconds = corretores
       .map((u) => presenceByUser[u.id]?.secondsToday ?? 0)
       .filter((seconds) => seconds > 0);
@@ -495,13 +504,21 @@ function Usuarios() {
   }, [users, presenceByUser]);
 
   function filterCorretoresCreci(kind: "com" | "sem") {
-    if (roleFilter === "corretor" && creciFilter === kind) {
+    const sameCom = kind === "com" && creciFilter === "com" && roleFilter === "all";
+    const sameSem =
+      kind === "sem" && creciFilter === "sem" && roleFilter === "corretor";
+    if (sameCom || sameSem) {
       setRoleFilter("all");
       setCreciFilter("all");
       return;
     }
+    if (kind === "com") {
+      setRoleFilter("all");
+      setCreciFilter("com");
+      return;
+    }
     setRoleFilter("corretor");
-    setCreciFilter(kind);
+    setCreciFilter("sem");
   }
 
   function openCreate() {
