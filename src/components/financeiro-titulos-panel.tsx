@@ -307,6 +307,7 @@ export function FinanceiroTitulosPanel({
       : tipo === "receber"
         ? "Cadastro do Centro de recebimentos."
         : "Cadastro do Centro de despesas.";
+  const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "edit-grupo">(
     "create",
   );
