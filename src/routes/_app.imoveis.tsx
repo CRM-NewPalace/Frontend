@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { TableSortSelect } from "@/components/table-sort-select";
@@ -112,6 +113,15 @@ const EMPREENDIMENTO_FLAGS = [
   { key: "aceitaMcmv", label: "MCMV" },
   { key: "aceitaCaixa", label: "Caixa" },
 ] as const;
+
+type EmpreendimentoFormTab =
+  | "identidade"
+  | "localidade"
+  | "tipo"
+  | "status"
+  | "flags"
+  | "previsao"
+  | "observacao";
 
 type EmpreendimentoForm = {
   nome: string;
@@ -221,6 +231,7 @@ export function ImoveisPage({
     [],
   );
   const [quickOpen, setQuickOpen] = useState(false);
+  const [formTab, setFormTab] = useState<EmpreendimentoFormTab>("identidade");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<EmpreendimentoForm>(emptyEmpreendimentoForm);
@@ -277,6 +288,7 @@ export function ImoveisPage({
   async function openQuickCreate() {
     setEditingId(null);
     setForm(emptyEmpreendimentoForm());
+    setFormTab("identidade");
     resetImageState();
     setQuickOpen(true);
     await loadCatalogos();
@@ -286,6 +298,7 @@ export function ImoveisPage({
     if (!canManage) return;
     setEditingId(item.id);
     setForm(formFromEmpreendimento(item));
+    setFormTab("identidade");
     resetImageState(empreendimentoImagens(item));
     setQuickOpen(true);
     await loadCatalogos();
@@ -305,6 +318,7 @@ export function ImoveisPage({
 
   async function handleQuickSave() {
     if (form.nome.trim().length < 2) {
+      setFormTab("identidade");
       toast.error("Informe o nome do empreendimento.");
       return;
     }
@@ -312,10 +326,12 @@ export function ImoveisPage({
     let construtoraId = form.construtoraId;
     if (form.novaConstrutora) {
       if (form.construtoraNome.trim().length < 2) {
+        setFormTab("identidade");
         toast.error("Informe o nome da nova construtora.");
         return;
       }
     } else if (!construtoraId) {
+      setFormTab("identidade");
       toast.error("Selecione a construtora ou crie uma nova.");
       return;
     }
@@ -324,6 +340,7 @@ export function ImoveisPage({
     if (form.novaLocalidade) {
       if (form.localidadeNome.trim().length < 2) {
         toast.error("Informe o nome da nova localidade.");
+        setFormTab("localidade");
         return;
       }
     }
@@ -920,17 +937,14 @@ export function ImoveisPage({
           setQuickOpen(open);
           if (!open) {
             setEditingId(null);
+            setFormTab("identidade");
             resetImageState();
           }
         }}
-        className="max-w-2xl"
+        className="max-w-3xl"
         icon={<Building2 className="w-5 h-5" />}
         title={editingId ? "Editar empreendimento" : "Novo empreendimento"}
-        description={
-          editingId
-            ? "Atualize os dados do imóvel e o vínculo com a construtora."
-            : "Cadastre o empreendimento em seções: identidade, localidade, tipo, status, flags e previsão."
-        }
+        description="Preencha cada seção: identidade, localidade, tipo, status, flags, previsão e observação."
         footer={
           <FormDialogActions>
             <Button
@@ -951,7 +965,57 @@ export function ImoveisPage({
           </FormDialogActions>
         }
       >
-        <FormDialogBody>
+        <FormDialogBody className="bg-muted/40">
+          <Tabs
+            value={formTab}
+            onValueChange={(value) =>
+              setFormTab(value as EmpreendimentoFormTab)
+            }
+          >
+            <TabsList className="mb-1 flex h-auto w-full flex-wrap justify-start gap-1 rounded-full bg-muted p-1">
+              <TabsTrigger
+                value="identidade"
+                className="gap-1.5 rounded-full px-3"
+              >
+                <Palette className="h-3.5 w-3.5" />
+                Identidade
+              </TabsTrigger>
+              <TabsTrigger
+                value="localidade"
+                className="gap-1.5 rounded-full px-3"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Localidade
+              </TabsTrigger>
+              <TabsTrigger value="tipo" className="gap-1.5 rounded-full px-3">
+                <Layers className="h-3.5 w-3.5" />
+                Tipo
+              </TabsTrigger>
+              <TabsTrigger value="status" className="gap-1.5 rounded-full px-3">
+                <CircleDot className="h-3.5 w-3.5" />
+                Status
+              </TabsTrigger>
+              <TabsTrigger value="flags" className="gap-1.5 rounded-full px-3">
+                <Flag className="h-3.5 w-3.5" />
+                Flags
+              </TabsTrigger>
+              <TabsTrigger
+                value="previsao"
+                className="gap-1.5 rounded-full px-3"
+              >
+                <CalendarClock className="h-3.5 w-3.5" />
+                Previsão
+              </TabsTrigger>
+              <TabsTrigger
+                value="observacao"
+                className="gap-1.5 rounded-full px-3"
+              >
+                <StickyNote className="h-3.5 w-3.5" />
+                Observação
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="identidade" className="mt-4">
           <FormSection
             icon={<Palette className="h-4 w-4" />}
             title="Identidade"
@@ -1038,7 +1102,9 @@ export function ImoveisPage({
               ) : null}
             </div>
           </FormSection>
+            </TabsContent>
 
+            <TabsContent value="localidade" className="mt-4">
           <FormSection
             icon={<MapPin className="h-4 w-4" />}
             title="Localidade"
@@ -1105,7 +1171,9 @@ export function ImoveisPage({
               </div>
             </div>
           </FormSection>
+            </TabsContent>
 
+            <TabsContent value="tipo" className="mt-4">
           <FormSection
             icon={<Layers className="h-4 w-4" />}
             title="Tipo"
@@ -1133,7 +1201,9 @@ export function ImoveisPage({
               </SelectContent>
             </Select>
           </FormSection>
+            </TabsContent>
 
+            <TabsContent value="status" className="mt-4">
           <FormSection
             icon={<CircleDot className="h-4 w-4" />}
             title="Status"
@@ -1161,7 +1231,9 @@ export function ImoveisPage({
               </SelectContent>
             </Select>
           </FormSection>
+            </TabsContent>
 
+            <TabsContent value="flags" className="mt-4">
           <FormSection
             icon={<Flag className="h-4 w-4" />}
             title="Flags"
@@ -1186,7 +1258,9 @@ export function ImoveisPage({
               ))}
             </div>
           </FormSection>
+            </TabsContent>
 
+            <TabsContent value="previsao" className="mt-4">
           <FormSection
             icon={<CalendarClock className="h-4 w-4" />}
             title="Previsão e metragem"
@@ -1216,7 +1290,9 @@ export function ImoveisPage({
               </div>
             </div>
           </FormSection>
+            </TabsContent>
 
+            <TabsContent value="observacao" className="mt-4">
           <FormSection
             icon={<StickyNote className="h-4 w-4" />}
             title="Observação"
@@ -1231,6 +1307,8 @@ export function ImoveisPage({
               maxLength={2000}
             />
           </FormSection>
+            </TabsContent>
+          </Tabs>
         </FormDialogBody>
       </FormDialogShell>
 
