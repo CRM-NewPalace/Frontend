@@ -2194,12 +2194,14 @@ function LeadsPage() {
                   disabled={filteredLeads.length === 0 || bulkDeleting}
                 />
               </TableHead>
-              <TableHead>Lead</TableHead>
+              <TableHead className="w-[20%]">Lead</TableHead>
               <TableHead className="w-[7%]">Origem</TableHead>
-              <TableHead className="w-[8%]">Tipo de renda</TableHead>
+              <TableHead className="w-[7%]">Tipo de renda</TableHead>
               <TableHead className="w-[8%]">Etapa</TableHead>
-              {!isCorretor && <TableHead className="w-[8%]">Equipe</TableHead>}
-              {!isCorretor && <TableHead className="w-[9%]">Corretor</TableHead>}
+              {!isCorretor && <TableHead className="w-[7%]">Equipe</TableHead>}
+              {!isCorretor && (
+                <TableHead className="w-[14%]">Corretor</TableHead>
+              )}
               <TableHead className="w-[7%]">Renda</TableHead>
               <TableHead className="w-[8%]">Estado civil</TableHead>
               <TableHead className="w-[7%]">Prioridade</TableHead>
@@ -2269,7 +2271,7 @@ function LeadsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <div className="table-person-name truncate">
+                          <div className="table-person-name truncate text-sm leading-snug">
                             {l.nome}
                           </div>
                           <div className="truncate text-[10px] text-muted-foreground">
@@ -2327,9 +2329,11 @@ function LeadsPage() {
                       </TableCell>
                     )}
                     {!isCorretor && (
-                      <TableCell className="table-person-name truncate">
+                      <TableCell className="table-person-name truncate text-sm leading-snug">
                         {l.corretor || (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-[11px] font-normal text-muted-foreground">
+                            —
+                          </span>
                         )}
                       </TableCell>
                     )}
