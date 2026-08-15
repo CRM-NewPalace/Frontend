@@ -1,3 +1,5 @@
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+
 /** Tipos e utilitários do módulo Financeiro (sem dados mock). */
 
 export type PeriodoFiltro = "mes" | "trimestre" | "ano" | "tudo";
@@ -241,21 +243,22 @@ export const VISAO_GERAL_KPIS = {
 export function statusBadgeClass(
   status: StatusTitulo | ComissaoItem["status"],
 ) {
+  const size = STATUS_CHIP_CLASS;
   switch (status) {
     case "pago":
     case "paga":
-      return "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+      return `${size} border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300`;
     case "aberto":
     case "pendente":
-      return "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300";
+      return `${size} border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300`;
     case "atrasado":
-      return "border-transparent bg-destructive/15 text-destructive";
+      return `${size} border-transparent bg-destructive/15 text-destructive`;
     case "liberada":
-      return "border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300";
+      return `${size} border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300`;
     case "cancelado":
-      return "border-transparent bg-muted text-muted-foreground";
+      return `${size} border-transparent bg-muted text-muted-foreground`;
     default:
-      return "border-transparent bg-secondary text-secondary-foreground";
+      return `${size} border-transparent bg-secondary text-secondary-foreground`;
   }
 }
 

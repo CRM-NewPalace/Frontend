@@ -76,6 +76,7 @@ import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
+  STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
@@ -1597,7 +1598,23 @@ function LeadsPage() {
                     label="E-mail"
                     value={displayEmail(detailLead.email) || "—"}
                   />
-                  <DetailField label="Origem" value={detailLead.origem} />
+                  <DetailField
+                    label="Origem"
+                    value={
+                      detailLead.origem ? (
+                        <Badge
+                          className={catalogColorBadgeClass(
+                            colorByLabel("origem", detailLead.origem),
+                          )}
+                          title={detailLead.origem}
+                        >
+                          {detailLead.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detailLead.corretor} />
                   )}
@@ -1645,7 +1662,8 @@ function LeadsPage() {
                         {detailLead.tags.map((t) => (
                           <Badge
                             key={t}
-                            className={`text-[10px] ${colorByLabel("tag", t)}`}
+                            className={cn(STATUS_CHIP_CLASS, colorByLabel("tag", t))}
+                            title={t}
                           >
                             {t}
                           </Badge>
@@ -2255,7 +2273,20 @@ function LeadsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">{l.origem}</TableCell>
+                    <TableCell>
+                      {l.origem ? (
+                        <Badge
+                          className={catalogColorBadgeClass(
+                            colorByLabel("origem", l.origem),
+                          )}
+                          title={l.origem}
+                        >
+                          {l.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm">
                       {l.tipoRenda || "—"}
                     </TableCell>
@@ -2270,6 +2301,7 @@ function LeadsPage() {
                             ? undefined
                             : catalogColorBadgeStyle(stage.color)
                         }
+                        title={stage.name}
                       >
                         {stage.name}
                       </Badge>

@@ -180,6 +180,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Popover,
   PopoverContent,
@@ -375,6 +376,7 @@ function DocumentacaoPage() {
     documentacaoStatus1,
     documentacaoStatus2,
     addItem,
+    colorByLabel,
   } = useCatalog();
   const fonteCatalog =
     documentacaoFontes.length > 0
@@ -2375,7 +2377,7 @@ function DocumentacaoPage() {
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "text-[10px] px-1 py-0 h-4 font-normal",
+                              STATUS_CHIP_CLASS,
                               status1Group(doc.status1) === "reprovado"
                                 ? "bg-red-100 text-red-700"
                                 : "bg-emerald-100 text-emerald-700",
@@ -2388,7 +2390,7 @@ function DocumentacaoPage() {
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "text-[10px] px-1 py-0 h-4 font-normal",
+                              STATUS_CHIP_CLASS,
                               stageBadgeClass(doc.lead.stage),
                             )}
                             title="Etapa atual no funil"
@@ -2430,14 +2432,14 @@ function DocumentacaoPage() {
                       <div className="flex flex-wrap gap-0.5">
                         <Badge
                           variant="outline"
-                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-22 truncate"
+                          className={cn(STATUS_CHIP_CLASS, "font-normal")}
                           title={doc.status1}
                         >
                           {doc.status1}
                         </Badge>
                         <Badge
                           variant="secondary"
-                          className="text-[10px] px-1 py-0 h-5 font-normal max-w-22 truncate"
+                          className={cn(STATUS_CHIP_CLASS, "font-normal")}
                           title={doc.status2}
                         >
                           {doc.status2}
@@ -2467,11 +2469,21 @@ function DocumentacaoPage() {
                     >
                       {doc.gerente?.name ?? "—"}
                     </TableCell>
-                    <TableCell
-                      className="max-w-24 truncate"
-                      title={displayFonte(doc.fonte)}
-                    >
-                      {displayFonte(doc.fonte) || "—"}
+                    <TableCell>
+                      {(() => {
+                        const fonte = displayFonte(doc.fonte);
+                        if (!fonte) return "—";
+                        return (
+                          <Badge
+                            className={catalogColorBadgeClass(
+                              colorByLabel("documentacao_fonte", fonte),
+                            )}
+                            title={fonte}
+                          >
+                            {fonte}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end">

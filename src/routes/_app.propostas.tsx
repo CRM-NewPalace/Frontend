@@ -1411,6 +1411,7 @@ function Page() {
                     <Badge
                       variant="outline"
                       className={propostaStatusClass(p.status)}
+                      title={PROPOSTA_STATUS_LABEL[p.status]}
                     >
                       {PROPOSTA_STATUS_LABEL[p.status]}
                     </Badge>
@@ -1466,6 +1467,7 @@ function Page() {
               <Badge
                 variant="outline"
                 className={propostaStatusClass(selected.status)}
+                title={PROPOSTA_STATUS_LABEL[selected.status]}
               >
                 {PROPOSTA_STATUS_LABEL[selected.status]}
               </Badge>

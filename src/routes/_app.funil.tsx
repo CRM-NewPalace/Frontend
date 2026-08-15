@@ -73,7 +73,7 @@ import {
   DEFAULT_STATUS1,
   DEFAULT_STATUS2,
 } from "@/lib/documentacao-api";
-import { funnelColumnBg, nextCatalogColor } from "@/lib/catalog-colors";
+import { funnelColumnBg, nextCatalogColor, catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -111,13 +111,14 @@ function shouldShowAnaliseStatus(status: AnaliseStatus) {
 }
 
 function analiseBadgeClass(status: AnaliseStatus) {
+  const size = STATUS_CHIP_CLASS;
   if (status === "aprovado")
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+    return `${size} border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
   if (status === "reprovado")
-    return "border-destructive/40 bg-destructive/10 text-destructive";
+    return `${size} border-destructive/40 bg-destructive/10 text-destructive`;
   if (status === "em_analise")
-    return "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300";
-  return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
+    return `${size} border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300`;
+  return `${size} border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300`;
 }
 
 /** Slug legado (fallback se o funil não tiver papel configurado). */
@@ -816,9 +817,11 @@ export function ComercialFunilBoard({
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-[14px] px-3 py-1 border-black/10 shadow-none",
+                      STATUS_CHIP_CLASS,
+                      "border-black/10 shadow-none",
                       stage.color,
                     )}
+                    title={stage.name}
                   >
                     {stage.name}
                   </Badge>
@@ -873,10 +876,8 @@ export function ComercialFunilBoard({
                     {l.analise && shouldShowAnaliseStatus(l.analise.status) && (
                       <Badge
                         variant="outline"
-                        className={cn(
-                          "text-[9px] px-1.5 py-0 h-5 mb-1",
-                          analiseBadgeClass(l.analise.status),
-                        )}
+                        className={cn("mb-1", analiseBadgeClass(l.analise.status))}
+                        title={ANALISE_STATUS_LABEL[l.analise.status]}
                       >
                         {ANALISE_STATUS_LABEL[l.analise.status]}
                       </Badge>
@@ -949,7 +950,23 @@ export function ComercialFunilBoard({
                     label="E-mail"
                     value={displayEmail(detailLead.email) || "—"}
                   />
-                  <DetailField label="Origem" value={detailLead.origem} />
+                  <DetailField
+                    label="Origem"
+                    value={
+                      detailLead.origem ? (
+                        <Badge
+                          className={catalogColorBadgeClass(
+                            colorByLabel("origem", detailLead.origem),
+                          )}
+                          title={detailLead.origem}
+                        >
+                          {detailLead.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detailLead.corretor} />
                   )}
@@ -961,10 +978,8 @@ export function ComercialFunilBoard({
                         <div className="space-y-1">
                           <Badge
                             variant="outline"
-                            className={cn(
-                              "text-[10px]",
-                              analiseBadgeClass(detailLead.analise.status),
-                            )}
+                            className={analiseBadgeClass(detailLead.analise.status)}
+                            title={ANALISE_STATUS_LABEL[detailLead.analise.status]}
                           >
                             {ANALISE_STATUS_LABEL[detailLead.analise.status]}
                           </Badge>
@@ -1008,7 +1023,8 @@ export function ComercialFunilBoard({
                         {detailLead.tags.map((t) => (
                           <Badge
                             key={t}
-                            className={`text-[10px] ${colorByLabel("tag", t)}`}
+                            className={cn(STATUS_CHIP_CLASS, colorByLabel("tag", t))}
+                            title={t}
                           >
                             {t}
                           </Badge>

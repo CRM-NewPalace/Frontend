@@ -74,6 +74,7 @@ import {
   type TenantPlano,
 } from "@/lib/tenant-modules";
 import { formatCpfCnpj } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Building2,
   Check,
@@ -677,6 +678,8 @@ function TenantsPage() {
                         variant={
                           item.status === "ativo" ? "default" : "secondary"
                         }
+                        className={STATUS_CHIP_CLASS}
+                        title={item.status === "ativo" ? "Ativo" : "Inativo"}
                       >
                         {item.status === "ativo" ? "Ativo" : "Inativo"}
                       </Badge>
@@ -1319,6 +1322,7 @@ function TenantsPage() {
                               variant={
                                 connection.ativo ? "default" : "secondary"
                               }
+                              className={STATUS_CHIP_CLASS}
                             >
                               {connection.ativo ? "Ativa" : "Inativa"}
                             </Badge>
@@ -1392,6 +1396,7 @@ function TenantsPage() {
                           </span>
                           <Badge
                             variant={connection.ativo ? "default" : "secondary"}
+                            className={STATUS_CHIP_CLASS}
                           >
                             {connection.ativo ? "Ativa" : "Inativa"}
                           </Badge>

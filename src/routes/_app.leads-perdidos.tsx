@@ -68,6 +68,7 @@ import {
   exportLostLeadsToPdf,
 } from "@/lib/lost-leads-io";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
+import { catalogColorBadgeClass } from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { displayEmail } from "@/lib/email";
 import { toast } from "sonner";
@@ -89,7 +90,7 @@ function initials(nome: string) {
 
 function LeadsPerdidos() {
   const user = getSession();
-  const { funnelStages } = useCatalog();
+  const { funnelStages, colorByLabel } = useCatalog();
   const cached = getLostLeadsCache();
   const [leads, setLeads] = useState<LostLead[]>(cached ?? []);
   // Só mostra "Carregando..." na primeira visita sem cache.
@@ -351,7 +352,23 @@ function LeadsPerdidos() {
                     label="E-mail"
                     value={displayEmail(detail.email) || "—"}
                   />
-                  <DetailField label="Origem" value={detail.origem} />
+                  <DetailField
+                    label="Origem"
+                    value={
+                      detail.origem ? (
+                        <Badge
+                          className={catalogColorBadgeClass(
+                            colorByLabel("origem", detail.origem),
+                          )}
+                          title={detail.origem}
+                        >
+                          {detail.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                   <DetailField label="Corretor" value={detail.corretor} />
                 </div>
               </FormSection>

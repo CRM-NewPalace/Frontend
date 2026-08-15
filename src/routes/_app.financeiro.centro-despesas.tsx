@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { ApiError } from "@/lib/api";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   createDespesa,
   createDespesaTipo,
@@ -781,9 +782,10 @@ function Page() {
                                   variant="outline"
                                   className={
                                     t.ativo
-                                      ? "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300"
-                                      : "text-muted-foreground"
+                                      ? `${STATUS_CHIP_CLASS} border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300`
+                                      : `${STATUS_CHIP_CLASS} text-muted-foreground`
                                   }
+                                  title={t.ativo ? "Ativo" : "Inativo"}
                                 >
                                   {t.ativo ? "Ativo" : "Inativo"}
                                 </Badge>
@@ -998,9 +1000,10 @@ function Page() {
                           variant="outline"
                           className={
                             t.ativo
-                              ? "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300"
-                              : "text-muted-foreground"
+                              ? `${STATUS_CHIP_CLASS} border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300`
+                              : `${STATUS_CHIP_CLASS} text-muted-foreground`
                           }
+                          title={t.ativo ? "Ativo" : "Inativo"}
                         >
                           {t.ativo ? "Ativo" : "Inativo"}
                         </Badge>

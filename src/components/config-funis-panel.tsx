@@ -113,9 +113,9 @@ function ColorSwatchPicker({
           <Badge
             className={cn(
               catalogColorBadgeClass(value || DEFAULT_CATALOG_COLOR),
-              "text-[10px]",
             )}
             style={catalogColorBadgeStyle(value || DEFAULT_CATALOG_COLOR)}
+            title={previewLabel.trim()}
           >
             {previewLabel.trim()}
           </Badge>
@@ -451,11 +451,11 @@ export function ConfigFunisPanel() {
                               catalogColorBadgeClass(
                                 e.color || DEFAULT_CATALOG_COLOR,
                               ),
-                              "text-[10px]",
                             )}
                             style={catalogColorBadgeStyle(
                               e.color || DEFAULT_CATALOG_COLOR,
                             )}
+                            title={e.label}
                           >
                             {e.label}
                           </Badge>
@@ -562,6 +562,7 @@ export function ConfigFunisPanel() {
                   <Badge
                     className={catalogColorBadgeClass(color)}
                     style={catalogColorBadgeStyle(color)}
+                    title={s.label}
                   >
                     {s.label}
                   </Badge>

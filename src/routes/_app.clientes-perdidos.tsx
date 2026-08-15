@@ -55,6 +55,7 @@ import {
   exportLostLeadsToPdf,
 } from "@/lib/lost-leads-io";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
+import { catalogColorBadgeClass } from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { displayEmail } from "@/lib/email";
 import { toast } from "sonner";
@@ -76,7 +77,7 @@ function initials(nome: string) {
 
 function ClientesPerdidos() {
   const user = getSession();
-  const { funnelStages } = useCatalog();
+  const { funnelStages, colorByLabel } = useCatalog();
   const cached = getLostClientesCache();
   const [items, setItems] = useState<LostLead[]>(cached ?? []);
   const [loading, setLoading] = useState(!cached);
@@ -302,7 +303,23 @@ function ClientesPerdidos() {
                     label="E-mail"
                     value={displayEmail(detail.email) || "—"}
                   />
-                  <DetailField label="Origem" value={detail.origem} />
+                  <DetailField
+                    label="Origem"
+                    value={
+                      detail.origem ? (
+                        <Badge
+                          className={catalogColorBadgeClass(
+                            colorByLabel("origem", detail.origem),
+                          )}
+                          title={detail.origem}
+                        >
+                          {detail.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                 </div>
               </FormSection>
               <FormSection

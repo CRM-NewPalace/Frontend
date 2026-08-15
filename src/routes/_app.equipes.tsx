@@ -71,6 +71,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 export const Route = createFileRoute("/_app/equipes")({
   head: () => ({ meta: [{ title: "Equipes — Zone Connection" }] }),
   component: EquipesPage,
@@ -170,9 +171,11 @@ function MemberCard({
           <Badge
             variant="outline"
             className={cn(
-              "mt-2 text-[10px] capitalize",
+              STATUS_CHIP_CLASS,
+              "mt-2 capitalize",
               accent && "border-primary/30 text-primary",
             )}
+            title={roleLabel}
           >
             {roleLabel}
           </Badge>
@@ -506,7 +509,8 @@ function EquipesPage() {
                     </span>
                     <Badge
                       variant={eq.status === "ativo" ? "default" : "outline"}
-                      className="capitalize text-[10px] shrink-0"
+                      className={cn(STATUS_CHIP_CLASS, "capitalize")}
+                      title={eq.status}
                     >
                       {eq.status}
                     </Badge>

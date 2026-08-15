@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { origemBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { phoneDigits } from "@/lib/phone";
 import { displayEmail } from "@/lib/email";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -88,13 +90,14 @@ const STATUS_LABEL: Record<AnaliseStatus, string> = {
 };
 
 function statusBadgeClass(status: AnaliseStatus) {
+  const size = STATUS_CHIP_CLASS;
   if (status === "aprovado")
-    return "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
+    return `${size} bg-emerald-500/15 text-emerald-700 border-emerald-500/30`;
   if (status === "reprovado")
-    return "bg-destructive/15 text-destructive border-destructive/30";
+    return `${size} bg-destructive/15 text-destructive border-destructive/30`;
   if (status === "em_analise")
-    return "bg-sky-500/15 text-sky-700 border-sky-500/30";
-  return "bg-amber-500/15 text-amber-800 border-amber-500/30";
+    return `${size} bg-sky-500/15 text-sky-700 border-sky-500/30`;
+  return `${size} bg-amber-500/15 text-amber-800 border-amber-500/30`;
 }
 
 function isLeadVendido(stage: string) {
@@ -504,10 +507,8 @@ function AnalisePage() {
                     </div>
                     <Badge
                       variant="outline"
-                      className={cn(
-                        "text-[10px] shrink-0 capitalize",
-                        statusBadgeClass(item.status),
-                      )}
+                      className={cn("capitalize", statusBadgeClass(item.status))}
+                      title={STATUS_LABEL[item.status]}
                     >
                       {STATUS_LABEL[item.status]}
                     </Badge>
@@ -715,10 +716,8 @@ function AnalisePage() {
                         </div>
                         <Badge
                           variant="outline"
-                          className={cn(
-                            "text-[10px] shrink-0 capitalize",
-                            statusBadgeClass(item.status),
-                          )}
+                          className={cn("capitalize", statusBadgeClass(item.status))}
+                          title={STATUS_LABEL[item.status]}
                         >
                           {STATUS_LABEL[item.status]}
                         </Badge>
@@ -773,7 +772,21 @@ function AnalisePage() {
                     value={displayEmail(detail.email) || "—"}
                   />
                   <DetailField label="Telefone" value={detail.telefone} />
-                  <DetailField label="Origem" value={detail.origem} />
+                  <DetailField
+                    label="Origem"
+                    value={
+                      detail.origem ? (
+                        <Badge
+                          className={origemBadgeClass(detail.origem)}
+                          title={detail.origem}
+                        >
+                          {detail.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                   <DetailField label="Interesse" value={detail.interesse} />
                   <DetailField label="Bairro" value={detail.bairro} />
                   <DetailField
@@ -987,7 +1000,13 @@ function AnalisePage() {
   );
 }
 
-function DetailField({ label, value }: { label: string; value: string }) {
+function DetailField({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
   return (
     <div className="space-y-0.5">
       <div className="text-[11px] text-muted-foreground">{label}</div>

@@ -489,6 +489,7 @@ function VendasPage() {
                           <Badge
                             variant="outline"
                             className={origemBadgeClass(origemLabel)}
+                            title={origemLabel}
                           >
                             {origemLabel}
                           </Badge>

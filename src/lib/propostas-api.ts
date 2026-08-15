@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 
 export type PropostaStatus =
   "rascunho" | "enviada" | "negociacao" | "aceita" | "recusada" | "expirada";
@@ -13,21 +14,22 @@ export const PROPOSTA_STATUS_LABEL: Record<PropostaStatus, string> = {
 };
 
 export function propostaStatusClass(status: PropostaStatus) {
+  const size = STATUS_CHIP_CLASS;
   switch (status) {
     case "aceita":
-      return "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+      return `${size} border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300`;
     case "enviada":
-      return "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300";
+      return `${size} border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300`;
     case "negociacao":
-      return "border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300";
+      return `${size} border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300`;
     case "rascunho":
-      return "border-transparent bg-muted text-muted-foreground";
+      return `${size} border-transparent bg-muted text-muted-foreground`;
     case "recusada":
-      return "border-transparent bg-destructive/15 text-destructive";
+      return `${size} border-transparent bg-destructive/15 text-destructive`;
     case "expirada":
-      return "border-transparent bg-orange-500/15 text-orange-800 dark:text-orange-300";
+      return `${size} border-transparent bg-orange-500/15 text-orange-800 dark:text-orange-300`;
     default:
-      return "border-transparent bg-secondary text-secondary-foreground";
+      return `${size} border-transparent bg-secondary text-secondary-foreground`;
   }
 }
 

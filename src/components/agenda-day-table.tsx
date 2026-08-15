@@ -24,6 +24,7 @@ import {
 } from "@/lib/agenda-api";
 import type { Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Clock,
   Check,
@@ -44,9 +45,9 @@ const DAY_HOURS = [
 ] as const;
 
 const STATUS_BADGE: Record<AgendamentoStatus, string> = {
-  agendado: "bg-cyan-100 text-cyan-800",
-  concluido: "bg-amber-100 text-amber-900",
-  cancelado: "bg-red-100 text-red-800",
+  agendado: `${STATUS_CHIP_CLASS} bg-cyan-100 text-cyan-800`,
+  concluido: `${STATUS_CHIP_CLASS} bg-amber-100 text-amber-900`,
+  cancelado: `${STATUS_CHIP_CLASS} bg-red-100 text-red-800`,
 };
 
 function formatTime(d: Date) {
@@ -417,7 +418,10 @@ export function AgendaDayTable({
                           </Badge>
                         )}
                         {item.solicitacaoStatus === "pendente" ? (
-                          <Badge className="text-[10px] bg-amber-500 hover:bg-amber-500">
+                          <Badge
+                            className={`${STATUS_CHIP_CLASS} bg-amber-500 hover:bg-amber-500`}
+                            title="Aguardando"
+                          >
                             Aguardando
                           </Badge>
                         ) : null}
@@ -477,6 +481,7 @@ export function AgendaDayTable({
                       <Badge
                         variant="secondary"
                         className={STATUS_BADGE[item.status]}
+                        title={AGENDAMENTO_STATUS_LABEL[item.status]}
                       >
                         {AGENDAMENTO_STATUS_LABEL[item.status]}
                       </Badge>

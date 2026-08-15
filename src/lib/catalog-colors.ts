@@ -24,6 +24,13 @@ export const CATALOG_COLORS = [
 
 export type CatalogColor = (typeof CATALOG_COLORS)[number];
 
+/**
+ * Tamanho único dos chips de status (etapas, origem, tags, documentação, etc.).
+ * Texto longo corta com reticências; use `title` no Badge para o rótulo completo.
+ */
+export const STATUS_CHIP_CLASS =
+  "box-border h-6 w-[8.25rem] shrink-0 justify-center overflow-hidden px-2 py-0 text-[11px] font-semibold leading-none truncate";
+
 export function isHexColor(color: string | null | undefined): boolean {
   return Boolean(color && /^#[0-9A-Fa-f]{6}$/.test(color));
 }
@@ -153,6 +160,7 @@ export function catalogColorBadgeClass(
   const text = catalogColorTextClass(color);
   const hover = CATALOG_BG_HOVER[bg] ?? "hover:bg-slate-300";
   return [
+    STATUS_CHIP_CLASS,
     "border-transparent bg-transparent shadow-none",
     text,
     hover,
@@ -266,49 +274,50 @@ function normalizeOrigemKey(origem: string): string {
  */
 export function origemBadgeClass(origem: string | null | undefined): string {
   const key = normalizeOrigemKey(origem ?? "");
+  const size = STATUS_CHIP_CLASS;
   if (!key) {
-    return "border-transparent bg-slate-200 text-slate-700 shadow-none hover:bg-slate-200";
+    return `${size} border-transparent bg-slate-200 text-slate-700 shadow-none hover:bg-slate-200`;
   }
 
   if (key.includes("facebook") || key === "fb") {
-    return "border-transparent bg-[#1877F2]/18 text-[#1877F2] shadow-none hover:bg-[#1877F2]/25";
+    return `${size} border-transparent bg-[#1877F2]/18 text-[#1877F2] shadow-none hover:bg-[#1877F2]/25`;
   }
   if (key.includes("instagram") || key === "ig") {
-    return "border-transparent bg-[#E4405F]/18 text-[#C13584] shadow-none hover:bg-[#E4405F]/25";
+    return `${size} border-transparent bg-[#E4405F]/18 text-[#C13584] shadow-none hover:bg-[#E4405F]/25`;
   }
   if (key.includes("whatsapp") || key === "wa" || key === "zap") {
-    return "border-transparent bg-[#25D366]/20 text-[#128C7E] shadow-none hover:bg-[#25D366]/28";
+    return `${size} border-transparent bg-[#25D366]/20 text-[#128C7E] shadow-none hover:bg-[#25D366]/28`;
   }
   if (key.includes("google")) {
-    return "border-transparent bg-[#4285F4]/18 text-[#4285F4] shadow-none hover:bg-[#4285F4]/25";
+    return `${size} border-transparent bg-[#4285F4]/18 text-[#4285F4] shadow-none hover:bg-[#4285F4]/25`;
   }
   if (key.includes("tiktok")) {
-    return "border-transparent bg-zinc-900/10 text-zinc-900 shadow-none hover:bg-zinc-900/15";
+    return `${size} border-transparent bg-zinc-900/10 text-zinc-900 shadow-none hover:bg-zinc-900/15`;
   }
   if (key.includes("youtube")) {
-    return "border-transparent bg-[#FF0000]/15 text-[#FF0000] shadow-none hover:bg-[#FF0000]/22";
+    return `${size} border-transparent bg-[#FF0000]/15 text-[#FF0000] shadow-none hover:bg-[#FF0000]/22`;
   }
   if (key.includes("linkedin")) {
-    return "border-transparent bg-[#0A66C2]/18 text-[#0A66C2] shadow-none hover:bg-[#0A66C2]/25";
+    return `${size} border-transparent bg-[#0A66C2]/18 text-[#0A66C2] shadow-none hover:bg-[#0A66C2]/25`;
   }
   if (key.includes("twitter") || key === "x" || key.includes("x.com")) {
-    return "border-transparent bg-zinc-900/10 text-zinc-900 shadow-none hover:bg-zinc-900/15";
+    return `${size} border-transparent bg-zinc-900/10 text-zinc-900 shadow-none hover:bg-zinc-900/15`;
   }
   if (key.includes("site") || key.includes("landing") || key.includes("web")) {
-    return "border-transparent bg-[#079ED4]/18 text-[#079ED4] shadow-none hover:bg-[#079ED4]/25";
+    return `${size} border-transparent bg-[#079ED4]/18 text-[#079ED4] shadow-none hover:bg-[#079ED4]/25`;
   }
   if (key.includes("indicacao")) {
-    return "border-transparent bg-amber-100 text-amber-800 shadow-none hover:bg-amber-100";
+    return `${size} border-transparent bg-amber-100 text-amber-800 shadow-none hover:bg-amber-100`;
   }
   if (key.includes("campanha")) {
-    return "border-transparent bg-violet-100 text-violet-700 shadow-none hover:bg-violet-100";
+    return `${size} border-transparent bg-violet-100 text-violet-700 shadow-none hover:bg-violet-100`;
   }
   if (key.includes("lista") || key.includes("import")) {
-    return "border-transparent bg-sky-100 text-sky-700 shadow-none hover:bg-sky-100";
+    return `${size} border-transparent bg-sky-100 text-sky-700 shadow-none hover:bg-sky-100`;
   }
   if (key.includes("lead proprio") || key.includes("proprio")) {
-    return "border-transparent bg-teal-100 text-teal-700 shadow-none hover:bg-teal-100";
+    return `${size} border-transparent bg-teal-100 text-teal-700 shadow-none hover:bg-teal-100`;
   }
 
-  return "border-transparent bg-slate-200 text-slate-700 shadow-none hover:bg-slate-200";
+  return `${size} border-transparent bg-slate-200 text-slate-700 shadow-none hover:bg-slate-200`;
 }

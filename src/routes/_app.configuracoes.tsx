@@ -26,6 +26,7 @@ import {
   catalogColorSwatch,
   isHexColor,
   nextCatalogColor,
+  STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import {
   getVistaParcelas,
@@ -131,7 +132,13 @@ function ColorSwatchPicker({
       <div className="flex items-center gap-2">
         <Label>Cor</Label>
         {previewLabel?.trim() && (
-          <Badge className={cn(value || DEFAULT_CATALOG_COLOR, "text-[10px]")}>
+          <Badge
+            className={cn(
+              STATUS_CHIP_CLASS,
+              value || DEFAULT_CATALOG_COLOR,
+            )}
+            title={previewLabel.trim()}
+          >
             {previewLabel.trim()}
           </Badge>
         )}
@@ -167,15 +174,19 @@ function CatalogItemBadge({ item }: { item: CatalogItem }) {
     return (
       <Badge
         variant="secondary"
-        className="border-transparent text-sm py-1 px-3"
+        className={cn(STATUS_CHIP_CLASS, "border-transparent")}
         style={construtoraBadgeStyle(item.color)}
+        title={item.label}
       >
         {item.label}
       </Badge>
     );
   }
   return (
-    <Badge className={cn("text-sm py-1 px-3", item.color ?? DEFAULT_CATALOG_COLOR)}>
+    <Badge
+      className={cn(STATUS_CHIP_CLASS, item.color ?? DEFAULT_CATALOG_COLOR)}
+      title={item.label}
+    >
       {item.label}
     </Badge>
   );

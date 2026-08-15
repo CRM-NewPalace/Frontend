@@ -106,6 +106,7 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/clientes")({
@@ -725,7 +726,9 @@ function Clientes() {
                 </TableCell>
                 <TableCell className="text-sm">{l.telefone}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{l.interesse}</Badge>
+                  <Badge variant="outline" className={STATUS_CHIP_CLASS} title={l.interesse}>
+                    {l.interesse}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-sm">
                   {l.bairro}
@@ -741,7 +744,8 @@ function Clientes() {
                     {l.tags.map((t) => (
                       <Badge
                         key={t}
-                        className={`text-[10px] ${colorByLabel("tag", t)}`}
+                        className={cn(STATUS_CHIP_CLASS, colorByLabel("tag", t))}
+                        title={t}
                       >
                         {t}
                       </Badge>
@@ -1093,7 +1097,9 @@ function Clientes() {
         description={
           detail ? (
             <span className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline">{detail.interesse}</Badge>
+              <Badge variant="outline" className={STATUS_CHIP_CLASS} title={detail.interesse}>
+                {detail.interesse}
+              </Badge>
               <span>{stageName(detail.stage)}</span>
             </span>
           ) : undefined
@@ -1112,7 +1118,23 @@ function Clientes() {
                     label="E-mail"
                     value={displayEmail(detail.email) || "—"}
                   />
-                  <DetailField label="Origem" value={detail.origem} />
+                  <DetailField
+                    label="Origem"
+                    value={
+                      detail.origem ? (
+                        <Badge
+                          className={catalogColorBadgeClass(
+                            colorByLabel("origem", detail.origem),
+                          )}
+                          title={detail.origem}
+                        >
+                          {detail.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detail.corretor} />
                   )}
@@ -1135,7 +1157,8 @@ function Clientes() {
                         {detail.tags.map((t) => (
                           <Badge
                             key={t}
-                            className={`text-[10px] ${colorByLabel("tag", t)}`}
+                            className={cn(STATUS_CHIP_CLASS, colorByLabel("tag", t))}
+                            title={t}
                           >
                             {t}
                           </Badge>

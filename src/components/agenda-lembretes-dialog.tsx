@@ -18,6 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 
 const NIVEL_LABEL: Record<AgendaProximo["nivel"], string> = {
   dia: "Em até 1 dia",
@@ -123,11 +124,13 @@ export function AgendaLembretesDialog({
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-[10px] shrink-0",
+                      STATUS_CHIP_CLASS,
+                      "shrink-0",
                       informativo
                         ? NIVEL_BADGE_INFO
                         : NIVEL_BADGE_URGENTE[p.nivel],
                     )}
+                    title={NIVEL_LABEL[p.nivel]}
                   >
                     {NIVEL_LABEL[p.nivel]}
                   </Badge>
