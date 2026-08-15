@@ -307,7 +307,6 @@ export function FinanceiroTitulosPanel({
       : tipo === "receber"
         ? "Cadastro do Centro de recebimentos."
         : "Cadastro do Centro de despesas.";
-  const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "edit-grupo">(
     "create",
   );
@@ -345,7 +344,9 @@ export function FinanceiroTitulosPanel({
   const [valorGrupoParcelas, setValorGrupoParcelas] = useState("");
   const [formTab, setFormTab] = useState<TituloFormTab>("dados");
   const isPlatformAdmin = getSession()?.role === "super_admin";
-  const canUseContrato = isPlatformAdmin;
+  const canUseContrato =
+    isPlatformAdmin || getSession()?.role === "admin";
+  const isAssinaturaPlataforma = isPlatformAdmin && tipo === "receber";
   const [comoContrato, setComoContrato] = useState(false);
   const [parcelarAdesao, setParcelarAdesao] = useState(false);
   const [qtdParcelasAdesao, setQtdParcelasAdesao] = useState("2");
@@ -393,27 +394,24 @@ export function FinanceiroTitulosPanel({
 
   const load = useCallback(async () => {
     try {
-      const platform = getSession()?.role === "super_admin";
       const [titulos, pars, tipos, tenantList] = await Promise.all([
         fetchTitulos(
           tipo,
           undefined,
-          platform && tipo === "receber" && origemFiltro !== "todos"
-            ? origemFiltro
-            : undefined,
+          canUseContrato && origemFiltro !== "todos" ? origemFiltro : undefined,
         ),
         fetchParceiros(),
-        platform
+        isPlatformAdmin
           ? Promise.resolve([] as DespesaTipo[])
           : tipo === "receber"
             ? fetchRecebimentoTipos()
             : fetchDespesaTipos(),
-        platform && tipo === "receber" ? fetchTenants() : Promise.resolve([]),
+        isAssinaturaPlataforma ? fetchTenants() : Promise.resolve([]),
       ]);
       setItems(titulos);
       setParceiros(pars.filter((p) => p.ativo));
       setCatalogTipos(tipos);
-      if (platform && tipo === "receber") {
+      if (isAssinaturaPlataforma) {
         setTenants(tenantList);
       }
     } catch (err) {
@@ -423,7 +421,7 @@ export function FinanceiroTitulosPanel({
           : "Não foi possível carregar os títulos.",
       );
     }
-  }, [tipo, origemFiltro]);
+  }, [tipo, origemFiltro, canUseContrato, isPlatformAdmin, isAssinaturaPlataforma]);
 
   useEffect(() => {
     void load();
@@ -916,9 +914,18 @@ export function FinanceiroTitulosPanel({
 
     if (formMode === "create" && comoContrato && canUseContrato) {
       const titulo = contratoForm.titulo.trim();
-      if (tipo === "receber" && !contratoForm.tenantId) {
+      if (isAssinaturaPlataforma && !contratoForm.tenantId) {
         setFormTab("contrato");
         toast.error("Selecione a imobiliária.");
+        return;
+      }
+      if (!isAssinaturaPlataforma && form.parceiroId === NONE) {
+        setFormTab("dados");
+        toast.error(
+          tipo === "receber"
+            ? "Selecione o cliente ou parceiro."
+            : "Selecione o fornecedor.",
+        );
         return;
       }
       if (titulo.length < 2) {
@@ -927,7 +934,7 @@ export function FinanceiroTitulosPanel({
         return;
       }
       if (
-        tipo === "receber" &&
+        isAssinaturaPlataforma &&
         contratoForm.tipo === "assinatura" &&
         !contratoForm.plano
       ) {
@@ -978,7 +985,7 @@ export function FinanceiroTitulosPanel({
       }
       setSaving(true);
       try {
-        if (tipo === "receber") {
+        if (isAssinaturaPlataforma) {
           await createPlatformContratoComTitulos({
             tenantId: contratoForm.tenantId,
             titulo,
@@ -997,15 +1004,12 @@ export function FinanceiroTitulosPanel({
             parceiroId: form.parceiroId === NONE ? undefined : form.parceiroId,
           });
         } else {
-          if (form.parceiroId === NONE) {
-            setFormTab("dados");
-            toast.error("Selecione o fornecedor.");
-            return;
-          }
           await createPlatformFornecedorContratoComTitulos({
             parceiroId: form.parceiroId,
             titulo,
-            centro: form.centro.trim(),
+            tipo,
+            centro:
+              tipo === "pagar" ? form.centro.trim() : form.categoria.trim(),
             valorAdesao,
             qtdParcelasAdesao: valorAdesao > 0 ? qtdAdesao : undefined,
             valorMensalidade,
@@ -1694,7 +1698,10 @@ export function FinanceiroTitulosPanel({
                 {formTab === "dados" ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <Label>Parceiro</Label>
+                      <Label>
+                        {tipo === "pagar" ? "Fornecedor" : "Parceiro"}
+                        {comoContrato && !isAssinaturaPlataforma ? " *" : ""}
+                      </Label>
                       <Button
                         type="button"
                         variant="link"
@@ -1713,7 +1720,13 @@ export function FinanceiroTitulosPanel({
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Opcional" />
+                        <SelectValue
+                          placeholder={
+                            comoContrato && !isAssinaturaPlataforma
+                              ? "Selecione"
+                              : "Opcional"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>—</SelectItem>
@@ -1764,9 +1777,11 @@ export function FinanceiroTitulosPanel({
                         Contrato
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        {tipo === "receber"
+                        {isAssinaturaPlataforma
                           ? "Gera adesão + mensalidades vinculadas à imobiliária."
-                          : "Gera adesão opcional e mensalidades para o fornecedor."}
+                          : tipo === "receber"
+                            ? "Gera adesão + mensalidades vinculadas ao cliente."
+                            : "Gera adesão opcional e mensalidades para o fornecedor."}
                       </p>
                     </div>
                   </div>
@@ -1776,7 +1791,7 @@ export function FinanceiroTitulosPanel({
                 formMode === "create" &&
                 formTab === "contrato" ? (
                   <>
-                    {tipo === "receber" ? (
+                    {isAssinaturaPlataforma ? (
                       <div className="sm:col-span-2 space-y-1.5">
                         <Label>Imobiliária *</Label>
                         <Select
@@ -1808,10 +1823,14 @@ export function FinanceiroTitulosPanel({
                             titulo: e.target.value,
                           }))
                         }
-                        placeholder="Ex.: Assinatura anual Ouro"
+                        placeholder={
+                          isAssinaturaPlataforma
+                            ? "Ex.: Assinatura anual Ouro"
+                            : "Ex.: Contrato de locação"
+                        }
                       />
                     </div>
-                    {tipo === "receber" ? (
+                    {isAssinaturaPlataforma ? (
                       <div className="space-y-1.5">
                         <Label>Tipo</Label>
                         <Select
@@ -1837,7 +1856,7 @@ export function FinanceiroTitulosPanel({
                         </Select>
                       </div>
                     ) : null}
-                    {tipo === "receber" ? (
+                    {isAssinaturaPlataforma ? (
                       <div className="space-y-1.5">
                         <Label>Status</Label>
                         <Select
@@ -1863,7 +1882,7 @@ export function FinanceiroTitulosPanel({
                         </Select>
                       </div>
                     ) : null}
-                    {tipo === "receber" &&
+                    {isAssinaturaPlataforma &&
                     contratoForm.tipo === "assinatura" ? (
                       <div className="sm:col-span-2 space-y-1.5">
                         <Label>Plano</Label>
