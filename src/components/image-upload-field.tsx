@@ -70,12 +70,23 @@ export function ImageUploadField({
               key={src ?? `slot-${index}`}
               className={cn(
                 "relative overflow-hidden rounded-xl border bg-muted/40",
-                shape === "logo" ? "aspect-square max-w-28" : "aspect-video",
+                shape === "logo"
+                  ? "aspect-[2/1] max-w-48 bg-white"
+                  : "aspect-video",
               )}
             >
               {src ? (
                 <>
-                  <img src={src} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={src}
+                    alt=""
+                    className={cn(
+                      "h-full w-full",
+                      shape === "logo"
+                        ? "object-contain p-2"
+                        : "object-cover",
+                    )}
+                  />
                   {!disabled ? (
                     <Button
                       type="button"

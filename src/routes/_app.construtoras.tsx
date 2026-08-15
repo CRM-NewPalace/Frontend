@@ -1047,22 +1047,24 @@ function ConstrutorasPage() {
                         )}
                         title={`Abrir Drive de ${item.nome}`}
                       >
-                        <span
-                          className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
-                          style={{ backgroundColor: bg }}
-                        >
-                          {item.logoUrl ? (
+                        {item.logoUrl ? (
+                          <span className="flex h-14 w-full items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 ring-1 ring-black/5">
                             <img
                               src={item.logoUrl}
                               alt=""
-                              className="h-full w-full object-cover"
+                              className="max-h-full max-w-full object-contain"
                             />
-                          ) : (
-                            construtoraIniciais(item.nome) || (
+                          </span>
+                        ) : (
+                          <span
+                            className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
+                            style={{ backgroundColor: bg }}
+                          >
+                            {construtoraIniciais(item.nome) || (
                               <FolderOpen className="h-6 w-6" />
-                            )
-                          )}
-                        </span>
+                            )}
+                          </span>
+                        )}
                         <span className="line-clamp-2 text-sm font-medium text-foreground">
                           {item.nome}
                         </span>
@@ -1618,14 +1620,23 @@ function ConstrutorasPage() {
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <span
-                  className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
-                  style={{ backgroundColor: form.cor || "#079ED4" }}
+                  className={cn(
+                    "flex shrink-0 items-center justify-center overflow-hidden rounded-2xl shadow-sm",
+                    displayedLogo
+                      ? "h-16 w-36 bg-white p-1.5 ring-1 ring-black/5"
+                      : "h-16 w-16 text-lg font-bold tracking-wide text-white",
+                  )}
+                  style={
+                    displayedLogo
+                      ? undefined
+                      : { backgroundColor: form.cor || "#079ED4" }
+                  }
                 >
                   {displayedLogo ? (
                     <img
                       src={displayedLogo}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="max-h-full max-w-full object-contain"
                     />
                   ) : (
                     construtoraIniciais(form.nome) || (
