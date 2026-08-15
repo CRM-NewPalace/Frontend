@@ -194,6 +194,7 @@ function Page() {
           tone="blue-3"
           evolucaoPct={k.evolucaoDespesas}
           invertEvolucao
+          href="/financeiro/despesas"
         />
         <FinanceKpiCard
           label="Resultado"

@@ -39,6 +39,7 @@ import {
   BookOpen,
   Handshake,
   Library,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -163,6 +164,11 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
     icon: ArrowDownRight,
   },
   {
+    to: "/financeiro/despesas",
+    label: "Despesas",
+    icon: Receipt,
+  },
+  {
     to: "/financeiro/centro-recebimentos",
     label: "Centro de recebimentos",
     icon: Tags,
@@ -201,6 +207,11 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     to: "/financeiro/contas-a-pagar",
     label: "Contas a pagar",
     icon: ArrowDownRight,
+  },
+  {
+    to: "/financeiro/despesas",
+    label: "Despesas",
+    icon: Receipt,
   },
   {
     to: "/financeiro/fluxo-caixa",

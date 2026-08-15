@@ -286,10 +286,12 @@ export function FinanceiroTitulosPanel({
   tipo,
   title,
   description,
+  readOnly = false,
 }: {
   tipo: "receber" | "pagar";
   title: string;
   description: string;
+  readOnly?: boolean;
 }) {
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
@@ -677,7 +679,7 @@ export function FinanceiroTitulosPanel({
             <ListOrdered className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {!opts?.hideBaixar &&
+        {!readOnly && !opts?.hideBaixar &&
         t.status !== "pago" &&
         t.status !== "cancelado" ? (
           <Button
@@ -690,16 +692,18 @@ export function FinanceiroTitulosPanel({
             <Banknote className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          title={t.grupoParcelasId ? "Editar parcela" : "Editar"}
-          onClick={() => openEdit(t)}
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
-        {!opts?.hideGrupoEdit && t.grupoParcelasId ? (
+        {!readOnly ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title={t.grupoParcelasId ? "Editar parcela" : "Editar"}
+            onClick={() => openEdit(t)}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
+        {!readOnly && !opts?.hideGrupoEdit && t.grupoParcelasId ? (
           <Button
             variant="ghost"
             size="icon"
@@ -710,15 +714,17 @@ export function FinanceiroTitulosPanel({
             <Layers className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive"
-          title="Excluir"
-          onClick={() => setDeleteTarget(t)}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
+        {!readOnly ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive"
+            title="Excluir"
+            onClick={() => setDeleteTarget(t)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -1274,10 +1280,12 @@ export function FinanceiroTitulosPanel({
         title={title}
         description={description}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            Novo título
-          </Button>
+          readOnly ? undefined : (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo título
+            </Button>
+          )
         }
       />
 
@@ -1507,31 +1515,35 @@ export function FinanceiroTitulosPanel({
                           >
                             <ListOrdered className="w-3.5 h-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Editar todas as parcelas"
-                            onClick={() => void openEditGrupo(row.titulos)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive"
-                            title="Excluir todas as parcelas"
-                            onClick={() =>
-                              setDeleteGrupoTarget({
-                                grupoId: row.grupoId,
-                                descricao: summary.descricao,
-                                n: summary.n,
-                                pagas: summary.pagas,
-                              })
-                            }
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          {!readOnly ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Editar todas as parcelas"
+                              onClick={() => void openEditGrupo(row.titulos)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                          ) : null}
+                          {!readOnly ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              title="Excluir todas as parcelas"
+                              onClick={() =>
+                                setDeleteGrupoTarget({
+                                  grupoId: row.grupoId,
+                                  descricao: summary.descricao,
+                                  n: summary.n,
+                                  pagas: summary.pagas,
+                                })
+                              }
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1565,7 +1577,8 @@ export function FinanceiroTitulosPanel({
                             </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-1 items-center">
-                                {t.status !== "pago" &&
+                                {!readOnly &&
+                                t.status !== "pago" &&
                                 t.status !== "cancelado" ? (
                                   <Button
                                     size="sm"
@@ -2699,7 +2712,7 @@ export function FinanceiroTitulosPanel({
         }
         footer={
           <FormDialogActions>
-            {grupoTitulos.length > 0 ? (
+            {!readOnly && grupoTitulos.length > 0 ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -2709,7 +2722,7 @@ export function FinanceiroTitulosPanel({
                 Editar todas
               </Button>
             ) : null}
-            {grupoTitulos[0]?.grupoParcelasId ? (
+            {!readOnly && grupoTitulos[0]?.grupoParcelasId ? (
               <Button
                 type="button"
                 variant="destructive"
@@ -2780,17 +2793,19 @@ export function FinanceiroTitulosPanel({
                               {statusLabel(t.status)}
                             </p>
                           </div>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setBaixarTarget(t);
-                              setBaixarData(todayIso());
-                              setBaixarForma(FORMAS[0]);
-                            }}
-                          >
-                            <Banknote className="w-3.5 h-3.5 mr-1" />
-                            Pagar
-                          </Button>
+                          {!readOnly ? (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setBaixarTarget(t);
+                                setBaixarData(todayIso());
+                                setBaixarForma(FORMAS[0]);
+                              }}
+                            >
+                              <Banknote className="w-3.5 h-3.5 mr-1" />
+                              Pagar
+                            </Button>
+                          ) : null}
                         </div>
                       ))}
                     </div>
