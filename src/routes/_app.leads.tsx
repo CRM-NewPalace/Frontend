@@ -128,7 +128,7 @@ type LeadsSearch = {
   parados?: boolean;
 };
 
-const DIAS_PARADO = 7;
+const DIAS_PARADO = 3;
 
 function isLeadParado(lead: Lead, dias = DIAS_PARADO): boolean {
   const raw = lead.updatedAtIso || lead.updatedAt;
