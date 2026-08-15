@@ -2181,10 +2181,10 @@ function LeadsPage() {
       )}
 
       <Card className="overflow-hidden">
-        <Table className="min-w-[78rem] table-fixed [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
+        <Table className="w-full table-fixed text-[11px] leading-tight [&_th]:h-8 [&_th]:px-1.5 [&_th]:py-1 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1.5 [&_td]:text-left [&_td]:align-middle">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10 pr-1">
+              <TableHead className="w-8 pr-0">
                 <Checkbox
                   checked={
                     allSelected ? true : someSelected ? "indeterminate" : false
@@ -2194,19 +2194,19 @@ function LeadsPage() {
                   disabled={filteredLeads.length === 0 || bulkDeleting}
                 />
               </TableHead>
-              <TableHead className="w-[18%]">Lead</TableHead>
-              <TableHead className="w-[9.25rem]">Origem</TableHead>
-              <TableHead className="w-[12%]">Tipo de renda</TableHead>
-              <TableHead className="w-[9.25rem]">Etapa</TableHead>
-              {!isCorretor && <TableHead className="w-[11%]">Equipe</TableHead>}
-              {!isCorretor && (
-                <TableHead className="w-[12%]">Corretor</TableHead>
-              )}
-              <TableHead className="w-[9%]">Renda</TableHead>
-              <TableHead className="w-[10%]">Estado civil</TableHead>
-              <TableHead className="w-[9.25rem]">Prioridade</TableHead>
-              <TableHead className="w-[9%]">Atualizado</TableHead>
-              <TableHead className="w-12 text-right">Ações</TableHead>
+              <TableHead>Lead</TableHead>
+              <TableHead className="w-[7%]">Origem</TableHead>
+              <TableHead className="w-[8%]">Tipo de renda</TableHead>
+              <TableHead className="w-[8%]">Etapa</TableHead>
+              {!isCorretor && <TableHead className="w-[8%]">Equipe</TableHead>}
+              {!isCorretor && <TableHead className="w-[9%]">Corretor</TableHead>}
+              <TableHead className="w-[7%]">Renda</TableHead>
+              <TableHead className="w-[8%]">Estado civil</TableHead>
+              <TableHead className="w-[7%]">Prioridade</TableHead>
+              <TableHead className="w-[6%]">Atualizado</TableHead>
+              <TableHead className="sticky right-0 z-20 w-10 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)]">
+                Ações
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -2244,10 +2244,10 @@ function LeadsPage() {
                 return (
                   <TableRow
                     key={l.id}
-                    className="hover:bg-muted/40"
+                    className="group hover:bg-muted/40"
                     data-state={selectedIds.has(l.id) ? "selected" : undefined}
                   >
-                    <TableCell className="pr-1">
+                    <TableCell className="pr-0">
                       <Checkbox
                         checked={selectedIds.has(l.id)}
                         onCheckedChange={(v) =>
@@ -2258,9 +2258,9 @@ function LeadsPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="avatar-fallback-brand text-xs">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="avatar-fallback-brand text-[9px]">
                             {l.nome
                               .split(" ")
                               .map((n) => n[0])
@@ -2269,20 +2269,23 @@ function LeadsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <div className="table-person-name truncate text-sm">
+                          <div className="table-person-name truncate">
                             {l.nome}
                           </div>
-                          <div className="truncate text-xs text-muted-foreground">
+                          <div className="truncate text-[10px] text-muted-foreground">
                             {l.telefone}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
+                    <TableCell className="truncate">
                       {l.origem ? (
                         <Badge
-                          className={catalogColorBadgeClass(
-                            colorByLabel("origem", l.origem),
+                          className={cn(
+                            catalogColorBadgeClass(
+                              colorByLabel("origem", l.origem),
+                            ),
+                            "w-auto max-w-full",
                           )}
                           title={l.origem}
                         >
@@ -2292,15 +2295,16 @@ function LeadsPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="truncate">
                       {l.tipoRenda || (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
+                    <TableCell className="truncate">
                       <Badge
                         className={cn(
                           catalogColorBadgeClass(stage.color),
+                          "w-auto max-w-full",
                           isNovoStage && "badge-novo-glow",
                         )}
                         style={
@@ -2314,7 +2318,7 @@ function LeadsPage() {
                       </Badge>
                     </TableCell>
                     {!isCorretor && (
-                      <TableCell className="truncate text-sm">
+                      <TableCell className="truncate">
                         {equipe === "—" ? (
                           <span className="text-muted-foreground">—</span>
                         ) : (
@@ -2323,40 +2327,45 @@ function LeadsPage() {
                       </TableCell>
                     )}
                     {!isCorretor && (
-                      <TableCell className="table-person-name truncate text-sm">
+                      <TableCell className="table-person-name truncate">
                         {l.corretor || (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
                     )}
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="truncate font-medium tabular-nums">
                       {l.renda != null ? (
                         brl(l.renda)
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="truncate text-sm">
+                    <TableCell className="truncate">
                       {l.estadoCivil || (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
-                      <Badge className={prioridadeBadgeClass(l.prioridade)}>
+                    <TableCell className="truncate">
+                      <Badge
+                        className={cn(
+                          prioridadeBadgeClass(l.prioridade),
+                          "w-auto max-w-full",
+                        )}
+                      >
                         {l.prioridade}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="truncate text-muted-foreground">
                       {l.updatedAt}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)] group-hover:bg-muted/40 group-data-[state=selected]:bg-muted">
                       <div className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7"
+                              className="h-6 w-6"
                               title="Mais opções"
                             >
                               <MoreHorizontal className="w-3.5 h-3.5" />
