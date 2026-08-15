@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,13 +16,17 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { formatCpfCnpj, cn } from "@/lib/utils";
 import {
   Building2,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
+  Handshake,
   Loader2,
   UserRound,
+  UsersRound,
   Wallet,
 } from "lucide-react";
 
@@ -59,6 +63,9 @@ function initials(name: string) {
     .join("");
 }
 
+const thClass = "h-11 px-4 text-[11px] font-semibold uppercase tracking-wider";
+const tdClass = "px-4 py-3 align-middle";
+
 type CorretorGrupo = {
   key: string;
   corretor: string;
@@ -92,6 +99,39 @@ function groupByCorretor(items: VendaResumoItem[]): CorretorGrupo[] {
   );
 }
 
+function CorretorCell({
+  name,
+  extra,
+  chevron,
+}: {
+  name: string;
+  extra?: ReactNode;
+  chevron?: "open" | "closed";
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {chevron ? (
+        chevron === "open" ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )
+      ) : null}
+      <Avatar className="h-9 w-9 border border-border/70 shadow-sm">
+        <AvatarFallback className="bg-[#079ED4]/12 text-[11px] font-semibold text-[#04648A]">
+          {initials(name)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0">
+        <div className="truncate font-medium leading-tight">{name}</div>
+        {extra ? (
+          <div className="mt-0.5 text-[11px] text-muted-foreground">{extra}</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function ConstrutoraVendasTable({
   items,
   detailed = false,
@@ -119,56 +159,92 @@ export function ConstrutoraVendasTable({
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead>Corretor</TableHead>
+          <TableHead className={thClass}>Corretor</TableHead>
           {detailed ? (
             <>
-              <TableHead>CRECI</TableHead>
-              <TableHead>Gerente</TableHead>
-              <TableHead>Empreendimento</TableHead>
+              <TableHead className={thClass}>CRECI</TableHead>
+              <TableHead className={thClass}>Gerente</TableHead>
+              <TableHead className={thClass}>Empreendimento</TableHead>
             </>
           ) : null}
-          <TableHead>Cliente</TableHead>
-          {detailed ? <TableHead>CPF</TableHead> : null}
-          <TableHead className="text-right">VGV</TableHead>
-          {detailed ? <TableHead>Data</TableHead> : null}
+          <TableHead className={thClass}>Cliente</TableHead>
+          {detailed ? <TableHead className={thClass}>CPF</TableHead> : null}
+          {!detailed ? <TableHead className={thClass}>Data</TableHead> : null}
+          <TableHead className={cn(thClass, "text-right")}>VGV</TableHead>
+          {detailed ? <TableHead className={thClass}>Data</TableHead> : null}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {grupos.map((grupo) => {
+        {grupos.map((grupo, index) => {
+          const zebra = index % 2 === 1 ? "bg-muted/25" : "bg-background";
           if (grupo.vendas.length === 1) {
             const venda = grupo.vendas[0];
             return (
-              <TableRow key={grupo.key}>
-                <TableCell>
-                  <div className="flex items-center gap-2.5">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
-                        {initials(grupo.corretor)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{grupo.corretor}</span>
-                  </div>
+              <TableRow key={grupo.key} className={zebra}>
+                <TableCell className={tdClass}>
+                  <CorretorCell
+                    name={grupo.corretor}
+                    extra={
+                      grupo.creci
+                        ? `CRECI ${grupo.creci}`
+                        : grupo.vendas.length === 1
+                          ? "1 venda"
+                          : undefined
+                    }
+                  />
                 </TableCell>
                 {detailed ? (
                   <>
-                    <TableCell className="tabular-nums text-muted-foreground">
+                    <TableCell
+                      className={cn(tdClass, "tabular-nums text-muted-foreground")}
+                    >
                       {grupo.creci || "—"}
                     </TableCell>
-                    <TableCell>{grupo.gerente || "—"}</TableCell>
-                    <TableCell>{venda.empreendimento || "—"}</TableCell>
+                    <TableCell className={tdClass}>
+                      {grupo.gerente || "—"}
+                    </TableCell>
+                    <TableCell className={tdClass}>
+                      {venda.empreendimento || "—"}
+                    </TableCell>
                   </>
                 ) : null}
-                <TableCell>{venda.cliente}</TableCell>
+                <TableCell className={tdClass}>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium leading-tight">
+                      {venda.cliente}
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {detailed
+                        ? venda.clienteCpf
+                          ? formatCpfCnpj(venda.clienteCpf)
+                          : "CPF não informado"
+                        : venda.empreendimento || "—"}
+                    </div>
+                  </div>
+                </TableCell>
                 {detailed ? (
-                  <TableCell className="tabular-nums">
+                  <TableCell className={cn(tdClass, "tabular-nums")}>
                     {venda.clienteCpf ? formatCpfCnpj(venda.clienteCpf) : "—"}
                   </TableCell>
-                ) : null}
-                <TableCell className="text-right tabular-nums font-semibold">
+                ) : (
+                  <TableCell
+                    className={cn(tdClass, "tabular-nums text-muted-foreground")}
+                  >
+                    {dateBr(venda.dataVenda)}
+                  </TableCell>
+                )}
+                <TableCell
+                  className={cn(
+                    tdClass,
+                    "text-right tabular-nums font-semibold text-[#04648A]",
+                  )}
+                >
                   {money(venda.vgv)}
                 </TableCell>
                 {detailed ? (
-                  <TableCell className="tabular-nums text-muted-foreground">
+                  <TableCell
+                    className={cn(tdClass, "tabular-nums text-muted-foreground")}
+                  >
                     {dateBr(venda.dataVenda)}
                   </TableCell>
                 ) : null}
@@ -180,84 +256,116 @@ export function ConstrutoraVendasTable({
           return (
             <Fragment key={grupo.key}>
               <TableRow
-                className="cursor-pointer bg-muted/30 hover:bg-muted/60"
+                className={cn(
+                  "cursor-pointer",
+                  zebra,
+                  expanded ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/60",
+                )}
                 onClick={() => toggleGrupo(grupo.key)}
               >
-                <TableCell>
-                  <div className="flex items-center gap-2.5">
-                    {expanded ? (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
-                        {initials(grupo.corretor)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <div className="font-medium">{grupo.corretor}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {grupo.vendas.length} vendas
-                      </div>
-                    </div>
-                  </div>
+                <TableCell className={tdClass}>
+                  <CorretorCell
+                    name={grupo.corretor}
+                    chevron={expanded ? "open" : "closed"}
+                    extra={`${grupo.vendas.length} vendas${grupo.creci ? ` · CRECI ${grupo.creci}` : ""}`}
+                  />
                 </TableCell>
                 {detailed ? (
                   <>
-                    <TableCell className="tabular-nums text-muted-foreground">
+                    <TableCell
+                      className={cn(tdClass, "tabular-nums text-muted-foreground")}
+                    >
                       {grupo.creci || "—"}
                     </TableCell>
-                    <TableCell>{grupo.gerente || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">—</TableCell>
+                    <TableCell className={tdClass}>
+                      {grupo.gerente || "—"}
+                    </TableCell>
+                    <TableCell className={cn(tdClass, "text-muted-foreground")}>
+                      —
+                    </TableCell>
                   </>
                 ) : null}
-                <TableCell>
+                <TableCell className={tdClass}>
                   <Badge variant="secondary" className="font-normal">
                     {grupo.vendas.length} vendas
                   </Badge>
                 </TableCell>
                 {detailed ? (
-                  <TableCell className="text-muted-foreground">—</TableCell>
-                ) : null}
-                <TableCell className="text-right tabular-nums font-semibold">
+                  <TableCell className={cn(tdClass, "text-muted-foreground")}>
+                    —
+                  </TableCell>
+                ) : (
+                  <TableCell className={cn(tdClass, "text-muted-foreground")}>
+                    —
+                  </TableCell>
+                )}
+                <TableCell
+                  className={cn(
+                    tdClass,
+                    "text-right tabular-nums font-semibold text-[#04648A]",
+                  )}
+                >
                   {money(grupo.vgv)}
                 </TableCell>
                 {detailed ? (
-                  <TableCell className="text-muted-foreground">—</TableCell>
+                  <TableCell className={cn(tdClass, "text-muted-foreground")}>
+                    —
+                  </TableCell>
                 ) : null}
               </TableRow>
               {expanded
                 ? grupo.vendas.map((venda) => (
-                    <TableRow key={venda.id} className="bg-muted/10">
+                    <TableRow key={venda.id} className="bg-muted/15">
                       <TableCell
-                        className={cn(
-                          "text-sm text-muted-foreground",
-                          detailed ? "pl-14" : "pl-12",
-                        )}
+                        className={cn(tdClass, "pl-16 text-sm text-muted-foreground")}
                       >
-                        {detailed ? "Venda" : venda.empreendimento || dateBr(venda.dataVenda)}
+                        {dateBr(venda.dataVenda)}
                       </TableCell>
                       {detailed ? (
                         <>
-                          <TableCell />
-                          <TableCell />
-                          <TableCell>{venda.empreendimento || "—"}</TableCell>
+                          <TableCell className={tdClass} />
+                          <TableCell className={tdClass} />
+                          <TableCell className={tdClass}>
+                            {venda.empreendimento || "—"}
+                          </TableCell>
                         </>
                       ) : null}
-                      <TableCell>{venda.cliente}</TableCell>
+                      <TableCell className={tdClass}>
+                        <div className="truncate font-medium">{venda.cliente}</div>
+                        {!detailed && venda.empreendimento ? (
+                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            {venda.empreendimento}
+                          </div>
+                        ) : null}
+                      </TableCell>
                       {detailed ? (
-                        <TableCell className="tabular-nums">
+                        <TableCell className={cn(tdClass, "tabular-nums")}>
                           {venda.clienteCpf
                             ? formatCpfCnpj(venda.clienteCpf)
                             : "—"}
                         </TableCell>
-                      ) : null}
-                      <TableCell className="text-right tabular-nums">
+                      ) : (
+                        <TableCell
+                          className={cn(
+                            tdClass,
+                            "tabular-nums text-muted-foreground",
+                          )}
+                        >
+                          {dateBr(venda.dataVenda)}
+                        </TableCell>
+                      )}
+                      <TableCell
+                        className={cn(tdClass, "text-right tabular-nums font-medium")}
+                      >
                         {money(venda.vgv)}
                       </TableCell>
                       {detailed ? (
-                        <TableCell className="tabular-nums text-muted-foreground">
+                        <TableCell
+                          className={cn(
+                            tdClass,
+                            "tabular-nums text-muted-foreground",
+                          )}
+                        >
                           {dateBr(venda.dataVenda)}
                         </TableCell>
                       ) : null}
@@ -267,6 +375,73 @@ export function ConstrutoraVendasTable({
             </Fragment>
           );
         })}
+      </TableBody>
+    </Table>
+  );
+}
+
+function CorretorVendasTable({ items }: { items: VendaResumoItem[] }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className={thClass}>Construtora</TableHead>
+          <TableHead className={thClass}>Empreendimento</TableHead>
+          <TableHead className={thClass}>Cliente</TableHead>
+          <TableHead className={cn(thClass, "text-right")}>VGV</TableHead>
+          <TableHead className={cn(thClass, "text-right")}>Data</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((row, index) => (
+          <TableRow
+            key={row.id}
+            className={index % 2 === 1 ? "bg-muted/25" : "bg-background"}
+          >
+            <TableCell className={tdClass}>
+              {row.construtora ? (
+                <Badge
+                  variant="secondary"
+                  className="max-w-full truncate font-medium"
+                  title={row.construtora}
+                >
+                  {row.construtora}
+                </Badge>
+              ) : (
+                "—"
+              )}
+            </TableCell>
+            <TableCell className={cn(tdClass, "font-medium")}>
+              {row.empreendimento || "—"}
+            </TableCell>
+            <TableCell className={tdClass}>
+              <div className="min-w-0">
+                <div className="truncate leading-tight">{row.cliente}</div>
+                <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                  {row.clienteCpf
+                    ? formatCpfCnpj(row.clienteCpf)
+                    : "CPF não informado"}
+                </div>
+              </div>
+            </TableCell>
+            <TableCell
+              className={cn(
+                tdClass,
+                "text-right tabular-nums font-semibold text-[#04648A]",
+              )}
+            >
+              {money(row.vgv)}
+            </TableCell>
+            <TableCell
+              className={cn(
+                tdClass,
+                "text-right tabular-nums text-muted-foreground",
+              )}
+            >
+              {dateBr(row.dataVenda)}
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );
@@ -294,105 +469,100 @@ export function VendasResumoDialog({
     () => groupByCorretor(items).length,
     [items],
   );
+  const construtorasCount = useMemo(
+    () => new Set(items.map((item) => item.construtora).filter(Boolean)).size,
+    [items],
+  );
 
   const defaultDescription = loading
     ? "Carregando vendas…"
     : mode === "construtora"
-      ? `${corretoresCount} corretor${corretoresCount === 1 ? "" : "es"} · ${items.length} venda${items.length === 1 ? "" : "s"} · ${money(totalVgv)}`
-      : `${items.length} venda${items.length === 1 ? "" : "s"} · ${money(totalVgv)}`;
+      ? `${corretoresCount} corretor${corretoresCount === 1 ? "" : "es"} · ${items.length} venda${items.length === 1 ? "" : "s"}`
+      : `${items.length} venda${items.length === 1 ? "" : "s"}`;
+
+  const Icon = mode === "construtora" ? Building2 : UserRound;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="border-b bg-linear-to-br from-primary/10 via-background to-background px-6 py-5 pr-12">
-          <DialogTitle className="text-lg">{title}</DialogTitle>
-          <DialogDescription>
-            {description ?? defaultDescription}
-          </DialogDescription>
+      <DialogContent
+        className={cn(
+          "max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-4xl sm:rounded-2xl",
+          "[&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:bg-background [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:shadow-sm",
+        )}
+      >
+        <DialogHeader className="space-y-0 border-b bg-linear-to-br from-[#079ED4]/12 via-background to-background px-6 pb-5 pt-6 pr-14 text-left">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#079ED4] text-white shadow-sm">
+              <Icon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 pt-0.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#057AA8]">
+                {mode === "construtora"
+                  ? "Vendas da construtora"
+                  : "Vendas do corretor"}
+              </p>
+              <DialogTitle className="mt-1 text-xl leading-tight">
+                {title.replace(/^Vendas de\s+/i, "")}
+              </DialogTitle>
+              <DialogDescription className="mt-1">
+                {description ?? defaultDescription}
+              </DialogDescription>
+            </div>
+          </div>
           {!loading && items.length > 0 ? (
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border bg-background/80 px-3 py-2">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Wallet className="h-3.5 w-3.5" />
-                  Vendas
-                </div>
-                <div className="mt-0.5 text-base font-semibold tabular-nums">
-                  {items.length}
-                </div>
-              </div>
-              <div className="rounded-xl border bg-background/80 px-3 py-2">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Wallet className="h-3.5 w-3.5" />
-                  VGV
-                </div>
-                <div className="mt-0.5 text-base font-semibold tabular-nums">
-                  {money(totalVgv)}
-                </div>
-              </div>
-              <div className="col-span-2 rounded-xl border bg-background/80 px-3 py-2 sm:col-span-1">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  {mode === "construtora" ? (
-                    <UserRound className="h-3.5 w-3.5" />
-                  ) : (
-                    <Building2 className="h-3.5 w-3.5" />
-                  )}
-                  {mode === "construtora" ? "Corretores" : "Construtoras"}
-                </div>
-                <div className="mt-0.5 text-base font-semibold tabular-nums">
-                  {mode === "construtora"
-                    ? corretoresCount
-                    : new Set(items.map((item) => item.construtora).filter(Boolean))
-                        .size}
-                </div>
-              </div>
+            <div className="mt-5 grid grid-cols-3 gap-2.5">
+              <FinanceKpiCard
+                label="Vendas"
+                value={items.length}
+                icon={Handshake}
+                tone="blue-2"
+                format="number"
+                compact
+                showBar={false}
+              />
+              <FinanceKpiCard
+                label="VGV"
+                value={totalVgv}
+                icon={CircleDollarSign}
+                tone="blue-4"
+                compact
+                showBar={false}
+              />
+              <FinanceKpiCard
+                label={mode === "construtora" ? "Corretores" : "Construtoras"}
+                value={
+                  mode === "construtora" ? corretoresCount : construtorasCount
+                }
+                icon={mode === "construtora" ? UsersRound : Building2}
+                tone="blue-6"
+                format="number"
+                compact
+                showBar={false}
+              />
             </div>
           ) : null}
         </DialogHeader>
-        <div className="max-h-[58vh] overflow-auto px-1 pb-2">
+        <div className="bg-muted/30 px-5 py-4">
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <div className="flex items-center justify-center rounded-xl border bg-card py-16 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Carregando vendas…
             </div>
           ) : items.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nenhuma venda encontrada.
-            </p>
-          ) : mode === "construtora" ? (
-            <ConstrutoraVendasTable items={items} />
+            <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-16 text-muted-foreground">
+              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Wallet className="h-5 w-5 opacity-60" />
+              </span>
+              <p className="text-sm">Nenhuma venda encontrada.</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Construtora</TableHead>
-                  <TableHead>Empreendimento</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>CPF</TableHead>
-                  <TableHead className="text-right">VGV</TableHead>
-                  <TableHead>Data</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">
-                      {row.construtora || "—"}
-                    </TableCell>
-                    <TableCell>{row.empreendimento || "—"}</TableCell>
-                    <TableCell>{row.cliente}</TableCell>
-                    <TableCell className="tabular-nums">
-                      {row.clienteCpf ? formatCpfCnpj(row.clienteCpf) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums font-semibold">
-                      {money(row.vgv)}
-                    </TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">
-                      {dateBr(row.dataVenda)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="max-h-[52vh] overflow-auto rounded-xl border bg-card shadow-sm">
+              {mode === "construtora" ? (
+                <ConstrutoraVendasTable items={items} />
+              ) : (
+                <CorretorVendasTable items={items} />
+              )}
+            </div>
           )}
         </div>
       </DialogContent>

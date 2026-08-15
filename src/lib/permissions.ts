@@ -5,7 +5,7 @@ import { ROUTE_MODULE_KEY, type TenantPlano } from "@/lib/tenant-modules";
  * Rotas por perfil:
  * - admin: operação + financeiro; carteira própria (/clientes) e vendas
  * - gerente: operação da equipe; carteira própria (/clientes) e vendas
- * - corretor: essencial (próprios leads/agenda/clientes) + consulta de books/construtoras
+ * - corretor: essencial (próprios leads/agenda/clientes) + cadastro de construtoras (sem vendas)
  * - analista: documentação, resultado e catálogos (origens/tags/motivos)
  * - treinee: mesmo acesso operacional do corretor + cadastro de construtoras/empreendimentos/origens/tags/CCAs; documentação só vinculada
  */

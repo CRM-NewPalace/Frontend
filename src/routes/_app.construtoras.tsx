@@ -202,7 +202,8 @@ function ConstrutorasPage() {
     isAdmin ||
     user?.role === "gerente" ||
     user?.role === "analista" ||
-    user?.role === "treinee";
+    user?.role === "treinee" ||
+    user?.role === "corretor";
   const canCreate = canManage;
   const canSeeViabilizadorContato = user?.role !== "corretor";
   const { catalog } = useCatalog();
@@ -543,7 +544,9 @@ function ConstrutorasPage() {
       contato: form.contato.trim() || null,
       endereco: form.endereco.trim() || null,
       viabilizadorNome: form.viabilizadorNome.trim() || null,
-      viabilizadorContato: form.viabilizadorContato.trim() || null,
+      ...(canSeeViabilizadorContato
+        ? { viabilizadorContato: form.viabilizadorContato.trim() || null }
+        : {}),
       cca: form.cca.trim() || null,
       driveFolderUrl: driveFolderUrl || null,
       localidadeIds: selectedLocalidades,
@@ -558,7 +561,12 @@ function ConstrutorasPage() {
           contato: payload.contato ?? undefined,
           endereco: payload.endereco ?? undefined,
           viabilizadorNome: payload.viabilizadorNome ?? undefined,
-          viabilizadorContato: payload.viabilizadorContato ?? undefined,
+          ...(canSeeViabilizadorContato
+            ? {
+                viabilizadorContato:
+                  form.viabilizadorContato.trim() || undefined,
+              }
+            : {}),
           cca: payload.cca,
           driveFolderUrl: payload.driveFolderUrl,
           localidadeIds: payload.localidadeIds,
@@ -914,10 +922,8 @@ function ConstrutorasPage() {
         title="Construtoras"
         description={
           canViewVendas
-            ? canCreate
-              ? "Cadastro, books e vendas por construtora."
-              : "Books, pastas e vendas por construtora."
-            : "Books e pastas das construtoras."
+            ? "Cadastro, books e vendas por construtora."
+            : "Cadastro, books e visibilidade por construtora."
         }
         actions={
           canCreate ? (

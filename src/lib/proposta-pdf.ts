@@ -1507,24 +1507,27 @@ async function buildPropostaPdfClienteResumido(
   }
 
   const total = propostaComposicaoTotal(p);
+  const desconto = p.desconto ?? 0;
   const valorNegociado = propostaValorLiquido(p);
   const summaryW = 230;
   const summaryX = pageW - margin - summaryW;
   y += 14;
-  [
+  const summaryRows: Array<[string, string]> = [
     ["TOTAL DA COMPOSIÇÃO", brl(total)],
+    ["DESCONTO DO IMÓVEL", desconto > 0 ? `- ${brl(desconto)}` : brl(0)],
     ["VALOR NEGOCIADO", brl(valorNegociado)],
-  ].forEach(([label, value]) => {
+  ];
+  summaryRows.forEach(([label, value]) => {
     doc.setDrawColor(...C.gold);
     doc.rect(summaryX, y, summaryW, 24, "S");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(...C.navy);
-    doc.text(label, summaryX + 7, y + 10);
+    doc.text(label, summaryX + 8, y + 15);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...C.navy);
-    doc.text(value, summaryX + summaryW - 7, y + 18, { align: "right" });
+    doc.text(value, summaryX + summaryW - 8, y + 15, { align: "right" });
     y += 24;
   });
 
