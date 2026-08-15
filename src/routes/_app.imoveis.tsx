@@ -14,13 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
+} from "@/components/form-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +29,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { TableSortSelect } from "@/components/table-sort-select";
@@ -44,17 +44,29 @@ import {
   deleteEmpreendimento,
   deleteEmpreendimentoImagem,
   EMPREENDIMENTO_MAX_IMAGES,
+  EMPREENDIMENTO_STATUS,
+  EMPREENDIMENTO_TIPOS,
   empreendimentoImagens,
+  empreendimentoLocalidadeNome,
+  empreendimentoStatusLabel,
+  empreendimentoTipoLabel,
   fetchEmpreendimentos,
   updateEmpreendimento,
   uploadEmpreendimentoImagem,
   type Empreendimento,
+  type EmpreendimentoStatus,
+  type EmpreendimentoTipo,
 } from "@/lib/empreendimentos-api";
 import {
   createConstrutora,
   fetchConstrutoras,
   type Construtora,
 } from "@/lib/construtoras-api";
+import {
+  createLocalidade,
+  fetchLocalidades,
+  type Localidade,
+} from "@/lib/localidades-api";
 import { CorPicker } from "@/components/cor-picker";
 import {
   assertImageFile,
@@ -69,6 +81,13 @@ import {
   BedDouble,
   Ruler,
   Trash2,
+  MapPin,
+  Flag,
+  Layers,
+  CircleDot,
+  CalendarClock,
+  StickyNote,
+  Palette,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -86,6 +105,94 @@ const IMOVEIS_SOFT_BTN =
   "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
 const IMOVEIS_SOFT_BTN_ACTIVE =
   "border-2 border-[#079ED4]/40 bg-[#079ED4]/20 text-[#053647] hover:bg-[#079ED4]/25 hover:text-[#053647]";
+
+const EMPREENDIMENTO_FLAGS = [
+  { key: "litoral", label: "Litoral" },
+  { key: "aceitaFgts", label: "FGTS" },
+  { key: "aceitaMcmv", label: "MCMV" },
+  { key: "aceitaCaixa", label: "Caixa" },
+] as const;
+
+type EmpreendimentoForm = {
+  nome: string;
+  construtoraId: string;
+  novaConstrutora: boolean;
+  construtoraNome: string;
+  localidadeId: string;
+  novaLocalidade: boolean;
+  localidadeNome: string;
+  endereco: string;
+  cor: string;
+  tipo: "" | EmpreendimentoTipo;
+  status: "" | EmpreendimentoStatus;
+  litoral: boolean;
+  aceitaFgts: boolean;
+  aceitaMcmv: boolean;
+  aceitaCaixa: boolean;
+  previsaoEntrega: string;
+  areaM2: string;
+  observacao: string;
+};
+
+function emptyEmpreendimentoForm(): EmpreendimentoForm {
+  return {
+    nome: "",
+    construtoraId: "",
+    novaConstrutora: false,
+    construtoraNome: "",
+    localidadeId: "",
+    novaLocalidade: false,
+    localidadeNome: "",
+    endereco: "",
+    cor: "",
+    tipo: "",
+    status: "",
+    litoral: false,
+    aceitaFgts: false,
+    aceitaMcmv: false,
+    aceitaCaixa: false,
+    previsaoEntrega: "",
+    areaM2: "",
+    observacao: "",
+  };
+}
+
+function formFromEmpreendimento(item: Empreendimento): EmpreendimentoForm {
+  return {
+    nome: item.nome,
+    construtoraId: item.construtoraId ?? "",
+    novaConstrutora: false,
+    construtoraNome: "",
+    localidadeId: item.localidadeId ?? "",
+    novaLocalidade: false,
+    localidadeNome: "",
+    endereco: item.endereco ?? "",
+    cor: item.cor ?? "",
+    tipo: item.tipo ?? "",
+    status: item.status ?? "",
+    litoral: item.litoral ?? false,
+    aceitaFgts: item.aceitaFgts ?? false,
+    aceitaMcmv: item.aceitaMcmv ?? false,
+    aceitaCaixa: item.aceitaCaixa ?? false,
+    previsaoEntrega: item.previsaoEntrega?.slice(0, 7) ?? "",
+    areaM2: item.areaM2 != null ? String(item.areaM2) : "",
+    observacao: item.observacao ?? "",
+  };
+}
+
+function parseAreaM2(value: string) {
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function formatPrevisao(iso: string | null | undefined) {
+  if (!iso) return "";
+  const [year, month] = iso.slice(0, 7).split("-");
+  if (!year || !month) return iso;
+  return `${month}/${year}`;
+}
 
 export function ImoveisPage({
   embedded = false,
@@ -110,15 +217,13 @@ export function ImoveisPage({
   const [quartos, setQuartos] = useState("");
   const [construtoraId, setConstrutoraId] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
+  const [catalogoLocalidades, setCatalogoLocalidades] = useState<Localidade[]>(
+    [],
+  );
   const [quickOpen, setQuickOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [quickNome, setQuickNome] = useState("");
-  const [quickConstrutoraId, setQuickConstrutoraId] = useState("");
-  const [quickNovaConstrutora, setQuickNovaConstrutora] = useState(false);
-  const [quickConstrutoraNome, setQuickConstrutoraNome] = useState("");
-  const [quickCidade, setQuickCidade] = useState("");
-  const [quickCor, setQuickCor] = useState("");
+  const [form, setForm] = useState<EmpreendimentoForm>(emptyEmpreendimentoForm);
   const [quickImages, setQuickImages] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
@@ -145,16 +250,45 @@ export function ImoveisPage({
     void loadItems();
   }, [loadItems]);
 
-  async function loadConstrutoras() {
+  function setField<K extends keyof EmpreendimentoForm>(
+    key: K,
+    value: EmpreendimentoForm[K],
+  ) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function loadCatalogos() {
     try {
-      setConstrutoras(await fetchConstrutoras());
+      const [listaConstrutoras, listaLocalidades] = await Promise.all([
+        fetchConstrutoras(),
+        fetchLocalidades(),
+      ]);
+      setConstrutoras(listaConstrutoras);
+      setCatalogoLocalidades(listaLocalidades);
     } catch (err) {
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Não foi possível carregar as construtoras.",
+          : "Não foi possível carregar construtoras e localidades.",
       );
     }
+  }
+
+  async function openQuickCreate() {
+    setEditingId(null);
+    setForm(emptyEmpreendimentoForm());
+    resetImageState();
+    setQuickOpen(true);
+    await loadCatalogos();
+  }
+
+  async function openEdit(item: Empreendimento) {
+    if (!canManage) return;
+    setEditingId(item.id);
+    setForm(formFromEmpreendimento(item));
+    resetImageState(empreendimentoImagens(item));
+    setQuickOpen(true);
+    await loadCatalogos();
   }
 
   function clearPendingImages() {
@@ -169,42 +303,15 @@ export function ImoveisPage({
     setImageBusy(false);
   }
 
-  async function openQuickCreate() {
-    setEditingId(null);
-    setQuickNome("");
-    setQuickConstrutoraId("");
-    setQuickNovaConstrutora(false);
-    setQuickConstrutoraNome("");
-    setQuickCidade("");
-    setQuickCor("");
-    resetImageState();
-    setQuickOpen(true);
-    await loadConstrutoras();
-  }
-
-  async function openEdit(item: Empreendimento) {
-    if (!canManage) return;
-    setEditingId(item.id);
-    setQuickNome(item.nome);
-    setQuickConstrutoraId(item.construtoraId ?? "");
-    setQuickNovaConstrutora(false);
-    setQuickConstrutoraNome("");
-    setQuickCidade(item.cidade ?? "");
-    setQuickCor(item.cor ?? "");
-    resetImageState(empreendimentoImagens(item));
-    setQuickOpen(true);
-    await loadConstrutoras();
-  }
-
   async function handleQuickSave() {
-    if (quickNome.trim().length < 2) {
+    if (form.nome.trim().length < 2) {
       toast.error("Informe o nome do empreendimento.");
       return;
     }
 
-    let construtoraId = quickConstrutoraId;
-    if (quickNovaConstrutora) {
-      if (quickConstrutoraNome.trim().length < 2) {
+    let construtoraId = form.construtoraId;
+    if (form.novaConstrutora) {
+      if (form.construtoraNome.trim().length < 2) {
         toast.error("Informe o nome da nova construtora.");
         return;
       }
@@ -213,11 +320,19 @@ export function ImoveisPage({
       return;
     }
 
+    let localidadeId = form.localidadeId || null;
+    if (form.novaLocalidade) {
+      if (form.localidadeNome.trim().length < 2) {
+        toast.error("Informe o nome da nova localidade.");
+        return;
+      }
+    }
+
     setQuickSaving(true);
     try {
-      if (quickNovaConstrutora) {
+      if (form.novaConstrutora) {
         const criada = await createConstrutora({
-          nome: quickConstrutoraNome.trim(),
+          nome: form.construtoraNome.trim(),
         });
         construtoraId = criada.id;
         setConstrutoras((prev) =>
@@ -227,20 +342,55 @@ export function ImoveisPage({
         );
       }
 
+      if (form.novaLocalidade) {
+        const criada = await createLocalidade(form.localidadeNome.trim());
+        localidadeId = criada.id;
+        setCatalogoLocalidades((prev) =>
+          [...prev, criada].sort((a, b) =>
+            a.nome.localeCompare(b.nome, "pt-BR"),
+          ),
+        );
+      }
+
+      const areaM2 = parseAreaM2(form.areaM2);
+      const payload = {
+        nome: form.nome.trim(),
+        construtoraId,
+        cor: form.cor.trim() || null,
+        localidadeId,
+        endereco: form.endereco.trim() || null,
+        tipo: form.tipo || null,
+        status: form.status || null,
+        previsaoEntrega: form.previsaoEntrega || null,
+        litoral: form.litoral,
+        aceitaFgts: form.aceitaFgts,
+        aceitaMcmv: form.aceitaMcmv,
+        aceitaCaixa: form.aceitaCaixa,
+        observacao: form.observacao.trim() || null,
+        areaM2,
+      };
+
       if (editingId) {
-        await updateEmpreendimento(editingId, {
-          nome: quickNome.trim(),
-          construtoraId,
-          cidade: quickCidade.trim() || null,
-          cor: quickCor.trim() || null,
-        });
+        await updateEmpreendimento(editingId, payload);
         toast.success("Empreendimento atualizado.");
       } else {
         const created = await createEmpreendimento({
-          nome: quickNome.trim(),
-          construtoraId,
-          cidade: quickCidade.trim() || undefined,
-          cor: quickCor.trim() || undefined,
+          nome: payload.nome,
+          construtoraId: payload.construtoraId,
+          ...(payload.cor ? { cor: payload.cor } : {}),
+          ...(payload.localidadeId ? { localidadeId: payload.localidadeId } : {}),
+          ...(payload.endereco ? { endereco: payload.endereco } : {}),
+          ...(payload.tipo ? { tipo: payload.tipo } : {}),
+          ...(payload.status ? { status: payload.status } : {}),
+          ...(payload.previsaoEntrega
+            ? { previsaoEntrega: payload.previsaoEntrega }
+            : {}),
+          litoral: payload.litoral,
+          aceitaFgts: payload.aceitaFgts,
+          aceitaMcmv: payload.aceitaMcmv,
+          aceitaCaixa: payload.aceitaCaixa,
+          ...(payload.observacao ? { observacao: payload.observacao } : {}),
+          ...(payload.areaM2 != null ? { areaM2: payload.areaM2 } : {}),
         });
         try {
           for (const file of pendingFiles) {
@@ -259,7 +409,7 @@ export function ImoveisPage({
           return;
         }
         toast.success(
-          quickNovaConstrutora
+          form.novaConstrutora
             ? "Construtora e empreendimento cadastrados."
             : "Empreendimento cadastrado.",
         );
@@ -386,10 +536,10 @@ export function ImoveisPage({
       [
         ...new Set(
           items
-            .map((item) => item.cidade)
-            .filter((cidade): cidade is string => Boolean(cidade)),
+            .map((item) => empreendimentoLocalidadeNome(item))
+            .filter((nome): nome is string => Boolean(nome)),
         ),
-      ].sort((a, b) => a.localeCompare(b, "pt-BR")) as string[],
+      ].sort((a, b) => a.localeCompare(b, "pt-BR")),
     [items],
   );
   const opcoesQuartos = useMemo(
@@ -431,20 +581,20 @@ export function ImoveisPage({
     return items.filter((item) => {
       const searchable = [
         item.nome,
-        item.cidade ?? "",
+        empreendimentoLocalidadeNome(item),
         item.endereco ?? "",
         item.construtora?.nome ?? "",
+        item.observacao ?? "",
       ]
         .join(" ")
         .toLocaleLowerCase("pt-BR");
-      const isLitoral = searchable.includes("praia");
 
       return (
         (!q || searchable.includes(q)) &&
-        (!localidade || item.cidade === localidade) &&
+        (!localidade || empreendimentoLocalidadeNome(item) === localidade) &&
         (!quartos || item.quartos === Number(quartos)) &&
         (!construtoraId || item.construtoraId === construtoraId) &&
-        (!somenteLitoral || isLitoral)
+        (!somenteLitoral || item.litoral)
       );
     });
   }, [items, search, localidade, quartos, construtoraId, somenteLitoral]);
@@ -664,11 +814,11 @@ export function ImoveisPage({
                   );
                 })()}
                 <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/60 to-transparent" />
-                {item.cidade && (
+                {empreendimentoLocalidadeNome(item) ? (
                   <Badge className="absolute bottom-3 right-3 border-white/20 bg-black/45 text-white hover:bg-black/55">
-                    {item.cidade}
+                    {empreendimentoLocalidadeNome(item)}
                   </Badge>
-                )}
+                ) : null}
               </div>
               <CardHeader className="pb-2 pt-4">
                 <div className="flex items-start justify-between gap-2">
@@ -714,7 +864,31 @@ export function ImoveisPage({
                     {item.endereco}
                   </p>
                 )}
+                <div className="flex flex-wrap gap-1.5">
+                  {item.tipo ? (
+                    <Badge variant="secondary">
+                      {empreendimentoTipoLabel(item.tipo)}
+                    </Badge>
+                  ) : null}
+                  {item.status ? (
+                    <Badge variant="secondary">
+                      {empreendimentoStatusLabel(item.status)}
+                    </Badge>
+                  ) : null}
+                  {item.litoral ? <Badge variant="outline">Litoral</Badge> : null}
+                  {item.aceitaFgts ? <Badge variant="outline">FGTS</Badge> : null}
+                  {item.aceitaMcmv ? <Badge variant="outline">MCMV</Badge> : null}
+                  {item.aceitaCaixa ? (
+                    <Badge variant="outline">Caixa</Badge>
+                  ) : null}
+                </div>
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                  {item.previsaoEntrega ? (
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarClock className="w-3.5 h-3.5" />
+                      {formatPrevisao(item.previsaoEntrega)}
+                    </span>
+                  ) : null}
                   {item.quartos != null && (
                     <span className="inline-flex items-center gap-1">
                       <BedDouble className="w-3.5 h-3.5" />
@@ -740,7 +914,7 @@ export function ImoveisPage({
         </div>
       )}
 
-      <Dialog
+      <FormDialogShell
         open={quickOpen}
         onOpenChange={(open) => {
           setQuickOpen(open);
@@ -749,103 +923,16 @@ export function ImoveisPage({
             resetImageState();
           }
         }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Editar empreendimento" : "Novo empreendimento"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingId
-                ? "Atualize os dados do imóvel e o vínculo com a construtora."
-                : "Cadastre rapidamente um imóvel e vincule-o à construtora."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-1">
-            <div className="space-y-1.5">
-              <Label htmlFor="quick-imovel-nome">Nome *</Label>
-              <Input
-                id="quick-imovel-nome"
-                value={quickNome}
-                onChange={(event) => setQuickNome(event.target.value)}
-                placeholder="Ex.: Reserva dos Ipês"
-                autoFocus
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Construtora *</Label>
-              <Select
-                value={
-                  quickNovaConstrutora
-                    ? "__new__"
-                    : quickConstrutoraId || "__none__"
-                }
-                onValueChange={(value) => {
-                  if (value === "__new__") {
-                    setQuickNovaConstrutora(true);
-                    setQuickConstrutoraId("");
-                    return;
-                  }
-                  setQuickNovaConstrutora(false);
-                  setQuickConstrutoraNome("");
-                  setQuickConstrutoraId(value === "__none__" ? "" : value);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Selecione</SelectItem>
-                  <SelectItem value="__new__">+ Nova construtora</SelectItem>
-                  {construtoras.map((construtora) => (
-                    <SelectItem key={construtora.id} value={construtora.id}>
-                      {construtora.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {quickNovaConstrutora ? (
-                <Input
-                  value={quickConstrutoraNome}
-                  onChange={(event) =>
-                    setQuickConstrutoraNome(event.target.value)
-                  }
-                  placeholder="Nome da construtora"
-                  className="mt-2"
-                  autoFocus
-                />
-              ) : null}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="quick-imovel-cidade">Cidade</Label>
-              <Input
-                id="quick-imovel-cidade"
-                value={quickCidade}
-                onChange={(event) => setQuickCidade(event.target.value)}
-                placeholder="Ex.: Recife"
-              />
-            </div>
-            <CorPicker
-              id="quick-imovel-cor"
-              value={quickCor}
-              onChange={setQuickCor}
-              previewLabel={quickNome}
-            />
-            {canManage ? (
-              <ImageUploadField
-                images={[...quickImages, ...pendingPreviews]}
-                max={EMPREENDIMENTO_MAX_IMAGES}
-                label="Fotos"
-                hint="Duas imagens por empreendimento (JPG, PNG ou WebP, máx. 5 MB)."
-                slotLabels={["Foto 1", "Foto 2"]}
-                disabled={quickSaving}
-                busy={imageBusy}
-                onAdd={(files) => void handleAddImages(files)}
-                onRemove={(index) => void handleRemoveImage(index)}
-              />
-            ) : null}
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+        className="max-w-2xl"
+        icon={<Building2 className="w-5 h-5" />}
+        title={editingId ? "Editar empreendimento" : "Novo empreendimento"}
+        description={
+          editingId
+            ? "Atualize os dados do imóvel e o vínculo com a construtora."
+            : "Cadastre o empreendimento em seções: identidade, localidade, tipo, status, flags e previsão."
+        }
+        footer={
+          <FormDialogActions>
             <Button
               type="button"
               variant="outline"
@@ -861,9 +948,291 @@ export function ImoveisPage({
               {quickSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               {editingId ? "Salvar" : "Cadastrar"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          <FormSection
+            icon={<Palette className="h-4 w-4" />}
+            title="Identidade"
+            description="Nome, construtora, cor e fotos do empreendimento."
+          >
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="imovel-nome">Nome *</Label>
+                <Input
+                  id="imovel-nome"
+                  value={form.nome}
+                  onChange={(event) => setField("nome", event.target.value)}
+                  placeholder="Ex.: Reserva dos Ipês"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Construtora *</Label>
+                <Select
+                  value={
+                    form.novaConstrutora
+                      ? "__new__"
+                      : form.construtoraId || "__none__"
+                  }
+                  onValueChange={(value) => {
+                    if (value === "__new__") {
+                      setForm((prev) => ({
+                        ...prev,
+                        novaConstrutora: true,
+                        construtoraId: "",
+                      }));
+                      return;
+                    }
+                    setForm((prev) => ({
+                      ...prev,
+                      novaConstrutora: false,
+                      construtoraNome: "",
+                      construtoraId: value === "__none__" ? "" : value,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Selecione</SelectItem>
+                    <SelectItem value="__new__">+ Nova construtora</SelectItem>
+                    {construtoras.map((construtora) => (
+                      <SelectItem key={construtora.id} value={construtora.id}>
+                        {construtora.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.novaConstrutora ? (
+                  <Input
+                    value={form.construtoraNome}
+                    onChange={(event) =>
+                      setField("construtoraNome", event.target.value)
+                    }
+                    placeholder="Nome da construtora"
+                    className="mt-2"
+                  />
+                ) : null}
+              </div>
+              <CorPicker
+                id="imovel-cor"
+                value={form.cor}
+                onChange={(hex) => setField("cor", hex)}
+                previewLabel={form.nome}
+              />
+              {canManage ? (
+                <ImageUploadField
+                  images={[...quickImages, ...pendingPreviews]}
+                  max={EMPREENDIMENTO_MAX_IMAGES}
+                  label="Fotos"
+                  hint="Duas imagens por empreendimento (JPG, PNG ou WebP, máx. 5 MB)."
+                  slotLabels={["Foto 1", "Foto 2"]}
+                  disabled={quickSaving}
+                  busy={imageBusy}
+                  onAdd={(files) => void handleAddImages(files)}
+                  onRemove={(index) => void handleRemoveImage(index)}
+                />
+              ) : null}
+            </div>
+          </FormSection>
+
+          <FormSection
+            icon={<MapPin className="h-4 w-4" />}
+            title="Localidade"
+            description="Região de atuação e endereço do empreendimento."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Localidade</Label>
+                <Select
+                  value={
+                    form.novaLocalidade
+                      ? "__new__"
+                      : form.localidadeId || "__none__"
+                  }
+                  onValueChange={(value) => {
+                    if (value === "__new__") {
+                      setForm((prev) => ({
+                        ...prev,
+                        novaLocalidade: true,
+                        localidadeId: "",
+                      }));
+                      return;
+                    }
+                    setForm((prev) => ({
+                      ...prev,
+                      novaLocalidade: false,
+                      localidadeNome: "",
+                      localidadeId: value === "__none__" ? "" : value,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Selecione</SelectItem>
+                    <SelectItem value="__new__">+ Nova localidade</SelectItem>
+                    {catalogoLocalidades.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.novaLocalidade ? (
+                  <Input
+                    value={form.localidadeNome}
+                    onChange={(event) =>
+                      setField("localidadeNome", event.target.value)
+                    }
+                    placeholder="Ex.: Recife"
+                    className="mt-2"
+                  />
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="imovel-endereco">Endereço</Label>
+                <Input
+                  id="imovel-endereco"
+                  value={form.endereco}
+                  onChange={(event) => setField("endereco", event.target.value)}
+                  placeholder="Bairro, rua ou referência"
+                />
+              </div>
+            </div>
+          </FormSection>
+
+          <FormSection
+            icon={<Layers className="h-4 w-4" />}
+            title="Tipo"
+            description="Classificação do produto."
+          >
+            <Select
+              value={form.tipo || "__none__"}
+              onValueChange={(value) =>
+                setField(
+                  "tipo",
+                  value === "__none__" ? "" : (value as EmpreendimentoTipo),
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Selecione</SelectItem>
+                {EMPREENDIMENTO_TIPOS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormSection>
+
+          <FormSection
+            icon={<CircleDot className="h-4 w-4" />}
+            title="Status"
+            description="Momento da obra ou comercialização."
+          >
+            <Select
+              value={form.status || "__none__"}
+              onValueChange={(value) =>
+                setField(
+                  "status",
+                  value === "__none__" ? "" : (value as EmpreendimentoStatus),
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Selecione</SelectItem>
+                {EMPREENDIMENTO_STATUS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormSection>
+
+          <FormSection
+            icon={<Flag className="h-4 w-4" />}
+            title="Flags"
+            description="Marcas usadas na busca e na conversa comercial."
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {EMPREENDIMENTO_FLAGS.map((item) => (
+                <label
+                  key={item.key}
+                  htmlFor={`imovel-flag-${item.key}`}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                >
+                  <Checkbox
+                    id={`imovel-flag-${item.key}`}
+                    checked={form[item.key]}
+                    onCheckedChange={(checked) =>
+                      setField(item.key, checked === true)
+                    }
+                  />
+                  {item.label}
+                </label>
+              ))}
+            </div>
+          </FormSection>
+
+          <FormSection
+            icon={<CalendarClock className="h-4 w-4" />}
+            title="Previsão e metragem"
+            description="Entrega prevista e área do produto."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="imovel-previsao">Previsão de entrega</Label>
+                <Input
+                  id="imovel-previsao"
+                  type="month"
+                  value={form.previsaoEntrega}
+                  onChange={(event) =>
+                    setField("previsaoEntrega", event.target.value)
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="imovel-area">Metragem (m²)</Label>
+                <Input
+                  id="imovel-area"
+                  inputMode="decimal"
+                  value={form.areaM2}
+                  onChange={(event) => setField("areaM2", event.target.value)}
+                  placeholder="Ex.: 68"
+                />
+              </div>
+            </div>
+          </FormSection>
+
+          <FormSection
+            icon={<StickyNote className="h-4 w-4" />}
+            title="Observação"
+            description="Notas internas para o time."
+          >
+            <Textarea
+              id="imovel-observacao"
+              value={form.observacao}
+              onChange={(event) => setField("observacao", event.target.value)}
+              placeholder="Regras da construtora, diferenciais, observações comerciais…"
+              rows={4}
+              maxLength={2000}
+            />
+          </FormSection>
+        </FormDialogBody>
+      </FormDialogShell>
 
       <AlertDialog
         open={!!deleteId}
