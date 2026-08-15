@@ -42,8 +42,12 @@ import {
 import {
   createEmpreendimento,
   deleteEmpreendimento,
+  deleteEmpreendimentoImagem,
+  EMPREENDIMENTO_MAX_IMAGES,
+  empreendimentoImagens,
   fetchEmpreendimentos,
   updateEmpreendimento,
+  uploadEmpreendimentoImagem,
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import {
@@ -52,6 +56,10 @@ import {
   type Construtora,
 } from "@/lib/construtoras-api";
 import { CorPicker } from "@/components/cor-picker";
+import {
+  assertImageFile,
+  ImageUploadField,
+} from "@/components/image-upload-field";
 import {
   Building2,
   Loader2,
@@ -111,6 +119,10 @@ export function ImoveisPage({
   const [quickConstrutoraNome, setQuickConstrutoraNome] = useState("");
   const [quickCidade, setQuickCidade] = useState("");
   const [quickCor, setQuickCor] = useState("");
+  const [quickImages, setQuickImages] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
+  const [imageBusy, setImageBusy] = useState(false);
   const [quickSaving, setQuickSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -145,6 +157,18 @@ export function ImoveisPage({
     }
   }
 
+  function clearPendingImages() {
+    pendingPreviews.forEach((url) => URL.revokeObjectURL(url));
+    setPendingFiles([]);
+    setPendingPreviews([]);
+  }
+
+  function resetImageState(images: string[] = []) {
+    clearPendingImages();
+    setQuickImages(images);
+    setImageBusy(false);
+  }
+
   async function openQuickCreate() {
     setEditingId(null);
     setQuickNome("");
@@ -153,6 +177,7 @@ export function ImoveisPage({
     setQuickConstrutoraNome("");
     setQuickCidade("");
     setQuickCor("");
+    resetImageState();
     setQuickOpen(true);
     await loadConstrutoras();
   }
@@ -166,6 +191,7 @@ export function ImoveisPage({
     setQuickConstrutoraNome("");
     setQuickCidade(item.cidade ?? "");
     setQuickCor(item.cor ?? "");
+    resetImageState(empreendimentoImagens(item));
     setQuickOpen(true);
     await loadConstrutoras();
   }
@@ -210,12 +236,28 @@ export function ImoveisPage({
         });
         toast.success("Empreendimento atualizado.");
       } else {
-        await createEmpreendimento({
+        const created = await createEmpreendimento({
           nome: quickNome.trim(),
           construtoraId,
           cidade: quickCidade.trim() || undefined,
           cor: quickCor.trim() || undefined,
         });
+        try {
+          for (const file of pendingFiles) {
+            await uploadEmpreendimentoImagem(created.id, file);
+          }
+        } catch (uploadErr) {
+          toast.error(
+            uploadErr instanceof ApiError
+              ? uploadErr.message
+              : "Empreendimento cadastrado, mas a foto não foi enviada.",
+          );
+          setQuickOpen(false);
+          setEditingId(null);
+          resetImageState();
+          await loadItems();
+          return;
+        }
         toast.success(
           quickNovaConstrutora
             ? "Construtora e empreendimento cadastrados."
@@ -224,6 +266,7 @@ export function ImoveisPage({
       }
       setQuickOpen(false);
       setEditingId(null);
+      resetImageState();
       await loadItems();
     } catch (err) {
       toast.error(
@@ -253,6 +296,89 @@ export function ImoveisPage({
     } finally {
       setDeleting(false);
     }
+  }
+
+  async function handleAddImages(files: File[]) {
+    const valid: File[] = [];
+    for (const file of files) {
+      const error = assertImageFile(file);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      valid.push(file);
+    }
+    const remaining =
+      EMPREENDIMENTO_MAX_IMAGES - quickImages.length - pendingFiles.length;
+    const picked = valid.slice(0, Math.max(0, remaining));
+    if (picked.length === 0) {
+      toast.error("Limite de 2 imagens por empreendimento.");
+      return;
+    }
+
+    if (editingId) {
+      setImageBusy(true);
+      try {
+        let current: Empreendimento | null = null;
+        for (const file of picked) {
+          current = await uploadEmpreendimentoImagem(editingId, file);
+        }
+        if (current) {
+          setQuickImages(empreendimentoImagens(current));
+          setItems((prev) =>
+            prev.map((item) => (item.id === current!.id ? current! : item)),
+          );
+        }
+        toast.success(
+          picked.length > 1 ? "Imagens enviadas." : "Imagem enviada.",
+        );
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível enviar a imagem.",
+        );
+      } finally {
+        setImageBusy(false);
+      }
+      return;
+    }
+
+    setPendingFiles((prev) => [...prev, ...picked]);
+    setPendingPreviews((prev) => [
+      ...prev,
+      ...picked.map((file) => URL.createObjectURL(file)),
+    ]);
+  }
+
+  async function handleRemoveImage(index: number) {
+    if (index < quickImages.length) {
+      if (!editingId) return;
+      setImageBusy(true);
+      try {
+        const current = await deleteEmpreendimentoImagem(editingId, index);
+        setQuickImages(empreendimentoImagens(current));
+        setItems((prev) =>
+          prev.map((item) => (item.id === current.id ? current : item)),
+        );
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível remover a imagem.",
+        );
+      } finally {
+        setImageBusy(false);
+      }
+      return;
+    }
+    const pendingIndex = index - quickImages.length;
+    setPendingPreviews((prev) => {
+      const url = prev[pendingIndex];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== pendingIndex);
+    });
+    setPendingFiles((prev) => prev.filter((_, i) => i !== pendingIndex));
   }
 
   const localidades = useMemo(
@@ -511,17 +637,32 @@ export function ImoveisPage({
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Building2 className="h-10 w-10 text-primary/35" />
                 </div>
-                {item.imagemUrl && (
-                  <img
-                    src={item.imagemUrl}
-                    alt={`Fachada do empreendimento ${item.nome}`}
-                    className="relative h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
-                  />
-                )}
+                {(() => {
+                  const covers = empreendimentoImagens(item);
+                  if (covers.length === 0) return null;
+                  return (
+                    <div
+                      className={
+                        covers.length > 1
+                          ? "relative grid h-full grid-cols-2"
+                          : "relative h-full"
+                      }
+                    >
+                      {covers.map((src) => (
+                        <img
+                          key={src}
+                          src={src}
+                          alt={`Foto do empreendimento ${item.nome}`}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
                 <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/60 to-transparent" />
                 {item.cidade && (
                   <Badge className="absolute bottom-3 right-3 border-white/20 bg-black/45 text-white hover:bg-black/55">
@@ -603,10 +744,13 @@ export function ImoveisPage({
         open={quickOpen}
         onOpenChange={(open) => {
           setQuickOpen(open);
-          if (!open) setEditingId(null);
+          if (!open) {
+            setEditingId(null);
+            resetImageState();
+          }
         }}
       >
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingId ? "Editar empreendimento" : "Novo empreendimento"}
@@ -687,6 +831,19 @@ export function ImoveisPage({
               onChange={setQuickCor}
               previewLabel={quickNome}
             />
+            {canManage ? (
+              <ImageUploadField
+                images={[...quickImages, ...pendingPreviews]}
+                max={EMPREENDIMENTO_MAX_IMAGES}
+                label="Fotos"
+                hint="Duas imagens por empreendimento (JPG, PNG ou WebP, máx. 5 MB)."
+                slotLabels={["Foto 1", "Foto 2"]}
+                disabled={quickSaving}
+                busy={imageBusy}
+                onAdd={(files) => void handleAddImages(files)}
+                onRemove={(index) => void handleRemoveImage(index)}
+              />
+            ) : null}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button

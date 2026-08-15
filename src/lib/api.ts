@@ -175,15 +175,21 @@ async function requestWithAuth(
 
   const send = async (): Promise<Response> => {
     const csrf = skipAuth ? null : readCsrfToken();
+    const isFormData =
+      typeof FormData !== "undefined" && body instanceof FormData;
     return fetch(`${getApiUrl()}${path}`, {
       ...rest,
       credentials: "include",
       headers: {
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(body !== undefined && !isFormData
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(csrf ? { [CSRF_HEADER]: csrf } : {}),
         ...headers,
       },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(body !== undefined
+        ? { body: isFormData ? body : JSON.stringify(body) }
+        : {}),
     });
   };
 

@@ -11,6 +11,7 @@ export type Construtora = {
   viabilizadorContato: string | null;
   cca: string | null;
   driveFolderUrl: string | null;
+  logoUrl: string | null;
   createdAt: string;
   updatedAt: string;
   localidades?: Array<{ id: string; nome: string }>;
@@ -124,6 +125,26 @@ export async function updateConstrutora(
 
 export async function deleteConstrutora(id: string): Promise<void> {
   await apiFetch<{ ok: boolean }>(`/construtoras/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export const CONSTRUTORA_MAX_IMAGES = 1;
+
+export async function uploadConstrutoraLogo(
+  id: string,
+  file: File,
+): Promise<Construtora> {
+  const data = new FormData();
+  data.append("file", file);
+  return apiFetch<Construtora>(`/construtoras/${id}/logo`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function deleteConstrutoraLogo(id: string): Promise<Construtora> {
+  return apiFetch<Construtora>(`/construtoras/${id}/logo`, {
     method: "DELETE",
   });
 }

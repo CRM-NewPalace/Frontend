@@ -12,6 +12,7 @@ export type Empreendimento = {
   areaM2: number | null;
   externalUrl: string | null;
   imagemUrl: string | null;
+  imagens: string[];
   externalKey: string;
   ativo: boolean;
   createdAt: string;
@@ -77,6 +78,36 @@ export async function deleteEmpreendimento(
   id: string,
 ): Promise<{ ok: boolean }> {
   return apiFetch<{ ok: boolean }>(`/empreendimentos/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export const EMPREENDIMENTO_MAX_IMAGES = 2;
+export const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp";
+
+export function empreendimentoImagens(item: Empreendimento): string[] {
+  if (item.imagens?.length) return item.imagens.slice(0, EMPREENDIMENTO_MAX_IMAGES);
+  return item.imagemUrl ? [item.imagemUrl] : [];
+}
+
+export async function uploadEmpreendimentoImagem(
+  id: string,
+  file: File,
+): Promise<Empreendimento> {
+  const data = new FormData();
+  data.append("file", file);
+  return apiFetch<Empreendimento>(`/empreendimentos/${id}/imagens`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function deleteEmpreendimentoImagem(
+  id: string,
+  index: number,
+): Promise<Empreendimento> {
+  return apiFetch<Empreendimento>(`/empreendimentos/${id}/imagens/${index}`, {
     method: "DELETE",
   });
 }
