@@ -15,6 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -91,6 +104,8 @@ import {
   ClipboardList,
   Loader2,
   Plus,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -182,6 +197,7 @@ export function ComercialFunilBoard({
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [filterEquipeId, setFilterEquipeId] = useState("__all__");
   const [filterCorretorId, setFilterCorretorId] = useState("__all__");
+  const [corretorFilterOpen, setCorretorFilterOpen] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -215,6 +231,14 @@ export function ComercialFunilBoard({
       a.name.localeCompare(b.name, "pt-BR"),
     );
   }, [assignees, equipes, filterEquipeId, isAdmin]);
+
+  const selectedCorretorLabel =
+    filterCorretorId === "__all__"
+      ? "Todos os corretores"
+      : filterCorretorId === "__none__"
+        ? "Sem corretor"
+        : (corretorOptions.find((c) => c.id === filterCorretorId)?.name ??
+          "Corretor");
 
   const leads = useMemo(() => {
     let list = allLeads.filter((l) => l.tipo === tipoFiltro);
@@ -735,23 +759,91 @@ export function ComercialFunilBoard({
               </Select>
             )}
             {!isClientesFunil && isManager && (
-              <Select
-                value={filterCorretorId}
-                onValueChange={setFilterCorretorId}
+              <Popover
+                open={corretorFilterOpen}
+                onOpenChange={setCorretorFilterOpen}
               >
-                <SelectTrigger className="h-8 w-46 bg-background">
-                  <SelectValue placeholder="Corretor" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="__all__">Todos os corretores</SelectItem>
-                  <SelectItem value="__none__">Sem corretor</SelectItem>
-                  {corretorOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={corretorFilterOpen}
+                    className="h-8 w-46 justify-between bg-background font-normal"
+                  >
+                    <span className="truncate">{selectedCorretorLabel}</span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] p-0"
+                  align="start"
+                  onWheel={(event) => event.stopPropagation()}
+                >
+                  <Command>
+                    <CommandInput placeholder="Pesquisar corretor…" />
+                    <CommandList className="max-h-72">
+                      <CommandEmpty>Nenhum corretor encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="todos os corretores"
+                          onSelect={() => {
+                            setFilterCorretorId("__all__");
+                            setCorretorFilterOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              filterCorretorId === "__all__"
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
+                          Todos os corretores
+                        </CommandItem>
+                        <CommandItem
+                          value="sem corretor"
+                          onSelect={() => {
+                            setFilterCorretorId("__none__");
+                            setCorretorFilterOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              filterCorretorId === "__none__"
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
+                          Sem corretor
+                        </CommandItem>
+                        {corretorOptions.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={`${c.name} ${c.id}`}
+                            onSelect={() => {
+                              setFilterCorretorId(c.id);
+                              setCorretorFilterOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                filterCorretorId === c.id
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            <span className="truncate">{c.name}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             )}
             <div className="flex items-center rounded-md border bg-background">
               <Button

@@ -26,11 +26,9 @@ import {
   Banknote,
   ArrowUpRight,
   ArrowDownRight,
-  FolderKanban,
   FolderOpen,
   SearchCheck,
   Percent,
-  Tags,
   Goal,
   UserX,
   Network,
@@ -167,16 +165,6 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
     to: "/financeiro/despesas",
     label: "Despesas",
     icon: Receipt,
-  },
-  {
-    to: "/financeiro/centro-recebimentos",
-    label: "Centro de recebimentos",
-    icon: Tags,
-  },
-  {
-    to: "/financeiro/centro-despesas",
-    label: "Centro de despesas",
-    icon: FolderKanban,
   },
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
 ];

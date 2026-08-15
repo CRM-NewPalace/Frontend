@@ -29,6 +29,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,8 +53,7 @@ import {
   deleteEmpreendimento,
   deleteEmpreendimentoImagem,
   EMPREENDIMENTO_MAX_IMAGES,
-  EMPREENDIMENTO_STATUS,
-  EMPREENDIMENTO_TIPOS,
+  empreendimentoHasLitoral,
   empreendimentoImagens,
   empreendimentoLocalidadeNome,
   empreendimentoStatusLabel,
@@ -55,9 +62,11 @@ import {
   updateEmpreendimento,
   uploadEmpreendimentoImagem,
   type Empreendimento,
-  type EmpreendimentoStatus,
-  type EmpreendimentoTipo,
 } from "@/lib/empreendimentos-api";
+import { useCatalog } from "@/lib/catalog-store";
+import { nextCatalogColor, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+import type { CatalogItem } from "@/lib/catalog-api";
+import { cn } from "@/lib/utils";
 import {
   createConstrutora,
   fetchConstrutoras,
@@ -83,7 +92,7 @@ import {
   Ruler,
   Trash2,
   MapPin,
-  Flag,
+  Tag,
   Layers,
   CircleDot,
   CalendarClock,
@@ -107,19 +116,48 @@ const IMOVEIS_SOFT_BTN =
 const IMOVEIS_SOFT_BTN_ACTIVE =
   "border-2 border-[#079ED4]/40 bg-[#079ED4]/20 text-[#053647] hover:bg-[#079ED4]/25 hover:text-[#053647]";
 
-const EMPREENDIMENTO_FLAGS = [
-  { key: "litoral", label: "Litoral" },
-  { key: "aceitaFgts", label: "FGTS" },
-  { key: "aceitaMcmv", label: "MCMV" },
-  { key: "aceitaCaixa", label: "Caixa" },
-] as const;
+type EmpCatalogType =
+  | "empreendimento_tipo"
+  | "empreendimento_status"
+  | "empreendimento_tag";
+
+const EMPREENDIMENTO_CATALOG_TITLES: Record<EmpCatalogType, string> = {
+  empreendimento_tipo: "Novo tipo",
+  empreendimento_status: "Novo status",
+  empreendimento_tag: "Nova tag",
+};
+
+const EMPREENDIMENTO_CATALOG_EDIT_TITLES: Record<EmpCatalogType, string> = {
+  empreendimento_tipo: "Editar tipo",
+  empreendimento_status: "Editar status",
+  empreendimento_tag: "Editar tag",
+};
+
+const EMPREENDIMENTO_CATALOG_SINGULAR: Record<EmpCatalogType, string> = {
+  empreendimento_tipo: "tipo",
+  empreendimento_status: "status",
+  empreendimento_tag: "tag",
+};
+
+function withExtraLabel(labels: string[], extra: string) {
+  const value = extra.trim();
+  if (!value) return labels;
+  if (labels.some((label) => label === value)) return labels;
+  return [...labels, value];
+}
+
+function withExtraLabels(labels: string[], extras: string[]) {
+  let next = labels;
+  for (const extra of extras) next = withExtraLabel(next, extra);
+  return next;
+}
 
 type EmpreendimentoFormTab =
   | "identidade"
   | "localidade"
   | "tipo"
   | "status"
-  | "flags"
+  | "tags"
   | "previsao"
   | "observacao";
 
@@ -133,12 +171,9 @@ type EmpreendimentoForm = {
   localidadeNome: string;
   endereco: string;
   cor: string;
-  tipo: "" | EmpreendimentoTipo;
-  status: "" | EmpreendimentoStatus;
-  litoral: boolean;
-  aceitaFgts: boolean;
-  aceitaMcmv: boolean;
-  aceitaCaixa: boolean;
+  tipo: string;
+  status: string;
+  tags: string[];
   previsaoEntrega: string;
   areaM2: string;
   observacao: string;
@@ -157,10 +192,7 @@ function emptyEmpreendimentoForm(): EmpreendimentoForm {
     cor: "",
     tipo: "",
     status: "",
-    litoral: false,
-    aceitaFgts: false,
-    aceitaMcmv: false,
-    aceitaCaixa: false,
+    tags: [],
     previsaoEntrega: "",
     areaM2: "",
     observacao: "",
@@ -180,10 +212,7 @@ function formFromEmpreendimento(item: Empreendimento): EmpreendimentoForm {
     cor: item.cor ?? "",
     tipo: item.tipo ?? "",
     status: item.status ?? "",
-    litoral: item.litoral ?? false,
-    aceitaFgts: item.aceitaFgts ?? false,
-    aceitaMcmv: item.aceitaMcmv ?? false,
-    aceitaCaixa: item.aceitaCaixa ?? false,
+    tags: item.tags ?? [],
     previsaoEntrega: item.previsaoEntrega?.slice(0, 7) ?? "",
     areaM2: item.areaM2 != null ? String(item.areaM2) : "",
     observacao: item.observacao ?? "",
@@ -217,6 +246,12 @@ export function ImoveisPage({
     isAdmin || user?.role === "gerente" || isAnalista || isTreinee;
   const canCreate = canManage;
   const canDelete = isAdmin || isAnalista;
+  const canCreateCatalog = canManage;
+  const { catalog, addItem, updateItem, removeItem, colorByLabel } =
+    useCatalog();
+  const tipoOptions = catalog.empreendimento_tipo;
+  const statusOptions = catalog.empreendimento_status;
+  const tagOptions = catalog.empreendimento_tag;
 
   const [items, setItems] = useState<Empreendimento[]>([]);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
@@ -240,6 +275,15 @@ export function ImoveisPage({
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [imageBusy, setImageBusy] = useState(false);
   const [quickSaving, setQuickSaving] = useState(false);
+  const [quickCatalogOpen, setQuickCatalogOpen] =
+    useState<EmpCatalogType | null>(null);
+  const [quickCatalogLabel, setQuickCatalogLabel] = useState("");
+  const [quickCatalogSaving, setQuickCatalogSaving] = useState(false);
+  const [quickCatalogEditing, setQuickCatalogEditing] =
+    useState<CatalogItem | null>(null);
+  const [catalogDeleteTarget, setCatalogDeleteTarget] =
+    useState<CatalogItem | null>(null);
+  const [catalogDeleting, setCatalogDeleting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const loadItems = useCallback(async () => {
@@ -379,10 +423,7 @@ export function ImoveisPage({
         tipo: form.tipo || null,
         status: form.status || null,
         previsaoEntrega: form.previsaoEntrega || null,
-        litoral: form.litoral,
-        aceitaFgts: form.aceitaFgts,
-        aceitaMcmv: form.aceitaMcmv,
-        aceitaCaixa: form.aceitaCaixa,
+        tags: form.tags,
         observacao: form.observacao.trim() || null,
         areaM2,
       };
@@ -402,10 +443,7 @@ export function ImoveisPage({
           ...(payload.previsaoEntrega
             ? { previsaoEntrega: payload.previsaoEntrega }
             : {}),
-          litoral: payload.litoral,
-          aceitaFgts: payload.aceitaFgts,
-          aceitaMcmv: payload.aceitaMcmv,
-          aceitaCaixa: payload.aceitaCaixa,
+          tags: payload.tags,
           ...(payload.observacao ? { observacao: payload.observacao } : {}),
           ...(payload.areaM2 != null ? { areaM2: payload.areaM2 } : {}),
         });
@@ -445,6 +483,151 @@ export function ImoveisPage({
       );
     } finally {
       setQuickSaving(false);
+    }
+  }
+
+  function applyCatalogLabel(
+    type: EmpCatalogType,
+    label: string,
+    previous?: string,
+  ) {
+    if (type === "empreendimento_tipo") {
+      setForm((prev) => ({
+        ...prev,
+        tipo: previous
+          ? prev.tipo === previous
+            ? label
+            : prev.tipo
+          : label,
+      }));
+      return;
+    }
+    if (type === "empreendimento_status") {
+      setForm((prev) => ({
+        ...prev,
+        status: previous
+          ? prev.status === previous
+            ? label
+            : prev.status
+          : label,
+      }));
+      return;
+    }
+    setForm((prev) => {
+      if (previous) {
+        return {
+          ...prev,
+          tags: prev.tags.map((tag) => (tag === previous ? label : tag)),
+        };
+      }
+      const exists = prev.tags.some(
+        (tag) =>
+          tag.toLocaleLowerCase("pt-BR") === label.toLocaleLowerCase("pt-BR"),
+      );
+      return exists ? prev : { ...prev, tags: [...prev.tags, label] };
+    });
+  }
+
+  function clearCatalogLabel(type: EmpCatalogType, label: string) {
+    if (type === "empreendimento_tipo") {
+      setForm((prev) =>
+        prev.tipo === label ? { ...prev, tipo: "" } : prev,
+      );
+      return;
+    }
+    if (type === "empreendimento_status") {
+      setForm((prev) =>
+        prev.status === label ? { ...prev, status: "" } : prev,
+      );
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((tag) => tag !== label),
+    }));
+  }
+
+  async function saveQuickCatalog() {
+    if (!quickCatalogOpen) return;
+    const label = quickCatalogLabel.trim();
+    if (!label) {
+      toast.error("Informe um nome.");
+      return;
+    }
+    setQuickCatalogSaving(true);
+    try {
+      if (quickCatalogEditing) {
+        if (label !== quickCatalogEditing.label) {
+          await updateItem(quickCatalogEditing.id, { label });
+          applyCatalogLabel(
+            quickCatalogOpen,
+            label,
+            quickCatalogEditing.label,
+          );
+          await loadItems();
+        }
+        toast.success(`"${label}" atualizado.`);
+      } else {
+        const count =
+          quickCatalogOpen === "empreendimento_tipo"
+            ? tipoOptions.length
+            : quickCatalogOpen === "empreendimento_status"
+              ? statusOptions.length
+              : tagOptions.length;
+        await addItem({
+          type: quickCatalogOpen,
+          label,
+          color: nextCatalogColor(count),
+        });
+        applyCatalogLabel(quickCatalogOpen, label);
+        toast.success(`"${label}" adicionado.`);
+      }
+      setQuickCatalogOpen(null);
+      setQuickCatalogEditing(null);
+      setQuickCatalogLabel("");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : quickCatalogEditing
+            ? "Não foi possível atualizar."
+            : "Não foi possível adicionar.",
+      );
+    } finally {
+      setQuickCatalogSaving(false);
+    }
+  }
+
+  function openQuickCatalog(type: EmpCatalogType) {
+    setQuickCatalogEditing(null);
+    setQuickCatalogLabel("");
+    setQuickCatalogOpen(type);
+  }
+
+  function openEditCatalog(item: CatalogItem) {
+    setQuickCatalogEditing(item);
+    setQuickCatalogLabel(item.label);
+    setQuickCatalogOpen(item.type as EmpCatalogType);
+  }
+
+  async function confirmDeleteCatalog() {
+    if (!catalogDeleteTarget) return;
+    const item = catalogDeleteTarget;
+    setCatalogDeleting(true);
+    try {
+      await removeItem(item.id);
+      clearCatalogLabel(item.type as EmpCatalogType, item.label);
+      setCatalogDeleteTarget(null);
+      await loadItems();
+      toast.success(`"${item.label}" excluído da lista.`);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível excluir.",
+      );
+    } finally {
+      setCatalogDeleting(false);
     }
   }
 
@@ -611,7 +794,7 @@ export function ImoveisPage({
         (!localidade || empreendimentoLocalidadeNome(item) === localidade) &&
         (!quartos || item.quartos === Number(quartos)) &&
         (!construtoraId || item.construtoraId === construtoraId) &&
-        (!somenteLitoral || item.litoral)
+        (!somenteLitoral || empreendimentoHasLitoral(item))
       );
     });
   }, [items, search, localidade, quartos, construtoraId, somenteLitoral]);
@@ -883,21 +1066,39 @@ export function ImoveisPage({
                 )}
                 <div className="flex flex-wrap gap-1.5">
                   {item.tipo ? (
-                    <Badge variant="secondary">
+                    <Badge
+                      className={cn(
+                        STATUS_CHIP_CLASS,
+                        colorByLabel("empreendimento_tipo", item.tipo),
+                      )}
+                      title={empreendimentoTipoLabel(item.tipo)}
+                    >
                       {empreendimentoTipoLabel(item.tipo)}
                     </Badge>
                   ) : null}
                   {item.status ? (
-                    <Badge variant="secondary">
+                    <Badge
+                      className={cn(
+                        STATUS_CHIP_CLASS,
+                        colorByLabel("empreendimento_status", item.status),
+                      )}
+                      title={empreendimentoStatusLabel(item.status)}
+                    >
                       {empreendimentoStatusLabel(item.status)}
                     </Badge>
                   ) : null}
-                  {item.litoral ? <Badge variant="outline">Litoral</Badge> : null}
-                  {item.aceitaFgts ? <Badge variant="outline">FGTS</Badge> : null}
-                  {item.aceitaMcmv ? <Badge variant="outline">MCMV</Badge> : null}
-                  {item.aceitaCaixa ? (
-                    <Badge variant="outline">Caixa</Badge>
-                  ) : null}
+                  {(item.tags ?? []).map((tag) => (
+                    <Badge
+                      key={tag}
+                      className={cn(
+                        STATUS_CHIP_CLASS,
+                        colorByLabel("empreendimento_tag", tag),
+                      )}
+                      title={tag}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                   {item.previsaoEntrega ? (
@@ -944,7 +1145,7 @@ export function ImoveisPage({
         className="max-w-3xl"
         icon={<Building2 className="w-5 h-5" />}
         title={editingId ? "Editar empreendimento" : "Novo empreendimento"}
-        description="Preencha cada seção: identidade, localidade, tipo, status, flags, previsão e observação."
+        description="Preencha cada seção: identidade, localidade, tipo, status, tags, previsão e observação."
         footer={
           <FormDialogActions>
             <Button
@@ -995,9 +1196,9 @@ export function ImoveisPage({
                 <CircleDot className="h-3.5 w-3.5" />
                 Status
               </TabsTrigger>
-              <TabsTrigger value="flags" className="gap-1.5 rounded-full px-3">
-                <Flag className="h-3.5 w-3.5" />
-                Flags
+              <TabsTrigger value="tags" className="gap-1.5 rounded-full px-3">
+                <Tag className="h-3.5 w-3.5" />
+                Tags
               </TabsTrigger>
               <TabsTrigger
                 value="previsao"
@@ -1177,29 +1378,104 @@ export function ImoveisPage({
           <FormSection
             icon={<Layers className="h-4 w-4" />}
             title="Tipo"
-            description="Classificação do produto."
+            description="Classificação do produto. Admin, gerente, analista e treinee podem criar, editar e excluir tipos."
           >
-            <Select
-              value={form.tipo || "__none__"}
-              onValueChange={(value) =>
-                setField(
-                  "tipo",
-                  value === "__none__" ? "" : (value as EmpreendimentoTipo),
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Selecione</SelectItem>
-                {EMPREENDIMENTO_TIPOS.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
+            {canCreateCatalog ? (
+              <div className="mb-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openQuickCatalog("empreendimento_tipo")}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Nova
+                </Button>
+              </div>
+            ) : null}
+            {canCreateCatalog ? (
+              <div className="space-y-2">
+                {tipoOptions.map((item) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2",
+                      form.tipo === item.label &&
+                        "border-primary/50 bg-primary/5",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="flex-1 text-left text-sm"
+                      onClick={() =>
+                        setField(
+                          "tipo",
+                          form.tipo === item.label ? "" : item.label,
+                        )
+                      }
+                    >
+                      {item.label}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Editar tipo"
+                      onClick={() => openEditCatalog(item)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      title="Excluir tipo"
+                      onClick={() => setCatalogDeleteTarget(item)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+                {form.tipo &&
+                !tipoOptions.some((item) => item.label === form.tipo) ? (
+                  <div className="flex items-center rounded-lg border px-3 py-2 text-sm">
+                    {form.tipo}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <Select
+                value={form.tipo || "__none__"}
+                onValueChange={(value) =>
+                  setField("tipo", value === "__none__" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Selecione</SelectItem>
+                  {withExtraLabel(
+                    tipoOptions.map((item) => item.label),
+                    form.tipo,
+                  ).map((label) => (
+                    <SelectItem key={label} value={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {tipoOptions.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                {canCreateCatalog
+                  ? "Nenhum tipo cadastrado. Use Nova para criar o primeiro."
+                  : "Nenhum tipo cadastrado. Peça à gerência em Configurações → Imóveis."}
+              </p>
+            ) : null}
           </FormSection>
             </TabsContent>
 
@@ -1207,56 +1483,212 @@ export function ImoveisPage({
           <FormSection
             icon={<CircleDot className="h-4 w-4" />}
             title="Status"
-            description="Momento da obra ou comercialização."
+            description="Momento da obra ou comercialização. Admin, gerente, analista e treinee podem criar, editar e excluir status."
           >
-            <Select
-              value={form.status || "__none__"}
-              onValueChange={(value) =>
-                setField(
-                  "status",
-                  value === "__none__" ? "" : (value as EmpreendimentoStatus),
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Selecione</SelectItem>
-                {EMPREENDIMENTO_STATUS.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
+            {canCreateCatalog ? (
+              <div className="mb-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openQuickCatalog("empreendimento_status")}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Novo
+                </Button>
+              </div>
+            ) : null}
+            {canCreateCatalog ? (
+              <div className="space-y-2">
+                {statusOptions.map((item) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2",
+                      form.status === item.label &&
+                        "border-primary/50 bg-primary/5",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="flex-1 text-left text-sm"
+                      onClick={() =>
+                        setField(
+                          "status",
+                          form.status === item.label ? "" : item.label,
+                        )
+                      }
+                    >
+                      {item.label}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Editar status"
+                      onClick={() => openEditCatalog(item)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      title="Excluir status"
+                      onClick={() => setCatalogDeleteTarget(item)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+                {form.status &&
+                !statusOptions.some((item) => item.label === form.status) ? (
+                  <div className="flex items-center rounded-lg border px-3 py-2 text-sm">
+                    {form.status}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <Select
+                value={form.status || "__none__"}
+                onValueChange={(value) =>
+                  setField("status", value === "__none__" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Selecione</SelectItem>
+                  {withExtraLabel(
+                    statusOptions.map((item) => item.label),
+                    form.status,
+                  ).map((label) => (
+                    <SelectItem key={label} value={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {statusOptions.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                {canCreateCatalog
+                  ? "Nenhum status cadastrado. Use Novo para criar o primeiro."
+                  : "Nenhum status cadastrado. Peça à gerência em Configurações → Imóveis."}
+              </p>
+            ) : null}
           </FormSection>
             </TabsContent>
 
-            <TabsContent value="flags" className="mt-4">
+            <TabsContent value="tags" className="mt-4">
           <FormSection
-            icon={<Flag className="h-4 w-4" />}
-            title="Flags"
-            description="Marcas usadas na busca e na conversa comercial."
+            icon={<Tag className="h-4 w-4" />}
+            title="Tags"
+            description="Marcas usadas na busca e na conversa comercial. Admin, gerente, analista e treinee podem criar, editar e excluir tags."
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              {EMPREENDIMENTO_FLAGS.map((item) => (
-                <label
-                  key={item.key}
-                  htmlFor={`imovel-flag-${item.key}`}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+            {canCreateCatalog ? (
+              <div className="mb-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openQuickCatalog("empreendimento_tag")}
                 >
-                  <Checkbox
-                    id={`imovel-flag-${item.key}`}
-                    checked={form[item.key]}
-                    onCheckedChange={(checked) =>
-                      setField(item.key, checked === true)
-                    }
-                  />
-                  {item.label}
-                </label>
-              ))}
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Nova
+                </Button>
+              </div>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {withExtraLabels(
+                tagOptions.map((item) => item.label),
+                form.tags,
+              ).map((label) => {
+                const catalogItem = tagOptions.find(
+                  (item) => item.label === label,
+                );
+                return (
+                  <div
+                    key={label}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                  >
+                    <Checkbox
+                      id={`imovel-tag-${label}`}
+                      checked={form.tags.some(
+                        (tag) =>
+                          tag.toLocaleLowerCase("pt-BR") ===
+                          label.toLocaleLowerCase("pt-BR"),
+                      )}
+                      onCheckedChange={(checked) =>
+                        setForm((prev) => {
+                          const selected = prev.tags.some(
+                            (tag) =>
+                              tag.toLocaleLowerCase("pt-BR") ===
+                              label.toLocaleLowerCase("pt-BR"),
+                          );
+                          if (checked === true && !selected) {
+                            return { ...prev, tags: [...prev.tags, label] };
+                          }
+                          if (checked !== true && selected) {
+                            return {
+                              ...prev,
+                              tags: prev.tags.filter(
+                                (tag) =>
+                                  tag.toLocaleLowerCase("pt-BR") !==
+                                  label.toLocaleLowerCase("pt-BR"),
+                              ),
+                            };
+                          }
+                          return prev;
+                        })
+                      }
+                    />
+                    <label
+                      htmlFor={`imovel-tag-${label}`}
+                      className="flex-1 cursor-pointer"
+                    >
+                      {label}
+                    </label>
+                    {canCreateCatalog && catalogItem ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Editar tag"
+                          onClick={() => openEditCatalog(catalogItem)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          title="Excluir tag"
+                          onClick={() => setCatalogDeleteTarget(catalogItem)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
+            {tagOptions.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                {canCreateCatalog
+                  ? "Nenhuma tag cadastrada. Use Nova para criar a primeira."
+                  : "Nenhuma tag cadastrada. Peça à gerência em Configurações → Imóveis."}
+              </p>
+            ) : null}
           </FormSection>
             </TabsContent>
 
@@ -1336,6 +1768,112 @@ export function ImoveisPage({
               }}
             >
               {deleting && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={Boolean(quickCatalogOpen)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQuickCatalogOpen(null);
+            setQuickCatalogEditing(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {quickCatalogOpen
+                ? quickCatalogEditing
+                  ? EMPREENDIMENTO_CATALOG_EDIT_TITLES[quickCatalogOpen]
+                  : EMPREENDIMENTO_CATALOG_TITLES[quickCatalogOpen]
+                : "Novo item"}
+            </DialogTitle>
+            <DialogDescription>
+              {quickCatalogEditing
+                ? "O novo nome vale neste cadastro e nos empreendimentos que já usam este item."
+                : "O item fica disponível neste cadastro e em Configurações → Imóveis."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Nome</Label>
+            <Input
+              value={quickCatalogLabel}
+              onChange={(event) => setQuickCatalogLabel(event.target.value)}
+              autoFocus
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void saveQuickCatalog();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setQuickCatalogOpen(null);
+                setQuickCatalogEditing(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={quickCatalogSaving}
+              onClick={() => void saveQuickCatalog()}
+            >
+              {quickCatalogSaving && (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              )}
+              {quickCatalogEditing ? "Salvar" : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(catalogDeleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !catalogDeleting) setCatalogDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir{" "}
+              {catalogDeleteTarget
+                ? EMPREENDIMENTO_CATALOG_SINGULAR[
+                    catalogDeleteTarget.type as EmpCatalogType
+                  ]
+                : "item"}
+              ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {catalogDeleteTarget
+                ? `"${catalogDeleteTarget.label}" some das listas de cadastro. Empreendimentos que já usam este valor mantêm o texto até serem editados.`
+                : "Este item some das listas de cadastro."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={catalogDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={catalogDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDeleteCatalog();
+              }}
+            >
+              {catalogDeleting && (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              )}
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>

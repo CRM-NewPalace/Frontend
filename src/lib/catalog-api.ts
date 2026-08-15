@@ -8,7 +8,10 @@ export type CatalogType =
   | "documentacao_fonte"
   | "documentacao_status1"
   | "documentacao_status2"
-  | "cca";
+  | "cca"
+  | "empreendimento_tipo"
+  | "empreendimento_status"
+  | "empreendimento_tag";
 
 export type FunilEtapaPapel = "inicial" | "analise" | "venda" | "perdido";
 
@@ -50,6 +53,9 @@ const emptyGrouped = (): GroupedCatalog => ({
   documentacao_status1: [],
   documentacao_status2: [],
   cca: [],
+  empreendimento_tipo: [],
+  empreendimento_status: [],
+  empreendimento_tag: [],
 });
 
 /** Busca todos os tipos agrupados. `activeOnly` filtra itens desativados. */

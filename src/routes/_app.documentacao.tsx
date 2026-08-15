@@ -102,10 +102,8 @@ import {
   dedupeStatusOptions,
   docPipelineFromStatus1,
   isStatusAnalise,
-  isStatusParecerFinal,
   isStatusVendido,
   matchesDocPipelineStatus,
-  status1Group,
   statusesMatch,
   type DocPipelineStatus,
 } from "@/lib/documentacao-status";
@@ -468,13 +466,6 @@ function DocumentacaoPage() {
 
   const stageLabel = useCallback(
     (slug: string) => funnelStages.find((s) => s.id === slug)?.name ?? slug,
-    [funnelStages],
-  );
-
-  const stageBadgeClass = useCallback(
-    (slug: string) =>
-      funnelStages.find((s) => s.id === slug)?.color ??
-      "bg-secondary text-secondary-foreground",
     [funnelStages],
   );
 
@@ -2246,6 +2237,7 @@ function DocumentacaoPage() {
           icon={CheckCircle2}
           tone="blue-1"
           format="number"
+          compact
           active={filterStatus1 === "Aprovado"}
           onClick={() => {
             if (filterStatus1 === "Aprovado") {
@@ -2267,6 +2259,7 @@ function DocumentacaoPage() {
           icon={XCircle}
           tone="blue-2"
           format="number"
+          compact
           active={filterStatus1 === "Reprovado"}
           onClick={() => {
             if (filterStatus1 === "Reprovado") {
@@ -2288,6 +2281,7 @@ function DocumentacaoPage() {
           icon={Clock3}
           tone="blue-3"
           format="number"
+          compact
           active={filterStatus1 === "Em análise"}
           onClick={() => {
             if (filterStatus1 === "Em análise") {
@@ -2308,6 +2302,7 @@ function DocumentacaoPage() {
           value={pipelineSummary.vgv}
           icon={Wallet}
           tone="blue-4"
+          compact
           href="/vendas"
         />
       </section>
@@ -2338,73 +2333,42 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="text-xs [&_th]:h-9 [&_th]:px-5 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:px-5 [&_td]:py-1.5">
+            <Table className="text-xs [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:px-3 [&_td]:py-2 [&_td]:align-middle">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-30 max-w-40">
-                    Nome
-                  </TableHead>
-                  <TableHead className="min-w-18">Construtora</TableHead>
-                  <TableHead className="min-w-22 max-w-30">
-                    Empreend.
-                  </TableHead>
-                  <TableHead className="min-w-25">Status</TableHead>
-                  <TableHead className="min-w-18 max-w-24">
-                    Corretor
-                  </TableHead>
-                  <TableHead className="min-w-18 max-w-24">
-                    Gerente
-                  </TableHead>
-                  <TableHead className="min-w-18">Fonte</TableHead>
+                  <TableHead className="min-w-40">Nome</TableHead>
+                  <TableHead className="min-w-28">Construtora</TableHead>
+                  <TableHead className="min-w-28">Empreend.</TableHead>
+                  <TableHead className="w-[8.25rem]">Status 1</TableHead>
+                  <TableHead className="w-[8.25rem]">Status 2</TableHead>
+                  <TableHead className="min-w-32">Corretor</TableHead>
+                  <TableHead className="min-w-32">Gerente</TableHead>
+                  <TableHead className="w-[8.25rem]">Fonte</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedItems.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="max-w-40">
+                    <TableCell className="min-w-40 max-w-56">
                       <div
                         className="table-person-name truncate"
                         title={doc.nome}
                       >
                         {doc.nome}
                       </div>
-                      <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-0.5 mt-0.5">
-                        <span>
-                          {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}
-                        </span>
-                        {isStatusParecerFinal(doc.status1) ? (
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              STATUS_CHIP_CLASS,
-                              status1Group(doc.status1) === "reprovado"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-emerald-100 text-emerald-700",
-                            )}
-                            title="Parecer da documentação"
-                          >
-                            {doc.status1}
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              STATUS_CHIP_CLASS,
-                              stageBadgeClass(doc.lead.stage),
-                            )}
-                            title="Etapa atual no funil"
-                          >
-                            {stageLabel(doc.lead.stage)}
-                          </Badge>
-                        )}
+                      <div className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
+                        {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}
+                        {doc.lead.stage
+                          ? ` · ${stageLabel(doc.lead.stage)}`
+                          : ""}
                       </div>
                     </TableCell>
                     <TableCell>
                       {doc.construtora?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-22 truncate"
+                          className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
                           style={construtoraBadgeStyle(doc.construtora.cor)}
                           title={doc.construtora.nome}
                         >
@@ -2418,7 +2382,7 @@ function DocumentacaoPage() {
                       {doc.empreendimento?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-30 truncate"
+                          className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
                           style={construtoraBadgeStyle(doc.empreendimento.cor)}
                           title={doc.empreendimento.nome}
                         >
@@ -2428,23 +2392,23 @@ function DocumentacaoPage() {
                         "—"
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-0.5">
-                        <Badge
-                          variant="outline"
-                          className={cn(STATUS_CHIP_CLASS, "font-normal")}
-                          title={doc.status1}
-                        >
-                          {doc.status1}
-                        </Badge>
-                        <Badge
-                          variant="secondary"
-                          className={cn(STATUS_CHIP_CLASS, "font-normal")}
-                          title={doc.status2}
-                        >
-                          {doc.status2}
-                        </Badge>
-                      </div>
+                    <TableCell className="w-[8.25rem]">
+                      <Badge
+                        variant="outline"
+                        className={cn(STATUS_CHIP_CLASS, "font-normal")}
+                        title={doc.status1}
+                      >
+                        {doc.status1}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="w-[8.25rem]">
+                      <Badge
+                        variant="secondary"
+                        className={cn(STATUS_CHIP_CLASS, "font-normal")}
+                        title={doc.status2}
+                      >
+                        {doc.status2}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {(() => {
@@ -2454,7 +2418,7 @@ function DocumentacaoPage() {
                         return (
                           <Badge
                             variant="secondary"
-                            className="border-transparent font-normal text-[10px] px-1 py-0 h-5 max-w-24 truncate"
+                            className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
                             style={construtoraBadgeStyle(corretor.cor)}
                             title={corretor.name}
                           >
@@ -2463,13 +2427,20 @@ function DocumentacaoPage() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell
-                      className="table-person-name max-w-24 truncate text-sm"
-                      title={doc.gerente?.name ?? undefined}
-                    >
-                      {doc.gerente?.name ?? "—"}
-                    </TableCell>
                     <TableCell>
+                      {doc.gerente?.name ? (
+                        <Badge
+                          variant="secondary"
+                          className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
+                          title={doc.gerente.name}
+                        >
+                          {doc.gerente.name}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="w-[8.25rem]">
                       {(() => {
                         const fonte = displayFonte(doc.fonte);
                         if (!fonte) return "—";
