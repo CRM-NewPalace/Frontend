@@ -57,6 +57,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -144,6 +148,7 @@ import {
   FileText,
   Handshake,
   Loader2,
+  MoreHorizontal,
   Pencil,
   Plus,
   Search,
@@ -547,130 +552,127 @@ function PropostaActionMenus({
     });
   };
 
+  const pdfItems = (
+    <>
+      <DropdownMenuItem onClick={handlePdfCliente}>
+        PDF para cliente
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handlePdfCorretor}>
+        PDF para corretor
+      </DropdownMenuItem>
+    </>
+  );
+
+  const shareItems = (
+    <>
+      <DropdownMenuItem onClick={handleWhatsApp}>WhatsApp</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => onOpenQr(proposta)}>
+        QR Code do WhatsApp
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handleEmail}>E-mail</DropdownMenuItem>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label="Ações"
+              title="Ações"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            {onView && (
+              <DropdownMenuItem onClick={onView}>
+                <Eye className="h-4 w-4" />
+                Visualizar
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Download className="h-4 w-4" />
+                Baixar PDF
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>{pdfItems}</DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Share2 className="h-4 w-4" />
+                Compartilhar
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>{shareItems}</DropdownMenuSubContent>
+            </DropdownMenuSub>
+            {onEdit && (
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
+            )}
+            {onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        "flex items-center",
-        compact ? "justify-end gap-0.5" : "flex-wrap gap-2",
+    <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" size="sm" variant="outline">
+            <Download className="h-4 w-4 mr-1" />
+            Baixar PDF
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">{pdfItems}</DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" size="sm" variant="outline">
+            <Share2 className="h-4 w-4 mr-1" />
+            Compartilhar
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">{shareItems}</DropdownMenuContent>
+      </DropdownMenu>
+
+      {onEdit && (
+        <Button type="button" size="sm" variant="outline" onClick={onEdit}>
+          <Pencil className="h-4 w-4 mr-1" />
+          Editar
+        </Button>
       )}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          {compact ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="Baixar PDF"
-              title="Baixar PDF"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button type="button" size="sm" variant="outline">
-              <Download className="h-4 w-4 mr-1" />
-              Baixar PDF
-            </Button>
-          )}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handlePdfCliente}>
-            PDF para cliente
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handlePdfCorretor}>
-            PDF para corretor
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          {compact ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="Compartilhar"
-              title="Compartilhar"
-            >
-              <Share2 className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button type="button" size="sm" variant="outline">
-              <Share2 className="h-4 w-4 mr-1" />
-              Compartilhar
-            </Button>
-          )}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleWhatsApp}>WhatsApp</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onOpenQr(proposta)}>
-            QR Code do WhatsApp
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleEmail}>E-mail</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {onEdit &&
-        (compact ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onEdit}
-            aria-label="Editar"
-            title="Editar"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button type="button" size="sm" variant="outline" onClick={onEdit}>
-            <Pencil className="h-4 w-4 mr-1" />
-            Editar
-          </Button>
-        ))}
-
-      {onDelete &&
-        (compact ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:text-destructive"
-            onClick={onDelete}
-            aria-label="Excluir"
-            title="Excluir"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Excluir
-          </Button>
-        ))}
-
-      {onView && compact && (
+      {onDelete && (
         <Button
           type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={onView}
-          aria-label="Ver detalhes"
-          title="Ver detalhes"
+          size="sm"
+          variant="outline"
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
         >
-          <Eye className="h-4 w-4" />
+          <Trash2 className="h-4 w-4 mr-1" />
+          Excluir
         </Button>
       )}
     </div>
@@ -1352,7 +1354,7 @@ function Page() {
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Validade</TableHead>
-              <TableHead className="text-right w-44">Ações</TableHead>
+              <TableHead className="w-12 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

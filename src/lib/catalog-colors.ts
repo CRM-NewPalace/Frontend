@@ -29,7 +29,7 @@ export type CatalogColor = (typeof CATALOG_COLORS)[number];
  * Texto longo corta com reticências; use `title` no Badge para o rótulo completo.
  */
 export const STATUS_CHIP_CLASS =
-  "box-border h-6 w-[8.25rem] shrink-0 justify-center overflow-hidden px-2 py-0 text-[11px] font-semibold leading-none truncate";
+  "box-border inline-flex h-6 w-[8.25rem] min-w-0 shrink-0 items-center justify-start overflow-hidden px-2 py-0 text-left text-[11px] font-semibold leading-6 truncate";
 
 export function isHexColor(color: string | null | undefined): boolean {
   return Boolean(color && /^#[0-9A-Fa-f]{6}$/.test(color));

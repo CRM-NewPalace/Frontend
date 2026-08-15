@@ -185,6 +185,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+const DOC_STATUS_CHIP = cn(STATUS_CHIP_CLASS, "justify-start text-left");
+const DOC_PERSON_CHIP =
+  "inline-flex h-6 max-w-full items-center justify-start truncate border-transparent px-2 text-left text-[11px] font-normal leading-6";
+
 type DocumentacaoSearch = {
   status?: DocPipelineStatus;
 };
@@ -2333,24 +2337,24 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="text-xs [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:px-3 [&_td]:py-2 [&_td]:align-middle">
+            <Table className="min-w-[70rem] table-fixed text-xs [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-40">Nome</TableHead>
-                  <TableHead className="min-w-28">Construtora</TableHead>
-                  <TableHead className="min-w-28">Empreend.</TableHead>
-                  <TableHead className="w-[8.25rem]">Status 1</TableHead>
-                  <TableHead className="w-[8.25rem]">Status 2</TableHead>
-                  <TableHead className="min-w-32">Corretor</TableHead>
-                  <TableHead className="min-w-32">Gerente</TableHead>
-                  <TableHead className="w-[8.25rem]">Fonte</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead className="w-[18%]">Nome</TableHead>
+                  <TableHead className="w-[13%]">Construtora</TableHead>
+                  <TableHead className="w-[13%]">Empreend.</TableHead>
+                  <TableHead className="w-[9.25rem]">Status 1</TableHead>
+                  <TableHead className="w-[9.25rem]">Status 2</TableHead>
+                  <TableHead className="w-[13%]">Corretor</TableHead>
+                  <TableHead className="w-[13%]">Gerente</TableHead>
+                  <TableHead className="w-[9.25rem]">Fonte</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedItems.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="min-w-40 max-w-56">
+                    <TableCell>
                       <div
                         className="table-person-name truncate"
                         title={doc.nome}
@@ -2368,43 +2372,43 @@ function DocumentacaoPage() {
                       {doc.construtora?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
+                          className={DOC_PERSON_CHIP}
                           style={construtoraBadgeStyle(doc.construtora.cor)}
                           title={doc.construtora.nome}
                         >
                           {doc.construtora.nome}
                         </Badge>
                       ) : (
-                        "—"
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell>
                       {doc.empreendimento?.nome ? (
                         <Badge
                           variant="secondary"
-                          className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
+                          className={DOC_PERSON_CHIP}
                           style={construtoraBadgeStyle(doc.empreendimento.cor)}
                           title={doc.empreendimento.nome}
                         >
                           {doc.empreendimento.nome}
                         </Badge>
                       ) : (
-                        "—"
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[8.25rem]">
+                    <TableCell className="w-[9.25rem]">
                       <Badge
                         variant="outline"
-                        className={cn(STATUS_CHIP_CLASS, "font-normal")}
+                        className={cn(DOC_STATUS_CHIP, "font-normal")}
                         title={doc.status1}
                       >
                         {doc.status1}
                       </Badge>
                     </TableCell>
-                    <TableCell className="w-[8.25rem]">
+                    <TableCell className="w-[9.25rem]">
                       <Badge
                         variant="secondary"
-                        className={cn(STATUS_CHIP_CLASS, "font-normal")}
+                        className={cn(DOC_STATUS_CHIP, "font-normal")}
                         title={doc.status2}
                       >
                         {doc.status2}
@@ -2414,11 +2418,15 @@ function DocumentacaoPage() {
                       {(() => {
                         const corretor =
                           doc.corretor ?? doc.lead.corretor ?? null;
-                        if (!corretor?.name) return "—";
+                        if (!corretor?.name) {
+                          return (
+                            <span className="text-muted-foreground">—</span>
+                          );
+                        }
                         return (
                           <Badge
                             variant="secondary"
-                            className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
+                            className={DOC_PERSON_CHIP}
                             style={construtoraBadgeStyle(corretor.cor)}
                             title={corretor.name}
                           >
@@ -2431,7 +2439,7 @@ function DocumentacaoPage() {
                       {doc.gerente?.name ? (
                         <Badge
                           variant="secondary"
-                          className="h-6 max-w-36 truncate border-transparent px-2 text-[11px] font-normal leading-none"
+                          className={DOC_PERSON_CHIP}
                           title={doc.gerente.name}
                         >
                           {doc.gerente.name}
@@ -2440,14 +2448,21 @@ function DocumentacaoPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[8.25rem]">
+                    <TableCell className="w-[9.25rem]">
                       {(() => {
                         const fonte = displayFonte(doc.fonte);
-                        if (!fonte) return "—";
+                        if (!fonte) {
+                          return (
+                            <span className="text-muted-foreground">—</span>
+                          );
+                        }
                         return (
                           <Badge
-                            className={catalogColorBadgeClass(
-                              colorByLabel("documentacao_fonte", fonte),
+                            className={cn(
+                              catalogColorBadgeClass(
+                                colorByLabel("documentacao_fonte", fonte),
+                              ),
+                              "justify-start text-left font-normal",
                             )}
                             title={fonte}
                           >
