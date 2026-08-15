@@ -37,6 +37,8 @@ import {
   Menu,
   X,
   BookOpen,
+  Handshake,
+  Library,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -57,6 +59,7 @@ import {
   type AgendaUrgencia,
 } from "@/lib/agenda-api";
 import { AgendaLembretesDialog } from "@/components/agenda-lembretes-dialog";
+import { SidebarReorgNotice } from "@/components/sidebar-reorg-notice";
 import { Input } from "@/components/ui/input";
 import { useHeaderSearchInput } from "@/lib/header-search";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -222,35 +225,49 @@ const NAV_SECTIONS: {
     icon: Briefcase,
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/vendas", label: "Vendas", icon: DollarSign },
       { to: "/leads", label: "Leads", icon: Users },
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/triagem", label: "Triagem", icon: ClipboardList },
-      { to: "/imoveis", label: "Imóveis", icon: Building2 },
+      { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/clientes", label: "Clientes", icon: UserCircle2 },
       { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
-      { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
-      { to: "/usuarios", label: "Usuários", icon: UsersRound },
-      { to: "/construtoras", label: "Construtoras", icon: Building2 },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
+      { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
     ],
   },
   {
-    id: "administracao",
-    label: "Administração",
+    id: "fechamento",
+    label: "Fechamento",
+    icon: Handshake,
+    items: [
+      { to: "/documentacao", label: "Documentação", icon: FolderOpen },
+      { to: "/propostas", label: "Propostas", icon: ClipboardList },
+      { to: "/contratos", label: "Contratos", icon: FileSignature },
+      { to: "/vendas", label: "Vendas", icon: DollarSign },
+    ],
+  },
+  {
+    id: "catalogo",
+    label: "Catálogo",
+    icon: Library,
+    items: [
+      { to: "/construtoras", label: "Construtoras", icon: Building2 },
+      { to: "/imoveis", label: "Imóveis", icon: Building2 },
+    ],
+  },
+  {
+    id: "gestao",
+    label: "Gestão",
     icon: Shield,
     items: [
       { to: "/tenants", label: "Clientes", icon: Building2 },
       { to: "/guia", label: "Guia", icon: BookOpen },
-      { to: "/agenda", label: "Agenda", icon: Calendar },
-      { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/corretores", label: "Ranking", icon: UsersRound },
-      { to: "/documentacao", label: "Documentação", icon: FolderOpen },
-      { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/metas", label: "Metas", icon: Target },
-      { to: "/propostas", label: "Propostas", icon: ClipboardList },
-      { to: "/contratos", label: "Contratos", icon: FileSignature },
+      { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
+      { to: "/equipes", label: "Equipes", icon: Network },
+      { to: "/usuarios", label: "Usuários", icon: UsersRound },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
     ],
   },
@@ -1103,6 +1120,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      <SidebarReorgNotice />
 
       <AgendaLembretesDialog
         open={lembretesOpen}

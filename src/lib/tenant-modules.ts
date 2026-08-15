@@ -1,5 +1,7 @@
 /**
- * Catálogo de módulos do tenant, alinhado ao menu (Operação / Administração / Financeiro).
+ * Catálogo de módulos do tenant, alinhado às permissões do plano.
+ * O menu visual (Operação / Fechamento / Catálogo / Gestão / Financeiro)
+ * fica em app-shell; daqui só entram chaves de plano.
  * false em Tenant.modules = oculto no menu e bloqueado na rota.
  */
 
