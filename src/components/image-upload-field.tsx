@@ -129,7 +129,9 @@ export function ImageUploadField({
 }
 
 export function assertImageFile(file: File): string | null {
-  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+  if (!["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type) &&
+      file.type !== "" &&
+      file.type !== "application/octet-stream") {
     return "Envie uma imagem JPG, PNG ou WebP.";
   }
   if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
