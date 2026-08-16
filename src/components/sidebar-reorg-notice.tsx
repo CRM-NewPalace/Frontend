@@ -32,7 +32,6 @@ const GROUPS = [
       { to: "/funil-clientes", label: "Funil de Clientes" },
       { to: "/leads-perdidos", label: "Leads Perdidos" },
       { to: "/clientes-perdidos", label: "Perda de cliente" },
-      { to: "/guia-sistema", label: "Guia do sistema" },
     ],
   },
   {

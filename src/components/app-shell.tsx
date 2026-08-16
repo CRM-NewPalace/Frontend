@@ -218,6 +218,8 @@ const NAV_SECTIONS: {
   /** Admin da imobiliária ou super_admin da plataforma. */
   adminOrPlatform?: boolean;
   gerenteOnly?: boolean;
+  /** Item solto no menu, sem pasta/seção. */
+  standalone?: boolean;
   items: NavItem[];
 }[] = [
   {
@@ -235,7 +237,6 @@ const NAV_SECTIONS: {
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
       { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
       { to: "/treinamento", label: "Treinamento", icon: GraduationCap },
-      { to: "/guia-sistema", label: "Guia do sistema", icon: BookMarked },
     ],
   },
   {
@@ -286,6 +287,13 @@ const NAV_SECTIONS: {
     label: "Conta",
     icon: CircleUser,
     items: [{ to: "/perfil", label: "Perfil", icon: UserIcon }],
+  },
+  {
+    id: "guia-sistema",
+    label: "Guia do sistema",
+    icon: BookMarked,
+    standalone: true,
+    items: [{ to: "/guia-sistema", label: "Guia do sistema", icon: BookMarked }],
   },
 ];
 
@@ -683,6 +691,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           const sectionActive = section.items.some((item) =>
             itemMatchesPath(item, pathname),
           );
+          const standaloneLeaf =
+            section.standalone &&
+            section.items.length === 1 &&
+            !isNavGroup(section.items[0])
+              ? section.items[0]
+              : null;
+
+          if (standaloneLeaf) {
+            const active =
+              pathname === standaloneLeaf.to ||
+              pathname.startsWith(`${standaloneLeaf.to}/`);
+            return (
+              <Link
+                key={section.id}
+                to={standaloneLeaf.to}
+                onClick={onNavigate}
+                title={collapsedView ? section.label : undefined}
+                className={cn(
+                  "flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "text-sidebar-foreground bg-sidebar-accent"
+                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+                )}
+              >
+                <SectionIcon
+                  className={cn(
+                    "w-4 h-4 shrink-0",
+                    active && "text-brand-accent",
+                  )}
+                />
+                {!collapsedView && (
+                  <span className="flex-1 truncate">{section.label}</span>
+                )}
+              </Link>
+            );
+          }
 
           return (
             <div key={section.id} className="space-y-0.5">
