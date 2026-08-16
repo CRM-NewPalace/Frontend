@@ -39,6 +39,7 @@ import { Route as AppPropostasRouteImport } from './routes/_app.propostas'
 import { Route as AppResultadoRouteImport } from './routes/_app.resultado'
 import { Route as AppTaxaConversaoRouteImport } from './routes/_app.taxa-conversao'
 import { Route as AppTenantsRouteImport } from './routes/_app.tenants'
+import { Route as AppTreinamentoRouteImport } from './routes/_app.treinamento'
 import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
@@ -207,6 +208,11 @@ const AppTenantsRoute = AppTenantsRouteImport.update({
   path: '/tenants',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTreinamentoRoute = AppTreinamentoRouteImport.update({
+  id: '/treinamento',
+  path: '/treinamento',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTriagemRoute = AppTriagemRouteImport.update({
   id: '/triagem',
   path: '/triagem',
@@ -335,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/resultado': typeof AppResultadoRoute
   '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/tenants': typeof AppTenantsRoute
+  '/treinamento': typeof AppTreinamentoRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
@@ -384,6 +391,7 @@ export interface FileRoutesByTo {
   '/resultado': typeof AppResultadoRoute
   '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/tenants': typeof AppTenantsRoute
+  '/treinamento': typeof AppTreinamentoRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
@@ -435,6 +443,7 @@ export interface FileRoutesById {
   '/_app/resultado': typeof AppResultadoRoute
   '/_app/taxa-conversao': typeof AppTaxaConversaoRoute
   '/_app/tenants': typeof AppTenantsRoute
+  '/_app/treinamento': typeof AppTreinamentoRoute
   '/_app/triagem': typeof AppTriagemRoute
   '/_app/usuarios': typeof AppUsuariosRoute
   '/_app/vendas': typeof AppVendasRoute
@@ -486,6 +495,7 @@ export interface FileRouteTypes {
     | '/resultado'
     | '/taxa-conversao'
     | '/tenants'
+    | '/treinamento'
     | '/triagem'
     | '/usuarios'
     | '/vendas'
@@ -535,6 +545,7 @@ export interface FileRouteTypes {
     | '/resultado'
     | '/taxa-conversao'
     | '/tenants'
+    | '/treinamento'
     | '/triagem'
     | '/usuarios'
     | '/vendas'
@@ -585,6 +596,7 @@ export interface FileRouteTypes {
     | '/_app/resultado'
     | '/_app/taxa-conversao'
     | '/_app/tenants'
+    | '/_app/treinamento'
     | '/_app/triagem'
     | '/_app/usuarios'
     | '/_app/vendas'
@@ -829,6 +841,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTenantsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/treinamento': {
+      id: '/_app/treinamento'
+      path: '/treinamento'
+      fullPath: '/treinamento'
+      preLoaderRoute: typeof AppTreinamentoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/triagem': {
       id: '/_app/triagem'
       path: '/triagem'
@@ -1018,6 +1037,7 @@ interface AppRouteChildren {
   AppResultadoRoute: typeof AppResultadoRoute
   AppTaxaConversaoRoute: typeof AppTaxaConversaoRoute
   AppTenantsRoute: typeof AppTenantsRoute
+  AppTreinamentoRoute: typeof AppTreinamentoRoute
   AppTriagemRoute: typeof AppTriagemRoute
   AppUsuariosRoute: typeof AppUsuariosRoute
   AppVendasRoute: typeof AppVendasRoute
@@ -1048,6 +1068,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppResultadoRoute: AppResultadoRoute,
   AppTaxaConversaoRoute: AppTaxaConversaoRoute,
   AppTenantsRoute: AppTenantsRoute,
+  AppTreinamentoRoute: AppTreinamentoRoute,
   AppTriagemRoute: AppTriagemRoute,
   AppUsuariosRoute: AppUsuariosRoute,
   AppVendasRoute: AppVendasRoute,
