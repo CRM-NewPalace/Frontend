@@ -47,6 +47,7 @@ import { getSession, sendHeartbeat, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import { useHideImoveisFromSidebar } from "@/lib/imoveis-nav-prefs";
 import { useTenantTheme } from "@/lib/tenant-theme";
+import { GuiaTourHost } from "@/components/guia-tour";
 import { ApiError } from "@/lib/api";
 import {
   fetchNotificacoes,
@@ -1166,6 +1167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-clip">
           {children}
         </main>
+        <GuiaTourHost />
       </div>
 
       <SidebarReorgNotice />
@@ -1225,7 +1227,10 @@ export function PageHeader({
 }) {
   const { brandName } = useTenantTheme();
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
+    <div
+      data-guia="page-header"
+      className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4"
+    >
       <div className="min-w-0">
         <p className="mb-1.5 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
           <span className="size-1.5 rounded-full bg-brand-accent" />
@@ -1241,7 +1246,10 @@ export function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+        <div
+          data-guia="page-actions"
+          className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0"
+        >
           {actions}
         </div>
       )}

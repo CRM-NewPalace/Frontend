@@ -888,6 +888,7 @@ export function ComercialFunilBoard({
 
       <div
         ref={boardRef}
+        data-guia="funil-board"
         className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
       >
         {funnelStages.map((stage, stageIndex) => {

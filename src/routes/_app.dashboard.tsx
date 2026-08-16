@@ -359,7 +359,10 @@ function DashboardAdminView() {
         </div>
       ) : null}
 
-      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <section
+        data-guia="dashboard-kpis"
+        className="grid gap-3 grid-cols-2 xl:grid-cols-4"
+      >
         <FinanceKpiCard
           label="Novos leads (mês)"
           value={summary.entradas.mes.valor}
@@ -506,7 +509,10 @@ function DashboardAdminView() {
           <Link to="/financeiro/comissao">Ver comissões</Link>
         </Button>
       </div>
-      <section className="mt-3 grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <section
+        data-guia="dashboard-comissao"
+        className="mt-3 grid gap-3 grid-cols-2 xl:grid-cols-4"
+      >
         <FinanceKpiCard
           label={isGerente ? "A receber" : "Total líquido"}
           value={
@@ -557,7 +563,10 @@ function DashboardAdminView() {
         />
       </section>
 
-      <section className="mt-5 grid gap-4 min-w-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
+      <section
+        data-guia="dashboard-funil"
+        className="mt-5 grid gap-4 min-w-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]"
+      >
         <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Funil geral</CardTitle>
@@ -1064,7 +1073,10 @@ function DashboardCorretorView() {
         description={`Visão da sua carteira em ${mesLabel}.`}
       />
 
-      <section className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <section
+        data-guia="dashboard-kpis"
+        className="grid gap-3 grid-cols-2 xl:grid-cols-4"
+      >
         <FinanceKpiCard
           label="Leads ativos"
           value={summary.carteira.leads}
@@ -1098,7 +1110,10 @@ function DashboardCorretorView() {
         />
       </section>
 
-      <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,1fr)]">
+      <section
+        data-guia="dashboard-funil"
+        className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,1fr)]"
+      >
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Funil atual</CardTitle>

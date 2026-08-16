@@ -1046,6 +1046,7 @@ function LeadsPage() {
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
               className={LEADS_SOFT_BTN}
+              data-guia="leads-importar"
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1060,6 +1061,7 @@ function LeadsPage() {
                 size="sm"
                 onClick={() => setDistribuirOpen(true)}
                 className={LEADS_SOFT_BTN}
+                data-guia="leads-distribuir"
               >
                 <Share2 className="w-4 h-4 mr-1" />
                 Distribuir
@@ -1072,6 +1074,7 @@ function LeadsPage() {
                   size="sm"
                   disabled={filteredLeads.length === 0}
                   className={LEADS_SOFT_BTN}
+                  data-guia="leads-exportar"
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -1123,6 +1126,7 @@ function LeadsPage() {
               onClick={openCreate}
               className={LEADS_GRADIENT_BTN}
               style={LEADS_GRADIENT_STYLE}
+              data-guia="leads-novo"
             >
               <Plus className="w-4 h-4 mr-1" />
               Novo lead
@@ -1829,6 +1833,7 @@ function LeadsPage() {
             <button
               type="button"
               className="min-w-0 cursor-pointer text-left"
+              data-guia="leads-chegaram"
               onClick={() => {
                 setDistribuicaoFilter("chegaram");
                 setPrioridadeFilter("all");

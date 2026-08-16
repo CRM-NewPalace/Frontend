@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpen,
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { GuiaTourStartButton } from "@/components/guia-tour";
 import { getSession } from "@/lib/auth";
 import {
   findGuiaTopic,
@@ -26,6 +27,7 @@ import {
   type GuiaFormula,
   type GuiaTopic,
 } from "@/lib/guia-sistema-content";
+import { peekGuiaTourLive, startGuiaTour, stopGuiaTour } from "@/lib/guia-tour";
 import { canAccessRoute } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
@@ -142,31 +144,57 @@ function TopicPage({
   topic: GuiaTopic;
   canOpen: boolean;
 }) {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      if (!peekGuiaTourLive()) stopGuiaTour();
+    };
+  }, [topic.id]);
+
+  function startTutorial() {
+    const live = Boolean(topic.href && canOpen);
+    startGuiaTour(topic.id, { live });
+    if (live && topic.href) {
+      void navigate({ to: topic.href as "/dashboard" });
+    }
+  }
+
   return (
     <div className="space-y-5">
-      <div className="overflow-hidden rounded-2xl border border-border/80">
+      <div
+        data-guia="guia-topic-header"
+        className="overflow-hidden rounded-2xl border border-border/80"
+      >
         <div className="relative h-36 sm:h-44">
           <img src={image} alt="" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5 sm:p-6">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
-                {kicker}
-              </p>
-              <h2 className="text-2xl font-semibold tracking-tight">
-                {topic.title}
-              </h2>
-            </div>
-            {topic.href && canOpen ? (
-              <Button asChild size="sm" className="shrink-0">
-                <Link to={topic.href as "/dashboard"}>
-                  Abrir módulo
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            ) : null}
+          <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
+              {kicker}
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {topic.title}
+            </h2>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <GuiaTourStartButton onClick={startTutorial} />
+        {topic.href && canOpen ? (
+          <Button asChild size="sm">
+            <Link to={topic.href as "/dashboard"}>
+              Abrir módulo
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        ) : null}
+        <p className="w-full text-xs text-muted-foreground sm:w-auto sm:ml-1">
+          {canOpen
+            ? "Abre a tela real e destaca o que clicar."
+            : "Passo a passo aqui no guia — este perfil não abre o módulo."}
+        </p>
       </div>
 
       <Card>
@@ -191,7 +219,7 @@ function TopicPage({
         </h3>
         <div className="space-y-2">
           {topic.actions.map((action, index) => (
-            <Card key={action.title}>
+            <Card key={action.title} data-guia={`guia-action-${index}`}>
               <CardContent className="flex gap-3 p-4 sm:p-5">
                 <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 text-xs font-bold text-brand-accent">
                   {index + 1}
@@ -214,7 +242,7 @@ function TopicPage({
             <CheckCircle2 className="h-4 w-4 text-brand-accent" />
             Ordem típica
           </h3>
-          <Card>
+          <Card data-guia="guia-how">
             <CardContent className="space-y-2.5 p-5">
               {topic.how.map((step, index) => (
                 <p
@@ -341,8 +369,8 @@ export function GuiaSistemaPage({
             Como usar cada módulo
           </h1>
           <p className="max-w-xl text-sm text-muted-foreground">
-            Clique no módulo no índice. A página abre ao lado, com tudo o que
-            dá para fazer naquela tela.
+            Clique no módulo no índice. Em cada um, use Ensinar a usar para um
+            tutorial na tela — abre o módulo e mostra o que clicar.
           </p>
         </div>
         <div className="relative w-full sm:max-w-xs">

@@ -1834,7 +1834,12 @@ function DocumentacaoPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             {canCreateDoc && (
-              <Button onClick={openCreate} disabled={leadsLoading} size="sm">
+              <Button
+                onClick={openCreate}
+                disabled={leadsLoading}
+                size="sm"
+                data-guia="doc-nova"
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Nova documentação
               </Button>
