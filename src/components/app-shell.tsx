@@ -48,6 +48,7 @@ import { canAccessRoute } from "@/lib/permissions";
 import { useHideImoveisFromSidebar } from "@/lib/imoveis-nav-prefs";
 import { useTenantTheme } from "@/lib/tenant-theme";
 import { GuiaTourHost } from "@/components/guia-tour";
+import { ModuloAjudaButton } from "@/components/modulo-ajuda";
 import { ApiError } from "@/lib/api";
 import {
   fetchNotificacoes,
@@ -1236,9 +1237,12 @@ export function PageHeader({
           <span className="size-1.5 rounded-full bg-brand-accent" />
           {brandName}
         </p>
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
-          {title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+            {title}
+          </h1>
+          <ModuloAjudaButton />
+        </div>
         {description && (
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             {description}

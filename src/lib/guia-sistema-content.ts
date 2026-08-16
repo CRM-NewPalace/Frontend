@@ -1022,3 +1022,22 @@ export function findGuiaTopic(id: string): {
   }
   return null;
 }
+
+function pathMatchesHref(pathname: string, href: string) {
+  const path = pathname.replace(/\/$/, "") || "/";
+  return path === href || path.startsWith(`${href}/`);
+}
+
+export function findGuiaTopicByPath(pathname: string) {
+  let best: { group: GuiaGroup; topic: GuiaTopic } | null = null;
+  for (const group of GUIA_GROUPS) {
+    for (const topic of group.topics) {
+      if (!topic.href) continue;
+      if (!pathMatchesHref(pathname, topic.href)) continue;
+      if (!best || topic.href.length > (best.topic.href?.length ?? 0)) {
+        best = { group, topic };
+      }
+    }
+  }
+  return best;
+}
