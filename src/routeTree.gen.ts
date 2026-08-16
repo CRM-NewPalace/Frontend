@@ -29,6 +29,7 @@ import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppFunilRouteImport } from './routes/_app.funil'
 import { Route as AppFunilClientesRouteImport } from './routes/_app.funil-clientes'
 import { Route as AppGuiaRouteImport } from './routes/_app.guia'
+import { Route as AppGuiaSistemaRouteImport } from './routes/_app.guia-sistema'
 import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
 import { Route as AppLeadsRouteImport } from './routes/_app.leads'
 import { Route as AppLeadsPerdidosRouteImport } from './routes/_app.leads-perdidos'
@@ -154,6 +155,11 @@ const AppFunilClientesRoute = AppFunilClientesRouteImport.update({
 const AppGuiaRoute = AppGuiaRouteImport.update({
   id: '/guia',
   path: '/guia',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGuiaSistemaRoute = AppGuiaSistemaRouteImport.update({
+  id: '/guia-sistema',
+  path: '/guia-sistema',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImoveisRoute = AppImoveisRouteImport.update({
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/funil': typeof AppFunilRoute
   '/funil-clientes': typeof AppFunilClientesRoute
   '/guia': typeof AppGuiaRoute
+  '/guia-sistema': typeof AppGuiaSistemaRoute
   '/imoveis': typeof AppImoveisRoute
   '/leads': typeof AppLeadsRoute
   '/leads-perdidos': typeof AppLeadsPerdidosRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/funil': typeof AppFunilRoute
   '/funil-clientes': typeof AppFunilClientesRoute
   '/guia': typeof AppGuiaRoute
+  '/guia-sistema': typeof AppGuiaSistemaRoute
   '/imoveis': typeof AppImoveisRoute
   '/leads': typeof AppLeadsRoute
   '/leads-perdidos': typeof AppLeadsPerdidosRoute
@@ -417,6 +425,7 @@ export interface FileRoutesById {
   '/_app/funil': typeof AppFunilRoute
   '/_app/funil-clientes': typeof AppFunilClientesRoute
   '/_app/guia': typeof AppGuiaRoute
+  '/_app/guia-sistema': typeof AppGuiaSistemaRoute
   '/_app/imoveis': typeof AppImoveisRoute
   '/_app/leads': typeof AppLeadsRoute
   '/_app/leads-perdidos': typeof AppLeadsPerdidosRoute
@@ -467,6 +476,7 @@ export interface FileRouteTypes {
     | '/funil'
     | '/funil-clientes'
     | '/guia'
+    | '/guia-sistema'
     | '/imoveis'
     | '/leads'
     | '/leads-perdidos'
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/funil'
     | '/funil-clientes'
     | '/guia'
+    | '/guia-sistema'
     | '/imoveis'
     | '/leads'
     | '/leads-perdidos'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/_app/funil'
     | '/_app/funil-clientes'
     | '/_app/guia'
+    | '/_app/guia-sistema'
     | '/_app/imoveis'
     | '/_app/leads'
     | '/_app/leads-perdidos'
@@ -745,6 +757,13 @@ declare module '@tanstack/react-router' {
       path: '/guia'
       fullPath: '/guia'
       preLoaderRoute: typeof AppGuiaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/guia-sistema': {
+      id: '/_app/guia-sistema'
+      path: '/guia-sistema'
+      fullPath: '/guia-sistema'
+      preLoaderRoute: typeof AppGuiaSistemaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/imoveis': {
@@ -989,6 +1008,7 @@ interface AppRouteChildren {
   AppFunilRoute: typeof AppFunilRoute
   AppFunilClientesRoute: typeof AppFunilClientesRoute
   AppGuiaRoute: typeof AppGuiaRoute
+  AppGuiaSistemaRoute: typeof AppGuiaSistemaRoute
   AppImoveisRoute: typeof AppImoveisRoute
   AppLeadsRoute: typeof AppLeadsRoute
   AppLeadsPerdidosRoute: typeof AppLeadsPerdidosRoute
@@ -1018,6 +1038,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFunilRoute: AppFunilRoute,
   AppFunilClientesRoute: AppFunilClientesRoute,
   AppGuiaRoute: AppGuiaRoute,
+  AppGuiaSistemaRoute: AppGuiaSistemaRoute,
   AppImoveisRoute: AppImoveisRoute,
   AppLeadsRoute: AppLeadsRoute,
   AppLeadsPerdidosRoute: AppLeadsPerdidosRoute,

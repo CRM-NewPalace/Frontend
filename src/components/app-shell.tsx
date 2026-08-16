@@ -35,6 +35,7 @@ import {
   Menu,
   X,
   BookOpen,
+  BookMarked,
   Handshake,
   Library,
   Receipt,
@@ -232,6 +233,7 @@ const NAV_SECTIONS: {
       { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
       { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
+      { to: "/guia-sistema", label: "Guia do sistema", icon: BookMarked },
     ],
   },
   {
