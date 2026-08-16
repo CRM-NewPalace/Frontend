@@ -82,6 +82,7 @@ export type Comissao = {
   gerente?: string | ComissaoRelacionamento | null;
   equipe?: string | ComissaoRelacionamento | null;
   dataVenda: string;
+  dataPrevistaRecebimento?: string;
   vgv: number;
   percentualImobiliaria?: number;
   comissaoBruta?: number;
@@ -123,9 +124,11 @@ export type ComissaoPercentuais = {
 
 export type CreateComissaoInput = ComissaoPercentuais & {
   documentacaoId: string;
+  dataPrevistaRecebimento: string;
 };
 
 export type UpdateComissaoInput = Partial<ComissaoPercentuais> & {
+  dataPrevistaRecebimento?: string;
   status?: ComissaoStatus;
 };
 

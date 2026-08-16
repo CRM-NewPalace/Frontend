@@ -113,6 +113,7 @@ const STATUS_OPTIONS = [
 
 type FormState = {
   documentacaoId: string;
+  dataPrevistaRecebimento: string;
   percentualImobiliaria: string;
   percentualTributos: string;
   percentualCorretor: string;
@@ -124,6 +125,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   documentacaoId: "",
+  dataPrevistaRecebimento: "",
   percentualImobiliaria: "",
   percentualTributos: "",
   percentualCorretor: "",
@@ -152,6 +154,10 @@ function numberValue(value: string | number | undefined) {
 function toForm(comissao: Comissao): FormState {
   return {
     documentacaoId: comissao.documentacaoId,
+    dataPrevistaRecebimento: (comissao.dataPrevistaRecebimento ?? "").slice(
+      0,
+      10,
+    ),
     percentualImobiliaria: String(comissao.percentualImobiliaria ?? ""),
     percentualTributos: String(comissao.percentualTributos ?? ""),
     percentualCorretor: String(comissao.percentualCorretor ?? ""),
@@ -311,7 +317,11 @@ function Page() {
       // Mês atual considera data da venda OU data do lançamento da comissão.
       const inPeriodo =
         matchesPeriodoFiltro(item.dataVenda, periodo) ||
-        matchesPeriodoFiltro(item.createdAt, periodo);
+        matchesPeriodoFiltro(item.createdAt, periodo) ||
+        Boolean(
+          item.dataPrevistaRecebimento &&
+            matchesPeriodoFiltro(item.dataPrevistaRecebimento, periodo),
+        );
       if (!inPeriodo) return false;
       if (!query) return true;
       return [item.corretor, item.cliente, item.empreendimento, item.equipe]
@@ -370,6 +380,10 @@ function Page() {
       toast.error("Informe o percentual da imobiliária.");
       return;
     }
+    if (!form.dataPrevistaRecebimento) {
+      toast.error("Informe a data prevista de recebimento.");
+      return;
+    }
     if (
       Object.values(percentages).some(
         (value) => !Number.isFinite(value) || value < 0 || value > 100,
@@ -389,10 +403,12 @@ function Page() {
         mode === "edit" && editingId
           ? await updateComissao(editingId, {
               ...percentages,
+              dataPrevistaRecebimento: form.dataPrevistaRecebimento,
               status: form.status,
             })
           : await createComissao({
               documentacaoId: form.documentacaoId,
+              dataPrevistaRecebimento: form.dataPrevistaRecebimento,
               ...percentages,
             });
       upsert(saved);
@@ -468,7 +484,7 @@ function Page() {
         title="Comissão"
         description={
           canManage
-            ? "Gestão e distribuição das comissões por venda"
+            ? "Gestão das comissões por venda. A data prevista projeta a bruta no fluxo de caixa; o split só entra quando estiver paga."
             : "Acompanhe as comissões disponíveis para o seu perfil"
         }
         actions={
@@ -549,7 +565,8 @@ function Page() {
                 <TableHead className="h-9">Equipe</TableHead>
                 <TableHead className="h-9">Empreendimento</TableHead>
                 <TableHead className="h-9">Cliente</TableHead>
-                <TableHead className="h-9">Data</TableHead>
+                <TableHead className="h-9">Venda</TableHead>
+                <TableHead className="h-9">Prev. receb.</TableHead>
                 <TableHead className="h-9 text-right">VGV</TableHead>
                 <TableHead className="h-9 text-right">
                   {commissionColumnLabel}
@@ -561,7 +578,7 @@ function Page() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center">
+                  <TableCell colSpan={10} className="py-10 text-center">
                     <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
                     <span className="mt-2 block text-sm text-muted-foreground">
                       Carregando comissões…
@@ -570,7 +587,7 @@ function Page() {
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-8 text-center">
+                  <TableCell colSpan={10} className="py-8 text-center">
                     {items.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">
@@ -615,6 +632,11 @@ function Page() {
                     </TableCell>
                     <TableCell className="py-2 whitespace-nowrap tabular-nums">
                       {formatDate(item.dataVenda)}
+                    </TableCell>
+                    <TableCell className="py-2 whitespace-nowrap tabular-nums">
+                      {item.dataPrevistaRecebimento
+                        ? formatDate(item.dataPrevistaRecebimento)
+                        : "—"}
                     </TableCell>
                     <TableCell className="py-2 text-right tabular-nums">
                       {brl(numberValue(item.vgv))}
@@ -711,7 +733,7 @@ function Page() {
         onOpenChange={setDialogOpen}
         icon={<Percent className="size-5" />}
         title={mode === "create" ? "Lançar comissão" : "Editar comissão"}
-        description="Defina os percentuais e confira a distribuição antes de salvar."
+        description="Defina a data prevista de recebimento e os percentuais antes de salvar."
         className="max-w-3xl"
         footer={
           <FormDialogActions
@@ -872,6 +894,28 @@ function Page() {
               </FormSection>
             )}
 
+            <FormSection title="Recebimento">
+              <div className="max-w-xs space-y-2">
+                <Label htmlFor="comissao-data-prevista">
+                  Data prevista de recebimento
+                </Label>
+                <Input
+                  id="comissao-data-prevista"
+                  type="date"
+                  value={form.dataPrevistaRecebimento}
+                  onChange={(event) =>
+                    setField("dataPrevistaRecebimento", event.target.value)
+                  }
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enquanto a comissão não estiver paga, o fluxo de caixa
+                  projeta a comissão bruta nesta data — sem tributos e sem
+                  split.
+                </p>
+              </div>
+            </FormSection>
+
             <FormSection title="Percentuais">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <PercentField
@@ -1019,6 +1063,14 @@ function Page() {
                 <DetailField
                   label="Data da venda"
                   value={formatDate(detail.dataVenda)}
+                />
+                <DetailField
+                  label="Previsto recebimento"
+                  value={
+                    detail.dataPrevistaRecebimento
+                      ? formatDate(detail.dataPrevistaRecebimento)
+                      : "—"
+                  }
                 />
                 <DetailField
                   label="VGV"

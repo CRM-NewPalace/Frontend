@@ -853,7 +853,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/financeiro/fluxo-caixa",
         who: "Admin do financeiro.",
         summary:
-          "Projeção por vencimento: o que entra, o que sai e o saldo no dia/semana/mês. Dá para baixar título direto do quadro.",
+          "Projeção por vencimento: o que entra, o que sai e o saldo no dia/semana/mês. Comissões pendentes entram pela data prevista, no valor bruto. Dá para baixar título direto do quadro.",
         actions: [
           {
             title: "Navegar o período",
@@ -863,7 +863,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Baixar título no quadro",
             detail:
-              "Marca como recebido/pago e gera o movimento. Evita lançar duas vezes.",
+              "Marca como recebido/pago e gera o movimento. Evita lançar duas vezes. Comissão prevista não baixa aqui — abra a comissão e marque como paga.",
           },
         ],
         formulas: [
@@ -929,17 +929,17 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/financeiro/comissao",
         who: "Admin vê o consolidado. Gerente a da equipe. Corretor/treinee a fatia deles. Não exige o caixa inteiro no plano.",
         summary:
-          "Rateio sobre o VGV da venda: bruta da imobiliária, tributos, líquida e split (corretor, gerente, caixa, sócios). Status: pendente → liberada → paga.",
+          "Rateio sobre o VGV da venda: bruta da imobiliária, tributos, líquida e split (corretor, gerente, caixa, sócios). Informe a data prevista de recebimento — o fluxo de caixa projeta a bruta nessa data. Status: pendente → liberada → paga.",
         actions: [
           {
             title: "Lançar comissão",
             detail:
-              "VGV + % da imobiliária + % de tributos + split da líquida. Os quatro pedaços da líquida precisam somar 100%.",
+              "VGV + % da imobiliária + % de tributos + split da líquida + data prevista de recebimento. Os quatro pedaços da líquida precisam somar 100%. Enquanto não estiver paga, o fluxo mostra só a comissão bruta (sem tributos e sem split).",
           },
           {
             title: "Avançar o status",
             detail:
-              "Pendente, liberada, paga. Ao marcar como paga: caixa da imobiliária e sócios vão para Contas a receber; corretor, gerente e tributos (se > R$ 0) vão para Contas a pagar. Cada título fica identificado como Comissão e abre a comissão de origem.",
+              "Pendente, liberada, paga. Ao marcar como paga: a previsão bruta some do fluxo e as fatias entram — caixa da imobiliária e sócios em Contas a receber; corretor, gerente e tributos (se > R$ 0) em Contas a pagar. Cada título fica identificado como Comissão e abre a comissão de origem.",
           },
           {
             title: "Conferir o recorte",

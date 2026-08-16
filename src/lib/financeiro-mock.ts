@@ -160,7 +160,7 @@ export interface FluxoItem {
   tipo: "entrada" | "saida";
   valor: number;
   natureza: "realizado" | "previsto";
-  origem: "titulo" | "movimento";
+  origem: "titulo" | "movimento" | "comissao";
   id: string;
   descricao: string;
   parceiro: string;
@@ -169,6 +169,12 @@ export interface FluxoItem {
   status: string;
   contrato?: boolean;
 }
+
+export const FLUXO_ORIGEM_LABEL: Record<FluxoItem["origem"], string> = {
+  titulo: "Título",
+  movimento: "Movimento",
+  comissao: "Comissão",
+};
 
 export const FLUXO_GRANULARIDADE_OPTIONS: {
   value: FluxoGranularidade;

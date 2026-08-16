@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   useCallback,
   useEffect,
@@ -51,6 +51,7 @@ import {
 import {
   brl,
   formatDate,
+  FLUXO_ORIGEM_LABEL,
   type FluxoBucket,
   type FluxoGranularidade,
   type FluxoItem,
@@ -288,7 +289,7 @@ function Page() {
   }
 
   async function confirmarPrevisao(item: FluxoItem) {
-    if (item.natureza !== "previsto") return;
+    if (item.natureza !== "previsto" || item.origem === "comissao") return;
     const key = `${item.origem}-${item.id}`;
     setConfirmingKey(key);
     try {
@@ -335,7 +336,7 @@ function Page() {
     <div>
       <PageHeader
         title="Fluxo de caixa"
-        description="Entradas e saídas realizadas e previstas — visão calendário como a Agenda"
+        description="Entradas e saídas realizadas e previstas. Comissão pendente entra pela data prevista, no valor bruto."
       />
 
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -674,7 +675,7 @@ function Page() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-[10px]">
-                        {it.origem}
+                        {FLUXO_ORIGEM_LABEL[it.origem] ?? it.origem}
                       </Badge>
                     </TableCell>
                     <TableCell
@@ -756,7 +757,9 @@ function Page() {
         description="Lançamentos e títulos do período"
         footer={
           <FormDialogActions>
-            {detailItems.some((i) => i.natureza === "previsto") ? (
+            {detailItems.some(
+              (i) => i.natureza === "previsto" && i.origem !== "comissao",
+            ) ? (
               <div className="flex items-center gap-2 mr-auto">
                 <Label
                   htmlFor="confirm-date"
@@ -810,7 +813,7 @@ function Page() {
                         <span>{formatDate(it.data)}</span>
                         {it.parceiro ? <span>· {it.parceiro}</span> : null}
                         <Badge variant="outline" className="text-[10px] h-4">
-                          {it.origem}
+                          {FLUXO_ORIGEM_LABEL[it.origem] ?? it.origem}
                         </Badge>
                         <Badge
                           variant="secondary"
@@ -835,7 +838,16 @@ function Page() {
                         {it.tipo === "entrada" ? "+" : "−"}
                         {brl(it.valor)}
                       </div>
-                      {it.natureza === "previsto" ? (
+                      {it.origem === "comissao" ? (
+                        <Button asChild size="sm" variant="outline">
+                          <Link
+                            to="/financeiro/comissao"
+                            search={{ id: it.id }}
+                          >
+                            Abrir comissão
+                          </Link>
+                        </Button>
+                      ) : it.natureza === "previsto" ? (
                         <Button
                           type="button"
                           size="sm"
