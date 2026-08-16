@@ -151,9 +151,10 @@ export async function deleteConstrutoraLogo(id: string): Promise<Construtora> {
 
 export async function fetchConstrutoraVendas(
   id: string,
-  params?: { mes?: number; ano?: number },
+  params?: { mes?: number; ano?: number; granularidade?: string },
 ): Promise<ConstrutoraVendas> {
   const qs = new URLSearchParams();
+  if (params?.granularidade) qs.set("granularidade", params.granularidade);
   if (params?.mes) qs.set("mes", String(params.mes));
   if (params?.ano) qs.set("ano", String(params.ano));
   const query = qs.toString();

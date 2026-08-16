@@ -156,8 +156,17 @@ export type DashboardAdmin = {
   };
 };
 
+export type PeriodoGranularidade =
+  | "mes"
+  | "bimestre"
+  | "trimestre"
+  | "semestre"
+  | "anual";
+
 export type DashboardFiltros = {
-  /** Mês 1–12. Omite = mês atual. */
+  /** Recorte do ranking. Omite = mês. */
+  granularidade?: PeriodoGranularidade;
+  /** Mês 1–12. Omite = mês atual. Alinha ao início do recorte. */
   mes?: number;
   /** Ano calendário. Omite = ano atual. */
   ano?: number;
@@ -167,6 +176,7 @@ export type DashboardFiltros = {
 
 function dashboardQuery(params?: DashboardFiltros): string {
   const qs = new URLSearchParams();
+  if (params?.granularidade) qs.set("granularidade", params.granularidade);
   if (params?.mes != null) qs.set("mes", String(params.mes));
   if (params?.ano != null) qs.set("ano", String(params.ano));
   if (params?.origem) qs.set("origem", params.origem);

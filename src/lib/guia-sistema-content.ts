@@ -510,9 +510,9 @@ export const GUIA_GROUPS: GuiaGroup[] = [
               "Mês, equipe, corretor, construtora. KPIs de quantidade e VGV acompanham o filtro.",
           },
           {
-            title: "Abrir a ficha",
+            title: "Editar a venda",
             detail:
-              "Volta para a documentação daquela venda. Para “desfazer” venda, mude o Status 2 — não delete a linha aqui.",
+              "O lápis abre a mesma ficha de Documentação. Trocar corretor, gerente, data ou VGV atualiza os dois lugares — Vendas não é um cadastro separado.",
           },
         ],
         formulas: [
@@ -593,7 +593,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/corretores",
         who: "Só admin e gerente. Corretor não entra nesta tela.",
         summary:
-          "Comparativo do mês: vendas, VGV, documentações e progresso de meta. Admin também vê ranking entre gerentes/equipes e por construtora.",
+          "Comparativo do período: vendas, VGV, documentações e progresso de meta. Filtre por mês, bimestre, trimestre, semestre ou ano. Admin também vê ranking entre gerentes/equipes e por construtora.",
         actions: [
           {
             title: "Ordenar o pódio",
@@ -601,15 +601,15 @@ export const GUIA_GROUPS: GuiaGroup[] = [
               "Troque o critério (vendas, VGV, docs). Clique no corretor para o resumo das vendas.",
           },
           {
-            title: "Filtrar mês e equipe",
+            title: "Filtrar o período",
             detail:
-              "O recorte do gerente já é a própria equipe. Admin vê todas.",
+              "Mensal, bimestre, trimestre, semestre ou anual. O recorte do gerente já é a própria equipe. Admin vê todas.",
           },
         ],
         formulas: [
           {
             title: "O que pontua",
-            expression: "fichas vendidas (Status 2) e soma de VGV no mês",
+            expression: "fichas vendidas (Status 2) e soma de VGV no recorte",
           },
         ],
       },
