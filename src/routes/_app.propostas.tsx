@@ -79,7 +79,7 @@ import {
 import { getSession } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { brl, type Lead } from "@/lib/crm-types";
-import { canViewTeamData } from "@/lib/permissions";
+import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
   DEFAULT_TABLE_SORT,
@@ -736,10 +736,13 @@ function Page() {
   const [qrTarget, setQrTarget] = useState<Proposta | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState("");
 
-  const corretorOptions = useMemo(
-    () => assignees.filter((a) => !a.role || a.role === "corretor"),
-    [assignees],
-  );
+  const corretorOptions = useMemo(() => {
+    let list = assignees.filter((a) => !a.role || isCorretorLike(a.role));
+    if (isGerente && user) {
+      list = list.filter((a) => a.gerenteId === user.id);
+    }
+    return list;
+  }, [assignees, isGerente, user]);
 
   useEffect(() => {
     if (!qrTarget) {
