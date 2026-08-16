@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpen,
@@ -268,11 +268,15 @@ function TopicPage({
   );
 }
 
-export function GuiaSistemaPage() {
+export function GuiaSistemaPage({
+  modulo,
+  onSelectModulo,
+}: {
+  modulo?: string;
+  onSelectModulo: (id: string) => void;
+}) {
   const user = getSession();
-  const navigate = useNavigate({ from: "/guia-sistema" });
-  const search = useSearch({ from: "/guia-sistema" });
-  const selectedId = search.modulo ?? JOURNEY_ID;
+  const selectedId = modulo ?? JOURNEY_ID;
   const [query, setQuery] = useState("");
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     operacao: true,
@@ -304,10 +308,7 @@ export function GuiaSistemaPage() {
     );
 
   function selectModulo(id: string) {
-    void navigate({
-      search: id === JOURNEY_ID ? {} : { modulo: id },
-      replace: true,
-    });
+    onSelectModulo(id);
     const match = findGuiaTopic(id);
     if (match) {
       setOpenGroups((prev) => ({ ...prev, [match.group.id]: true }));

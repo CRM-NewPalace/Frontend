@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { GuiaSistemaPage } from "@/components/guia-sistema";
 
 type GuiaSearch = {
@@ -10,5 +10,23 @@ export const Route = createFileRoute("/_app/guia-sistema")({
   validateSearch: (search: Record<string, unknown>): GuiaSearch => ({
     modulo: typeof search.modulo === "string" ? search.modulo : undefined,
   }),
-  component: GuiaSistemaPage,
+  component: GuiaSistemaRoute,
 });
+
+function GuiaSistemaRoute() {
+  const { modulo } = Route.useSearch();
+  const navigate = useNavigate();
+
+  return (
+    <GuiaSistemaPage
+      modulo={modulo}
+      onSelectModulo={(id) => {
+        void navigate({
+          to: "/guia-sistema",
+          search: id === "jornada" ? {} : { modulo: id },
+          replace: true,
+        });
+      }}
+    />
+  );
+}
