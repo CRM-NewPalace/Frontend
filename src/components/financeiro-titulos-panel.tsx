@@ -6,6 +6,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -85,6 +86,7 @@ import {
 } from "@/lib/money-input";
 import {
   brl,
+  COMISSAO_PAPEL_LABEL,
   formatDate,
   matchesPeriodoFiltro,
   statusBadgeClass,
@@ -111,6 +113,7 @@ import {
   ListOrdered,
   Loader2,
   Pencil,
+  Percent,
   Plus,
   Tags,
   Trash2,
@@ -123,6 +126,25 @@ const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const
 type QuickKind = "parceiro" | "categoria" | null;
 type TituloFormTab = "dados" | "cobranca" | "contrato";
 type GrupoParcelaTipo = "adesao" | "mensalidade";
+
+function ComissaoOrigemBadge({
+  titulo,
+}: {
+  titulo: TituloFinanceiro;
+}) {
+  if (!titulo.comissaoId) return null;
+  const papel = titulo.comissaoPapel
+    ? (COMISSAO_PAPEL_LABEL[titulo.comissaoPapel] ?? titulo.comissaoPapel)
+    : null;
+  return (
+    <Badge
+      variant="outline"
+      className="shrink-0 border-brand-accent/40 text-[10px] text-brand-accent"
+    >
+      {papel ? `Comissão · ${papel}` : "Comissão"}
+    </Badge>
+  );
+}
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
@@ -295,6 +317,7 @@ export function FinanceiroTitulosPanel({
   description: string;
   readOnly?: boolean;
 }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
   const [catalogTipos, setCatalogTipos] = useState<DespesaTipo[]>([]);
@@ -360,7 +383,7 @@ export function FinanceiroTitulosPanel({
   );
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [origemFiltro, setOrigemFiltro] = useState<
-    "todos" | "normal" | "contrato"
+    "todos" | "normal" | "contrato" | "comissao"
   >("todos");
   const [grupoOpen, setGrupoOpen] = useState(false);
   const [grupoTitulos, setGrupoTitulos] = useState<TituloFinanceiro[]>([]);
@@ -403,7 +426,7 @@ export function FinanceiroTitulosPanel({
         fetchTitulos(
           tipo,
           undefined,
-          canUseContrato && origemFiltro !== "todos" ? origemFiltro : undefined,
+          origemFiltro !== "todos" ? origemFiltro : undefined,
         ),
         fetchParceiros(),
         isPlatformAdmin
@@ -651,6 +674,22 @@ export function FinanceiroTitulosPanel({
         >
           <Eye className="w-3.5 h-3.5" />
         </Button>
+        {t.comissaoId ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Abrir comissão de origem"
+            onClick={() =>
+              void navigate({
+                to: "/financeiro/comissao",
+                search: { id: t.comissaoId! },
+              })
+            }
+          >
+            <Percent className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
         {!opts?.hideGrupo && t.grupoParcelasId ? (
           <Button
             variant="ghost"
@@ -1254,7 +1293,7 @@ export function FinanceiroTitulosPanel({
     periodo !== "mes" ||
     status !== "todos" ||
     categoriaFiltro !== "todos" ||
-    (canUseContrato && origemFiltro !== "todos"),
+    origemFiltro !== "todos",
   );
 
   return (
@@ -1315,38 +1354,45 @@ export function FinanceiroTitulosPanel({
           setOrigemFiltro("todos");
         }}
         extra={
-          canUseContrato ? (
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                Tipo:
-              </span>
-              <div className="grid flex-1 grid-cols-3 rounded-lg border bg-muted/40 p-1 sm:w-77.5 sm:flex-none">
-                {[
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              Tipo:
+            </span>
+            <div className="grid flex-1 grid-cols-2 rounded-lg border bg-muted/40 p-1 sm:flex sm:w-auto sm:flex-none">
+              {(
+                [
                   { value: "todos", label: "Todas" },
                   { value: "normal", label: "Normais" },
-                  { value: "contrato", label: "Contratos" },
-                ].map((option) => (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    size="sm"
-                    variant={
-                      origemFiltro === option.value ? "secondary" : "ghost"
-                    }
-                    className="h-7 px-2 text-xs"
-                    aria-pressed={origemFiltro === option.value}
-                    onClick={() =>
-                      setOrigemFiltro(
-                        option.value as "todos" | "normal" | "contrato",
-                      )
-                    }
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
+                  ...(canUseContrato
+                    ? [{ value: "contrato" as const, label: "Contratos" }]
+                    : []),
+                  { value: "comissao", label: "Comissão" },
+                ] as const
+              ).map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={
+                    origemFiltro === option.value ? "secondary" : "ghost"
+                  }
+                  className="h-7 px-2 text-xs"
+                  aria-pressed={origemFiltro === option.value}
+                  onClick={() =>
+                    setOrigemFiltro(
+                      option.value as
+                        | "todos"
+                        | "normal"
+                        | "contrato"
+                        | "comissao",
+                    )
+                  }
+                >
+                  {option.label}
+                </Button>
+              ))}
             </div>
-          ) : undefined
+          </div>
         }
       />
 
@@ -1383,6 +1429,7 @@ export function FinanceiroTitulosPanel({
                       <TableCell className="font-medium max-w-50">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="truncate">{t.descricao}</span>
+                          <ComissaoOrigemBadge titulo={t} />
                           {t.platformContratoId ? (
                             <Badge
                               variant="outline"
@@ -1437,6 +1484,14 @@ export function FinanceiroTitulosPanel({
                             <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                           )}
                           <span className="truncate">{summary.descricao}</span>
+                          {row.titulos.some((titulo) => titulo.comissaoId) ? (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-brand-accent/40 text-[10px] text-brand-accent"
+                            >
+                              Comissão
+                            </Badge>
+                          ) : null}
                           {isContrato ? (
                             <Badge
                               variant="outline"
@@ -2589,13 +2644,26 @@ export function FinanceiroTitulosPanel({
         title="Detalhes da conta"
         description={
           detalhesTarget
-            ? detalhesTarget.platformContratoId
-              ? "Conta vinculada a contrato."
-              : "Conta financeira avulsa."
+            ? detalhesTarget.comissaoId
+              ? "Conta originada de comissão."
+              : detalhesTarget.platformContratoId
+                ? "Conta vinculada a contrato."
+                : "Conta financeira avulsa."
             : undefined
         }
         footer={
           <FormDialogActions>
+            {detalhesTarget?.comissaoId ? (
+              <Button asChild size="sm">
+                <Link
+                  to="/financeiro/comissao"
+                  search={{ id: detalhesTarget.comissaoId }}
+                >
+                  <Percent className="h-3.5 w-3.5" />
+                  Abrir comissão
+                </Link>
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -2615,10 +2683,11 @@ export function FinanceiroTitulosPanel({
                     <p className="text-xs text-muted-foreground">Descrição</p>
                     <p className="font-medium">{detalhesTarget.descricao}</p>
                   </div>
-                  <div className="flex shrink-0 gap-1.5">
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                    <ComissaoOrigemBadge titulo={detalhesTarget} />
                     {detalhesTarget.platformContratoId ? (
                       <Badge variant="outline">Contrato</Badge>
-                    ) : (
+                    ) : detalhesTarget.comissaoId ? null : (
                       <Badge variant="secondary">Normal</Badge>
                     )}
                     <Badge

@@ -227,7 +227,7 @@ export async function deleteMovimento(id: string): Promise<void> {
 export async function fetchTitulos(
   tipo?: "receber" | "pagar",
   grupoParcelasId?: string,
-  origem?: "normal" | "contrato",
+  origem?: "normal" | "contrato" | "comissao",
 ): Promise<TituloFinanceiro[]> {
   const params = new URLSearchParams();
   if (tipo) params.set("tipo", tipo);

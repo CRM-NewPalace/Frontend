@@ -46,6 +46,14 @@ export function formatDate(iso: string) {
   return date ? date.toLocaleDateString("pt-BR") : "—";
 }
 
+export const COMISSAO_PAPEL_LABEL: Record<string, string> = {
+  caixa: "Caixa da imobiliária",
+  socios: "Sócios",
+  corretor: "Corretor",
+  gerente: "Gerente",
+  tributos: "Tributos",
+};
+
 export const PERIODO_OPTIONS: { value: PeriodoFiltro; label: string }[] = [
   { value: "mes", label: "Mês atual" },
   { value: "trimestre", label: "Trimestre" },
@@ -106,6 +114,8 @@ export interface TituloFinanceiro {
   parcela: string;
   grupoParcelasId?: string | null;
   platformContratoId?: string | null;
+  comissaoId?: string | null;
+  comissaoPapel?: string | null;
   formaPagamento?: string;
 }
 

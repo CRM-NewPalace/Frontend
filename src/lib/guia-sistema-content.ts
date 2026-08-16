@@ -889,7 +889,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Baixar (receber)",
             detail:
-              "Informa data/valor recebido. O título some do aberto e aparece na movimentação.",
+              "Informa data/valor recebido. O título some do aberto e aparece na movimentação. Comissão paga gera aqui as fatias de caixa e sócios, identificadas e com atalho para a comissão.",
           },
         ],
       },
@@ -904,7 +904,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Criar e baixar",
             detail:
-              "Fornecedor, valor, vencimento. Baixa = pago e vira movimento de saída.",
+              "Fornecedor, valor, vencimento. Baixa = pago e vira movimento de saída. Comissão paga gera aqui corretor, gerente e tributos (só se o valor for maior que zero), com selo Comissão e atalho para a origem.",
           },
         ],
       },
@@ -939,7 +939,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Avançar o status",
             detail:
-              "Pendente (ainda não liberou), liberada (pode pagar), paga. O dashboard soma nessas caixas.",
+              "Pendente, liberada, paga. Ao marcar como paga: caixa da imobiliária e sócios vão para Contas a receber; corretor, gerente e tributos (se > R$ 0) vão para Contas a pagar. Cada título fica identificado como Comissão e abre a comissão de origem.",
           },
           {
             title: "Conferir o recorte",

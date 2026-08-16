@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   useCallback,
   useEffect,
@@ -98,6 +98,9 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/financeiro/comissao")({
   head: () => ({ meta: [{ title: "Comissão — Zone Connection" }] }),
+  validateSearch: (search: Record<string, unknown>): { id?: string } => ({
+    id: typeof search.id === "string" ? search.id : undefined,
+  }),
   component: Page,
 });
 
@@ -160,6 +163,8 @@ function toForm(comissao: Comissao): FormState {
 }
 
 function Page() {
+  const { id: comissaoIdFromUrl } = Route.useSearch();
+  const navigate = useNavigate();
   const role = getSession()?.role;
   const canManage = role === "admin" || role === "super_admin";
   const commissionValue = useCallback(
@@ -212,6 +217,19 @@ function Page() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!comissaoIdFromUrl || items.length === 0) return;
+    const found = items.find((item) => item.id === comissaoIdFromUrl);
+    if (found) setDetail(found);
+  }, [comissaoIdFromUrl, items]);
+
+  function closeDetail() {
+    setDetail(null);
+    if (comissaoIdFromUrl) {
+      void navigate({ to: "/financeiro/comissao", search: {}, replace: true });
+    }
+  }
 
   const loadEligibleSales = useCallback(async () => {
     setLoadingSales(true);
@@ -404,7 +422,11 @@ function Page() {
   async function handleStatus(item: Comissao, nextStatus: ComissaoStatus) {
     try {
       upsert(await updateComissao(item.id, { status: nextStatus }));
-      toast.success(`Status alterado para ${statusLabel(nextStatus)}.`);
+      toast.success(
+        nextStatus === "paga"
+          ? "Comissão paga — fatias geradas em Contas a receber (caixa/sócios) e a pagar."
+          : `Status alterado para ${statusLabel(nextStatus)}.`,
+      );
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -943,7 +965,7 @@ function Page() {
 
       <FormDialogShell
         open={Boolean(detail)}
-        onOpenChange={(open) => !open && setDetail(null)}
+        onOpenChange={(open) => !open && closeDetail()}
         icon={<Eye className="size-5" />}
         title="Detalhes da comissão"
         description={
@@ -954,7 +976,7 @@ function Page() {
         className="max-w-2xl"
         footer={
           <FormDialogActions>
-            <Button type="button" variant="outline" onClick={() => setDetail(null)}>
+            <Button type="button" variant="outline" onClick={() => closeDetail()}>
               Fechar
             </Button>
             {canManage && detail && (
@@ -962,7 +984,7 @@ function Page() {
                 type="button"
                 onClick={() => {
                   const item = detail;
-                  setDetail(null);
+                  closeDetail();
                   openEdit(item);
                 }}
               >
