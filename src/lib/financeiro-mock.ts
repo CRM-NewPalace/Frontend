@@ -325,3 +325,43 @@ export function matchesPeriodoFiltro(
   }
   return d.getFullYear() === now.getFullYear();
 }
+
+function startOfPeriodo(periodo: PeriodoFiltro, now: Date): Date | null {
+  if (periodo === "tudo") return null;
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if (periodo === "mes") return new Date(y, m, 1);
+  if (periodo === "trimestre") return new Date(y, Math.floor(m / 3) * 3, 1);
+  return new Date(y, 0, 1);
+}
+
+/**
+ * Mês/trimestre/ano: vence no intervalo, ou ainda está em aberto/atrasado
+ * de períodos anteriores. Pagos entram pela data da baixa.
+ */
+export function tituloVisivelNoPeriodo(
+  titulo: {
+    status: StatusTitulo;
+    vencimento: string;
+    dataPagamento?: string | null;
+  },
+  periodo: PeriodoFiltro,
+  now = new Date(),
+): boolean {
+  if (periodo === "tudo") return true;
+  if (titulo.status === "pago") {
+    return matchesPeriodoFiltro(
+      titulo.dataPagamento || titulo.vencimento,
+      periodo,
+      now,
+    );
+  }
+  if (titulo.status === "cancelado") {
+    return matchesPeriodoFiltro(titulo.vencimento, periodo, now);
+  }
+  if (matchesPeriodoFiltro(titulo.vencimento, periodo, now)) return true;
+  const venc = parseFinanceiroDay(titulo.vencimento);
+  const start = startOfPeriodo(periodo, now);
+  if (!venc || !start) return true;
+  return venc < start;
+}

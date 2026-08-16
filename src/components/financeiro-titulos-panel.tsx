@@ -86,8 +86,10 @@ import {
 import {
   brl,
   formatDate,
+  matchesPeriodoFiltro,
   statusBadgeClass,
   statusLabel,
+  tituloVisivelNoPeriodo,
   type DespesaTipo,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
@@ -580,54 +582,35 @@ export function FinanceiroTitulosPanel({
           tipo === "pagar" ? t.centro || t.categoria : t.categoria || t.centro;
         if (label !== categoriaFiltro) return false;
       }
-      if (periodo !== "tudo") {
-        const d = new Date(t.vencimento + "T12:00:00");
-        if (periodo === "mes") {
-          if (
-            d.getMonth() !== now.getMonth() ||
-            d.getFullYear() !== now.getFullYear()
-          )
-            return false;
-        } else if (periodo === "trimestre") {
-          if (
-            Math.floor(d.getMonth() / 3) !== Math.floor(now.getMonth() / 3) ||
-            d.getFullYear() !== now.getFullYear()
-          )
-            return false;
-        } else if (periodo === "ano") {
-          if (d.getFullYear() !== now.getFullYear()) return false;
-        }
-      }
+      if (!tituloVisivelNoPeriodo(t, periodo, now)) return false;
       if (!q) return true;
       return (
         t.descricao.toLowerCase().includes(q) ||
-        t.parceiro.toLowerCase().includes(q) ||
-        t.categoria.toLowerCase().includes(q)
+        (t.parceiro ?? "").toLowerCase().includes(q) ||
+        (t.categoria ?? "").toLowerCase().includes(q)
       );
     });
-  }, [
-    items,
-    search,
-    periodo,
-    status,
-    categoriaFiltro,
-    canUseContrato,
-    origemFiltro,
-    tipo,
-  ]);
+  }, [items, search, periodo, status, categoriaFiltro, tipo]);
 
   const kpis = useMemo(() => {
-    const aberto = rows
-      .filter((r) => r.status === "aberto")
+    const now = new Date();
+    const aberto = items
+      .filter(
+        (r) => r.status === "aberto" && tituloVisivelNoPeriodo(r, "mes", now),
+      )
       .reduce((s, r) => s + r.valor, 0);
-    const atrasado = rows
+    const atrasado = items
       .filter((r) => r.status === "atrasado")
       .reduce((s, r) => s + r.valor, 0);
-    const pago = rows
-      .filter((r) => r.status === "pago")
+    const pago = items
+      .filter(
+        (r) =>
+          r.status === "pago" &&
+          matchesPeriodoFiltro(r.dataPagamento || r.vencimento, "mes", now),
+      )
       .reduce((s, r) => s + r.valor, 0);
     return { aberto, atrasado, pago };
-  }, [rows]);
+  }, [items]);
 
   const displayRows = useMemo(
     () => buildDisplayRows(rows, vistaParcelas),
