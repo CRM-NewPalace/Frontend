@@ -115,9 +115,7 @@ function MemberRow({
     <div
       className={cn(
         "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
-        accent
-          ? "bg-primary/10 ring-1 ring-primary/20"
-          : "hover:bg-muted/50",
+        accent ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-muted/50",
       )}
     >
       <Avatar className="h-9 w-9 shrink-0">
@@ -461,7 +459,9 @@ function EquipesPage() {
                           {eq.name}
                         </h2>
                         <Badge
-                          variant={eq.status === "ativo" ? "default" : "outline"}
+                          variant={
+                            eq.status === "ativo" ? "default" : "outline"
+                          }
                           className={cn(
                             STATUS_CHIP_CLASS,
                             "shrink-0 text-[10px] capitalize",

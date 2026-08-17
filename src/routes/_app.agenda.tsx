@@ -136,7 +136,6 @@ export const Route = createFileRoute("/_app/agenda")({
   component: AgendaPage,
 });
 
-
 type FormState = {
   leadId: string;
   clienteId: string;
@@ -607,7 +606,10 @@ function AgendaPage() {
   }
 
   function validateForm(): CreateAgendamentoInput | null {
-    const isAdminEvent = user?.role === "admin" && form.tipo !== "bloqueio" && !form.atribuidoParaId;
+    const isAdminEvent =
+      user?.role === "admin" &&
+      form.tipo !== "bloqueio" &&
+      !form.atribuidoParaId;
     const isPersonalPlatformAgenda = user?.role === "super_admin";
     const isBloqueio = form.tipo === "bloqueio";
     const atribuidoParaId = form.atribuidoParaId || null;
@@ -687,8 +689,7 @@ function AgendaPage() {
       return null;
     }
 
-    const showAdminAlvo =
-      user?.role === "admin" && !atribuidoParaId;
+    const showAdminAlvo = user?.role === "admin" && !atribuidoParaId;
 
     return {
       leadId,
@@ -1123,9 +1124,7 @@ function AgendaPage() {
               <Button
                 variant={layoutMode === "calendario" ? "default" : "outline"}
                 size="sm"
-                className={
-                  layoutMode === "calendario" ? undefined : SOFT_BTN
-                }
+                className={layoutMode === "calendario" ? undefined : SOFT_BTN}
                 onClick={() =>
                   setLayoutMode((m) =>
                     m === "tabela" ? "calendario" : "tabela",
@@ -1305,19 +1304,19 @@ function AgendaPage() {
 
           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
             <span className="font-medium text-foreground/80">Cores:</span>
-            {(
-              ["admin", "gerente", "corretor", "bloqueio"] as const
-            ).map((origem) => (
-              <span key={origem} className="inline-flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "size-2.5 rounded-full",
-                    AGENDAMENTO_ORIGEM_DOT[origem],
-                  )}
-                />
-                {AGENDAMENTO_ORIGEM_LABEL[origem]}
-              </span>
-            ))}
+            {(["admin", "gerente", "corretor", "bloqueio"] as const).map(
+              (origem) => (
+                <span key={origem} className="inline-flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "size-2.5 rounded-full",
+                      AGENDAMENTO_ORIGEM_DOT[origem],
+                    )}
+                  />
+                  {AGENDAMENTO_ORIGEM_LABEL[origem]}
+                </span>
+              ),
+            )}
           </div>
 
           {layoutMode === "tabela" ? (

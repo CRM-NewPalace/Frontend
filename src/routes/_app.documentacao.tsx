@@ -2387,17 +2387,17 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="min-w-[70rem] table-fixed text-xs [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
+            <Table className="min-w-280 table-fixed text-xs [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[18%]">Nome</TableHead>
                   <TableHead className="w-[13%]">Construtora</TableHead>
                   <TableHead className="w-[13%]">Empreend.</TableHead>
-                  <TableHead className="w-[9.25rem]">Status 1</TableHead>
-                  <TableHead className="w-[9.25rem]">Status 2</TableHead>
+                  <TableHead className="w-37">Status 1</TableHead>
+                  <TableHead className="w-37">Status 2</TableHead>
                   <TableHead className="w-[13%]">Corretor</TableHead>
                   <TableHead className="w-[13%]">Gerente</TableHead>
-                  <TableHead className="w-[9.25rem]">Fonte</TableHead>
+                  <TableHead className="w-37">Fonte</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -2446,7 +2446,7 @@ function DocumentacaoPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
+                    <TableCell className="w-37">
                       <Badge
                         variant="outline"
                         className={cn(
@@ -2459,7 +2459,7 @@ function DocumentacaoPage() {
                         {doc.status1}
                       </Badge>
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
+                    <TableCell className="w-37">
                       <Badge
                         variant="secondary"
                         className={cn(
@@ -2506,7 +2506,7 @@ function DocumentacaoPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
+                    <TableCell className="w-37">
                       {(() => {
                         const fonte = displayFonte(doc.fonte);
                         if (!fonte) {
