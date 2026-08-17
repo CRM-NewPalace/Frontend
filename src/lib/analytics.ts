@@ -36,6 +36,33 @@ export function setCookieConsent(value: CookieConsent) {
 
 let gtagLoaded = false;
 
+/**
+ * `cookie_domain: auto` usa eTLD+1 (ex.: `.vercel.app`). `vercel.app` está na
+ * Public Suffix List, então o Firefox rejeita `_ga` / `_ga_*` nesses hosts.
+ */
+function gaCookieDomain(): "auto" | "none" {
+  if (typeof window === "undefined") return "auto";
+  const host = window.location.hostname;
+  if (
+    host === "localhost" ||
+    host.endsWith(".vercel.app") ||
+    host.endsWith(".onrender.com")
+  ) {
+    return "none";
+  }
+  return "auto";
+}
+
+function gaConfig(extra?: Record<string, unknown>): Record<string, unknown> {
+  const secure =
+    typeof window !== "undefined" && window.location.protocol === "https:";
+  return {
+    cookie_domain: gaCookieDomain(),
+    cookie_flags: secure ? "SameSite=Lax;Secure" : "SameSite=Lax",
+    ...extra,
+  };
+}
+
 /** Carrega gtag.js apenas após consentimento. */
 export function loadGoogleAnalytics() {
   if (typeof window === "undefined" || gtagLoaded) return;
@@ -48,7 +75,7 @@ export function loadGoogleAnalytics() {
     window.dataLayer?.push(arguments);
   };
   window.gtag("js", new Date());
-  window.gtag("config", GA_MEASUREMENT_ID);
+  window.gtag("config", GA_MEASUREMENT_ID, gaConfig());
 
   const script = document.createElement("script");
   script.async = true;
@@ -59,7 +86,5 @@ export function loadGoogleAnalytics() {
 export function pageview(path: string) {
   if (typeof window === "undefined" || !window.gtag) return;
   if (getCookieConsent() !== "accepted") return;
-  window.gtag("config", GA_MEASUREMENT_ID, {
-    page_path: path,
-  });
+  window.gtag("config", GA_MEASUREMENT_ID, gaConfig({ page_path: path }));
 }
