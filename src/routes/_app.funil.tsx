@@ -90,7 +90,7 @@ import {
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
-import { fetchFunilAtivo, type Funil } from "@/lib/funis-api";
+import { fetchFunilAtivo, recoverFunilEtapas, type Funil } from "@/lib/funis-api";
 import { createTriagemEvent } from "@/lib/triagem-api";
 import {
   assumirAnalise,
@@ -130,6 +130,7 @@ import {
   ChevronsUpDown,
   AlertTriangle,
   Briefcase,
+  LifeBuoy,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -163,6 +164,8 @@ function analiseBadgeClass(status: AnaliseStatus) {
 
 /** Slug legado (fallback se o funil não tiver papel configurado). */
 const LOST_STAGE_SLUG_FALLBACK = "perdido";
+/** Coluna virtual: leads cujo stage não existe no funil ativo. */
+const FORA_DO_FUNIL_STAGE = "__fora_do_funil__";
 const MAX_HISTORICO_TEXTO = 400;
 
 /** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
@@ -216,6 +219,7 @@ export function ComercialFunilBoard({
     loading: catalogLoading,
     colorByLabel,
     stageByPapel,
+    refresh: refreshCatalog,
   } = useCatalog();
   const lostStageSlug = stageByPapel("perdido") ?? LOST_STAGE_SLUG_FALLBACK;
 
@@ -233,6 +237,7 @@ export function ComercialFunilBoard({
   const [filterMonitoramento, setFilterMonitoramento] =
     useState<MonitoramentoFiltro>("todos");
   const [corretorFilterOpen, setCorretorFilterOpen] = useState(false);
+  const [recoveringStages, setRecoveringStages] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -392,6 +397,28 @@ export function ComercialFunilBoard({
     tipoFiltro,
     user,
   ]);
+
+  const funnelStageIds = useMemo(
+    () => new Set(funnelStages.map((s) => s.id)),
+    [funnelStages],
+  );
+  const orphanLeads = useMemo(
+    () => leads.filter((l) => !funnelStageIds.has(l.stage)),
+    [leads, funnelStageIds],
+  );
+  const boardStages = useMemo(() => {
+    if (orphanLeads.length === 0) return funnelStages;
+    return [
+      {
+        id: FORA_DO_FUNIL_STAGE,
+        name: "Funil anterior",
+        color: "bg-amber-100 text-amber-800",
+        papel: null,
+      },
+      ...funnelStages,
+    ];
+  }, [funnelStages, orphanLeads.length]);
+
   const [dragging, setDragging] = useState<string | null>(null);
   const [activeDropStage, setActiveDropStage] = useState<StageId | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
@@ -613,7 +640,7 @@ export function ComercialFunilBoard({
       el.removeEventListener("scroll", updateScrollButtons);
       ro.disconnect();
     };
-  }, [updateScrollButtons, funnelStages.length, loading, catalogLoading]);
+  }, [updateScrollButtons, boardStages.length, loading, catalogLoading]);
 
   function scrollBoard(direction: -1 | 1) {
     const el = boardRef.current;
@@ -763,6 +790,7 @@ export function ComercialFunilBoard({
     const lead = allLeads.find((l) => l.id === leadId);
     setDragging(null);
     if (!lead || lead.stage === stage) return;
+    if (stage === FORA_DO_FUNIL_STAGE) return;
 
     // Perdido não é uma etapa comum: pede o motivo e faz soft-delete.
     if (isLostStage(stage)) {
@@ -787,6 +815,27 @@ export function ComercialFunilBoard({
       toast.error(
         err instanceof Error ? err.message : "Não foi possível mover o lead.",
       );
+    }
+  }
+
+  async function recoverOrphanStages() {
+    if (!funilAtivo) return;
+    setRecoveringStages(true);
+    try {
+      const updated = await recoverFunilEtapas(funilAtivo.id);
+      setFunilAtivo(updated);
+      await refreshCatalog();
+      toast.success(
+        "Etapas do funil anterior foram restauradas. Os leads voltam a aparecer nas colunas.",
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível recuperar as etapas.",
+      );
+    } finally {
+      setRecoveringStages(false);
     }
   }
 
@@ -1075,22 +1124,54 @@ export function ComercialFunilBoard({
         }
       />
 
+      {orphanLeads.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+          <p>
+            {orphanLeads.length} lead(s) ainda estão nas etapas do funil
+            anterior. Eles não foram apagados.
+          </p>
+          {(isAdmin || isGerente) && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="bg-background"
+              disabled={recoveringStages || !funilAtivo}
+              onClick={() => void recoverOrphanStages()}
+            >
+              {recoveringStages ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LifeBuoy className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Restaurar etapas aqui
+            </Button>
+          )}
+        </div>
+      )}
+
       <div
         ref={boardRef}
         data-guia="funil-board"
         className="flex gap-3 overflow-x-auto pb-4 -mx-6 px-6 scroll-smooth"
       >
-        {funnelStages.map((stage, stageIndex) => {
-          const stageLeads = leads.filter((l) => l.stage === stage.id);
+        {boardStages.map((stage, stageIndex) => {
+          const isOrphanColumn = stage.id === FORA_DO_FUNIL_STAGE;
+          const stageLeads = isOrphanColumn
+            ? orphanLeads
+            : leads.filter((l) => l.stage === stage.id);
           const total = stageLeads.reduce((s, l) => s + (l.renda ?? 0), 0);
           return (
             <div
               key={stage.id}
-              data-funnel-stage={stage.id}
+              data-funnel-stage={isOrphanColumn ? undefined : stage.id}
               className={cn(
                 "w-72 shrink-0 flex flex-col rounded-xl p-3 transition-colors",
-                funnelColumnBg(stageIndex, funnelStages.length),
-                activeDropStage === stage.id &&
+                isOrphanColumn
+                  ? "bg-amber-50 dark:bg-amber-950/20"
+                  : funnelColumnBg(stageIndex, boardStages.length),
+                !isOrphanColumn &&
+                  activeDropStage === stage.id &&
                   "ring-2 ring-[#079ED4]/40 brightness-[0.98]",
               )}
             >
@@ -1165,6 +1246,15 @@ export function ComercialFunilBoard({
                         />
                       </div>
                     </div>
+                    {isOrphanColumn && (
+                      <Badge
+                        variant="outline"
+                        className="mb-1 h-5 px-1.5 text-[9px] border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+                        title="Etapa do funil anterior"
+                      >
+                        {l.stage}
+                      </Badge>
+                    )}
                     {l.analise && shouldShowAnaliseStatus(l.analise.status) && (
                       <Badge
                         variant="outline"

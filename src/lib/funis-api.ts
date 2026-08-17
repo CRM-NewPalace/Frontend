@@ -128,3 +128,9 @@ export async function installFunilEtapasPadrao(
 ): Promise<Funil> {
   return apiFetch<Funil>(`/funis/${funilId}/etapas-padrao`, { method: "POST" });
 }
+
+export async function recoverFunilEtapas(funilId: string): Promise<Funil> {
+  return apiFetch<Funil>(`/funis/${funilId}/recuperar-etapas`, {
+    method: "POST",
+  });
+}

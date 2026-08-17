@@ -49,6 +49,7 @@ import {
   deleteFunilEtapa,
   fetchFunis,
   installFunilEtapasPadrao,
+  recoverFunilEtapas,
   updateFunil,
   updateFunilEtapa,
   type Funil,
@@ -59,6 +60,7 @@ import {
   Check,
   Loader2,
   ListRestart,
+  LifeBuoy,
   Pencil,
   Plus,
   Trash2,
@@ -436,6 +438,24 @@ export function ConfigFunisPanel() {
     }
   }
 
+  async function handleRecoverLeadStages() {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      const updated = await recoverFunilEtapas(selected.id);
+      toast.success(
+        "Etapas dos leads foram religadas a este funil. Elas voltam a aparecer no kanban.",
+      );
+      await afterMutation(updated);
+    } catch (err) {
+      toast.error(
+        errorMessage(err, "Não foi possível recuperar as etapas dos leads."),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="grid gap-4 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
@@ -575,6 +595,15 @@ export function ConfigFunisPanel() {
                 >
                   <ListRestart className="w-4 h-4 mr-1" />
                   Etapas padrão
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => void handleRecoverLeadStages()}
+                >
+                  <LifeBuoy className="w-4 h-4 mr-1" />
+                  Recuperar etapas dos leads
                 </Button>
                 <Button size="sm" onClick={openAddEtapa}>
                   <Plus className="w-4 h-4 mr-1" />
@@ -924,8 +953,8 @@ export function ConfigFunisPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir funil?</AlertDialogTitle>
             <AlertDialogDescription>
-              As etapas deste funil serão removidas. Leads que usam esses slugs
-              continuam no histórico, mas o funil deixa de existir.
+              As etapas deste funil serão removidas. Leads não são apagados:
+              as etapas que eles ainda usam são copiadas para o funil ativo.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
