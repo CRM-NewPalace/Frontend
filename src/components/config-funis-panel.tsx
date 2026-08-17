@@ -184,6 +184,8 @@ export function ConfigFunisPanel() {
     useState<PrazoUnidade>("horas");
 
   const [deleteFunilId, setDeleteFunilId] = useState<string | null>(null);
+  const [deleteEtapa, setDeleteEtapa] = useState<FunilEtapa | null>(null);
+  const [confirmDefaults, setConfirmDefaults] = useState(false);
 
   const selected = funis.find((f) => f.id === selectedId) ?? null;
   const activeEtapas = (selected?.etapas ?? []).filter((e) => e.active);
@@ -409,15 +411,16 @@ export function ConfigFunisPanel() {
     }
   }
 
-  async function handleRemoveEtapa(etapa: FunilEtapa) {
-    if (!selected) return;
+  async function handleRemoveEtapa() {
+    if (!selected || !deleteEtapa) return;
     setSaving(true);
     try {
-      const updated = await deleteFunilEtapa(selected.id, etapa.id);
-      toast.success("Etapa desativada.");
+      const updated = await deleteFunilEtapa(selected.id, deleteEtapa.id);
+      toast.success(`Etapa "${deleteEtapa.label}" excluída.`);
+      setDeleteEtapa(null);
       await afterMutation(updated);
     } catch (err) {
-      toast.error(errorMessage(err, "Não foi possível remover a etapa."));
+      toast.error(errorMessage(err, "Não foi possível excluir a etapa."));
     } finally {
       setSaving(false);
     }
@@ -429,6 +432,7 @@ export function ConfigFunisPanel() {
     try {
       const updated = await installFunilEtapasPadrao(selected.id);
       toast.success("Etapas padrão instaladas neste funil.");
+      setConfirmDefaults(false);
       await afterMutation(updated);
     } catch (err) {
       toast.error(
@@ -592,7 +596,7 @@ export function ConfigFunisPanel() {
                   size="sm"
                   variant="outline"
                   disabled={saving}
-                  onClick={() => void handleInstallDefaults()}
+                  onClick={() => setConfirmDefaults(true)}
                 >
                   <ListRestart className="w-4 h-4 mr-1" />
                   Etapas padrão
@@ -736,9 +740,9 @@ export function ConfigFunisPanel() {
                     title={
                       isInitial
                         ? "Etapa inicial não pode ser removida"
-                        : "Desativar"
+                        : "Excluir etapa"
                     }
-                    onClick={() => void handleRemoveEtapa(s)}
+                    onClick={() => setDeleteEtapa(s)}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -945,6 +949,58 @@ export function ConfigFunisPanel() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(deleteEtapa)}
+        onOpenChange={(o) => !o && setDeleteEtapa(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir etapa{deleteEtapa ? ` “${deleteEtapa.label}”` : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A etapa some do funil. Leads que estavam nela vão para a etapa
+              inicial. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={saving}
+              onClick={() => void handleRemoveEtapa()}
+            >
+              Excluir etapa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmDefaults}
+        onOpenChange={(o) => !o && setConfirmDefaults(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurar etapas padrão?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso adiciona ou reativa as 11 etapas padrão do sistema neste
+              funil (Novo lead, Contato, Qualificação, etc.). As etapas que
+              você criou não são apagadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={() => void handleInstallDefaults()}
+            >
+              Restaurar padrão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={Boolean(deleteFunilId)}
