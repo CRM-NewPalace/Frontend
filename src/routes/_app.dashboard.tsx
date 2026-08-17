@@ -438,7 +438,7 @@ function DashboardAdminView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-primary">Pipeline de documentação</h2>
+          <h2 className="text-base font-semibold text-module-title">Pipeline de documentação</h2>
           <p className="text-xs text-muted-foreground">
             Processos cadastrados em {mesLabel}.
           </p>
@@ -492,7 +492,7 @@ function DashboardAdminView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-primary">
+          <h2 className="text-base font-semibold text-module-title">
             {isGerente ? "Sua comissão do mês" : "Comissões do mês"}
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -1164,7 +1164,7 @@ function DashboardCorretorView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-primary">Sua comissão do mês</h2>
+          <h2 className="text-base font-semibold text-module-title">Sua comissão do mês</h2>
           <p className="text-xs text-muted-foreground">
             Quanto você recebe nas vendas de {mesLabel}.
           </p>
