@@ -47,13 +47,18 @@ import {
 } from "@/components/ui/dialog";
 import {
   brl,
+  isLeadCarteiraPropria,
   prioridadeBadgeClass,
   type AnaliseStatus,
   type Lead,
   type StageId,
 } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import {
+  canViewTeamData,
+  isCorretorLike,
+  isLeadInAtrasoScope,
+} from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import {
@@ -63,11 +68,12 @@ import {
 import {
   MONITORAMENTO_FILTRO_OPTIONS,
   MOTIVO_SEM_MOVIMENTACAO_LABEL,
+  applyInatividadeThreshold,
   formatDateTimePt,
   formatPrazoUnidade,
   type MonitoramentoFiltro,
 } from "@/lib/lead-monitoramento";
-import { LostMotivoFields } from "@/components/lost-motivo-fields";
+import { MeuLeadBadge } from "@/components/meu-lead-badge";
 import { ApiError } from "@/lib/api";
 import {
   FormDialogActions,
@@ -83,6 +89,7 @@ import {
   type Empreendimento,
 } from "@/lib/empreendimentos-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
+import { fetchFunilAtivo, type Funil } from "@/lib/funis-api";
 import { createTriagemEvent } from "@/lib/triagem-api";
 import {
   assumirAnalise,
@@ -121,6 +128,7 @@ import {
   Check,
   ChevronsUpDown,
   AlertTriangle,
+  Briefcase,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -192,6 +200,7 @@ export function ComercialFunilBoard({
   const canWriteTriagem =
     isCorretor || user?.role === "gerente";
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const isGerente = user?.role === "gerente";
   const isManager = canSeeTeam;
   const {
     leads: allLeads,
@@ -216,14 +225,30 @@ export function ComercialFunilBoard({
   }
 
   const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [funilAtivo, setFunilAtivo] = useState<Funil | null>(null);
   const [filterEquipeId, setFilterEquipeId] = useState("__all__");
   const [filterCorretorId, setFilterCorretorId] = useState("__all__");
+  const [filterMeusLeads, setFilterMeusLeads] = useState(false);
   const [filterMonitoramento, setFilterMonitoramento] =
     useState<MonitoramentoFiltro>("todos");
   const [corretorFilterOpen, setCorretorFilterOpen] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    let cancelled = false;
+    void fetchFunilAtivo()
+      .then((funil) => {
+        if (!cancelled) setFunilAtivo(funil);
+      })
+      .catch(() => {
+        if (!cancelled) setFunilAtivo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin && !isGerente) return;
     let cancelled = false;
     void fetchEquipes()
       .then((list) => {
@@ -235,7 +260,7 @@ export function ComercialFunilBoard({
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [isAdmin, isGerente]);
 
   const corretorOptions = useMemo(() => {
     let list = assignees.filter((a) => !a.role || isCorretorLike(a.role));
@@ -263,6 +288,26 @@ export function ComercialFunilBoard({
         : (corretorOptions.find((c) => c.id === filterCorretorId)?.name ??
           "Corretor");
 
+  const teamScope = useMemo(() => {
+    const memberIds = new Set<string>();
+    const equipeIds = new Set<string>();
+    if (user) memberIds.add(user.id);
+    if (isGerente && user) {
+      for (const eq of equipes) {
+        if (eq.gerenteId !== user.id) continue;
+        equipeIds.add(eq.id);
+        for (const m of eq.membros) memberIds.add(m.id);
+      }
+      // Enquanto as equipes não carregam, usa o escopo já filtrado dos assignees.
+      if (equipeIds.size === 0) {
+        for (const a of assignees) memberIds.add(a.id);
+      }
+    } else {
+      for (const a of assignees) memberIds.add(a.id);
+    }
+    return { memberIds, equipeIds };
+  }, [assignees, equipes, isGerente, user]);
+
   const leads = useMemo(() => {
     let list = allLeads.filter((l) => l.tipo === tipoFiltro);
 
@@ -271,10 +316,22 @@ export function ComercialFunilBoard({
       list = list.filter(
         (l) => l.corretorId === user.id || l.corretor === user.name,
       );
-    } else if (isCorretor && user) {
-      list = list.filter(
-        (l) => l.corretor === user.name || l.corretorId === user.id,
-      );
+    } else if (user) {
+      list = list.filter((l) => isLeadInAtrasoScope(user, l, teamScope));
+    }
+
+    if (funilAtivo) {
+      list = list.map((l) => {
+        if (!l.monitoramento) return l;
+        return {
+          ...l,
+          monitoramento: applyInatividadeThreshold(
+            l.monitoramento,
+            funilAtivo.inatividadeValor,
+            funilAtivo.inatividadeUnidade,
+          ),
+        };
+      });
     }
 
     if (!isClientesFunil && isAdmin && filterEquipeId !== "__all__") {
@@ -291,6 +348,10 @@ export function ComercialFunilBoard({
       } else {
         list = list.filter((l) => l.corretorId === filterCorretorId);
       }
+    }
+
+    if (!isClientesFunil && isGerente && filterMeusLeads && user) {
+      list = list.filter((l) => isLeadCarteiraPropria(l, user.id));
     }
 
     if (filterMonitoramento !== "todos") {
@@ -319,11 +380,14 @@ export function ComercialFunilBoard({
     allLeads,
     filterCorretorId,
     filterEquipeId,
+    filterMeusLeads,
     filterMonitoramento,
+    funilAtivo,
     isAdmin,
     isClientesFunil,
-    isCorretor,
+    isGerente,
     isManager,
+    teamScope,
     tipoFiltro,
     user,
   ]);
@@ -335,8 +399,42 @@ export function ComercialFunilBoard({
   useEffect(() => {
     if (!openLeadId || loading) return;
     const found = allLeads.find((l) => l.id === openLeadId);
-    if (found) setDetailLead(found);
-  }, [openLeadId, allLeads, loading]);
+    if (!found) return;
+    const scoped =
+      !isClientesFunil &&
+      user &&
+      !isLeadInAtrasoScope(user, found, teamScope)
+        ? null
+        : found;
+    if (!scoped) return;
+    const decorated =
+      funilAtivo && scoped.monitoramento
+        ? {
+            ...scoped,
+            monitoramento: applyInatividadeThreshold(
+              scoped.monitoramento,
+              funilAtivo.inatividadeValor,
+              funilAtivo.inatividadeUnidade,
+            ),
+          }
+        : scoped;
+    setDetailLead(decorated);
+  }, [openLeadId, allLeads, funilAtivo, isClientesFunil, loading, teamScope, user]);
+
+  useEffect(() => {
+    if (!detailLead?.monitoramento || !funilAtivo) return;
+    setDetailLead((cur) => {
+      if (!cur?.monitoramento) return cur;
+      return {
+        ...cur,
+        monitoramento: applyInatividadeThreshold(
+          cur.monitoramento,
+          funilAtivo.inatividadeValor,
+          funilAtivo.inatividadeUnidade,
+        ),
+      };
+    });
+  }, [funilAtivo]);
   const boardRef = useRef<HTMLDivElement>(null);
   const dragSession = useRef<{
     leadId: string;
@@ -782,8 +880,10 @@ export function ComercialFunilBoard({
             : isClientesFunil
               ? "Sua carteira de clientes no funil — arraste os cards para mover entre etapas."
               : isCorretor
-                ? "Seus leads no funil — arraste os cards para mover entre etapas."
-                : "Funil da equipe — apenas leads de captação. Clique para ver detalhes."
+                ? "Seus leads no funil — inclusive os em atraso. Arraste os cards para mover entre etapas."
+                : isGerente
+                  ? "Funil da sua equipe — seus leads e os da equipe, inclusive os em atraso."
+                  : "Funil da imobiliária — todos os leads de captação, inclusive os em atraso."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -840,6 +940,7 @@ export function ComercialFunilBoard({
                           value="todos os corretores"
                           onSelect={() => {
                             setFilterCorretorId("__all__");
+                            setFilterMeusLeads(false);
                             setCorretorFilterOpen(false);
                           }}
                         >
@@ -857,6 +958,7 @@ export function ComercialFunilBoard({
                           value="sem corretor"
                           onSelect={() => {
                             setFilterCorretorId("__none__");
+                            setFilterMeusLeads(false);
                             setCorretorFilterOpen(false);
                           }}
                         >
@@ -876,6 +978,7 @@ export function ComercialFunilBoard({
                             value={`${c.name} ${c.id}`}
                             onSelect={() => {
                               setFilterCorretorId(c.id);
+                              setFilterMeusLeads(false);
                               setCorretorFilterOpen(false);
                             }}
                           >
@@ -895,6 +998,23 @@ export function ComercialFunilBoard({
                   </Command>
                 </PopoverContent>
               </Popover>
+            )}
+            {!isClientesFunil && isGerente && (
+              <Button
+                type="button"
+                variant={filterMeusLeads ? "default" : "outline"}
+                className={cn(
+                  "h-8 font-normal",
+                  !filterMeusLeads && "bg-background",
+                )}
+                onClick={() => {
+                  setFilterMeusLeads((v) => !v);
+                  setFilterCorretorId("__all__");
+                }}
+              >
+                <Briefcase className="mr-1.5 h-3.5 w-3.5" />
+                Meus leads
+              </Button>
             )}
             <Select
               value={filterMonitoramento}
@@ -1019,6 +1139,11 @@ export function ComercialFunilBoard({
                         <span className="truncate">{l.nome}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {isGerente &&
+                          !isClientesFunil &&
+                          isLeadCarteiraPropria(l, user?.id) && (
+                            <MeuLeadBadge />
+                          )}
                         {l.tipo === "cliente" && (
                           <Badge
                             variant="outline"
@@ -1176,6 +1301,24 @@ export function ComercialFunilBoard({
                           }
                         />
                         <DetailField
+                          label="Alerta de inatividade"
+                          value={
+                            detailLead.monitoramento.inatividadeConfig
+                              ? formatPrazoUnidade(
+                                  detailLead.monitoramento.inatividadeConfig
+                                    .valor,
+                                  detailLead.monitoramento.inatividadeConfig
+                                    .unidade,
+                                )
+                              : funilAtivo
+                                ? formatPrazoUnidade(
+                                    funilAtivo.inatividadeValor,
+                                    funilAtivo.inatividadeUnidade,
+                                  )
+                                : "—"
+                          }
+                        />
+                        <DetailField
                           label="Responsável"
                           value={detailLead.corretor}
                         />
@@ -1198,16 +1341,23 @@ export function ComercialFunilBoard({
                   <DetailField
                     label="Tipo"
                     value={
-                      detailLead.tipo === "cliente" ? (
-                        <Badge
-                          variant="outline"
-                          className="border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-                        >
-                          Cliente da carteira
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Lead de captação</Badge>
-                      )
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {detailLead.tipo === "cliente" ? (
+                          <Badge
+                            variant="outline"
+                            className="border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                          >
+                            Cliente da carteira
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Lead de captação</Badge>
+                        )}
+                        {isGerente &&
+                          !isClientesFunil &&
+                          isLeadCarteiraPropria(detailLead, user?.id) && (
+                            <MeuLeadBadge />
+                          )}
+                      </div>
                     }
                   />
                   <DetailField label="Telefone" value={detailLead.telefone} />

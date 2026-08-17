@@ -60,6 +60,14 @@ export interface Lead {
   monitoramento?: LeadMonitoramento | null;
 }
 
+/** Lead da carteira pessoal do usuário (ex.: gerente), não da equipe. */
+export function isLeadCarteiraPropria(
+  lead: Pick<Lead, "corretorId">,
+  userId: string | null | undefined,
+): boolean {
+  return Boolean(userId && lead.corretorId === userId);
+}
+
 export function brl(n: number) {
   return n.toLocaleString("pt-BR", {
     style: "currency",

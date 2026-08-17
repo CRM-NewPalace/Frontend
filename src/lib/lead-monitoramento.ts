@@ -50,6 +50,7 @@ export type LeadMonitoramento = {
   tempoSemMovimentacaoMs: number;
   tempoSemMovimentacaoLabel: string;
   inatividadeThresholdMs: number;
+  inatividadeConfig?: { valor: number; unidade: PrazoUnidade } | null;
   podeAdiar: boolean;
 };
 
@@ -122,4 +123,81 @@ export function formatDateTimePt(iso: string | null | undefined): string {
     dateStyle: "short",
     timeStyle: "short",
   });
+}
+
+export function inatividadeToMs(valor: number, unidade: PrazoUnidade): number {
+  const n = Math.max(0, valor);
+  if (unidade === "minutos") return n * 60_000;
+  if (unidade === "dias") return n * 86_400_000;
+  return n * 3_600_000;
+}
+
+function formatDurationPt(ms: number): string {
+  const abs = Math.max(0, Math.round(ms));
+  const totalMin = Math.floor(abs / 60_000);
+  if (totalMin < 1) return "menos de 1min";
+  const days = Math.floor(totalMin / (60 * 24));
+  const hours = Math.floor((totalMin % (60 * 24)) / 60);
+  const minutes = totalMin % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 && days === 0) parts.push(`${minutes}min`);
+  if (parts.length === 0) return "menos de 1min";
+  return parts.join(" ");
+}
+
+/** Recalcula o alerta de inatividade com o período atual do funil. */
+export function applyInatividadeThreshold(
+  mon: LeadMonitoramento,
+  valor: number,
+  unidade: PrazoUnidade,
+  now = Date.now(),
+): LeadMonitoramento {
+  const thresholdMs = inatividadeToMs(valor, unidade);
+  const last = mon.lastMovementAt
+    ? new Date(mon.lastMovementAt).getTime()
+    : Number.NaN;
+  const idleMs = Number.isFinite(last)
+    ? Math.max(0, now - last)
+    : mon.tempoSemMovimentacaoMs;
+  const isIdle = idleMs >= thresholdMs;
+
+  const problemas = mon.problemas.filter((p) => p.tipo !== "sem_movimentacao");
+  if (isIdle) {
+    problemas.push({
+      tipo: "sem_movimentacao",
+      titulo: "Lead sem movimentação",
+      detalhe: `Sem movimentação há ${formatDurationPt(idleMs)}.`,
+      motivos: mon.problemas.find((p) => p.tipo === "sem_movimentacao")?.motivos,
+    });
+  }
+
+  const hasOverdue = problemas.some((p) => p.tipo === "prazo_ultrapassado");
+  const hasIdle = problemas.some((p) => p.tipo === "sem_movimentacao");
+  const hasNear = problemas.some((p) => p.tipo === "prazo_proximo");
+
+  let nivel: LeadMonitoramento["nivel"] = "normal";
+  let visual: LeadMonitoramento["visual"] = "none";
+  if (hasOverdue) {
+    nivel = "atrasado";
+    visual = "vermelho";
+  } else if (hasIdle) {
+    nivel = "sem_movimentacao";
+    visual = "vermelho";
+  } else if (hasNear) {
+    nivel = "proximo";
+    visual = "laranja";
+  }
+
+  return {
+    ...mon,
+    problemas,
+    nivel,
+    visual,
+    tempoSemMovimentacaoMs: idleMs,
+    tempoSemMovimentacaoLabel: formatDurationPt(idleMs),
+    inatividadeThresholdMs: thresholdMs,
+    inatividadeConfig: { valor, unidade },
+  };
 }

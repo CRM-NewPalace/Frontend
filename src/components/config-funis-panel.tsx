@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ApiError } from "@/lib/api";
 import { useCatalog } from "@/lib/catalog-store";
+import { useLeads } from "@/lib/leads-store";
 import {
   CATALOG_COLORS,
   DEFAULT_CATALOG_COLOR,
@@ -152,6 +153,7 @@ function ColorSwatchPicker({
 
 export function ConfigFunisPanel() {
   const { refresh: refreshCatalog } = useCatalog();
+  const { refresh: refreshLeads } = useLeads();
   const [funis, setFunis] = useState<Funil[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -300,6 +302,7 @@ export function ConfigFunisPanel() {
       });
       toast.success("Alerta de inatividade atualizado.");
       await afterMutation(updated);
+      await refreshLeads({ silent: true });
     } catch (err) {
       toast.error(
         errorMessage(err, "Não foi possível salvar o período de inatividade."),

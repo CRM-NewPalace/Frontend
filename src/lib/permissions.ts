@@ -220,3 +220,43 @@ export function canViewTeamData(role: Role): boolean {
 export function isCorretorLike(role: string | null | undefined): boolean {
   return role === "corretor" || role === "treinee";
 }
+
+/**
+ * Quem vê o lead no funil / monitoramento de atraso:
+ * - admin: todos do tenant
+ * - gerente: carteira própria + corretores da equipe + pool da equipe
+ * - corretor/treinee: somente os próprios
+ */
+export function isLeadInAtrasoScope(
+  user: Pick<AuthUser, "id" | "name" | "role">,
+  lead: {
+    corretorId?: string | null;
+    equipeId?: string | null;
+    corretor?: string | null;
+  },
+  team?: { memberIds: Set<string>; equipeIds: Set<string> },
+): boolean {
+  if (
+    user.role === "admin" ||
+    user.role === "super_admin" ||
+    user.role === "analista"
+  ) {
+    return true;
+  }
+  if (isCorretorLike(user.role)) {
+    return lead.corretorId === user.id || lead.corretor === user.name;
+  }
+  if (user.role === "gerente") {
+    if (lead.corretorId === user.id) return true;
+    if (lead.corretorId && team?.memberIds.has(lead.corretorId)) return true;
+    if (
+      !lead.corretorId &&
+      lead.equipeId &&
+      team?.equipeIds.has(lead.equipeId)
+    ) {
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
