@@ -54,6 +54,8 @@ import {
   Filter,
   Download,
   MoreHorizontal,
+  Copy,
+  MessageCircle,
   UserPlus,
   MapPin,
   Wallet,
@@ -721,6 +723,30 @@ function LeadsPage() {
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function copyLeadPhone(telefone: string) {
+    const value = formatPhone(telefone).trim() || telefone.trim();
+    if (!phoneDigits(value)) {
+      toast.error("Este lead não tem telefone.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success("Telefone copiado.");
+    } catch {
+      toast.error("Não foi possível copiar.");
+    }
+  }
+
+  function openLeadWhatsApp(telefone: string) {
+    const digits = phoneDigits(telefone);
+    if (digits.length < 10) {
+      toast.error("Este lead não tem telefone.");
+      return;
+    }
+    const e164 = digits.startsWith("55") ? digits : `55${digits}`;
+    window.open(`https://wa.me/${e164}`, "_blank", "noopener,noreferrer");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -2216,7 +2242,7 @@ function LeadsPage() {
               <TableHead className="w-[8%]">Estado civil</TableHead>
               <TableHead className="w-[7%]">Prioridade</TableHead>
               <TableHead className="w-[6%]">Atualizado</TableHead>
-              <TableHead className="sticky right-0 z-20 w-10 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)]">
+              <TableHead className="sticky right-0 z-20 w-16 text-right">
                 Ações
               </TableHead>
             </TableRow>
@@ -2372,8 +2398,19 @@ function LeadsPage() {
                     <TableCell className="truncate text-muted-foreground">
                       {l.updatedAt}
                     </TableCell>
-                    <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)] group-hover:bg-muted/40 group-data-[state=selected]:bg-muted">
-                      <div className="flex justify-end">
+                    <TableCell className="sticky right-0 z-10 bg-card text-right group-hover:bg-muted/40 group-data-[state=selected]:bg-muted">
+                      <div className="flex justify-end gap-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          title="Copiar telefone"
+                          disabled={!phoneDigits(l.telefone)}
+                          onClick={() => void copyLeadPhone(l.telefone)}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -2391,6 +2428,12 @@ function LeadsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEdit(l)}>
                               <Pencil className="w-4 h-4 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={phoneDigits(l.telefone).length < 10}
+                              onClick={() => openLeadWhatsApp(l.telefone)}
+                            >
+                              <MessageCircle className="w-4 h-4 mr-2 text-emerald-600" /> WhatsApp
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
