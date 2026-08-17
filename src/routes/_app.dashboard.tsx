@@ -21,7 +21,8 @@ import {
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { canAccessRoute, isCorretorLike } from "@/lib/permissions";
-import { useCatalog } from "@/lib/catalog-store";
+import { catalogColorToChartHex } from "@/lib/catalog-colors";
+import { useCatalog, type FunnelStage } from "@/lib/catalog-store";
 import {
   fetchDashboardAdmin,
   fetchDashboardCorretor,
@@ -37,7 +38,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { catalogColorToChartHex } from "@/lib/catalog-colors";
 import {
   AlertTriangle,
   Banknote,
@@ -64,14 +64,45 @@ import { SOFT_BTN } from "@/lib/soft-btn";
 
 
 const chartConfig = {
-  total: { label: "Processos", color: "hsl(var(--primary))" },
+  total: { label: "Leads", color: "hsl(var(--primary))" },
 } satisfies ChartConfig;
+
+function buildFunnelChartData(
+  funil: { etapa: string; total: number }[],
+  funnelStages: FunnelStage[],
+) {
+  const totals = new Map(funil.map((item) => [item.etapa, item.total]));
+  const known = new Set(funnelStages.map((stage) => stage.id));
+  const fromFunil = funnelStages
+    .filter((stage) => stage.papel !== "perdido")
+    .map((stage) => ({
+      etapa: stage.name,
+      total: totals.get(stage.id) ?? 0,
+      fill: catalogColorToChartHex(stage.color),
+    }))
+    .filter((row) => row.total > 0);
+  const extras = funil
+    .filter((item) => item.total > 0 && !known.has(item.etapa))
+    .map((item) => ({
+      etapa: item.etapa,
+      total: item.total,
+      fill: "hsl(var(--primary))",
+    }));
+  return [...fromFunil, ...extras];
+}
 
 function FunnelBarChart({
   data,
 }: {
   data: { etapa: string; total: number; fill?: string }[];
 }) {
+  if (data.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-muted-foreground">
+        Nenhum lead ativo no funil.
+      </p>
+    );
+  }
   return (
     <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
       <ChartContainer
@@ -238,20 +269,7 @@ function DashboardAdminView() {
 
   const funnelData = useMemo(() => {
     if (!summary) return [];
-    const totals = new Map(summary.funil.map((i) => [i.etapa, i.total]));
-    const fromCatalog = funnelStages.map((stage) => ({
-      etapa: stage.name,
-      total: totals.get(stage.id) ?? 0,
-      fill: catalogColorToChartHex(stage.color),
-    }));
-    if (fromCatalog.some((i) => i.total > 0) || funnelStages.length > 0) {
-      return fromCatalog;
-    }
-    return summary.funil.map((i) => ({
-      etapa: i.etapa,
-      total: i.total,
-      fill: "hsl(var(--primary))",
-    }));
+    return buildFunnelChartData(summary.funil, funnelStages);
   }, [summary, funnelStages]);
 
   const mesLabel = useMemo(
@@ -570,7 +588,7 @@ function DashboardAdminView() {
           <CardHeader>
             <CardTitle className="text-base">Funil geral</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Leads ativos da imobiliária por etapa.
+              Leads ativos nas etapas do funil de vendas.
             </p>
           </CardHeader>
           <CardContent>
@@ -995,14 +1013,7 @@ function DashboardCorretorView() {
 
   const funnelData = useMemo(() => {
     if (!summary) return [];
-    const totals = new Map(
-      summary.funil.map((item) => [item.etapa, item.total]),
-    );
-    return funnelStages.map((stage) => ({
-      etapa: stage.name,
-      total: totals.get(stage.id) ?? 0,
-      fill: catalogColorToChartHex(stage.color),
-    }));
+    return buildFunnelChartData(summary.funil, funnelStages);
   }, [summary, funnelStages]);
 
   const analiseData = useMemo(
@@ -1117,7 +1128,7 @@ function DashboardCorretorView() {
           <CardHeader>
             <CardTitle className="text-base">Funil atual</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {summary.conversaoEmAnalise}% da carteira está em análise.
+              Seus leads ativos nas etapas do funil de vendas.
             </p>
           </CardHeader>
           <CardContent>

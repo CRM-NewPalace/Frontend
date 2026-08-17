@@ -228,8 +228,10 @@ function DocCatalogBadge({
   );
 }
 
-const DOC_PERSON_CHIP =
-  "inline-flex h-6 max-w-full items-center justify-start truncate border-transparent px-2 text-left text-[11px] font-normal leading-6";
+const DOC_PERSON_CHIP = cn(
+  STATUS_CHIP_CLASS,
+  "border-transparent font-normal",
+);
 
 type DocumentacaoSearch = {
   status?: DocPipelineStatus;
