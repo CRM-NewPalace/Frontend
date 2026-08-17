@@ -11,6 +11,7 @@ export type Construtora = {
   viabilizadorContato: string | null;
   cca: string | null;
   driveFolderUrl: string | null;
+  logoUrl: string | null;
   createdAt: string;
   updatedAt: string;
   localidades?: Array<{ id: string; nome: string }>;
@@ -128,11 +129,32 @@ export async function deleteConstrutora(id: string): Promise<void> {
   });
 }
 
+export const CONSTRUTORA_MAX_IMAGES = 1;
+
+export async function uploadConstrutoraLogo(
+  id: string,
+  file: File,
+): Promise<Construtora> {
+  const data = new FormData();
+  data.append("file", file);
+  return apiFetch<Construtora>(`/construtoras/${id}/logo`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function deleteConstrutoraLogo(id: string): Promise<Construtora> {
+  return apiFetch<Construtora>(`/construtoras/${id}/logo`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchConstrutoraVendas(
   id: string,
-  params?: { mes?: number; ano?: number },
+  params?: { mes?: number; ano?: number; granularidade?: string },
 ): Promise<ConstrutoraVendas> {
   const qs = new URLSearchParams();
+  if (params?.granularidade) qs.set("granularidade", params.granularidade);
   if (params?.mes) qs.set("mes", String(params.mes));
   if (params?.ano) qs.set("ano", String(params.ano));
   const query = qs.toString();

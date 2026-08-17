@@ -5,6 +5,7 @@ export type CreatePlatformFornecedorContratoInput = {
   parceiroId: string;
   titulo: string;
   centro: string;
+  tipo?: "receber" | "pagar";
   valorAdesao?: number;
   qtdParcelasAdesao?: number;
   valorMensalidade: number;

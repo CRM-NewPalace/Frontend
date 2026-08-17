@@ -54,6 +54,7 @@ import {
   updateMovimento,
 } from "@/lib/financeiro-api";
 import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -632,9 +633,10 @@ function Page() {
                         variant="outline"
                         className={
                           m.tipo === "entrada"
-                            ? "border-transparent bg-emerald-500/15 text-emerald-700"
-                            : "border-transparent bg-destructive/15 text-destructive"
+                            ? `${STATUS_CHIP_CLASS} border-transparent bg-emerald-500/15 text-emerald-700`
+                            : `${STATUS_CHIP_CLASS} border-transparent bg-destructive/15 text-destructive`
                         }
+                        title={m.tipo === "entrada" ? "Entrada" : "Saída"}
                       >
                         {m.tipo === "entrada" ? "Entrada" : "Saída"}
                       </Badge>

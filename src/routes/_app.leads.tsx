@@ -76,6 +76,7 @@ import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
+  STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
@@ -130,7 +131,7 @@ type LeadsSearch = {
   parados?: boolean;
 };
 
-const DIAS_PARADO = 7;
+const DIAS_PARADO = 3;
 
 function isLeadParado(lead: Lead, dias = DIAS_PARADO): boolean {
   const raw = lead.updatedAtIso || lead.updatedAt;
@@ -1043,6 +1044,7 @@ function LeadsPage() {
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
               className={SOFT_BTN}
+              data-guia="leads-importar"
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1057,6 +1059,7 @@ function LeadsPage() {
                 size="sm"
                 onClick={() => setDistribuirOpen(true)}
                 className={SOFT_BTN}
+                data-guia="leads-distribuir"
               >
                 <Share2 className="w-4 h-4 mr-1" />
                 Distribuir
@@ -1069,6 +1072,7 @@ function LeadsPage() {
                   size="sm"
                   disabled={filteredLeads.length === 0}
                   className={SOFT_BTN}
+                  data-guia="leads-exportar"
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -1120,6 +1124,7 @@ function LeadsPage() {
               onClick={openCreate}
               className={LEADS_GRADIENT_BTN}
               style={LEADS_GRADIENT_STYLE}
+              data-guia="leads-novo"
             >
               <Plus className="w-4 h-4 mr-1" />
               Novo lead
@@ -1602,7 +1607,23 @@ function LeadsPage() {
                     label="E-mail"
                     value={displayEmail(detailLead.email) || "—"}
                   />
-                  <DetailField label="Origem" value={detailLead.origem} />
+                  <DetailField
+                    label="Origem"
+                    value={
+                      detailLead.origem ? (
+                        <Badge
+                          className={catalogColorBadgeClass(
+                            colorByLabel("origem", detailLead.origem),
+                          )}
+                          title={detailLead.origem}
+                        >
+                          {detailLead.origem}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                   {!isCorretor && (
                     <DetailField label="Corretor" value={detailLead.corretor} />
                   )}
@@ -1650,7 +1671,8 @@ function LeadsPage() {
                         {detailLead.tags.map((t) => (
                           <Badge
                             key={t}
-                            className={`text-[10px] ${colorByLabel("tag", t)}`}
+                            className={cn(STATUS_CHIP_CLASS, colorByLabel("tag", t))}
+                            title={t}
                           >
                             {t}
                           </Badge>
@@ -1816,6 +1838,7 @@ function LeadsPage() {
             <button
               type="button"
               className="min-w-0 cursor-pointer text-left"
+              data-guia="leads-chegaram"
               onClick={() => {
                 setDistribuicaoFilter("chegaram");
                 setPrioridadeFilter("all");
@@ -2168,10 +2191,10 @@ function LeadsPage() {
       )}
 
       <Card className="overflow-hidden">
-        <Table className="[&_th]:px-4 [&_td]:px-4">
+        <Table className="w-full table-fixed text-[11px] leading-tight [&_th]:h-8 [&_th]:px-1.5 [&_th]:py-1 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1.5 [&_td]:text-left [&_td]:align-middle">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12 pr-2">
+              <TableHead className="w-8 pr-0">
                 <Checkbox
                   checked={
                     allSelected ? true : someSelected ? "indeterminate" : false
@@ -2181,17 +2204,21 @@ function LeadsPage() {
                   disabled={filteredLeads.length === 0 || bulkDeleting}
                 />
               </TableHead>
-              <TableHead>Lead</TableHead>
-              <TableHead>Origem</TableHead>
-              <TableHead>Tipo de renda</TableHead>
-              <TableHead>Etapa</TableHead>
-              {!isCorretor && <TableHead>Equipe</TableHead>}
-              {!isCorretor && <TableHead>Corretor</TableHead>}
-              <TableHead>Renda</TableHead>
-              <TableHead>Estado civil</TableHead>
-              <TableHead>Prioridade</TableHead>
-              <TableHead>Atualizado</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="w-[20%]">Lead</TableHead>
+              <TableHead className="w-[7%]">Origem</TableHead>
+              <TableHead className="w-[7%]">Tipo de renda</TableHead>
+              <TableHead className="w-[8%]">Etapa</TableHead>
+              {!isCorretor && <TableHead className="w-[7%]">Equipe</TableHead>}
+              {!isCorretor && (
+                <TableHead className="w-[14%]">Corretor</TableHead>
+              )}
+              <TableHead className="w-[7%]">Renda</TableHead>
+              <TableHead className="w-[8%]">Estado civil</TableHead>
+              <TableHead className="w-[7%]">Prioridade</TableHead>
+              <TableHead className="w-[6%]">Atualizado</TableHead>
+              <TableHead className="sticky right-0 z-20 w-10 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)]">
+                Ações
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -2225,13 +2252,14 @@ function LeadsPage() {
                   stage.papel === "inicial" ||
                   stage.id === "novo" ||
                   l.stage === "novo";
+                const equipe = equipeLabel(l);
                 return (
                   <TableRow
                     key={l.id}
-                    className="hover:bg-muted/40"
+                    className="group hover:bg-muted/40"
                     data-state={selectedIds.has(l.id) ? "selected" : undefined}
                   >
-                    <TableCell className="pr-2">
+                    <TableCell className="pr-0">
                       <Checkbox
                         checked={selectedIds.has(l.id)}
                         onCheckedChange={(v) =>
@@ -2242,9 +2270,9 @@ function LeadsPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="avatar-fallback-brand text-xs">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="avatar-fallback-brand text-[9px]">
                             {l.nome
                               .split(" ")
                               .map((n) => n[0])
@@ -2252,22 +2280,43 @@ function LeadsPage() {
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <div className="table-person-name text-sm">{l.nome}</div>
-                          <div className="text-xs text-muted-foreground">
+                        <div className="min-w-0">
+                          <div className="table-person-name truncate text-sm leading-snug">
+                            {l.nome}
+                          </div>
+                          <div className="truncate text-[10px] text-muted-foreground">
                             {l.telefone}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">{l.origem}</TableCell>
-                    <TableCell className="text-sm">
-                      {l.tipoRenda || "—"}
+                    <TableCell className="truncate">
+                      {l.origem ? (
+                        <Badge
+                          className={cn(
+                            catalogColorBadgeClass(
+                              colorByLabel("origem", l.origem),
+                            ),
+                            "w-auto max-w-full",
+                          )}
+                          title={l.origem}
+                        >
+                          {l.origem}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="truncate">
+                      {l.tipoRenda || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="truncate">
                       <Badge
                         className={cn(
                           catalogColorBadgeClass(stage.color),
+                          "w-auto max-w-full",
                           isNovoStage && "badge-novo-glow",
                         )}
                         style={
@@ -2275,42 +2324,62 @@ function LeadsPage() {
                             ? undefined
                             : catalogColorBadgeStyle(stage.color)
                         }
+                        title={stage.name}
                       >
                         {stage.name}
                       </Badge>
                     </TableCell>
                     {!isCorretor && (
-                      <TableCell className="text-sm">
-                        {equipeLabel(l)}
+                      <TableCell className="truncate">
+                        {equipe === "—" ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          equipe
+                        )}
                       </TableCell>
                     )}
                     {!isCorretor && (
-                      <TableCell className="table-person-name text-sm">
-                        {l.corretor}
+                      <TableCell className="table-person-name truncate text-sm leading-snug">
+                        {l.corretor || (
+                          <span className="text-[11px] font-normal text-muted-foreground">
+                            —
+                          </span>
+                        )}
                       </TableCell>
                     )}
-                    <TableCell className="text-sm font-medium">
-                      {l.renda != null ? brl(l.renda) : "—"}
+                    <TableCell className="truncate font-medium tabular-nums">
+                      {l.renda != null ? (
+                        brl(l.renda)
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {l.estadoCivil || "—"}
+                    <TableCell className="truncate">
+                      {l.estadoCivil || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
-                    <TableCell>
-                      <Badge className={prioridadeBadgeClass(l.prioridade)}>
+                    <TableCell className="truncate">
+                      <Badge
+                        className={cn(
+                          prioridadeBadgeClass(l.prioridade),
+                          "w-auto max-w-full",
+                        )}
+                      >
                         {l.prioridade}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="truncate text-muted-foreground">
                       {l.updatedAt}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)] group-hover:bg-muted/40 group-data-[state=selected]:bg-muted">
                       <div className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7"
+                              className="h-6 w-6"
                               title="Mais opções"
                             >
                               <MoreHorizontal className="w-3.5 h-3.5" />

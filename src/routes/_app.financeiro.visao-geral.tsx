@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -11,7 +11,6 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { ApiError } from "@/lib/api";
-import { getSession } from "@/lib/auth";
 import { fetchVisaoGeral } from "@/lib/financeiro-api";
 import {
   brl,
@@ -83,7 +82,6 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 
 function Page() {
   const navigate = useNavigate();
-  const isPlatformAdmin = getSession()?.role === "super_admin";
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState(EMPTY_KPIS);
@@ -194,6 +192,7 @@ function Page() {
           tone="blue-3"
           evolucaoPct={k.evolucaoDespesas}
           invertEvolucao
+          href="/financeiro/despesas"
         />
         <FinanceKpiCard
           label="Resultado"
@@ -286,13 +285,6 @@ function Page() {
             {pieData.length === 0 ? (
               <div className="flex h-70 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <p>Sem despesas por centro neste mês.</p>
-                {!isPlatformAdmin ? (
-                  <Button asChild variant="outline" size="sm">
-                    <Link to="/financeiro/centro-despesas">
-                      Abrir centro de despesas
-                    </Link>
-                  </Button>
-                ) : null}
               </div>
             ) : (
               <ResponsiveChartShell>

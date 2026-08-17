@@ -31,6 +31,7 @@ import {
   type DashboardRanking,
   type DashboardRankingCorretor,
   type DashboardRankingGerente,
+  type PeriodoGranularidade,
 } from "@/lib/dashboard-api";
 import {
   Building2,
@@ -79,7 +80,85 @@ function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-/** Ano/mês corrente no fuso de Brasília (UTC−3). */
+const GRANULARIDADE_OPTIONS: {
+  value: PeriodoGranularidade;
+  label: string;
+}[] = [
+  { value: "mes", label: "Mensal" },
+  { value: "bimestre", label: "Bimestre" },
+  { value: "trimestre", label: "Trimestre" },
+  { value: "semestre", label: "Semestre" },
+  { value: "anual", label: "Anual" },
+];
+
+const PERIODO_NOUN: Record<PeriodoGranularidade, string> = {
+  mes: "mês",
+  bimestre: "bimestre",
+  trimestre: "trimestre",
+  semestre: "semestre",
+  anual: "ano",
+};
+
+const MESES_CURTOS = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+] as const;
+
+function duracaoMeses(g: PeriodoGranularidade) {
+  if (g === "bimestre") return 2;
+  if (g === "trimestre") return 3;
+  if (g === "semestre") return 6;
+  if (g === "anual") return 12;
+  return 1;
+}
+
+function snapMes(mes: number, g: PeriodoGranularidade) {
+  const d = duracaoMeses(g);
+  return Math.floor((mes - 1) / d) * d + 1;
+}
+
+function recortesDoPeriodo(g: PeriodoGranularidade) {
+  const d = duracaoMeses(g);
+  const items: { mes: number; label: string }[] = [];
+  for (let start = 1; start <= 12; start += d) {
+    if (g === "mes") {
+      items.push({ mes: start, label: MESES_PT[start - 1] });
+      continue;
+    }
+    const idx = Math.floor((start - 1) / d) + 1;
+    const fim = start + d - 1;
+    const faixa =
+      d === 1
+        ? MESES_CURTOS[start - 1]
+        : `${MESES_CURTOS[start - 1]}–${MESES_CURTOS[fim - 1]}`;
+    items.push({ mes: start, label: `${idx}º (${faixa})` });
+  }
+  return items;
+}
+
+function labelPeriodo(g: PeriodoGranularidade, mes: number, ano: number) {
+  if (g === "anual") return String(ano);
+  if (g === "mes") {
+    return new Date(Date.UTC(ano, mes - 1, 1)).toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  const recorte = recortesDoPeriodo(g).find((item) => item.mes === mes);
+  return recorte ? `${recorte.label} de ${ano}` : `${ano}`;
+}
+
 function agoraBrasil() {
   const brasil = new Date(Date.now() - 3 * 60 * 60 * 1000);
   return {
@@ -95,6 +174,8 @@ function Page() {
   /** Ranking entre gerentes: só admin. */
   const showRankingGerentes = user?.role === "admin";
   const agora = useMemo(() => agoraBrasil(), []);
+  const [granularidade, setGranularidade] =
+    useState<PeriodoGranularidade>("mes");
   const [mes, setMes] = useState(agora.mes);
   const [ano, setAno] = useState(agora.ano);
   const [data, setData] = useState<DashboardRanking | null>(null);
@@ -120,7 +201,7 @@ function Page() {
     }
     setLoading(true);
     try {
-      setData(await fetchDashboardRanking({ mes, ano }));
+      setData(await fetchDashboardRanking({ mes, ano, granularidade }));
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -131,7 +212,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [canView, mes, ano]);
+  }, [canView, mes, ano, granularidade]);
 
   useEffect(() => {
     void load();
@@ -146,10 +227,10 @@ function Page() {
     setLoadingVendas(true);
     const request =
       vendasAlvo.kind === "construtora"
-        ? fetchConstrutoraVendas(vendasAlvo.id, { mes, ano }).then(
+        ? fetchConstrutoraVendas(vendasAlvo.id, { mes, ano, granularidade }).then(
             (result) => result.items,
           )
-        : fetchCorretorVendas(vendasAlvo.id, { mes, ano }).then(
+        : fetchCorretorVendas(vendasAlvo.id, { mes, ano, granularidade }).then(
             (result) => result.items,
           );
     void request
@@ -171,38 +252,65 @@ function Page() {
     return () => {
       cancelled = true;
     };
-  }, [vendasAlvo, mes, ano]);
+  }, [vendasAlvo, mes, ano, granularidade]);
 
-  const mesLabel = useMemo(
-    () =>
-      new Date(Date.UTC(ano, mes - 1, 1)).toLocaleDateString("pt-BR", {
-        month: "long",
-        year: "numeric",
-        timeZone: "UTC",
-      }),
-    [mes, ano],
+  const periodoLabel = useMemo(
+    () => labelPeriodo(granularidade, snapMes(mes, granularidade), ano),
+    [granularidade, mes, ano],
   );
+  const recortes = useMemo(
+    () => recortesDoPeriodo(granularidade),
+    [granularidade],
+  );
+  const periodoNoun = PERIODO_NOUN[granularidade];
 
   const filtros = (
     <div className="flex flex-wrap items-end gap-2">
       <div className="space-y-1">
-        <Label className="text-[11px] text-muted-foreground">Mês</Label>
-        <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-          <SelectTrigger className="h-9 w-38 bg-background">
+        <Label className="text-[11px] text-muted-foreground">Período</Label>
+        <Select
+          value={granularidade}
+          onValueChange={(value) => {
+            const next = value as PeriodoGranularidade;
+            setGranularidade(next);
+            setMes(snapMes(mes, next));
+          }}
+        >
+          <SelectTrigger className="h-9 w-32 bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {MESES_PT.map((nome, idx) => (
-              <SelectItem key={nome} value={String(idx + 1)}>
-                {nome}
+            {GRANULARIDADE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
+      {granularidade !== "anual" ? (
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Recorte</Label>
+          <Select
+            value={String(snapMes(mes, granularidade))}
+            onValueChange={(value) => setMes(Number(value))}
+          >
+            <SelectTrigger className="h-9 min-w-38 bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {recortes.map((item) => (
+                <SelectItem key={item.mes} value={String(item.mes)}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
       <div className="space-y-1">
         <Label className="text-[11px] text-muted-foreground">Ano</Label>
-        <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+        <Select value={String(ano)} onValueChange={(value) => setAno(Number(value))}>
           <SelectTrigger className="h-9 w-22 bg-background">
             <SelectValue />
           </SelectTrigger>
@@ -239,8 +347,8 @@ function Page() {
         title="Ranking"
         description={
           isGerente
-            ? `Ranking dos corretores da sua equipe · ${mesLabel}.`
-            : `Ranking completo e métricas de ${mesLabel}.`
+            ? `Ranking dos corretores da sua equipe · ${periodoLabel}.`
+            : `Ranking completo e métricas de ${periodoLabel}.`
         }
         actions={filtros}
       />
@@ -259,21 +367,21 @@ function Page() {
         <>
           <section className="mt-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
             <FinanceKpiCard
-              label="Entradas do mês"
+              label={`Entradas do ${periodoNoun}`}
               value={data.totais.entradas ?? 0}
               icon={UsersRound}
               tone="blue-1"
               format="number"
             />
             <FinanceKpiCard
-              label="Vendas do mês"
+              label={`Vendas do ${periodoNoun}`}
               value={data.totais.vendas ?? 0}
               icon={TrendingUp}
               tone="blue-2"
               format="number"
             />
             <FinanceKpiCard
-              label="VGV do mês"
+              label={`VGV do ${periodoNoun}`}
               value={data.totais.vgv ?? 0}
               icon={Wallet}
               tone="blue-3"
@@ -375,7 +483,7 @@ function Page() {
                     Ranking Gerentes
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Agregado pela equipe liderada · ordenado por VGV do mês.
+                    Agregado pela equipe liderada · ordenado por VGV do período.
                   </p>
                 </CardHeader>
                 <CardContent className="p-0">

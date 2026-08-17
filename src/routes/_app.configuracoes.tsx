@@ -26,6 +26,7 @@ import {
   catalogColorSwatch,
   isHexColor,
   nextCatalogColor,
+  STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import {
   getVistaParcelas,
@@ -63,7 +64,10 @@ type ListKind =
   | "cca"
   | "docFontes"
   | "docStatus1"
-  | "docStatus2";
+  | "docStatus2"
+  | "empTipos"
+  | "empStatus"
+  | "empTags";
 
 const LIST_META: Record<
   ListKind,
@@ -111,6 +115,24 @@ const LIST_META: Record<
     addLabel: "Adicionar status 2",
     type: "documentacao_status2",
   },
+  empTipos: {
+    title: "Tipos de empreendimento",
+    singular: "tipo",
+    addLabel: "Adicionar tipo",
+    type: "empreendimento_tipo",
+  },
+  empStatus: {
+    title: "Status do empreendimento",
+    singular: "status",
+    addLabel: "Adicionar status",
+    type: "empreendimento_status",
+  },
+  empTags: {
+    title: "Tags do empreendimento",
+    singular: "tag",
+    addLabel: "Adicionar tag",
+    type: "empreendimento_tag",
+  },
 };
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -131,7 +153,13 @@ function ColorSwatchPicker({
       <div className="flex items-center gap-2">
         <Label>Cor</Label>
         {previewLabel?.trim() && (
-          <Badge className={cn(value || DEFAULT_CATALOG_COLOR, "text-[10px]")}>
+          <Badge
+            className={cn(
+              STATUS_CHIP_CLASS,
+              value || DEFAULT_CATALOG_COLOR,
+            )}
+            title={previewLabel.trim()}
+          >
             {previewLabel.trim()}
           </Badge>
         )}
@@ -167,15 +195,19 @@ function CatalogItemBadge({ item }: { item: CatalogItem }) {
     return (
       <Badge
         variant="secondary"
-        className="border-transparent text-sm py-1 px-3"
+        className={cn(STATUS_CHIP_CLASS, "border-transparent")}
         style={construtoraBadgeStyle(item.color)}
+        title={item.label}
       >
         {item.label}
       </Badge>
     );
   }
   return (
-    <Badge className={cn("text-sm py-1 px-3", item.color ?? DEFAULT_CATALOG_COLOR)}>
+    <Badge
+      className={cn(STATUS_CHIP_CLASS, item.color ?? DEFAULT_CATALOG_COLOR)}
+      title={item.label}
+    >
       {item.label}
     </Badge>
   );
@@ -334,6 +366,9 @@ function Config() {
     docFontes: catalog.documentacao_fonte,
     docStatus1: catalog.documentacao_status1,
     docStatus2: catalog.documentacao_status2,
+    empTipos: catalog.empreendimento_tipo,
+    empStatus: catalog.empreendimento_status,
+    empTags: catalog.empreendimento_tag,
   };
 
   return (
@@ -342,10 +377,10 @@ function Config() {
         title="Configurações"
         description={
           isTreinee
-            ? "Gerencie origens, tags e CCAs."
+            ? "Gerencie origens, tags, CCAs e catálogos de imóveis."
             : isAnalista
-              ? "Gerencie documentação, origens, motivos de perda, tags e CCAs."
-              : "Personalize imobiliária, funil, documentação, origens, motivos, tags e CCAs."
+              ? "Gerencie documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
+              : "Personalize imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
         }
       />
 
@@ -463,6 +498,63 @@ function Config() {
 
         {showImoveis ? (
           <TabsContent value="imoveis" className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tipos, status e tags usados no cadastro de empreendimentos. Admin,
+              gerente, analista e treinee podem criar, editar e excluir.
+            </p>
+            {(["empTipos", "empStatus", "empTags"] as ListKind[]).map(
+              (kind) => (
+                <Card key={kind}>
+                  <CardHeader className="flex-row justify-between items-center">
+                    <CardTitle className="text-base">
+                      {LIST_META[kind].title}
+                    </CardTitle>
+                    <Button size="sm" onClick={() => openAddList(kind)}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Adicionar
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {loading && (
+                      <p className="text-sm text-muted-foreground">
+                        Carregando…
+                      </p>
+                    )}
+                    {!loading && listItemsByKind[kind].length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum item cadastrado.
+                      </p>
+                    )}
+                    {listItemsByKind[kind].map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40"
+                      >
+                        <CatalogItemBadge item={item} />
+                        <div className="ml-auto flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEditItem(item)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => void handleRemoveItem(item)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ),
+            )}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Menu lateral</CardTitle>

@@ -1,3 +1,5 @@
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+
 /** Tipos e utilitários do módulo Financeiro (sem dados mock). */
 
 export type PeriodoFiltro = "mes" | "trimestre" | "ano" | "tudo";
@@ -43,6 +45,14 @@ export function formatDate(iso: string) {
   const date = parseFinanceiroDay(iso);
   return date ? date.toLocaleDateString("pt-BR") : "—";
 }
+
+export const COMISSAO_PAPEL_LABEL: Record<string, string> = {
+  caixa: "Caixa da imobiliária",
+  socios: "Sócios",
+  corretor: "Corretor",
+  gerente: "Gerente",
+  tributos: "Tributos",
+};
 
 export const PERIODO_OPTIONS: { value: PeriodoFiltro; label: string }[] = [
   { value: "mes", label: "Mês atual" },
@@ -104,6 +114,8 @@ export interface TituloFinanceiro {
   parcela: string;
   grupoParcelasId?: string | null;
   platformContratoId?: string | null;
+  comissaoId?: string | null;
+  comissaoPapel?: string | null;
   formaPagamento?: string;
 }
 
@@ -148,7 +160,7 @@ export interface FluxoItem {
   tipo: "entrada" | "saida";
   valor: number;
   natureza: "realizado" | "previsto";
-  origem: "titulo" | "movimento";
+  origem: "titulo" | "movimento" | "comissao";
   id: string;
   descricao: string;
   parceiro: string;
@@ -157,6 +169,12 @@ export interface FluxoItem {
   status: string;
   contrato?: boolean;
 }
+
+export const FLUXO_ORIGEM_LABEL: Record<FluxoItem["origem"], string> = {
+  titulo: "Título",
+  movimento: "Movimento",
+  comissao: "Comissão",
+};
 
 export const FLUXO_GRANULARIDADE_OPTIONS: {
   value: FluxoGranularidade;
@@ -241,21 +259,22 @@ export const VISAO_GERAL_KPIS = {
 export function statusBadgeClass(
   status: StatusTitulo | ComissaoItem["status"],
 ) {
+  const size = STATUS_CHIP_CLASS;
   switch (status) {
     case "pago":
     case "paga":
-      return "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+      return `${size} border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300`;
     case "aberto":
     case "pendente":
-      return "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300";
+      return `${size} border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300`;
     case "atrasado":
-      return "border-transparent bg-destructive/15 text-destructive";
+      return `${size} border-transparent bg-destructive/15 text-destructive`;
     case "liberada":
-      return "border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300";
+      return `${size} border-transparent bg-amber-500/15 text-amber-800 dark:text-amber-300`;
     case "cancelado":
-      return "border-transparent bg-muted text-muted-foreground";
+      return `${size} border-transparent bg-muted text-muted-foreground`;
     default:
-      return "border-transparent bg-secondary text-secondary-foreground";
+      return `${size} border-transparent bg-secondary text-secondary-foreground`;
   }
 }
 
@@ -321,4 +340,44 @@ export function matchesPeriodoFiltro(
     );
   }
   return d.getFullYear() === now.getFullYear();
+}
+
+function startOfPeriodo(periodo: PeriodoFiltro, now: Date): Date | null {
+  if (periodo === "tudo") return null;
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if (periodo === "mes") return new Date(y, m, 1);
+  if (periodo === "trimestre") return new Date(y, Math.floor(m / 3) * 3, 1);
+  return new Date(y, 0, 1);
+}
+
+/**
+ * Mês/trimestre/ano: vence no intervalo, ou ainda está em aberto/atrasado
+ * de períodos anteriores. Pagos entram pela data da baixa.
+ */
+export function tituloVisivelNoPeriodo(
+  titulo: {
+    status: StatusTitulo;
+    vencimento: string;
+    dataPagamento?: string | null;
+  },
+  periodo: PeriodoFiltro,
+  now = new Date(),
+): boolean {
+  if (periodo === "tudo") return true;
+  if (titulo.status === "pago") {
+    return matchesPeriodoFiltro(
+      titulo.dataPagamento || titulo.vencimento,
+      periodo,
+      now,
+    );
+  }
+  if (titulo.status === "cancelado") {
+    return matchesPeriodoFiltro(titulo.vencimento, periodo, now);
+  }
+  if (matchesPeriodoFiltro(titulo.vencimento, periodo, now)) return true;
+  const venc = parseFinanceiroDay(titulo.vencimento);
+  const start = startOfPeriodo(periodo, now);
+  if (!venc || !start) return true;
+  return venc < start;
 }

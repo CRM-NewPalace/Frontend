@@ -47,6 +47,7 @@ import {
   updateParceiro,
 } from "@/lib/financeiro-api";
 import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   type ParceiroFinanceiro,
   type TipoParceiro,
@@ -400,9 +401,10 @@ function Page() {
                         variant="outline"
                         className={
                           p.ativo
-                            ? "border-transparent bg-emerald-500/15 text-emerald-700"
-                            : "text-muted-foreground"
+                            ? `${STATUS_CHIP_CLASS} border-transparent bg-emerald-500/15 text-emerald-700`
+                            : `${STATUS_CHIP_CLASS} text-muted-foreground`
                         }
+                        title={p.ativo ? "Ativo" : "Inativo"}
                       >
                         {p.ativo ? "Ativo" : "Inativo"}
                       </Badge>

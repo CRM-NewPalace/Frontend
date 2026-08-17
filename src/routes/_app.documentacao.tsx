@@ -102,7 +102,6 @@ import {
   dedupeStatusOptions,
   docPipelineFromStatus1,
   isStatusAnalise,
-  isStatusParecerFinal,
   isStatusVendido,
   matchesDocPipelineStatus,
   status1Group,
@@ -111,9 +110,6 @@ import {
   type DocPipelineStatus,
 } from "@/lib/documentacao-status";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
-
-const DOC_CHIP =
-  "inline-flex h-5 max-w-28 items-center justify-center truncate rounded-md border px-1.5 text-[10px] font-normal leading-none";
 
 function status1ChipClass(status: string) {
   const group = status1Group(status);
@@ -216,11 +212,16 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
+import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+const DOC_STATUS_CHIP = cn(STATUS_CHIP_CLASS, "justify-start text-left");
+const DOC_PERSON_CHIP =
+  "inline-flex h-6 max-w-full items-center justify-start truncate border-transparent px-2 text-left text-[11px] font-normal leading-6";
 
 type DocumentacaoSearch = {
   status?: DocPipelineStatus;
@@ -408,6 +409,7 @@ function DocumentacaoPage() {
     documentacaoStatus1,
     documentacaoStatus2,
     addItem,
+    colorByLabel,
   } = useCatalog();
   const fonteCatalog = useMemo(
     () =>
@@ -512,13 +514,6 @@ function DocumentacaoPage() {
 
   const stageLabel = useCallback(
     (slug: string) => funnelStages.find((s) => s.id === slug)?.name ?? slug,
-    [funnelStages],
-  );
-
-  const stageBadgeClass = useCallback(
-    (slug: string) =>
-      funnelStages.find((s) => s.id === slug)?.color ??
-      "bg-secondary text-secondary-foreground",
     [funnelStages],
   );
 
@@ -1884,7 +1879,12 @@ function DocumentacaoPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             {canCreateDoc && (
-              <Button onClick={openCreate} disabled={leadsLoading} size="sm">
+              <Button
+                onClick={openCreate}
+                disabled={leadsLoading}
+                size="sm"
+                data-guia="doc-nova"
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Nova documentação
               </Button>
@@ -2291,6 +2291,7 @@ function DocumentacaoPage() {
           icon={CheckCircle2}
           tone="blue-1"
           format="number"
+          compact
           active={filterStatus1 === "Aprovado"}
           onClick={() => {
             if (filterStatus1 === "Aprovado") {
@@ -2312,6 +2313,7 @@ function DocumentacaoPage() {
           icon={XCircle}
           tone="blue-2"
           format="number"
+          compact
           active={filterStatus1 === "Reprovado"}
           onClick={() => {
             if (filterStatus1 === "Reprovado") {
@@ -2333,6 +2335,7 @@ function DocumentacaoPage() {
           icon={Clock3}
           tone="blue-3"
           format="number"
+          compact
           active={filterStatus1 === "Em análise"}
           onClick={() => {
             if (filterStatus1 === "Em análise") {
@@ -2353,6 +2356,7 @@ function DocumentacaoPage() {
           value={pipelineSummary.vgv}
           icon={Wallet}
           tone="blue-4"
+          compact
           href="/vendas"
         />
       </section>
@@ -2383,119 +2387,104 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="text-xs [&_th]:h-10 [&_th]:px-4 [&_th]:py-2.5 [&_th]:whitespace-nowrap [&_td]:px-4 [&_td]:py-1.5">
+            <Table className="min-w-[70rem] table-fixed text-xs [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-28 max-w-36">Nome</TableHead>
-                  <TableHead className="min-w-28">Construtora</TableHead>
-                  <TableHead className="min-w-32 max-w-40">Empreend.</TableHead>
-                  <TableHead className="min-w-32">Status</TableHead>
-                  <TableHead className="min-w-28 max-w-36">Corretor</TableHead>
-                  <TableHead className="min-w-28 max-w-36">Gerente</TableHead>
-                  <TableHead className="min-w-24">Fonte</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead className="w-[18%]">Nome</TableHead>
+                  <TableHead className="w-[13%]">Construtora</TableHead>
+                  <TableHead className="w-[13%]">Empreend.</TableHead>
+                  <TableHead className="w-[9.25rem]">Status 1</TableHead>
+                  <TableHead className="w-[9.25rem]">Status 2</TableHead>
+                  <TableHead className="w-[13%]">Corretor</TableHead>
+                  <TableHead className="w-[13%]">Gerente</TableHead>
+                  <TableHead className="w-[9.25rem]">Fonte</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedItems.map((doc) => (
-                  <TableRow key={doc.id} className="align-middle">
-                    <TableCell className="max-w-36">
+                  <TableRow key={doc.id}>
+                    <TableCell>
                       <div
                         className="table-person-name truncate text-[13.5px]"
                         title={doc.nome}
                       >
                         {doc.nome}
                       </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
-                        <span>
-                          {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}
-                        </span>
-                        {isStatusParecerFinal(doc.status1) ? (
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              "h-5 border px-1.5 text-[10px] font-medium",
-                              status1ChipClass(doc.status1),
-                            )}
-                            title="Parecer da documentação"
-                          >
-                            {doc.status1}
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              "h-5 px-1.5 text-[10px] font-medium",
-                              stageBadgeClass(doc.lead.stage),
-                            )}
-                            title="Etapa atual no funil"
-                          >
-                            {stageLabel(doc.lead.stage)}
-                          </Badge>
-                        )}
+                      <div className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
+                        {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}
+                        {doc.lead.stage
+                          ? ` · ${stageLabel(doc.lead.stage)}`
+                          : ""}
                       </div>
                     </TableCell>
                     <TableCell>
                       {doc.construtora?.nome ? (
                         <Badge
                           variant="secondary"
-                          className={cn(DOC_CHIP, "border-transparent")}
+                          className={DOC_PERSON_CHIP}
                           style={construtoraBadgeStyle(doc.construtora.cor)}
                           title={doc.construtora.nome}
                         >
                           {doc.construtora.nome}
                         </Badge>
                       ) : (
-                        "—"
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell>
                       {doc.empreendimento?.nome ? (
                         <Badge
                           variant="secondary"
-                          className={cn(DOC_CHIP, "border-transparent")}
+                          className={DOC_PERSON_CHIP}
                           style={construtoraBadgeStyle(doc.empreendimento.cor)}
                           title={doc.empreendimento.nome}
                         >
                           {doc.empreendimento.nome}
                         </Badge>
                       ) : (
-                        "—"
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-0.5">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            DOC_CHIP,
-                            status1ChipClass(doc.status1),
-                          )}
-                          title={doc.status1}
-                        >
-                          {doc.status1}
-                        </Badge>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            DOC_CHIP,
-                            status2ChipClass(doc.status2),
-                          )}
-                          title={doc.status2}
-                        >
-                          {doc.status2}
-                        </Badge>
-                      </div>
+                    <TableCell className="w-[9.25rem]">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          DOC_STATUS_CHIP,
+                          "font-normal",
+                          status1ChipClass(doc.status1),
+                        )}
+                        title={doc.status1}
+                      >
+                        {doc.status1}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="w-[9.25rem]">
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          DOC_STATUS_CHIP,
+                          "font-normal",
+                          status2ChipClass(doc.status2),
+                        )}
+                        title={doc.status2}
+                      >
+                        {doc.status2}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {(() => {
                         const corretor =
                           doc.corretor ?? doc.lead.corretor ?? null;
-                        if (!corretor?.name) return "—";
+                        if (!corretor?.name) {
+                          return (
+                            <span className="text-muted-foreground">—</span>
+                          );
+                        }
                         return (
                           <Badge
                             variant="secondary"
-                            className={cn(DOC_CHIP, "border-transparent")}
+                            className={DOC_PERSON_CHIP}
                             style={construtoraBadgeStyle(corretor.cor)}
                             title={corretor.name}
                           >
@@ -2504,17 +2493,41 @@ function DocumentacaoPage() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell
-                      className="table-person-name max-w-36 truncate text-sm"
-                      title={doc.gerente?.name ?? undefined}
-                    >
-                      {doc.gerente?.name ?? "—"}
+                    <TableCell>
+                      {doc.gerente?.name ? (
+                        <Badge
+                          variant="secondary"
+                          className={DOC_PERSON_CHIP}
+                          title={doc.gerente.name}
+                        >
+                          {doc.gerente.name}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
-                    <TableCell
-                      className="max-w-28 truncate text-[11px]"
-                      title={displayFonte(doc.fonte)}
-                    >
-                      {displayFonte(doc.fonte) || "—"}
+                    <TableCell className="w-[9.25rem]">
+                      {(() => {
+                        const fonte = displayFonte(doc.fonte);
+                        if (!fonte) {
+                          return (
+                            <span className="text-muted-foreground">—</span>
+                          );
+                        }
+                        return (
+                          <Badge
+                            className={cn(
+                              catalogColorBadgeClass(
+                                colorByLabel("documentacao_fonte", fonte),
+                              ),
+                              "justify-start text-left font-normal",
+                            )}
+                            title={fonte}
+                          >
+                            {fonte}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end">

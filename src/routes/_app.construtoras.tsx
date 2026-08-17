@@ -54,16 +54,23 @@ import {
 } from "@/lib/empreendimentos-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CorPicker } from "@/components/cor-picker";
+import {
+  assertImageFile,
+  ImageUploadField,
+} from "@/components/image-upload-field";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { ConstrutoraVendasTable } from "@/components/vendas-resumo-dialog";
 import { useCatalog } from "@/lib/catalog-store";
 import {
   construtoraBadgeStyle,
+  CONSTRUTORA_MAX_IMAGES,
   createConstrutora,
   deleteConstrutora,
+  deleteConstrutoraLogo,
   fetchConstrutoraVendas,
   fetchConstrutoras,
   updateConstrutora,
+  uploadConstrutoraLogo,
   type Construtora,
   type ConstrutoraVenda,
 } from "@/lib/construtoras-api";
@@ -195,7 +202,8 @@ function ConstrutorasPage() {
     isAdmin ||
     user?.role === "gerente" ||
     user?.role === "analista" ||
-    user?.role === "treinee";
+    user?.role === "treinee" ||
+    user?.role === "corretor";
   const canCreate = canManage;
   const canSeeViabilizadorContato = user?.role !== "corretor";
   const { catalog } = useCatalog();
@@ -238,6 +246,12 @@ function ConstrutorasPage() {
     routeSearch.tab ?? "lista",
   );
   const [formTab, setFormTab] = useState<FormTab>("identidade");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [pendingLogo, setPendingLogo] = useState<File | null>(null);
+  const [pendingLogoPreview, setPendingLogoPreview] = useState<string | null>(
+    null,
+  );
+  const [logoBusy, setLogoBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [vendasConstrutoraId, setVendasConstrutoraId] = useState(
     routeSearch.id ?? "",
@@ -420,10 +434,19 @@ function ConstrutorasPage() {
     }
   }
 
+  function resetLogoState(url: string | null = null) {
+    if (pendingLogoPreview) URL.revokeObjectURL(pendingLogoPreview);
+    setLogoUrl(url);
+    setPendingLogo(null);
+    setPendingLogoPreview(null);
+    setLogoBusy(false);
+  }
+
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
     setForm(emptyForm());
+    resetLogoState();
     setEmpreendimentos([]);
     setSelectedEmpreendimentos([]);
     setNewLocalidadeNome("");
@@ -450,6 +473,7 @@ function ConstrutorasPage() {
       cca: item.cca ?? "",
       driveFolderUrl: item.driveFolderUrl ?? "",
     });
+    resetLogoState(item.logoUrl);
     setNewLocalidadeNome("");
     setEditingLocalidadeId(null);
     setEditingLocalidadeNome("");
@@ -520,7 +544,9 @@ function ConstrutorasPage() {
       contato: form.contato.trim() || null,
       endereco: form.endereco.trim() || null,
       viabilizadorNome: form.viabilizadorNome.trim() || null,
-      viabilizadorContato: form.viabilizadorContato.trim() || null,
+      ...(canSeeViabilizadorContato
+        ? { viabilizadorContato: form.viabilizadorContato.trim() || null }
+        : {}),
       cca: form.cca.trim() || null,
       driveFolderUrl: driveFolderUrl || null,
       localidadeIds: selectedLocalidades,
@@ -529,17 +555,37 @@ function ConstrutorasPage() {
     setSaving(true);
     try {
       if (formMode === "create") {
-        await createConstrutora({
+        const created = await createConstrutora({
           nome: payload.nome,
           cor: payload.cor,
           contato: payload.contato ?? undefined,
           endereco: payload.endereco ?? undefined,
           viabilizadorNome: payload.viabilizadorNome ?? undefined,
-          viabilizadorContato: payload.viabilizadorContato ?? undefined,
+          ...(canSeeViabilizadorContato
+            ? {
+                viabilizadorContato:
+                  form.viabilizadorContato.trim() || undefined,
+              }
+            : {}),
           cca: payload.cca,
           driveFolderUrl: payload.driveFolderUrl,
           localidadeIds: payload.localidadeIds,
         });
+        if (pendingLogo) {
+          try {
+            await uploadConstrutoraLogo(created.id, pendingLogo);
+          } catch (uploadErr) {
+            toast.error(
+              uploadErr instanceof ApiError
+                ? uploadErr.message
+                : "Construtora cadastrada, mas a logo não foi enviada.",
+            );
+            setOpen(false);
+            resetLogoState();
+            await loadItems();
+            return;
+          }
+        }
         toast.success("Construtora cadastrada.");
         setTab("lista");
       } else if (editingId) {
@@ -565,6 +611,7 @@ function ConstrutorasPage() {
         toast.success("Construtora atualizada.");
       }
       setOpen(false);
+      resetLogoState();
       await loadItems();
     } catch (err) {
       toast.error(
@@ -593,6 +640,74 @@ function ConstrutorasPage() {
     formMode === "view" ||
     (formMode === "edit" && !canManage) ||
     (formMode === "create" && !canCreate);
+
+  const displayedLogo = pendingLogoPreview || logoUrl;
+
+  async function handleAddLogo(files: File[]) {
+    const file = files[0];
+    if (!file) return;
+    const error = assertImageFile(file);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    if (editingId && formMode !== "create") {
+      setLogoBusy(true);
+      try {
+        const updated = await uploadConstrutoraLogo(editingId, file);
+        setLogoUrl(updated.logoUrl);
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === updated.id
+              ? { ...item, logoUrl: updated.logoUrl }
+              : item,
+          ),
+        );
+        toast.success("Logo enviada.");
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível enviar a logo.",
+        );
+      } finally {
+        setLogoBusy(false);
+      }
+      return;
+    }
+    if (pendingLogoPreview) URL.revokeObjectURL(pendingLogoPreview);
+    setPendingLogo(file);
+    setPendingLogoPreview(URL.createObjectURL(file));
+  }
+
+  async function handleRemoveLogo() {
+    if (editingId && formMode !== "create" && logoUrl && !pendingLogo) {
+      setLogoBusy(true);
+      try {
+        const updated = await deleteConstrutoraLogo(editingId);
+        setLogoUrl(updated.logoUrl);
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === updated.id
+              ? { ...item, logoUrl: updated.logoUrl }
+              : item,
+          ),
+        );
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível remover a logo.",
+        );
+      } finally {
+        setLogoBusy(false);
+      }
+      return;
+    }
+    if (pendingLogoPreview) URL.revokeObjectURL(pendingLogoPreview);
+    setPendingLogo(null);
+    setPendingLogoPreview(null);
+  }
 
   function toggleLocalidade(id: string, checked: boolean) {
     setSelectedLocalidades((previous) =>
@@ -807,10 +922,8 @@ function ConstrutorasPage() {
         title="Construtoras"
         description={
           canViewVendas
-            ? canCreate
-              ? "Cadastro, books e vendas por construtora."
-              : "Books, pastas e vendas por construtora."
-            : "Books e pastas das construtoras."
+            ? "Cadastro, books e vendas por construtora."
+            : "Cadastro, books e visibilidade por construtora."
         }
         actions={
           canCreate ? (
@@ -940,14 +1053,24 @@ function ConstrutorasPage() {
                         )}
                         title={`Abrir Drive de ${item.nome}`}
                       >
-                        <span
-                          className="flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
-                          style={{ backgroundColor: bg }}
-                        >
-                          {construtoraIniciais(item.nome) || (
-                            <FolderOpen className="h-6 w-6" />
-                          )}
-                        </span>
+                        {item.logoUrl ? (
+                          <span className="flex h-14 w-full items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 ring-1 ring-black/5">
+                            <img
+                              src={item.logoUrl}
+                              alt=""
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </span>
+                        ) : (
+                          <span
+                            className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
+                            style={{ backgroundColor: bg }}
+                          >
+                            {construtoraIniciais(item.nome) || (
+                              <FolderOpen className="h-6 w-6" />
+                            )}
+                          </span>
+                        )}
                         <span className="line-clamp-2 text-sm font-medium text-foreground">
                           {item.nome}
                         </span>
@@ -1426,7 +1549,10 @@ function ConstrutorasPage() {
 
       <FormDialogShell
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) resetLogoState();
+        }}
         className="max-w-3xl"
         icon={<Building className="w-5 h-5" />}
         title={
@@ -1496,18 +1622,48 @@ function ConstrutorasPage() {
             <FormSection
               icon={<Palette className="h-4 w-4" />}
               title="Identidade"
-              description="Nome e cor que aparecem nos cards, na lista e nos books."
+              description="Nome, logo e cor que aparecem nos cards, na lista e nos books."
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <span
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-lg font-bold tracking-wide text-white shadow-sm"
-                  style={{ backgroundColor: form.cor || "#079ED4" }}
+                  className={cn(
+                    "flex shrink-0 items-center justify-center overflow-hidden rounded-2xl shadow-sm",
+                    displayedLogo
+                      ? "h-16 w-36 bg-white p-1.5 ring-1 ring-black/5"
+                      : "h-16 w-16 text-lg font-bold tracking-wide text-white",
+                  )}
+                  style={
+                    displayedLogo
+                      ? undefined
+                      : { backgroundColor: form.cor || "#079ED4" }
+                  }
                 >
-                  {construtoraIniciais(form.nome) || (
-                    <Building className="h-6 w-6" />
+                  {displayedLogo ? (
+                    <img
+                      src={displayedLogo}
+                      alt=""
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    construtoraIniciais(form.nome) || (
+                      <Building className="h-6 w-6" />
+                    )
                   )}
                 </span>
                 <div className="min-w-0 flex-1 space-y-4">
+                  {!readOnly || displayedLogo ? (
+                    <ImageUploadField
+                      images={displayedLogo ? [displayedLogo] : []}
+                      max={CONSTRUTORA_MAX_IMAGES}
+                      label="Logo"
+                      hint="1 imagem (JPG, PNG ou WebP, máx. 5 MB)."
+                      disabled={readOnly}
+                      busy={logoBusy}
+                      shape="logo"
+                      onAdd={(files) => void handleAddLogo(files)}
+                      onRemove={() => void handleRemoveLogo()}
+                    />
+                  ) : null}
                   <div className="space-y-2">
                     <Label htmlFor="nome">Nome *</Label>
                     <Input

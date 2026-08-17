@@ -6,6 +6,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -85,9 +86,12 @@ import {
 } from "@/lib/money-input";
 import {
   brl,
+  COMISSAO_PAPEL_LABEL,
   formatDate,
+  matchesPeriodoFiltro,
   statusBadgeClass,
   statusLabel,
+  tituloVisivelNoPeriodo,
   type DespesaTipo,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
@@ -109,6 +113,7 @@ import {
   ListOrdered,
   Loader2,
   Pencil,
+  Percent,
   Plus,
   Tags,
   Trash2,
@@ -121,6 +126,25 @@ const FORMAS = ["Pix", "TED", "Boleto", "Dinheiro", "Cartão", "Outro"] as const
 type QuickKind = "parceiro" | "categoria" | null;
 type TituloFormTab = "dados" | "cobranca" | "contrato";
 type GrupoParcelaTipo = "adesao" | "mensalidade";
+
+function ComissaoOrigemBadge({
+  titulo,
+}: {
+  titulo: TituloFinanceiro;
+}) {
+  if (!titulo.comissaoId) return null;
+  const papel = titulo.comissaoPapel
+    ? (COMISSAO_PAPEL_LABEL[titulo.comissaoPapel] ?? titulo.comissaoPapel)
+    : null;
+  return (
+    <Badge
+      variant="outline"
+      className="shrink-0 border-brand-accent/40 text-[10px] text-brand-accent"
+    >
+      {papel ? `Comissão · ${papel}` : "Comissão"}
+    </Badge>
+  );
+}
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
@@ -286,11 +310,14 @@ export function FinanceiroTitulosPanel({
   tipo,
   title,
   description,
+  readOnly = false,
 }: {
   tipo: "receber" | "pagar";
   title: string;
   description: string;
+  readOnly?: boolean;
 }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
   const [catalogTipos, setCatalogTipos] = useState<DespesaTipo[]>([]);
@@ -345,7 +372,9 @@ export function FinanceiroTitulosPanel({
   const [valorGrupoParcelas, setValorGrupoParcelas] = useState("");
   const [formTab, setFormTab] = useState<TituloFormTab>("dados");
   const isPlatformAdmin = getSession()?.role === "super_admin";
-  const canUseContrato = isPlatformAdmin;
+  const canUseContrato =
+    isPlatformAdmin || getSession()?.role === "admin";
+  const isAssinaturaPlataforma = isPlatformAdmin && tipo === "receber";
   const [comoContrato, setComoContrato] = useState(false);
   const [parcelarAdesao, setParcelarAdesao] = useState(false);
   const [qtdParcelasAdesao, setQtdParcelasAdesao] = useState("2");
@@ -354,7 +383,7 @@ export function FinanceiroTitulosPanel({
   );
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [origemFiltro, setOrigemFiltro] = useState<
-    "todos" | "normal" | "contrato"
+    "todos" | "normal" | "contrato" | "comissao"
   >("todos");
   const [grupoOpen, setGrupoOpen] = useState(false);
   const [grupoTitulos, setGrupoTitulos] = useState<TituloFinanceiro[]>([]);
@@ -393,27 +422,24 @@ export function FinanceiroTitulosPanel({
 
   const load = useCallback(async () => {
     try {
-      const platform = getSession()?.role === "super_admin";
       const [titulos, pars, tipos, tenantList] = await Promise.all([
         fetchTitulos(
           tipo,
           undefined,
-          platform && tipo === "receber" && origemFiltro !== "todos"
-            ? origemFiltro
-            : undefined,
+          origemFiltro !== "todos" ? origemFiltro : undefined,
         ),
         fetchParceiros(),
-        platform
+        isPlatformAdmin
           ? Promise.resolve([] as DespesaTipo[])
           : tipo === "receber"
             ? fetchRecebimentoTipos()
             : fetchDespesaTipos(),
-        platform && tipo === "receber" ? fetchTenants() : Promise.resolve([]),
+        isAssinaturaPlataforma ? fetchTenants() : Promise.resolve([]),
       ]);
       setItems(titulos);
       setParceiros(pars.filter((p) => p.ativo));
       setCatalogTipos(tipos);
-      if (platform && tipo === "receber") {
+      if (isAssinaturaPlataforma) {
         setTenants(tenantList);
       }
     } catch (err) {
@@ -423,7 +449,7 @@ export function FinanceiroTitulosPanel({
           : "Não foi possível carregar os títulos.",
       );
     }
-  }, [tipo, origemFiltro]);
+  }, [tipo, origemFiltro, canUseContrato, isPlatformAdmin, isAssinaturaPlataforma]);
 
   useEffect(() => {
     void load();
@@ -579,54 +605,35 @@ export function FinanceiroTitulosPanel({
           tipo === "pagar" ? t.centro || t.categoria : t.categoria || t.centro;
         if (label !== categoriaFiltro) return false;
       }
-      if (periodo !== "tudo") {
-        const d = new Date(t.vencimento + "T12:00:00");
-        if (periodo === "mes") {
-          if (
-            d.getMonth() !== now.getMonth() ||
-            d.getFullYear() !== now.getFullYear()
-          )
-            return false;
-        } else if (periodo === "trimestre") {
-          if (
-            Math.floor(d.getMonth() / 3) !== Math.floor(now.getMonth() / 3) ||
-            d.getFullYear() !== now.getFullYear()
-          )
-            return false;
-        } else if (periodo === "ano") {
-          if (d.getFullYear() !== now.getFullYear()) return false;
-        }
-      }
+      if (!tituloVisivelNoPeriodo(t, periodo, now)) return false;
       if (!q) return true;
       return (
         t.descricao.toLowerCase().includes(q) ||
-        t.parceiro.toLowerCase().includes(q) ||
-        t.categoria.toLowerCase().includes(q)
+        (t.parceiro ?? "").toLowerCase().includes(q) ||
+        (t.categoria ?? "").toLowerCase().includes(q)
       );
     });
-  }, [
-    items,
-    search,
-    periodo,
-    status,
-    categoriaFiltro,
-    canUseContrato,
-    origemFiltro,
-    tipo,
-  ]);
+  }, [items, search, periodo, status, categoriaFiltro, tipo]);
 
   const kpis = useMemo(() => {
-    const aberto = rows
-      .filter((r) => r.status === "aberto")
+    const now = new Date();
+    const aberto = items
+      .filter(
+        (r) => r.status === "aberto" && tituloVisivelNoPeriodo(r, "mes", now),
+      )
       .reduce((s, r) => s + r.valor, 0);
-    const atrasado = rows
+    const atrasado = items
       .filter((r) => r.status === "atrasado")
       .reduce((s, r) => s + r.valor, 0);
-    const pago = rows
-      .filter((r) => r.status === "pago")
+    const pago = items
+      .filter(
+        (r) =>
+          r.status === "pago" &&
+          matchesPeriodoFiltro(r.dataPagamento || r.vencimento, "mes", now),
+      )
       .reduce((s, r) => s + r.valor, 0);
     return { aberto, atrasado, pago };
-  }, [rows]);
+  }, [items]);
 
   const displayRows = useMemo(
     () => buildDisplayRows(rows, vistaParcelas),
@@ -667,6 +674,22 @@ export function FinanceiroTitulosPanel({
         >
           <Eye className="w-3.5 h-3.5" />
         </Button>
+        {t.comissaoId ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Abrir comissão de origem"
+            onClick={() =>
+              void navigate({
+                to: "/financeiro/comissao",
+                search: { id: t.comissaoId! },
+              })
+            }
+          >
+            <Percent className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
         {!opts?.hideGrupo && t.grupoParcelasId ? (
           <Button
             variant="ghost"
@@ -678,7 +701,7 @@ export function FinanceiroTitulosPanel({
             <ListOrdered className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {!opts?.hideBaixar &&
+        {!readOnly && !opts?.hideBaixar &&
         t.status !== "pago" &&
         t.status !== "cancelado" ? (
           <Button
@@ -691,16 +714,18 @@ export function FinanceiroTitulosPanel({
             <Banknote className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          title={t.grupoParcelasId ? "Editar parcela" : "Editar"}
-          onClick={() => openEdit(t)}
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
-        {!opts?.hideGrupoEdit && t.grupoParcelasId ? (
+        {!readOnly ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title={t.grupoParcelasId ? "Editar parcela" : "Editar"}
+            onClick={() => openEdit(t)}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
+        {!readOnly && !opts?.hideGrupoEdit && t.grupoParcelasId ? (
           <Button
             variant="ghost"
             size="icon"
@@ -711,15 +736,17 @@ export function FinanceiroTitulosPanel({
             <Layers className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive"
-          title="Excluir"
-          onClick={() => setDeleteTarget(t)}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
+        {!readOnly ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive"
+            title="Excluir"
+            onClick={() => setDeleteTarget(t)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -916,9 +943,18 @@ export function FinanceiroTitulosPanel({
 
     if (formMode === "create" && comoContrato && canUseContrato) {
       const titulo = contratoForm.titulo.trim();
-      if (tipo === "receber" && !contratoForm.tenantId) {
+      if (isAssinaturaPlataforma && !contratoForm.tenantId) {
         setFormTab("contrato");
         toast.error("Selecione a imobiliária.");
+        return;
+      }
+      if (!isAssinaturaPlataforma && form.parceiroId === NONE) {
+        setFormTab("dados");
+        toast.error(
+          tipo === "receber"
+            ? "Selecione o cliente ou parceiro."
+            : "Selecione o fornecedor.",
+        );
         return;
       }
       if (titulo.length < 2) {
@@ -927,7 +963,7 @@ export function FinanceiroTitulosPanel({
         return;
       }
       if (
-        tipo === "receber" &&
+        isAssinaturaPlataforma &&
         contratoForm.tipo === "assinatura" &&
         !contratoForm.plano
       ) {
@@ -978,7 +1014,7 @@ export function FinanceiroTitulosPanel({
       }
       setSaving(true);
       try {
-        if (tipo === "receber") {
+        if (isAssinaturaPlataforma) {
           await createPlatformContratoComTitulos({
             tenantId: contratoForm.tenantId,
             titulo,
@@ -997,15 +1033,12 @@ export function FinanceiroTitulosPanel({
             parceiroId: form.parceiroId === NONE ? undefined : form.parceiroId,
           });
         } else {
-          if (form.parceiroId === NONE) {
-            setFormTab("dados");
-            toast.error("Selecione o fornecedor.");
-            return;
-          }
           await createPlatformFornecedorContratoComTitulos({
             parceiroId: form.parceiroId,
             titulo,
-            centro: form.centro.trim(),
+            tipo,
+            centro:
+              tipo === "pagar" ? form.centro.trim() : form.categoria.trim(),
             valorAdesao,
             qtdParcelasAdesao: valorAdesao > 0 ? qtdAdesao : undefined,
             valorMensalidade,
@@ -1260,7 +1293,7 @@ export function FinanceiroTitulosPanel({
     periodo !== "mes" ||
     status !== "todos" ||
     categoriaFiltro !== "todos" ||
-    (canUseContrato && origemFiltro !== "todos"),
+    origemFiltro !== "todos",
   );
 
   return (
@@ -1269,10 +1302,12 @@ export function FinanceiroTitulosPanel({
         title={title}
         description={description}
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            Novo título
-          </Button>
+          readOnly ? undefined : (
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo título
+            </Button>
+          )
         }
       />
 
@@ -1319,38 +1354,45 @@ export function FinanceiroTitulosPanel({
           setOrigemFiltro("todos");
         }}
         extra={
-          canUseContrato ? (
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                Tipo:
-              </span>
-              <div className="grid flex-1 grid-cols-3 rounded-lg border bg-muted/40 p-1 sm:w-77.5 sm:flex-none">
-                {[
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              Tipo:
+            </span>
+            <div className="grid flex-1 grid-cols-2 rounded-lg border bg-muted/40 p-1 sm:flex sm:w-auto sm:flex-none">
+              {(
+                [
                   { value: "todos", label: "Todas" },
                   { value: "normal", label: "Normais" },
-                  { value: "contrato", label: "Contratos" },
-                ].map((option) => (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    size="sm"
-                    variant={
-                      origemFiltro === option.value ? "secondary" : "ghost"
-                    }
-                    className="h-7 px-2 text-xs"
-                    aria-pressed={origemFiltro === option.value}
-                    onClick={() =>
-                      setOrigemFiltro(
-                        option.value as "todos" | "normal" | "contrato",
-                      )
-                    }
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
+                  ...(canUseContrato
+                    ? [{ value: "contrato" as const, label: "Contratos" }]
+                    : []),
+                  { value: "comissao", label: "Comissão" },
+                ] as const
+              ).map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={
+                    origemFiltro === option.value ? "secondary" : "ghost"
+                  }
+                  className="h-7 px-2 text-xs"
+                  aria-pressed={origemFiltro === option.value}
+                  onClick={() =>
+                    setOrigemFiltro(
+                      option.value as
+                        | "todos"
+                        | "normal"
+                        | "contrato"
+                        | "comissao",
+                    )
+                  }
+                >
+                  {option.label}
+                </Button>
+              ))}
             </div>
-          ) : undefined
+          </div>
         }
       />
 
@@ -1387,6 +1429,7 @@ export function FinanceiroTitulosPanel({
                       <TableCell className="font-medium max-w-50">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="truncate">{t.descricao}</span>
+                          <ComissaoOrigemBadge titulo={t} />
                           {t.platformContratoId ? (
                             <Badge
                               variant="outline"
@@ -1441,6 +1484,14 @@ export function FinanceiroTitulosPanel({
                             <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                           )}
                           <span className="truncate">{summary.descricao}</span>
+                          {row.titulos.some((titulo) => titulo.comissaoId) ? (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-brand-accent/40 text-[10px] text-brand-accent"
+                            >
+                              Comissão
+                            </Badge>
+                          ) : null}
                           {isContrato ? (
                             <Badge
                               variant="outline"
@@ -1502,31 +1553,35 @@ export function FinanceiroTitulosPanel({
                           >
                             <ListOrdered className="w-3.5 h-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Editar todas as parcelas"
-                            onClick={() => void openEditGrupo(row.titulos)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive"
-                            title="Excluir todas as parcelas"
-                            onClick={() =>
-                              setDeleteGrupoTarget({
-                                grupoId: row.grupoId,
-                                descricao: summary.descricao,
-                                n: summary.n,
-                                pagas: summary.pagas,
-                              })
-                            }
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          {!readOnly ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Editar todas as parcelas"
+                              onClick={() => void openEditGrupo(row.titulos)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                          ) : null}
+                          {!readOnly ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              title="Excluir todas as parcelas"
+                              onClick={() =>
+                                setDeleteGrupoTarget({
+                                  grupoId: row.grupoId,
+                                  descricao: summary.descricao,
+                                  n: summary.n,
+                                  pagas: summary.pagas,
+                                })
+                              }
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1560,7 +1615,8 @@ export function FinanceiroTitulosPanel({
                             </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-1 items-center">
-                                {t.status !== "pago" &&
+                                {!readOnly &&
+                                t.status !== "pago" &&
                                 t.status !== "cancelado" ? (
                                   <Button
                                     size="sm"
@@ -1694,7 +1750,10 @@ export function FinanceiroTitulosPanel({
                 {formTab === "dados" ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <Label>Parceiro</Label>
+                      <Label>
+                        {tipo === "pagar" ? "Fornecedor" : "Parceiro"}
+                        {comoContrato && !isAssinaturaPlataforma ? " *" : ""}
+                      </Label>
                       <Button
                         type="button"
                         variant="link"
@@ -1713,7 +1772,13 @@ export function FinanceiroTitulosPanel({
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Opcional" />
+                        <SelectValue
+                          placeholder={
+                            comoContrato && !isAssinaturaPlataforma
+                              ? "Selecione"
+                              : "Opcional"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>—</SelectItem>
@@ -1764,9 +1829,11 @@ export function FinanceiroTitulosPanel({
                         Contrato
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        {tipo === "receber"
+                        {isAssinaturaPlataforma
                           ? "Gera adesão + mensalidades vinculadas à imobiliária."
-                          : "Gera adesão opcional e mensalidades para o fornecedor."}
+                          : tipo === "receber"
+                            ? "Gera adesão + mensalidades vinculadas ao cliente."
+                            : "Gera adesão opcional e mensalidades para o fornecedor."}
                       </p>
                     </div>
                   </div>
@@ -1776,7 +1843,7 @@ export function FinanceiroTitulosPanel({
                 formMode === "create" &&
                 formTab === "contrato" ? (
                   <>
-                    {tipo === "receber" ? (
+                    {isAssinaturaPlataforma ? (
                       <div className="sm:col-span-2 space-y-1.5">
                         <Label>Imobiliária *</Label>
                         <Select
@@ -1808,10 +1875,14 @@ export function FinanceiroTitulosPanel({
                             titulo: e.target.value,
                           }))
                         }
-                        placeholder="Ex.: Assinatura anual Ouro"
+                        placeholder={
+                          isAssinaturaPlataforma
+                            ? "Ex.: Assinatura anual Ouro"
+                            : "Ex.: Contrato de locação"
+                        }
                       />
                     </div>
-                    {tipo === "receber" ? (
+                    {isAssinaturaPlataforma ? (
                       <div className="space-y-1.5">
                         <Label>Tipo</Label>
                         <Select
@@ -1837,7 +1908,7 @@ export function FinanceiroTitulosPanel({
                         </Select>
                       </div>
                     ) : null}
-                    {tipo === "receber" ? (
+                    {isAssinaturaPlataforma ? (
                       <div className="space-y-1.5">
                         <Label>Status</Label>
                         <Select
@@ -1863,7 +1934,7 @@ export function FinanceiroTitulosPanel({
                         </Select>
                       </div>
                     ) : null}
-                    {tipo === "receber" &&
+                    {isAssinaturaPlataforma &&
                     contratoForm.tipo === "assinatura" ? (
                       <div className="sm:col-span-2 space-y-1.5">
                         <Label>Plano</Label>
@@ -2573,13 +2644,26 @@ export function FinanceiroTitulosPanel({
         title="Detalhes da conta"
         description={
           detalhesTarget
-            ? detalhesTarget.platformContratoId
-              ? "Conta vinculada a contrato."
-              : "Conta financeira avulsa."
+            ? detalhesTarget.comissaoId
+              ? "Conta originada de comissão."
+              : detalhesTarget.platformContratoId
+                ? "Conta vinculada a contrato."
+                : "Conta financeira avulsa."
             : undefined
         }
         footer={
           <FormDialogActions>
+            {detalhesTarget?.comissaoId ? (
+              <Button asChild size="sm">
+                <Link
+                  to="/financeiro/comissao"
+                  search={{ id: detalhesTarget.comissaoId }}
+                >
+                  <Percent className="h-3.5 w-3.5" />
+                  Abrir comissão
+                </Link>
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -2599,10 +2683,11 @@ export function FinanceiroTitulosPanel({
                     <p className="text-xs text-muted-foreground">Descrição</p>
                     <p className="font-medium">{detalhesTarget.descricao}</p>
                   </div>
-                  <div className="flex shrink-0 gap-1.5">
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                    <ComissaoOrigemBadge titulo={detalhesTarget} />
                     {detalhesTarget.platformContratoId ? (
                       <Badge variant="outline">Contrato</Badge>
-                    ) : (
+                    ) : detalhesTarget.comissaoId ? null : (
                       <Badge variant="secondary">Normal</Badge>
                     )}
                     <Badge
@@ -2679,7 +2764,7 @@ export function FinanceiroTitulosPanel({
         }
         footer={
           <FormDialogActions>
-            {grupoTitulos.length > 0 ? (
+            {!readOnly && grupoTitulos.length > 0 ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -2689,7 +2774,7 @@ export function FinanceiroTitulosPanel({
                 Editar todas
               </Button>
             ) : null}
-            {grupoTitulos[0]?.grupoParcelasId ? (
+            {!readOnly && grupoTitulos[0]?.grupoParcelasId ? (
               <Button
                 type="button"
                 variant="destructive"
@@ -2760,17 +2845,19 @@ export function FinanceiroTitulosPanel({
                               {statusLabel(t.status)}
                             </p>
                           </div>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setBaixarTarget(t);
-                              setBaixarData(todayIso());
-                              setBaixarForma(FORMAS[0]);
-                            }}
-                          >
-                            <Banknote className="w-3.5 h-3.5 mr-1" />
-                            Pagar
-                          </Button>
+                          {!readOnly ? (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setBaixarTarget(t);
+                                setBaixarData(todayIso());
+                                setBaixarForma(FORMAS[0]);
+                              }}
+                            >
+                              <Banknote className="w-3.5 h-3.5 mr-1" />
+                              Pagar
+                            </Button>
+                          ) : null}
                         </div>
                       ))}
                     </div>

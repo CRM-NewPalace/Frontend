@@ -87,6 +87,9 @@ const emptyGrouped = (): GroupedCatalog => ({
   documentacao_status1: [],
   documentacao_status2: [],
   cca: [],
+  empreendimento_tipo: [],
+  empreendimento_status: [],
+  empreendimento_tag: [],
 });
 
 const CatalogContext = createContext<CatalogContextValue | null>(null);

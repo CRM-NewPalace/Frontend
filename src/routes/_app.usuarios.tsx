@@ -109,6 +109,7 @@ import {
 } from "@/lib/phone";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 
 export const Route = createFileRoute("/_app/usuarios")({
@@ -231,13 +232,14 @@ function initials(name: string) {
 }
 
 function roleBadgeClass(role: Role) {
-  if (role === "admin") return "bg-primary/15 text-primary border-primary/30";
-  if (role === "gerente") return "bg-info/15 text-info border-info/30";
+  const size = STATUS_CHIP_CLASS;
+  if (role === "admin") return `${size} bg-primary/15 text-primary border-primary/30`;
+  if (role === "gerente") return `${size} bg-info/15 text-info border-info/30`;
   if (role === "analista")
-    return "bg-sky-500/15 text-sky-700 border-sky-500/30";
+    return `${size} bg-sky-500/15 text-sky-700 border-sky-500/30`;
   if (role === "treinee")
-    return "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
-  return "bg-muted text-muted-foreground";
+    return `${size} bg-emerald-500/15 text-emerald-700 border-emerald-500/30`;
+  return `${size} bg-muted text-muted-foreground`;
 }
 
 function formatLastAccess(iso: string | null): string {
@@ -928,6 +930,8 @@ function Usuarios() {
                   <TableCell>
                     <Badge
                       variant={u.status === "ativo" ? "default" : "secondary"}
+                      className={STATUS_CHIP_CLASS}
+                      title={STATUS_LABEL[u.status]}
                     >
                       {STATUS_LABEL[u.status]}
                     </Badge>
@@ -1328,6 +1332,8 @@ function Usuarios() {
               </Badge>
               <Badge
                 variant={detail.status === "ativo" ? "default" : "secondary"}
+                className={STATUS_CHIP_CLASS}
+                title={STATUS_LABEL[detail.status]}
               >
                 {STATUS_LABEL[detail.status]}
               </Badge>

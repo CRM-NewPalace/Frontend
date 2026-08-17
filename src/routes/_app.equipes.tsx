@@ -68,6 +68,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 export const Route = createFileRoute("/_app/equipes")({
   head: () => ({ meta: [{ title: "Equipes — Zone Connection" }] }),
   component: EquipesPage,
@@ -140,9 +141,11 @@ function MemberRow({
           <Badge
             variant="outline"
             className={cn(
+              STATUS_CHIP_CLASS,
               "shrink-0 text-[10px] capitalize",
               accent && "border-primary/30 text-primary",
             )}
+            title={roleLabel}
           >
             {roleLabel}
           </Badge>
@@ -454,12 +457,15 @@ function EquipesPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate text-sm font-semibold text-brand-dark">
+                        <h2 className="truncate text-sm font-semibold text-primary">
                           {eq.name}
                         </h2>
                         <Badge
                           variant={eq.status === "ativo" ? "default" : "outline"}
-                          className="shrink-0 text-[10px] capitalize"
+                          className={cn(
+                            STATUS_CHIP_CLASS,
+                            "shrink-0 text-[10px] capitalize",
+                          )}
                         >
                           {eq.status}
                         </Badge>

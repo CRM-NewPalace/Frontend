@@ -1,22 +1,46 @@
 import { apiFetch } from "@/lib/api";
 
+export function empreendimentoTipoLabel(tipo: string | null | undefined) {
+  return tipo?.trim() || "";
+}
+
+export function empreendimentoStatusLabel(status: string | null | undefined) {
+  return status?.trim() || "";
+}
+
+export function empreendimentoHasLitoral(item: {
+  tags?: string[] | null;
+}) {
+  return (item.tags ?? []).some(
+    (tag) => tag.trim().toLocaleLowerCase("pt-BR") === "litoral",
+  );
+}
+
 export type Empreendimento = {
   id: string;
   nome: string;
   cor: string | null;
   construtoraId: string | null;
+  localidadeId: string | null;
   cidade: string | null;
   endereco: string | null;
+  tipo: string | null;
+  status: string | null;
+  previsaoEntrega: string | null;
+  tags: string[];
+  observacao: string | null;
   quartos: number | null;
   banheiros: number | null;
   areaM2: number | null;
   externalUrl: string | null;
   imagemUrl: string | null;
+  imagens: string[];
   externalKey: string;
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
   construtora: { id: string; nome: string; cor: string | null } | null;
+  localidade: { id: string; nome: string } | null;
 };
 
 export type CreateEmpreendimentoInput = {
@@ -24,6 +48,14 @@ export type CreateEmpreendimentoInput = {
   construtoraId: string;
   cidade?: string;
   cor?: string | null;
+  localidadeId?: string | null;
+  endereco?: string | null;
+  tipo?: string | null;
+  status?: string | null;
+  previsaoEntrega?: string | null;
+  tags?: string[];
+  observacao?: string | null;
+  areaM2?: number | null;
 };
 
 export async function fetchEmpreendimentos(params?: {
@@ -54,8 +86,14 @@ export type UpdateEmpreendimentoInput = {
   nome?: string;
   cor?: string | null;
   construtoraId?: string | null;
+  localidadeId?: string | null;
   cidade?: string | null;
   endereco?: string | null;
+  tipo?: string | null;
+  status?: string | null;
+  previsaoEntrega?: string | null;
+  tags?: string[];
+  observacao?: string | null;
   quartos?: number | null;
   banheiros?: number | null;
   areaM2?: number | null;
@@ -77,6 +115,40 @@ export async function deleteEmpreendimento(
   id: string,
 ): Promise<{ ok: boolean }> {
   return apiFetch<{ ok: boolean }>(`/empreendimentos/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export const EMPREENDIMENTO_MAX_IMAGES = 2;
+export const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp";
+
+export function empreendimentoImagens(item: Empreendimento): string[] {
+  if (item.imagens?.length) return item.imagens.slice(0, EMPREENDIMENTO_MAX_IMAGES);
+  return item.imagemUrl ? [item.imagemUrl] : [];
+}
+
+export function empreendimentoLocalidadeNome(item: Empreendimento) {
+  return item.localidade?.nome || item.cidade || "";
+}
+
+export async function uploadEmpreendimentoImagem(
+  id: string,
+  file: File,
+): Promise<Empreendimento> {
+  const data = new FormData();
+  data.append("file", file);
+  return apiFetch<Empreendimento>(`/empreendimentos/${id}/imagens`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function deleteEmpreendimentoImagem(
+  id: string,
+  index: number,
+): Promise<Empreendimento> {
+  return apiFetch<Empreendimento>(`/empreendimentos/${id}/imagens/${index}`, {
     method: "DELETE",
   });
 }

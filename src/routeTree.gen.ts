@@ -29,6 +29,7 @@ import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppFunilRouteImport } from './routes/_app.funil'
 import { Route as AppFunilClientesRouteImport } from './routes/_app.funil-clientes'
 import { Route as AppGuiaRouteImport } from './routes/_app.guia'
+import { Route as AppGuiaSistemaRouteImport } from './routes/_app.guia-sistema'
 import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
 import { Route as AppLeadsRouteImport } from './routes/_app.leads'
 import { Route as AppLeadsPerdidosRouteImport } from './routes/_app.leads-perdidos'
@@ -38,6 +39,7 @@ import { Route as AppPropostasRouteImport } from './routes/_app.propostas'
 import { Route as AppResultadoRouteImport } from './routes/_app.resultado'
 import { Route as AppTaxaConversaoRouteImport } from './routes/_app.taxa-conversao'
 import { Route as AppTenantsRouteImport } from './routes/_app.tenants'
+import { Route as AppTreinamentoRouteImport } from './routes/_app.treinamento'
 import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
@@ -52,6 +54,7 @@ import { Route as AppFinanceiroComissaoRouteImport } from './routes/_app.finance
 import { Route as AppFinanceiroContasAPagarRouteImport } from './routes/_app.financeiro.contas-a-pagar'
 import { Route as AppFinanceiroContasAReceberRouteImport } from './routes/_app.financeiro.contas-a-receber'
 import { Route as AppFinanceiroContratosRouteImport } from './routes/_app.financeiro.contratos'
+import { Route as AppFinanceiroDespesasRouteImport } from './routes/_app.financeiro.despesas'
 import { Route as AppFinanceiroFluxoCaixaRouteImport } from './routes/_app.financeiro.fluxo-caixa'
 import { Route as AppFinanceiroMovimentacaoRouteImport } from './routes/_app.financeiro.movimentacao'
 import { Route as AppFinanceiroVisaoGeralRouteImport } from './routes/_app.financeiro.visao-geral'
@@ -155,6 +158,11 @@ const AppGuiaRoute = AppGuiaRouteImport.update({
   path: '/guia',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGuiaSistemaRoute = AppGuiaSistemaRouteImport.update({
+  id: '/guia-sistema',
+  path: '/guia-sistema',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppImoveisRoute = AppImoveisRouteImport.update({
   id: '/imoveis',
   path: '/imoveis',
@@ -198,6 +206,11 @@ const AppTaxaConversaoRoute = AppTaxaConversaoRouteImport.update({
 const AppTenantsRoute = AppTenantsRouteImport.update({
   id: '/tenants',
   path: '/tenants',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTreinamentoRoute = AppTreinamentoRouteImport.update({
+  id: '/treinamento',
+  path: '/treinamento',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTriagemRoute = AppTriagemRouteImport.update({
@@ -276,6 +289,11 @@ const AppFinanceiroContratosRoute = AppFinanceiroContratosRouteImport.update({
   path: '/contratos',
   getParentRoute: () => AppFinanceiroRoute,
 } as any)
+const AppFinanceiroDespesasRoute = AppFinanceiroDespesasRouteImport.update({
+  id: '/despesas',
+  path: '/despesas',
+  getParentRoute: () => AppFinanceiroRoute,
+} as any)
 const AppFinanceiroFluxoCaixaRoute = AppFinanceiroFluxoCaixaRouteImport.update({
   id: '/fluxo-caixa',
   path: '/fluxo-caixa',
@@ -313,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/funil': typeof AppFunilRoute
   '/funil-clientes': typeof AppFunilClientesRoute
   '/guia': typeof AppGuiaRoute
+  '/guia-sistema': typeof AppGuiaSistemaRoute
   '/imoveis': typeof AppImoveisRoute
   '/leads': typeof AppLeadsRoute
   '/leads-perdidos': typeof AppLeadsPerdidosRoute
@@ -322,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/resultado': typeof AppResultadoRoute
   '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/tenants': typeof AppTenantsRoute
+  '/treinamento': typeof AppTreinamentoRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
@@ -336,6 +356,7 @@ export interface FileRoutesByFullPath {
   '/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
   '/financeiro/contas-a-receber': typeof AppFinanceiroContasAReceberRoute
   '/financeiro/contratos': typeof AppFinanceiroContratosRoute
+  '/financeiro/despesas': typeof AppFinanceiroDespesasRoute
   '/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
@@ -360,6 +381,7 @@ export interface FileRoutesByTo {
   '/funil': typeof AppFunilRoute
   '/funil-clientes': typeof AppFunilClientesRoute
   '/guia': typeof AppGuiaRoute
+  '/guia-sistema': typeof AppGuiaSistemaRoute
   '/imoveis': typeof AppImoveisRoute
   '/leads': typeof AppLeadsRoute
   '/leads-perdidos': typeof AppLeadsPerdidosRoute
@@ -369,6 +391,7 @@ export interface FileRoutesByTo {
   '/resultado': typeof AppResultadoRoute
   '/taxa-conversao': typeof AppTaxaConversaoRoute
   '/tenants': typeof AppTenantsRoute
+  '/treinamento': typeof AppTreinamentoRoute
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
@@ -383,6 +406,7 @@ export interface FileRoutesByTo {
   '/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
   '/financeiro/contas-a-receber': typeof AppFinanceiroContasAReceberRoute
   '/financeiro/contratos': typeof AppFinanceiroContratosRoute
+  '/financeiro/despesas': typeof AppFinanceiroDespesasRoute
   '/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
@@ -409,6 +433,7 @@ export interface FileRoutesById {
   '/_app/funil': typeof AppFunilRoute
   '/_app/funil-clientes': typeof AppFunilClientesRoute
   '/_app/guia': typeof AppGuiaRoute
+  '/_app/guia-sistema': typeof AppGuiaSistemaRoute
   '/_app/imoveis': typeof AppImoveisRoute
   '/_app/leads': typeof AppLeadsRoute
   '/_app/leads-perdidos': typeof AppLeadsPerdidosRoute
@@ -418,6 +443,7 @@ export interface FileRoutesById {
   '/_app/resultado': typeof AppResultadoRoute
   '/_app/taxa-conversao': typeof AppTaxaConversaoRoute
   '/_app/tenants': typeof AppTenantsRoute
+  '/_app/treinamento': typeof AppTreinamentoRoute
   '/_app/triagem': typeof AppTriagemRoute
   '/_app/usuarios': typeof AppUsuariosRoute
   '/_app/vendas': typeof AppVendasRoute
@@ -432,6 +458,7 @@ export interface FileRoutesById {
   '/_app/financeiro/contas-a-pagar': typeof AppFinanceiroContasAPagarRoute
   '/_app/financeiro/contas-a-receber': typeof AppFinanceiroContasAReceberRoute
   '/_app/financeiro/contratos': typeof AppFinanceiroContratosRoute
+  '/_app/financeiro/despesas': typeof AppFinanceiroDespesasRoute
   '/_app/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/_app/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/_app/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
@@ -458,6 +485,7 @@ export interface FileRouteTypes {
     | '/funil'
     | '/funil-clientes'
     | '/guia'
+    | '/guia-sistema'
     | '/imoveis'
     | '/leads'
     | '/leads-perdidos'
@@ -467,6 +495,7 @@ export interface FileRouteTypes {
     | '/resultado'
     | '/taxa-conversao'
     | '/tenants'
+    | '/treinamento'
     | '/triagem'
     | '/usuarios'
     | '/vendas'
@@ -481,6 +510,7 @@ export interface FileRouteTypes {
     | '/financeiro/contas-a-pagar'
     | '/financeiro/contas-a-receber'
     | '/financeiro/contratos'
+    | '/financeiro/despesas'
     | '/financeiro/fluxo-caixa'
     | '/financeiro/movimentacao'
     | '/financeiro/visao-geral'
@@ -505,6 +535,7 @@ export interface FileRouteTypes {
     | '/funil'
     | '/funil-clientes'
     | '/guia'
+    | '/guia-sistema'
     | '/imoveis'
     | '/leads'
     | '/leads-perdidos'
@@ -514,6 +545,7 @@ export interface FileRouteTypes {
     | '/resultado'
     | '/taxa-conversao'
     | '/tenants'
+    | '/treinamento'
     | '/triagem'
     | '/usuarios'
     | '/vendas'
@@ -528,6 +560,7 @@ export interface FileRouteTypes {
     | '/financeiro/contas-a-pagar'
     | '/financeiro/contas-a-receber'
     | '/financeiro/contratos'
+    | '/financeiro/despesas'
     | '/financeiro/fluxo-caixa'
     | '/financeiro/movimentacao'
     | '/financeiro/visao-geral'
@@ -553,6 +586,7 @@ export interface FileRouteTypes {
     | '/_app/funil'
     | '/_app/funil-clientes'
     | '/_app/guia'
+    | '/_app/guia-sistema'
     | '/_app/imoveis'
     | '/_app/leads'
     | '/_app/leads-perdidos'
@@ -562,6 +596,7 @@ export interface FileRouteTypes {
     | '/_app/resultado'
     | '/_app/taxa-conversao'
     | '/_app/tenants'
+    | '/_app/treinamento'
     | '/_app/triagem'
     | '/_app/usuarios'
     | '/_app/vendas'
@@ -576,6 +611,7 @@ export interface FileRouteTypes {
     | '/_app/financeiro/contas-a-pagar'
     | '/_app/financeiro/contas-a-receber'
     | '/_app/financeiro/contratos'
+    | '/_app/financeiro/despesas'
     | '/_app/financeiro/fluxo-caixa'
     | '/_app/financeiro/movimentacao'
     | '/_app/financeiro/visao-geral'
@@ -735,6 +771,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGuiaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/guia-sistema': {
+      id: '/_app/guia-sistema'
+      path: '/guia-sistema'
+      fullPath: '/guia-sistema'
+      preLoaderRoute: typeof AppGuiaSistemaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/imoveis': {
       id: '/_app/imoveis'
       path: '/imoveis'
@@ -796,6 +839,13 @@ declare module '@tanstack/react-router' {
       path: '/tenants'
       fullPath: '/tenants'
       preLoaderRoute: typeof AppTenantsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/treinamento': {
+      id: '/_app/treinamento'
+      path: '/treinamento'
+      fullPath: '/treinamento'
+      preLoaderRoute: typeof AppTreinamentoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/triagem': {
@@ -896,6 +946,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinanceiroContratosRouteImport
       parentRoute: typeof AppFinanceiroRoute
     }
+    '/_app/financeiro/despesas': {
+      id: '/_app/financeiro/despesas'
+      path: '/despesas'
+      fullPath: '/financeiro/despesas'
+      preLoaderRoute: typeof AppFinanceiroDespesasRouteImport
+      parentRoute: typeof AppFinanceiroRoute
+    }
     '/_app/financeiro/fluxo-caixa': {
       id: '/_app/financeiro/fluxo-caixa'
       path: '/fluxo-caixa'
@@ -929,6 +986,7 @@ interface AppFinanceiroRouteChildren {
   AppFinanceiroContasAPagarRoute: typeof AppFinanceiroContasAPagarRoute
   AppFinanceiroContasAReceberRoute: typeof AppFinanceiroContasAReceberRoute
   AppFinanceiroContratosRoute: typeof AppFinanceiroContratosRoute
+  AppFinanceiroDespesasRoute: typeof AppFinanceiroDespesasRoute
   AppFinanceiroFluxoCaixaRoute: typeof AppFinanceiroFluxoCaixaRoute
   AppFinanceiroMovimentacaoRoute: typeof AppFinanceiroMovimentacaoRoute
   AppFinanceiroVisaoGeralRoute: typeof AppFinanceiroVisaoGeralRoute
@@ -944,6 +1002,7 @@ const AppFinanceiroRouteChildren: AppFinanceiroRouteChildren = {
   AppFinanceiroContasAPagarRoute: AppFinanceiroContasAPagarRoute,
   AppFinanceiroContasAReceberRoute: AppFinanceiroContasAReceberRoute,
   AppFinanceiroContratosRoute: AppFinanceiroContratosRoute,
+  AppFinanceiroDespesasRoute: AppFinanceiroDespesasRoute,
   AppFinanceiroFluxoCaixaRoute: AppFinanceiroFluxoCaixaRoute,
   AppFinanceiroMovimentacaoRoute: AppFinanceiroMovimentacaoRoute,
   AppFinanceiroVisaoGeralRoute: AppFinanceiroVisaoGeralRoute,
@@ -968,6 +1027,7 @@ interface AppRouteChildren {
   AppFunilRoute: typeof AppFunilRoute
   AppFunilClientesRoute: typeof AppFunilClientesRoute
   AppGuiaRoute: typeof AppGuiaRoute
+  AppGuiaSistemaRoute: typeof AppGuiaSistemaRoute
   AppImoveisRoute: typeof AppImoveisRoute
   AppLeadsRoute: typeof AppLeadsRoute
   AppLeadsPerdidosRoute: typeof AppLeadsPerdidosRoute
@@ -977,6 +1037,7 @@ interface AppRouteChildren {
   AppResultadoRoute: typeof AppResultadoRoute
   AppTaxaConversaoRoute: typeof AppTaxaConversaoRoute
   AppTenantsRoute: typeof AppTenantsRoute
+  AppTreinamentoRoute: typeof AppTreinamentoRoute
   AppTriagemRoute: typeof AppTriagemRoute
   AppUsuariosRoute: typeof AppUsuariosRoute
   AppVendasRoute: typeof AppVendasRoute
@@ -997,6 +1058,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFunilRoute: AppFunilRoute,
   AppFunilClientesRoute: AppFunilClientesRoute,
   AppGuiaRoute: AppGuiaRoute,
+  AppGuiaSistemaRoute: AppGuiaSistemaRoute,
   AppImoveisRoute: AppImoveisRoute,
   AppLeadsRoute: AppLeadsRoute,
   AppLeadsPerdidosRoute: AppLeadsPerdidosRoute,
@@ -1006,6 +1068,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppResultadoRoute: AppResultadoRoute,
   AppTaxaConversaoRoute: AppTaxaConversaoRoute,
   AppTenantsRoute: AppTenantsRoute,
+  AppTreinamentoRoute: AppTreinamentoRoute,
   AppTriagemRoute: AppTriagemRoute,
   AppUsuariosRoute: AppUsuariosRoute,
   AppVendasRoute: AppVendasRoute,

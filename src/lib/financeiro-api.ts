@@ -82,6 +82,7 @@ export type Comissao = {
   gerente?: string | ComissaoRelacionamento | null;
   equipe?: string | ComissaoRelacionamento | null;
   dataVenda: string;
+  dataPrevistaRecebimento?: string;
   vgv: number;
   percentualImobiliaria?: number;
   comissaoBruta?: number;
@@ -123,9 +124,11 @@ export type ComissaoPercentuais = {
 
 export type CreateComissaoInput = ComissaoPercentuais & {
   documentacaoId: string;
+  dataPrevistaRecebimento: string;
 };
 
 export type UpdateComissaoInput = Partial<ComissaoPercentuais> & {
+  dataPrevistaRecebimento?: string;
   status?: ComissaoStatus;
 };
 
@@ -227,7 +230,7 @@ export async function deleteMovimento(id: string): Promise<void> {
 export async function fetchTitulos(
   tipo?: "receber" | "pagar",
   grupoParcelasId?: string,
-  origem?: "normal" | "contrato",
+  origem?: "normal" | "contrato" | "comissao",
 ): Promise<TituloFinanceiro[]> {
   const params = new URLSearchParams();
   if (tipo) params.set("tipo", tipo);

@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Dialog,
   DialogContent,
@@ -300,7 +301,15 @@ function HistoryTimeline({
                         {stageName && (
                           <Badge
                             variant="secondary"
-                            className="text-[10px] font-medium bg-primary/10 text-primary border-primary/20"
+                            className={cn(
+                              STATUS_CHIP_CLASS,
+                              "font-medium bg-primary/10 text-primary border-primary/20",
+                            )}
+                            title={
+                              changedStage
+                                ? stageName
+                                : `Manteve ${stageName}`
+                            }
                           >
                             {changedStage
                               ? stageName

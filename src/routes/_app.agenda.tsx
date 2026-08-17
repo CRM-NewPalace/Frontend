@@ -102,6 +102,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Popover,
   PopoverContent,
@@ -1072,7 +1073,9 @@ function AgendaPage() {
                       </Button>
                     </div>
                   ) : (
-                    <Badge variant="secondary">Aguardando</Badge>
+                    <Badge variant="secondary" className={STATUS_CHIP_CLASS}>
+                      Aguardando
+                    </Badge>
                   )}
                 </li>
               ))}

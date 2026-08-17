@@ -25,17 +25,20 @@ import {
   Banknote,
   ArrowUpRight,
   ArrowDownRight,
-  FolderKanban,
   FolderOpen,
   SearchCheck,
   Percent,
-  Tags,
   Goal,
   UserX,
   Network,
   Menu,
   X,
   BookOpen,
+  BookMarked,
+  GraduationCap,
+  Handshake,
+  Library,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -43,6 +46,8 @@ import { getSession, sendHeartbeat, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import { useHideImoveisFromSidebar } from "@/lib/imoveis-nav-prefs";
 import { useTenantTheme } from "@/lib/tenant-theme";
+import { GuiaTourHost } from "@/components/guia-tour";
+import { ModuloAjudaButton } from "@/components/modulo-ajuda";
 import { ApiError } from "@/lib/api";
 import {
   fetchNotificacoes,
@@ -56,6 +61,7 @@ import {
   type AgendaUrgencia,
 } from "@/lib/agenda-api";
 import { AgendaLembretesDialog } from "@/components/agenda-lembretes-dialog";
+import { SidebarReorgNotice } from "@/components/sidebar-reorg-notice";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -157,14 +163,9 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
     icon: ArrowDownRight,
   },
   {
-    to: "/financeiro/centro-recebimentos",
-    label: "Centro de recebimentos",
-    icon: Tags,
-  },
-  {
-    to: "/financeiro/centro-despesas",
-    label: "Centro de despesas",
-    icon: FolderKanban,
+    to: "/financeiro/despesas",
+    label: "Despesas",
+    icon: Receipt,
   },
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
 ];
@@ -197,6 +198,11 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     icon: ArrowDownRight,
   },
   {
+    to: "/financeiro/despesas",
+    label: "Despesas",
+    icon: Receipt,
+  },
+  {
     to: "/financeiro/fluxo-caixa",
     label: "Fluxo de caixa",
     icon: Banknote,
@@ -211,6 +217,8 @@ const NAV_SECTIONS: {
   /** Admin da imobiliária ou super_admin da plataforma. */
   adminOrPlatform?: boolean;
   gerenteOnly?: boolean;
+  /** Item solto no menu, sem pasta/seção. */
+  standalone?: boolean;
   items: NavItem[];
 }[] = [
   {
@@ -219,35 +227,50 @@ const NAV_SECTIONS: {
     icon: Briefcase,
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/vendas", label: "Vendas", icon: DollarSign },
       { to: "/leads", label: "Leads", icon: Users },
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/triagem", label: "Triagem", icon: ClipboardList },
-      { to: "/imoveis", label: "Imóveis", icon: Building2 },
+      { to: "/agenda", label: "Agenda", icon: Calendar },
       { to: "/clientes", label: "Clientes", icon: UserCircle2 },
       { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
-      { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
-      { to: "/usuarios", label: "Usuários", icon: UsersRound },
-      { to: "/construtoras", label: "Construtoras", icon: Building2 },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
+      { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
+      { to: "/treinamento", label: "Treinamento", icon: GraduationCap },
     ],
   },
   {
-    id: "administracao",
-    label: "Administração",
+    id: "fechamento",
+    label: "Fechamento",
+    icon: Handshake,
+    items: [
+      { to: "/documentacao", label: "Documentação", icon: FolderOpen },
+      { to: "/propostas", label: "Propostas", icon: ClipboardList },
+      { to: "/contratos", label: "Contratos", icon: FileSignature },
+      { to: "/vendas", label: "Vendas", icon: DollarSign },
+    ],
+  },
+  {
+    id: "catalogo",
+    label: "Catálogo",
+    icon: Library,
+    items: [
+      { to: "/construtoras", label: "Construtoras", icon: Building2 },
+      { to: "/imoveis", label: "Imóveis", icon: Building2 },
+    ],
+  },
+  {
+    id: "gestao",
+    label: "Gestão",
     icon: Shield,
     items: [
       { to: "/tenants", label: "Clientes", icon: Building2 },
       { to: "/guia", label: "Guia", icon: BookOpen },
-      { to: "/agenda", label: "Agenda", icon: Calendar },
-      { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/corretores", label: "Ranking", icon: UsersRound },
-      { to: "/documentacao", label: "Documentação", icon: FolderOpen },
-      { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/metas", label: "Metas", icon: Target },
-      { to: "/propostas", label: "Propostas", icon: ClipboardList },
-      { to: "/contratos", label: "Contratos", icon: FileSignature },
+      { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
+      { to: "/equipes", label: "Equipes", icon: Network },
+      { to: "/usuarios", label: "Usuários", icon: UsersRound },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
     ],
   },
@@ -263,6 +286,13 @@ const NAV_SECTIONS: {
     label: "Conta",
     icon: CircleUser,
     items: [{ to: "/perfil", label: "Perfil", icon: UserIcon }],
+  },
+  {
+    id: "guia-sistema",
+    label: "Guia do sistema",
+    icon: BookMarked,
+    standalone: true,
+    items: [{ to: "/guia-sistema", label: "Guia do sistema", icon: BookMarked }],
   },
 ];
 
@@ -660,6 +690,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           const sectionActive = section.items.some((item) =>
             itemMatchesPath(item, pathname),
           );
+          const standaloneLeaf =
+            section.standalone &&
+            section.items.length === 1 &&
+            !isNavGroup(section.items[0])
+              ? section.items[0]
+              : null;
+
+          if (standaloneLeaf) {
+            const active =
+              pathname === standaloneLeaf.to ||
+              pathname.startsWith(`${standaloneLeaf.to}/`);
+            return (
+              <Link
+                key={section.id}
+                to={standaloneLeaf.to}
+                onClick={onNavigate}
+                title={collapsedView ? section.label : undefined}
+                className={cn(
+                  "flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "text-sidebar-foreground bg-sidebar-accent"
+                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+                )}
+              >
+                <SectionIcon
+                  className={cn(
+                    "w-4 h-4 shrink-0",
+                    active && "text-brand-accent",
+                  )}
+                />
+                {!collapsedView && (
+                  <span className="flex-1 truncate">{section.label}</span>
+                )}
+              </Link>
+            );
+          }
 
           return (
             <div key={section.id} className="space-y-0.5">
@@ -1102,7 +1168,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           {children}
         </main>
+        <GuiaTourHost />
       </div>
+
+      <SidebarReorgNotice />
 
       <AgendaLembretesDialog
         open={lembretesOpen}
@@ -1159,15 +1228,21 @@ export function PageHeader({
 }) {
   const { brandName } = useTenantTheme();
   return (
-    <div className="mb-4 flex flex-col gap-3 sm:mb-6 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+    <div
+      data-guia="page-header"
+      className="mb-4 flex flex-col gap-3 sm:mb-6 lg:flex-row lg:items-start lg:justify-between lg:gap-6"
+    >
       <div className="min-w-0 flex-1 space-y-1 lg:min-w-64">
         <p className="mb-1.5 inline-flex max-w-full items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
           <span className="size-1.5 shrink-0 rounded-full bg-primary" />
           <span className="truncate">{brandName}</span>
         </p>
-        <h1 className="text-xl font-semibold tracking-tight wrap-break-word text-module-title sm:text-2xl">
-          {title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-tight wrap-break-word text-module-title sm:text-2xl">
+            {title}
+          </h1>
+          <ModuloAjudaButton />
+        </div>
         {description && (
           <p className="mt-1 max-w-2xl text-sm text-pretty wrap-break-word text-muted-foreground">
             {description}
@@ -1175,7 +1250,10 @@ export function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex w-full flex-wrap items-end gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0 lg:justify-end">
+        <div
+          data-guia="page-actions"
+          className="flex w-full flex-wrap items-end gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0 lg:justify-end"
+        >
           {actions}
         </div>
       )}
