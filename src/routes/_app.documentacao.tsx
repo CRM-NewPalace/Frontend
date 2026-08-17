@@ -77,6 +77,7 @@ import {
 } from "@/lib/table-sort";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import type { CatalogType } from "@/lib/catalog-api";
 import { ApiError } from "@/lib/api";
 import {
   formatPhone,
@@ -104,43 +105,10 @@ import {
   isStatusAnalise,
   isStatusVendido,
   matchesDocPipelineStatus,
-  status1Group,
-  status2Group,
   statusesMatch,
   type DocPipelineStatus,
 } from "@/lib/documentacao-status";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
-
-function status1ChipClass(status: string) {
-  const group = status1Group(status);
-  if (group === "aprovado") {
-    return "border-emerald-200/80 bg-emerald-100 text-emerald-800";
-  }
-  if (group === "reprovado") {
-    return "border-red-200/80 bg-red-100 text-red-800";
-  }
-  if (group === "analise") {
-    return "border-amber-200/80 bg-amber-100 text-amber-900";
-  }
-  if (group === "pre_analise") {
-    return "border-sky-200/80 bg-sky-100 text-sky-900";
-  }
-  return "border-border/70 bg-muted text-foreground";
-}
-
-function status2ChipClass(status: string) {
-  const group = status2Group(status);
-  if (group === "vendido") {
-    return "border-emerald-200/80 bg-emerald-100 text-emerald-800";
-  }
-  if (group === "bacen") {
-    return "border-violet-200/80 bg-violet-100 text-violet-800";
-  }
-  if (group === "andamento") {
-    return "border-blue-200/80 bg-blue-100 text-blue-800";
-  }
-  return "border-border/70 bg-secondary text-secondary-foreground";
-}
 
 function docInVendaPeriod(
   doc: { dataVenda: string | null; createdAt: string },
@@ -212,7 +180,11 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
-import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+import {
+  DEFAULT_CATALOG_COLOR,
+  isHexColor,
+  STATUS_CHIP_CLASS,
+} from "@/lib/catalog-colors";
 import {
   Popover,
   PopoverContent,
@@ -220,6 +192,42 @@ import {
 } from "@/components/ui/popover";
 
 const DOC_STATUS_CHIP = cn(STATUS_CHIP_CLASS, "justify-start text-left");
+
+function DocCatalogBadge({
+  type,
+  label,
+  colorByLabel,
+}: {
+  type: Extract<
+    CatalogType,
+    "documentacao_status1" | "documentacao_status2" | "documentacao_fonte"
+  >;
+  label: string;
+  colorByLabel: (type: CatalogType, label: string) => string;
+}) {
+  const color = colorByLabel(type, label);
+  if (isHexColor(color)) {
+    return (
+      <Badge
+        variant="secondary"
+        className={cn(DOC_STATUS_CHIP, "border-transparent font-normal")}
+        style={construtoraBadgeStyle(color)}
+        title={label}
+      >
+        {label}
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      className={cn(DOC_STATUS_CHIP, color || DEFAULT_CATALOG_COLOR)}
+      title={label}
+    >
+      {label}
+    </Badge>
+  );
+}
+
 const DOC_PERSON_CHIP =
   "inline-flex h-6 max-w-full items-center justify-start truncate border-transparent px-2 text-left text-[11px] font-normal leading-6";
 
@@ -2447,30 +2455,18 @@ function DocumentacaoPage() {
                       )}
                     </TableCell>
                     <TableCell className="w-37">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          DOC_STATUS_CHIP,
-                          "font-normal",
-                          status1ChipClass(doc.status1),
-                        )}
-                        title={doc.status1}
-                      >
-                        {doc.status1}
-                      </Badge>
+                      <DocCatalogBadge
+                        type="documentacao_status1"
+                        label={doc.status1}
+                        colorByLabel={colorByLabel}
+                      />
                     </TableCell>
                     <TableCell className="w-37">
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          DOC_STATUS_CHIP,
-                          "font-normal",
-                          status2ChipClass(doc.status2),
-                        )}
-                        title={doc.status2}
-                      >
-                        {doc.status2}
-                      </Badge>
+                      <DocCatalogBadge
+                        type="documentacao_status2"
+                        label={doc.status2}
+                        colorByLabel={colorByLabel}
+                      />
                     </TableCell>
                     <TableCell>
                       {(() => {
@@ -2515,17 +2511,11 @@ function DocumentacaoPage() {
                           );
                         }
                         return (
-                          <Badge
-                            className={cn(
-                              catalogColorBadgeClass(
-                                colorByLabel("documentacao_fonte", fonte),
-                              ),
-                              "justify-start text-left font-normal",
-                            )}
-                            title={fonte}
-                          >
-                            {fonte}
-                          </Badge>
+                          <DocCatalogBadge
+                            type="documentacao_fonte"
+                            label={fonte}
+                            colorByLabel={colorByLabel}
+                          />
                         );
                       })()}
                     </TableCell>

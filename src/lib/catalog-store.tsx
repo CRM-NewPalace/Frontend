@@ -24,6 +24,10 @@ import {
   type UpdateCatalogInput,
 } from "@/lib/catalog-api";
 import { DEFAULT_CATALOG_COLOR } from "@/lib/catalog-colors";
+import {
+  normalizeDocStatus,
+  statusesMatch,
+} from "@/lib/documentacao-status";
 
 /** Etapa do funil normalizada para as telas (id = slug). */
 export type FunnelStage = {
@@ -176,8 +180,25 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   const colorByLabel = useCallback(
     (type: CatalogType, label: string) => {
-      const item = catalog[type].find((i) => i.label === label);
-      return item?.color ?? DEFAULT_CATALOG_COLOR;
+      const list = catalog[type];
+      const exact = list.find((i) => i.label === label);
+      if (exact) return exact.color ?? DEFAULT_CATALOG_COLOR;
+
+      const trimmed = label.trim().toLowerCase();
+      const byCase = list.find((i) => i.label.trim().toLowerCase() === trimmed);
+      if (byCase) return byCase.color ?? DEFAULT_CATALOG_COLOR;
+
+      if (type === "documentacao_status1" || type === "documentacao_status2") {
+        const normalized = normalizeDocStatus(label);
+        const byNorm = list.find(
+          (i) => normalizeDocStatus(i.label) === normalized,
+        );
+        if (byNorm) return byNorm.color ?? DEFAULT_CATALOG_COLOR;
+        const byGroup = list.find((i) => statusesMatch(i.label, label));
+        if (byGroup) return byGroup.color ?? DEFAULT_CATALOG_COLOR;
+      }
+
+      return DEFAULT_CATALOG_COLOR;
     },
     [catalog],
   );

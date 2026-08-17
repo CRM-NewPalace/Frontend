@@ -31,6 +31,7 @@ import { getSession } from "@/lib/auth";
 import { isCorretorLike } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
+import { fetchUsers, type ApiUser } from "@/lib/users-api";
 import {
   META_ESCOPO_LABEL,
   META_PERIODOS,
@@ -78,6 +79,7 @@ function Page() {
   const isGerente = user?.role === "gerente";
   const [metas, setMetas] = useState<Meta[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [usuarios, setUsuarios] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -94,12 +96,18 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [itens, equipesAtuais] = await Promise.all([
+      const [itens, equipesAtuais, usuariosAtuais] = await Promise.all([
         fetchMetas(),
         isAdmin || isGerente ? fetchEquipes() : Promise.resolve([]),
+        isAdmin || isGerente
+          ? fetchUsers({ status: "ativo", page: 1, limit: 200 })
+              .then((res) => res.data)
+              .catch(() => [] as ApiUser[])
+          : Promise.resolve([]),
       ]);
       setMetas(itens);
       setEquipes(equipesAtuais);
+      setUsuarios(usuariosAtuais);
     } catch (error) {
       toast.error(
         error instanceof ApiError
@@ -115,15 +123,47 @@ function Page() {
     void load();
   }, [load]);
 
-  const corretores = useMemo(
-    () =>
-      equipes.flatMap((equipe) =>
-        equipe.membros
-          .filter((membro) => isCorretorLike(membro.role))
-          .map((membro) => ({ ...membro, equipeNome: equipe.name })),
-      ),
-    [equipes],
-  );
+  const corretores = useMemo(() => {
+    const equipeNomeByUserId = new Map<string, string>();
+    for (const equipe of equipes) {
+      for (const membro of equipe.membros) {
+        equipeNomeByUserId.set(membro.id, equipe.name);
+      }
+    }
+
+    const map = new Map<
+      string,
+      { id: string; name: string; equipeNome: string }
+    >();
+
+    for (const usuario of usuarios) {
+      if (!isCorretorLike(usuario.role)) continue;
+      map.set(usuario.id, {
+        id: usuario.id,
+        name: usuario.name,
+        equipeNome: equipeNomeByUserId.get(usuario.id) ?? "Sem equipe",
+      });
+    }
+
+    for (const equipe of equipes) {
+      if (isGerente && equipe.gerenteId !== user?.id) continue;
+      for (const membro of equipe.membros) {
+        if (!isCorretorLike(membro.role) || membro.status === "inativo") {
+          continue;
+        }
+        if (map.has(membro.id)) continue;
+        map.set(membro.id, {
+          id: membro.id,
+          name: membro.name,
+          equipeNome: equipe.name,
+        });
+      }
+    }
+
+    return [...map.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [equipes, isGerente, user?.id, usuarios]);
 
   const gerentes = useMemo(() => {
     const map = new Map<string, { id: string; name: string; equipeNome: string }>();
@@ -134,10 +174,19 @@ function Page() {
         equipeNome: equipe.name,
       });
     }
+    for (const usuario of usuarios) {
+      if (usuario.role !== "gerente") continue;
+      if (map.has(usuario.id)) continue;
+      map.set(usuario.id, {
+        id: usuario.id,
+        name: usuario.name,
+        equipeNome: "Sem equipe",
+      });
+    }
     return [...map.values()].sort((a, b) =>
       a.name.localeCompare(b.name, "pt-BR"),
     );
-  }, [equipes]);
+  }, [equipes, usuarios]);
 
   const metasImobiliaria = useMemo(
     () => metas.filter((meta) => meta.escopo === "imobiliaria"),
@@ -488,7 +537,7 @@ function Page() {
               <div className="space-y-2">
                 <Label>Corretor</Label>
                 <Select
-                  value={form.corretorId}
+                  value={form.corretorId || undefined}
                   onValueChange={(corretorId) =>
                     setForm((atual) => ({ ...atual, corretorId }))
                   }
@@ -497,11 +546,17 @@ function Page() {
                     <SelectValue placeholder="Selecione um corretor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {corretores.map((corretor) => (
-                      <SelectItem key={corretor.id} value={corretor.id}>
-                        {corretor.name} — {corretor.equipeNome}
-                      </SelectItem>
-                    ))}
+                    {corretores.length === 0 ? (
+                      <div className="px-2 py-3 text-sm text-muted-foreground">
+                        Nenhum corretor cadastrado.
+                      </div>
+                    ) : (
+                      corretores.map((corretor) => (
+                        <SelectItem key={corretor.id} value={corretor.id}>
+                          {corretor.name} — {corretor.equipeNome}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -510,7 +565,7 @@ function Page() {
               <div className="space-y-2">
                 <Label>Gerente</Label>
                 <Select
-                  value={form.gerenteId}
+                  value={form.gerenteId || undefined}
                   onValueChange={(gerenteId) =>
                     setForm((atual) => ({ ...atual, gerenteId }))
                   }
@@ -519,11 +574,17 @@ function Page() {
                     <SelectValue placeholder="Selecione um gerente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {gerentes.map((gerente) => (
-                      <SelectItem key={gerente.id} value={gerente.id}>
-                        {gerente.name} — {gerente.equipeNome}
-                      </SelectItem>
-                    ))}
+                    {gerentes.length === 0 ? (
+                      <div className="px-2 py-3 text-sm text-muted-foreground">
+                        Nenhum gerente cadastrado.
+                      </div>
+                    ) : (
+                      gerentes.map((gerente) => (
+                        <SelectItem key={gerente.id} value={gerente.id}>
+                          {gerente.name} — {gerente.equipeNome}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
