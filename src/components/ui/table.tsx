@@ -2,9 +2,9 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Um pouco mais clara que o aside, sem lavar o tom (mistura com o ciano da marca). */
+/** Mesma cor do aside (menu lateral). */
 const TABLE_HEADER_BG = {
-  backgroundColor: "color-mix(in srgb, var(--sidebar) 88%, #079ed4)",
+  backgroundColor: "var(--sidebar)",
 } as const;
 
 const Table = React.forwardRef<
@@ -74,7 +74,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted [[thead]_&]:border-b-0 [[thead]_&]:hover:bg-transparent",
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted in-[[thead]]:border-b-0 in-[[thead]]:hover:bg-transparent",
       className,
     )}
     {...props}

@@ -101,6 +101,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SOFT_BTN } from "@/lib/soft-btn";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Popover,
@@ -135,8 +136,7 @@ export const Route = createFileRoute("/_app/agenda")({
   component: AgendaPage,
 });
 
-const AGENDA_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+type FormAlvo = AgendamentoAlvo | "corretor";
 
 type FormState = {
   leadId: string;
@@ -146,9 +146,10 @@ type FormState = {
   tipo: AgendamentoTipo;
   escopo: AgendamentoEscopo;
   status: AgendamentoStatus;
-  alvoTipo: AgendamentoAlvo;
+  alvoTipo: FormAlvo;
   alvoEquipeId: string;
   alvoGerenteId: string;
+  alvoCorretorId: string;
   date: string;
   timeStart: string;
   timeEnd: string;
@@ -173,6 +174,7 @@ const emptyForm = (): FormState => {
     alvoTipo: "todos",
     alvoEquipeId: "",
     alvoGerenteId: "",
+    alvoCorretorId: "",
     date: toDateInput(now),
     timeStart: toTimeInput(now),
     timeEnd: "",
@@ -371,15 +373,24 @@ function AgendaPage() {
   }, [equipes]);
 
   const corretorAssignOptions = useMemo(() => {
-    if (isAdmin) {
-      return assignUsers
+    const fromUsers = isAdmin
+      ? assignUsers
+      : assignUsers.filter((u) => isCorretorLike(u.role));
+    if (fromUsers.length > 0) {
+      return fromUsers
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     }
     return assignees
-      .filter((a) => isCorretorLike(a.role))
+      .filter((a) => (isAdmin ? true : isCorretorLike(a.role)))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   }, [assignees, assignUsers, isAdmin]);
+
+  const corretorAlvoOptions = useMemo(
+    () =>
+      corretorAssignOptions.filter((c) => isCorretorLike(c.role ?? "")),
+    [corretorAssignOptions],
+  );
 
   const assignRoleLabel = (role: string) => {
     if (role === "admin") return "Admin";
@@ -429,7 +440,7 @@ function AgendaPage() {
   );
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isGerente) return;
     void fetchEquipes()
       .then((list) => setEquipes(list.filter((e) => e.status === "ativo")))
       .catch(() => setEquipes([]));
@@ -442,7 +453,7 @@ function AgendaPage() {
         ),
       )
       .catch(() => setAssignUsers([]));
-  }, [isAdmin]);
+  }, [isAdmin, isGerente]);
 
   useEffect(() => {
     if (!showSolicitacoes && section === "solicitacoes") {
@@ -539,6 +550,19 @@ function AgendaPage() {
         base.timeEnd = `${String(hour + 1).padStart(2, "0")}:00`;
       }
     }
+    if ((isAdmin || isGerente) && filterCorretorId !== "__all__") {
+      const option = corretorFilterOptions.find(
+        (a) => a.id === filterCorretorId,
+      );
+      if (option && isCorretorLike(option.role)) {
+        if (isAdmin) {
+          base.alvoTipo = "corretor";
+          base.alvoCorretorId = filterCorretorId;
+        } else {
+          base.atribuidoParaId = filterCorretorId;
+        }
+      }
+    }
     setForm(base);
     setOpen(true);
   }
@@ -589,6 +613,7 @@ function AgendaPage() {
         item.alvoTipo && item.alvoTipo !== "nenhum" ? item.alvoTipo : "todos",
       alvoEquipeId: item.alvoEquipeId ?? "",
       alvoGerenteId: item.alvoGerenteId ?? "",
+      alvoCorretorId: "",
       date: toDateInput(start),
       timeStart: toTimeInput(start),
       timeEnd: end ? toTimeInput(end) : "",
@@ -608,10 +633,17 @@ function AgendaPage() {
   }
 
   function validateForm(): CreateAgendamentoInput | null {
-    const isAdminEvent = user?.role === "admin" && form.tipo !== "bloqueio" && !form.atribuidoParaId;
     const isPersonalPlatformAgenda = user?.role === "super_admin";
     const isBloqueio = form.tipo === "bloqueio";
-    const atribuidoParaId = form.atribuidoParaId || null;
+    const atribuidoParaId =
+      form.alvoTipo === "corretor"
+        ? form.alvoCorretorId || null
+        : form.atribuidoParaId || null;
+    const isAdminEvent =
+      user?.role === "admin" &&
+      form.tipo !== "bloqueio" &&
+      !atribuidoParaId &&
+      form.alvoTipo !== "corretor";
     const leadId =
       isAdminEvent || isPersonalPlatformAgenda || isBloqueio || atribuidoParaId
         ? null
@@ -647,6 +679,15 @@ function AgendaPage() {
       !form.alvoGerenteId
     ) {
       toast.error("Selecione o gerente do evento.");
+      return null;
+    }
+    if (
+      user?.role === "admin" &&
+      !form.atribuidoParaId &&
+      form.alvoTipo === "corretor" &&
+      !form.alvoCorretorId
+    ) {
+      toast.error("Selecione o corretor do evento.");
       return null;
     }
     if (!form.titulo.trim() || form.titulo.trim().length < 2) {
@@ -689,7 +730,9 @@ function AgendaPage() {
     }
 
     const showAdminAlvo =
-      user?.role === "admin" && !atribuidoParaId;
+      user?.role === "admin" &&
+      !atribuidoParaId &&
+      form.alvoTipo !== "corretor";
 
     return {
       leadId,
@@ -705,7 +748,10 @@ function AgendaPage() {
           : form.escopo,
       ...(showAdminAlvo
         ? {
-            alvoTipo: form.alvoTipo === "nenhum" ? "todos" : form.alvoTipo,
+            alvoTipo:
+              form.alvoTipo === "nenhum" || form.alvoTipo === "corretor"
+                ? "todos"
+                : form.alvoTipo,
             alvoEquipeId:
               form.alvoTipo === "equipe" ? form.alvoEquipeId || null : null,
             alvoGerenteId:
@@ -749,7 +795,11 @@ function AgendaPage() {
               : "Horário bloqueado.",
           );
         } else if (payload.atribuidoParaId) {
-          toast.success("Tarefa atribuída.");
+          toast.success(
+            form.alvoTipo === "corretor"
+              ? "Compromisso agendado para o corretor."
+              : "Tarefa atribuída.",
+          );
         } else {
           toast.success(
             user?.role === "admin"
@@ -1053,7 +1103,7 @@ function AgendaPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className={AGENDA_SOFT_BTN}
+                        className={SOFT_BTN}
                         disabled={actingId === s.id}
                         onClick={() => void handleRecusar(s.id)}
                       >
@@ -1090,7 +1140,7 @@ function AgendaPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className={AGENDA_SOFT_BTN}
+                className={SOFT_BTN}
                 onClick={goToday}
               >
                 Hoje
@@ -1124,9 +1174,7 @@ function AgendaPage() {
               <Button
                 variant={layoutMode === "calendario" ? "default" : "outline"}
                 size="sm"
-                className={
-                  layoutMode === "calendario" ? undefined : AGENDA_SOFT_BTN
-                }
+                className={layoutMode === "calendario" ? undefined : SOFT_BTN}
                 onClick={() =>
                   setLayoutMode((m) =>
                     m === "tabela" ? "calendario" : "tabela",
@@ -1172,8 +1220,8 @@ function AgendaPage() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      AGENDA_SOFT_BTN,
-                      activeFiltersCount > 0 && "border-[#079ED4]/40",
+                      SOFT_BTN,
+                      activeFiltersCount > 0 && "border-primary/40",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />
@@ -1306,19 +1354,19 @@ function AgendaPage() {
 
           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
             <span className="font-medium text-foreground/80">Cores:</span>
-            {(
-              ["admin", "gerente", "corretor", "bloqueio"] as const
-            ).map((origem) => (
-              <span key={origem} className="inline-flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "size-2.5 rounded-full",
-                    AGENDAMENTO_ORIGEM_DOT[origem],
-                  )}
-                />
-                {AGENDAMENTO_ORIGEM_LABEL[origem]}
-              </span>
-            ))}
+            {(["admin", "gerente", "corretor", "bloqueio"] as const).map(
+              (origem) => (
+                <span key={origem} className="inline-flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "size-2.5 rounded-full",
+                      AGENDAMENTO_ORIGEM_DOT[origem],
+                    )}
+                  />
+                  {AGENDAMENTO_ORIGEM_LABEL[origem]}
+                </span>
+              ),
+            )}
           </div>
 
           {layoutMode === "tabela" ? (
@@ -1392,7 +1440,7 @@ function AgendaPage() {
             <Button
               type="button"
               variant="outline"
-              className={AGENDA_SOFT_BTN}
+              className={SOFT_BTN}
               onClick={() => setOpen(false)}
               disabled={saving}
             >
@@ -1436,7 +1484,7 @@ function AgendaPage() {
                     <Select
                       value={form.alvoTipo}
                       onValueChange={(v) => {
-                        const alvo = v as AgendamentoAlvo;
+                        const alvo = v as FormAlvo;
                         setForm((prev) => ({
                           ...prev,
                           alvoTipo: alvo,
@@ -1444,6 +1492,10 @@ function AgendaPage() {
                             alvo === "equipe" ? prev.alvoEquipeId : "",
                           alvoGerenteId:
                             alvo === "gerente" ? prev.alvoGerenteId : "",
+                          alvoCorretorId:
+                            alvo === "corretor" ? prev.alvoCorretorId : "",
+                          atribuidoParaId:
+                            alvo === "corretor" ? "" : prev.atribuidoParaId,
                         }));
                       }}
                     >
@@ -1463,6 +1515,7 @@ function AgendaPage() {
                         <SelectItem value="gerente">
                           {AGENDAMENTO_ALVO_LABEL.gerente}
                         </SelectItem>
+                        <SelectItem value="corretor">Um corretor</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground">
@@ -1472,7 +1525,9 @@ function AgendaPage() {
                           ? "Todos os gerentes verão este evento (corretores não)."
                           : form.alvoTipo === "equipe"
                             ? "Gerente e corretores da equipe escolhida verão este evento."
-                            : "Todos os usuários verão este evento na agenda."}
+                            : form.alvoTipo === "corretor"
+                              ? "O compromisso aparece na agenda do corretor escolhido e ele recebe notificação."
+                              : "Todos os usuários verão este evento na agenda."}
                     </p>
                   </div>
 
@@ -1519,6 +1574,33 @@ function AgendaPage() {
                               {g.name}
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  {form.alvoTipo === "corretor" ? (
+                    <div className="space-y-2">
+                      <Label>Corretor</Label>
+                      <Select
+                        value={form.alvoCorretorId || undefined}
+                        onValueChange={(v) => setField("alvoCorretorId", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um corretor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {corretorAlvoOptions.length === 0 ? (
+                            <div className="px-2 py-3 text-sm text-muted-foreground">
+                              Nenhum corretor cadastrado.
+                            </div>
+                          ) : (
+                            corretorAlvoOptions.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1699,7 +1781,9 @@ function AgendaPage() {
                 ) : null}
               </div>
 
-              {(isAdmin || isGerente) && form.tipo !== "bloqueio" ? (
+              {(isAdmin || isGerente) &&
+              form.tipo !== "bloqueio" &&
+              form.alvoTipo !== "corretor" ? (
                 <div className="space-y-2">
                   <Label>
                     {isAdmin ? "Atribuir a" : "Atribuir ao corretor"}
@@ -1724,13 +1808,19 @@ function AgendaPage() {
                       <SelectItem value="__none__">
                         Ninguém (agenda própria / equipe)
                       </SelectItem>
-                      {corretorAssignOptions.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {isAdmin
-                            ? `${c.name} (${assignRoleLabel(c.role ?? "")})`
-                            : c.name}
-                        </SelectItem>
-                      ))}
+                      {corretorAssignOptions.length === 0 ? (
+                        <div className="px-2 py-3 text-sm text-muted-foreground">
+                          Nenhum corretor cadastrado.
+                        </div>
+                      ) : (
+                        corretorAssignOptions.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {isAdmin
+                              ? `${c.name} (${assignRoleLabel(c.role ?? "")})`
+                              : c.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">

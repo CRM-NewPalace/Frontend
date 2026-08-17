@@ -12,7 +12,6 @@ import {
   Settings,
   User as UserIcon,
   LogOut,
-  Search,
   Bell,
   ChevronsLeft,
   ChevronDown,
@@ -63,8 +62,6 @@ import {
 } from "@/lib/agenda-api";
 import { AgendaLembretesDialog } from "@/components/agenda-lembretes-dialog";
 import { SidebarReorgNotice } from "@/components/sidebar-reorg-notice";
-import { Input } from "@/components/ui/input";
-import { useHeaderSearchInput } from "@/lib/header-search";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -330,7 +327,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [analiseAlert, setAnaliseAlert] = useState<Notificacao | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const headerSearch = useHeaderSearchInput();
+  const isTriagem = pathname === "/triagem";
 
   useEffect(() => {
     setUser(getSession());
@@ -746,7 +743,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SectionIcon
                   className={cn(
                     "w-4 h-4 shrink-0",
-                    sectionActive && "text-brand-accent",
+                    sectionActive
+                      ? "text-sidebar-foreground"
+                      : "text-sidebar-foreground/75",
                   )}
                 />
                 {!collapsedView && (
@@ -778,7 +777,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             className={cn(
                               "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors cursor-pointer",
                               groupActive
-                                ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                                 : "hover:bg-white/6 text-sidebar-foreground/75",
                             )}
                           >
@@ -807,7 +806,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     className={cn(
                                       "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                                       active
-                                        ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                                        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                                         : "hover:bg-white/6 text-sidebar-foreground/75",
                                     )}
                                   >
@@ -837,7 +836,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         className={cn(
                           "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                           active
-                            ? "bg-[#075a82] text-sidebar-foreground font-medium"
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                             : "hover:bg-white/6 text-sidebar-foreground/75",
                         )}
                       >
@@ -908,7 +907,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="text-sm font-semibold leading-tight truncate">
                 {brandName === "Zone Connection" ? (
                   <>
-                    Zone <span className="text-brand-accent">Connection</span>
+                    Zone <span className="text-primary">Connection</span>
                   </>
                 ) : (
                   brandName
@@ -980,7 +979,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="text-sm font-semibold leading-tight truncate">
               {brandName === "Zone Connection" ? (
                 <>
-                  Zone <span className="text-brand-accent">Connection</span>
+                  Zone <span className="text-primary">Connection</span>
                 </>
               ) : (
                 brandName
@@ -1014,8 +1013,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b bg-card/90 backdrop-blur sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0">
+      <div
+        className={cn(
+          "flex-1 flex flex-col min-w-0",
+          isTriagem && "lg:h-dvh lg:overflow-hidden",
+        )}
+      >
+        <header className="h-14 border-b bg-card/90 backdrop-blur sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 min-w-0 shrink-0">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Button
               type="button"
@@ -1027,15 +1031,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Menu className="w-5 h-5" />
             </Button>
-            <div className="relative flex-1 max-w-md min-w-0">
-              <Search className="absolute left-2.5 sm:left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={headerSearch.value}
-                onChange={(e) => headerSearch.setValue(e.target.value)}
-                placeholder={headerSearch.placeholder}
-                className="pl-8 sm:pl-9 h-9 rounded-md bg-background text-sm"
-              />
-            </div>
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -1165,7 +1160,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-clip">
+        <main
+          className={cn(
+            "flex-1 p-3 sm:p-4 md:p-6 max-w-full min-w-0 overflow-x-clip",
+            isTriagem && "flex min-h-0 flex-col lg:overflow-hidden",
+          )}
+        >
           {children}
         </main>
         <GuiaTourHost />
@@ -1230,21 +1230,21 @@ export function PageHeader({
   return (
     <div
       data-guia="page-header"
-      className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4"
+      className="mb-4 flex flex-col gap-3 sm:mb-6 lg:flex-row lg:items-start lg:justify-between lg:gap-6"
     >
-      <div className="min-w-0">
-        <p className="mb-1.5 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
-          <span className="size-1.5 rounded-full bg-brand-accent" />
-          {brandName}
+      <div className="min-w-0 flex-1 space-y-1 lg:min-w-64">
+        <p className="mb-1.5 inline-flex max-w-full items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+          <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+          <span className="truncate">{brandName}</span>
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-xl font-semibold tracking-tight wrap-break-word text-module-title sm:text-2xl">
             {title}
           </h1>
           <ModuloAjudaButton />
         </div>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+          <p className="mt-1 max-w-2xl text-sm text-pretty wrap-break-word text-muted-foreground">
             {description}
           </p>
         )}
@@ -1252,7 +1252,7 @@ export function PageHeader({
       {actions && (
         <div
           data-guia="page-actions"
-          className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0"
+          className="flex w-full flex-wrap items-end gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0 lg:justify-end"
         >
           {actions}
         </div>

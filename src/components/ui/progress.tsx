@@ -12,7 +12,7 @@ const Progress = React.forwardRef<
   <ProgressPrimitive.Root
     ref={ref}
     className={cn(
-      "relative h-2 w-full overflow-hidden rounded-full bg-[#079ED4]/15",
+      "relative h-2 w-full overflow-hidden rounded-full bg-primary/15",
       className,
     )}
     {...props}
@@ -22,7 +22,7 @@ const Progress = React.forwardRef<
       style={{
         transform: `translateX(-${100 - (value || 0)}%)`,
         backgroundImage:
-          "linear-gradient(90deg, #079ED4 0%, #057aa8 55%, #034e6e 100%)",
+          "linear-gradient(90deg, var(--btn-gradient-from, #0e6f8a) 0%, var(--btn-gradient-to, #079ed4) 100%)",
       }}
     />
   </ProgressPrimitive.Root>

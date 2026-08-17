@@ -774,7 +774,7 @@ function Usuarios() {
             label="Total de corretores"
             value={adminStats.corretores}
             icon={Users}
-            tone="blue"
+            tone="blue-1"
             format="number"
             onClick={() => {
               setRoleFilter("corretor");
@@ -790,7 +790,7 @@ function Usuarios() {
                 : "—"
             }
             icon={Clock3}
-            tone="violet"
+            tone="blue-2"
             format="number"
             suffix={
               adminStats.loggedInToday > 0

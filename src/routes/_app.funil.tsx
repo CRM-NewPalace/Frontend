@@ -113,6 +113,7 @@ import { cn } from "@/lib/utils";
 import { displayEmail } from "@/lib/email";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 import { isStatusVendido } from "@/lib/documentacao-status";
+import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 
 const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
   pendente: "Pendente",
@@ -145,9 +146,7 @@ const COLUMN_STEP_PX = 288 + 12;
 
 const FUNIL_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
-const FUNIL_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
-} as const;
+const FUNIL_GRADIENT_STYLE = BRAND_GRADIENT_STYLE;
 
 export const Route = createFileRoute("/_app/funil")({
   head: () => ({ meta: [{ title: "Funil de Vendas — Zone Connection" }] }),

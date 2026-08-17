@@ -77,6 +77,7 @@ import {
 } from "@/lib/table-sort";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import type { CatalogType } from "@/lib/catalog-api";
 import { ApiError } from "@/lib/api";
 import {
   formatPhone,
@@ -178,7 +179,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+import { SOFT_BTN } from "@/lib/soft-btn";
+import {
+  DEFAULT_CATALOG_COLOR,
+  isHexColor,
+  STATUS_CHIP_CLASS,
+} from "@/lib/catalog-colors";
 import {
   Popover,
   PopoverContent,
@@ -186,6 +192,42 @@ import {
 } from "@/components/ui/popover";
 
 const DOC_STATUS_CHIP = cn(STATUS_CHIP_CLASS, "justify-start text-left");
+
+function DocCatalogBadge({
+  type,
+  label,
+  colorByLabel,
+}: {
+  type: Extract<
+    CatalogType,
+    "documentacao_status1" | "documentacao_status2" | "documentacao_fonte"
+  >;
+  label: string;
+  colorByLabel: (type: CatalogType, label: string) => string;
+}) {
+  const color = colorByLabel(type, label);
+  if (isHexColor(color)) {
+    return (
+      <Badge
+        variant="secondary"
+        className={cn(DOC_STATUS_CHIP, "border-transparent font-normal")}
+        style={construtoraBadgeStyle(color)}
+        title={label}
+      >
+        {label}
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      className={cn(DOC_STATUS_CHIP, color || DEFAULT_CATALOG_COLOR)}
+      title={label}
+    >
+      {label}
+    </Badge>
+  );
+}
+
 const DOC_PERSON_CHIP =
   "inline-flex h-6 max-w-full items-center justify-start truncate border-transparent px-2 text-left text-[11px] font-normal leading-6";
 
@@ -222,8 +264,6 @@ export const Route = createFileRoute("/_app/documentacao")({
   component: DocumentacaoPage,
 });
 
-const DOC_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
 
 function creditUserLabel(user: { name: string; role?: string | null }) {
   if (user.role === "gerente") return `${user.name} · Gerente`;
@@ -361,8 +401,7 @@ function DocumentacaoPage() {
     user?.role === "analista" ||
     user?.role === "gerente" ||
     user?.role === "treinee";
-  const canMutateDocs =
-    user?.role === "admin" || user?.role === "analista";
+  const canMutateDocs = user?.role === "admin" || user?.role === "analista";
   const {
     leads,
     assignees,
@@ -380,14 +419,27 @@ function DocumentacaoPage() {
     addItem,
     colorByLabel,
   } = useCatalog();
-  const fonteCatalog =
-    documentacaoFontes.length > 0
-      ? documentacaoFontes
-      : [...DEFAULT_DOCUMENTACAO_FONTES];
-  const status1Catalog =
-    documentacaoStatus1.length > 0 ? documentacaoStatus1 : [...DEFAULT_STATUS1];
-  const status2Catalog =
-    documentacaoStatus2.length > 0 ? documentacaoStatus2 : [...DEFAULT_STATUS2];
+  const fonteCatalog = useMemo(
+    () =>
+      documentacaoFontes.length > 0
+        ? documentacaoFontes
+        : [...DEFAULT_DOCUMENTACAO_FONTES],
+    [documentacaoFontes],
+  );
+  const status1Catalog = useMemo(
+    () =>
+      documentacaoStatus1.length > 0
+        ? documentacaoStatus1
+        : [...DEFAULT_STATUS1],
+    [documentacaoStatus1],
+  );
+  const status2Catalog = useMemo(
+    () =>
+      documentacaoStatus2.length > 0
+        ? documentacaoStatus2
+        : [...DEFAULT_STATUS2],
+    [documentacaoStatus2],
+  );
   const canQuickCreateEmpreendimento =
     user?.role === "admin" ||
     user?.role === "gerente" ||
@@ -406,8 +458,8 @@ function DocumentacaoPage() {
   const [filterCorretorId, setFilterCorretorId] = useState<string>("__all__");
   const [filterSearch, setFilterSearch] = useState("");
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
-  const [filterStatus1, setFilterStatus1] = useState(
-    () => status1FromPipeline(routeSearch.status),
+  const [filterStatus1, setFilterStatus1] = useState(() =>
+    status1FromPipeline(routeSearch.status),
   );
   const [filterStatus2, setFilterStatus2] = useState("__all__");
   const [filterFonte, setFilterFonte] = useState("__all__");
@@ -1011,6 +1063,7 @@ function DocumentacaoPage() {
     empreendimentos,
     corretorOptions,
     gerenteOptions,
+    navigate,
   ]);
 
   const activeFiltersCount = activeFilterChips.length;
@@ -1785,7 +1838,7 @@ function DocumentacaoPage() {
                 size="sm"
                 disabled={importParsing}
                 onClick={() => setImportHelpOpen(true)}
-                className={DOC_SOFT_BTN}
+                className={SOFT_BTN}
               >
                 {importParsing ? (
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -1801,7 +1854,7 @@ function DocumentacaoPage() {
                   variant="outline"
                   size="sm"
                   disabled={filteredItems.length === 0}
-                  className={DOC_SOFT_BTN}
+                  className={SOFT_BTN}
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -1954,8 +2007,8 @@ function DocumentacaoPage() {
                     type="button"
                     variant="outline"
                     className={cn(
-                      DOC_SOFT_BTN,
-                      advancedFiltersCount > 0 && "border-[#079ED4]/40",
+                      SOFT_BTN,
+                      advancedFiltersCount > 0 && "border-primary/40",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />
@@ -2342,17 +2395,17 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="min-w-[70rem] table-fixed text-xs [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
+            <Table className="min-w-280 table-fixed text-xs [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[18%]">Nome</TableHead>
                   <TableHead className="w-[13%]">Construtora</TableHead>
                   <TableHead className="w-[13%]">Empreend.</TableHead>
-                  <TableHead className="w-[9.25rem]">Status 1</TableHead>
-                  <TableHead className="w-[9.25rem]">Status 2</TableHead>
+                  <TableHead className="w-37">Status 1</TableHead>
+                  <TableHead className="w-37">Status 2</TableHead>
                   <TableHead className="w-[13%]">Corretor</TableHead>
                   <TableHead className="w-[13%]">Gerente</TableHead>
-                  <TableHead className="w-[9.25rem]">Fonte</TableHead>
+                  <TableHead className="w-37">Fonte</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -2361,7 +2414,7 @@ function DocumentacaoPage() {
                   <TableRow key={doc.id}>
                     <TableCell>
                       <div
-                        className="table-person-name truncate"
+                        className="table-person-name truncate text-[13.5px]"
                         title={doc.nome}
                       >
                         {doc.nome}
@@ -2401,23 +2454,19 @@ function DocumentacaoPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
-                      <Badge
-                        variant="outline"
-                        className={cn(DOC_STATUS_CHIP, "font-normal")}
-                        title={doc.status1}
-                      >
-                        {doc.status1}
-                      </Badge>
+                    <TableCell className="w-37">
+                      <DocCatalogBadge
+                        type="documentacao_status1"
+                        label={doc.status1}
+                        colorByLabel={colorByLabel}
+                      />
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
-                      <Badge
-                        variant="secondary"
-                        className={cn(DOC_STATUS_CHIP, "font-normal")}
-                        title={doc.status2}
-                      >
-                        {doc.status2}
-                      </Badge>
+                    <TableCell className="w-37">
+                      <DocCatalogBadge
+                        type="documentacao_status2"
+                        label={doc.status2}
+                        colorByLabel={colorByLabel}
+                      />
                     </TableCell>
                     <TableCell>
                       {(() => {
@@ -2453,7 +2502,7 @@ function DocumentacaoPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-[9.25rem]">
+                    <TableCell className="w-37">
                       {(() => {
                         const fonte = displayFonte(doc.fonte);
                         if (!fonte) {
@@ -2462,17 +2511,11 @@ function DocumentacaoPage() {
                           );
                         }
                         return (
-                          <Badge
-                            className={cn(
-                              catalogColorBadgeClass(
-                                colorByLabel("documentacao_fonte", fonte),
-                              ),
-                              "justify-start text-left font-normal",
-                            )}
-                            title={fonte}
-                          >
-                            {fonte}
-                          </Badge>
+                          <DocCatalogBadge
+                            type="documentacao_fonte"
+                            label={fonte}
+                            colorByLabel={colorByLabel}
+                          />
                         );
                       })()}
                     </TableCell>
@@ -3038,7 +3081,11 @@ function DocumentacaoPage() {
               variant="outline"
               onClick={requestCloseDocDialog}
             >
-              {readOnly ? "Fechar" : formMode === "create" && createLocked ? "Sair" : "Cancelar"}
+              {readOnly
+                ? "Fechar"
+                : formMode === "create" && createLocked
+                  ? "Sair"
+                  : "Cancelar"}
             </Button>
             {!readOnly && (
               <Button type="submit" disabled={saving}>

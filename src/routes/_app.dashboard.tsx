@@ -60,9 +60,8 @@ import {
 import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { SOFT_BTN } from "@/lib/soft-btn";
 
-const DASHBOARD_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
 
 const chartConfig = {
   total: { label: "Processos", color: "hsl(var(--primary))" },
@@ -266,11 +265,11 @@ function DashboardAdminView() {
   );
 
   const filtros = (
-    <div className="flex flex-wrap items-end gap-2">
-      <div className="space-y-1">
+    <div className="flex w-full flex-wrap items-end gap-2">
+      <div className="min-w-28 flex-1 space-y-1 sm:flex-none">
         <Label className="text-[11px] text-muted-foreground">Mês</Label>
         <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-          <SelectTrigger className="h-9 w-38 bg-background">
+          <SelectTrigger className="h-9 w-full bg-background sm:w-36">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -282,10 +281,10 @@ function DashboardAdminView() {
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-1">
+      <div className="min-w-20 flex-1 space-y-1 sm:flex-none">
         <Label className="text-[11px] text-muted-foreground">Ano</Label>
         <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-          <SelectTrigger className="h-9 w-22 bg-background">
+          <SelectTrigger className="h-9 w-full bg-background sm:w-24">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -297,10 +296,10 @@ function DashboardAdminView() {
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-1">
+      <div className="min-w-32 flex-1 space-y-1 sm:min-w-40 sm:flex-none">
         <Label className="text-[11px] text-muted-foreground">Origem</Label>
         <Select value={origemFilter} onValueChange={setOrigemFilter}>
-          <SelectTrigger className="h-9 w-44 bg-background">
+          <SelectTrigger className="h-9 w-full bg-background sm:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -442,12 +441,12 @@ function DashboardAdminView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Pipeline de documentação</h2>
+          <h2 className="text-base font-semibold text-module-title">Pipeline de documentação</h2>
           <p className="text-xs text-muted-foreground">
             Processos cadastrados em {mesLabel}.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" className={DASHBOARD_SOFT_BTN}>
+        <Button asChild variant="outline" size="sm" className={SOFT_BTN}>
           <Link to="/documentacao">Ver documentação</Link>
         </Button>
       </div>
@@ -496,7 +495,7 @@ function DashboardAdminView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">
+          <h2 className="text-base font-semibold text-module-title">
             {isGerente ? "Sua comissão do mês" : "Comissões do mês"}
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -505,7 +504,7 @@ function DashboardAdminView() {
               : `Comissão líquida lançada nas vendas de ${mesLabel}.`}
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" className={DASHBOARD_SOFT_BTN}>
+        <Button asChild variant="outline" size="sm" className={SOFT_BTN}>
           <Link to="/financeiro/comissao">Ver comissões</Link>
         </Button>
       </div>
@@ -588,7 +587,7 @@ function DashboardAdminView() {
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="rounded-xl border bg-secondary/40 p-3 sm:p-4 text-center">
-              <div className="text-xs font-semibold uppercase tracking-wider text-brand-accent">
+              <div className="text-xs font-semibold uppercase tracking-wider text-primary">
                 Taxa de conversão
               </div>
               <div className="mt-1 text-3xl sm:text-4xl font-bold tabular-nums text-foreground">
@@ -764,7 +763,7 @@ function DashboardAdminView() {
               type="button"
               variant="outline"
               size="sm"
-              className={`mt-3 ${DASHBOARD_SOFT_BTN}`}
+              className={`mt-3 ${SOFT_BTN}`}
             >
               <Link to="/agenda">Abrir agenda</Link>
             </Button>
@@ -883,7 +882,7 @@ function DashboardAdminView() {
           <CardContent className="space-y-5">
             <div className="rounded-xl border bg-secondary/40 p-4">
               <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="font-semibold">Imobiliária</div>
+                <div className="font-semibold text-primary">Imobiliária</div>
                 <div className="text-sm tabular-nums">
                   {summary.metas.imobiliaria.atual.toLocaleString("pt-BR")} /{" "}
                   {summary.metas.imobiliaria.meta.toLocaleString("pt-BR")} (
@@ -895,7 +894,7 @@ function DashboardAdminView() {
 
             {summary.metas.equipes.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Por equipe</h3>
+                <h3 className="text-sm font-semibold text-primary">Por equipe</h3>
                 {summary.metas.equipes.map((eq) => (
                   <div key={eq.equipeId}>
                     <div className="mb-1 flex justify-between text-sm">
@@ -912,7 +911,7 @@ function DashboardAdminView() {
 
             {summary.metas.corretores.length > 0 ? (
               <div className="overflow-x-auto">
-                <h3 className="text-sm font-semibold mb-2">Por corretor</h3>
+                <h3 className="text-sm font-semibold text-primary mb-2">Por corretor</h3>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
@@ -1180,12 +1179,12 @@ function DashboardCorretorView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Sua comissão do mês</h2>
+          <h2 className="text-base font-semibold text-module-title">Sua comissão do mês</h2>
           <p className="text-xs text-muted-foreground">
             Quanto você recebe nas vendas de {mesLabel}.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" className={DASHBOARD_SOFT_BTN}>
+        <Button asChild variant="outline" size="sm" className={SOFT_BTN}>
           <Link to="/financeiro/comissao">Ver comissões</Link>
         </Button>
       </div>
@@ -1279,7 +1278,7 @@ function AgendaCategoria({
   return (
     <div className="rounded-lg border p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h3 className="text-sm font-semibold text-primary">{title}</h3>
         <span className="text-xs text-muted-foreground">{items.length}</span>
       </div>
       {items.length === 0 ? (
@@ -1318,7 +1317,7 @@ function AgendaCategoria({
               type="button"
               variant="outline"
               size="sm"
-              className={`mt-3 ${DASHBOARD_SOFT_BTN}`}
+              className={`mt-3 ${SOFT_BTN}`}
             >
               <Link to="/agenda">Exibir mais</Link>
             </Button>

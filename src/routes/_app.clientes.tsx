@@ -108,6 +108,8 @@ import {
 import { cn } from "@/lib/utils";
 import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { toast } from "sonner";
+import { SOFT_BTN } from "@/lib/soft-btn";
+import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 
 export const Route = createFileRoute("/_app/clientes")({
   head: () => ({ meta: [{ title: "Clientes — Zone Connection" }] }),
@@ -116,11 +118,7 @@ export const Route = createFileRoute("/_app/clientes")({
 
 const CLIENTES_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110 disabled:opacity-50";
-const CLIENTES_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
-} as const;
-const CLIENTES_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+const CLIENTES_GRADIENT_STYLE = BRAND_GRADIENT_STYLE;
 
 type FormState = {
   nome: string;
@@ -585,7 +583,7 @@ function Clientes() {
               size="sm"
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
-              className={CLIENTES_SOFT_BTN}
+              className={SOFT_BTN}
             >
               {importParsing ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -600,7 +598,7 @@ function Clientes() {
                   variant="outline"
                   size="sm"
                   disabled={clientes.length === 0}
-                  className={CLIENTES_SOFT_BTN}
+                  className={SOFT_BTN}
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Exportar
@@ -1072,7 +1070,7 @@ function Clientes() {
             <Button
               type="button"
               variant="outline"
-              className={`flex-1 sm:flex-none ${CLIENTES_SOFT_BTN}`}
+              className={`flex-1 sm:flex-none ${SOFT_BTN}`}
               onClick={() => setFormOpen(false)}
             >
               Cancelar
@@ -1181,7 +1179,7 @@ function Clientes() {
             <FormDialogActions hint={`Atualizado em ${detail.updatedAt}`}>
               <Button
                 variant="outline"
-                className={`flex-1 sm:flex-none ${CLIENTES_SOFT_BTN}`}
+                className={`flex-1 sm:flex-none ${SOFT_BTN}`}
                 onClick={() => openEdit(detail)}
               >
                 <Pencil className="w-4 h-4" />
@@ -1359,7 +1357,7 @@ function Clientes() {
             <Button
               type="button"
               variant="outline"
-              className={CLIENTES_SOFT_BTN}
+              className={SOFT_BTN}
               onClick={() =>
                 downloadImportTemplate("modelo-importacao-clientes.xlsx")
               }
@@ -1444,7 +1442,7 @@ function Clientes() {
               variant="outline"
               disabled={importSaving}
               onClick={() => setImportOpen(false)}
-              className={CLIENTES_SOFT_BTN}
+              className={SOFT_BTN}
             >
               Cancelar
             </Button>

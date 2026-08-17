@@ -127,7 +127,7 @@ function StepList({ items }: { items: ReactNode[] }) {
     <ol className="space-y-2.5">
       {items.map((item, index) => (
         <li key={index} className="flex gap-3 text-sm leading-relaxed">
-          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 text-[11px] font-bold text-brand-accent">
+          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
             {index + 1}
           </span>
           <div className="min-w-0 pt-0.5">{item}</div>
@@ -154,11 +154,11 @@ function GuideSection({
     <section id={id} className="scroll-mt-24">
       <Card className="overflow-hidden">
         <div className="flex items-start gap-4 border-b border-border/70 bg-muted/25 px-5 py-4 sm:px-6">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-accent/12 text-brand-accent">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
             <Icon className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-accent">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
               {kicker}
             </p>
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
@@ -203,10 +203,10 @@ export function GuiaPlataformaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-brand-accent/12 via-card to-card p-5 sm:p-7">
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-primary/12 via-card to-card p-5 sm:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl space-y-3">
-            <Badge className="w-fit bg-brand-accent/15 text-brand-accent hover:bg-brand-accent/15">
+            <Badge className="w-fit bg-primary/15 text-primary hover:bg-primary/15">
               Super admin · plataforma
             </Badge>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -247,7 +247,7 @@ export function GuiaPlataformaPage() {
               key={item.title}
               className="rounded-xl border border-border/70 bg-background/70 p-4 backdrop-blur-sm"
             >
-              <item.icon className="mb-2 h-4 w-4 text-brand-accent" />
+              <item.icon className="mb-2 h-4 w-4 text-primary" />
               <p className="text-sm font-semibold">{item.title}</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 {item.text}
@@ -271,7 +271,7 @@ export function GuiaPlataformaPage() {
                   className={cn(
                     "block w-full rounded-md px-2 py-1.5 text-left text-[13px] transition-colors",
                     active === item.id
-                      ? "bg-brand-accent/10 font-medium text-brand-accent"
+                      ? "bg-primary/10 font-medium text-primary"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -292,7 +292,7 @@ export function GuiaPlataformaPage() {
                 className={cn(
                   "shrink-0 rounded-full border px-3 py-1 text-xs",
                   active === item.id
-                    ? "border-brand-accent/40 bg-brand-accent/10 text-brand-accent"
+                    ? "border-primary/40 bg-primary/10 text-primary"
                     : "border-border text-muted-foreground",
                 )}
               >
@@ -352,7 +352,7 @@ export function GuiaPlataformaPage() {
                 <>
                   Abra{" "}
                   <a
-                    className="font-medium text-brand-accent underline-offset-2 hover:underline"
+                    className="font-medium text-primary underline-offset-2 hover:underline"
                     href="https://developers.facebook.com/apps"
                     target="_blank"
                     rel="noreferrer"
@@ -445,7 +445,7 @@ export function GuiaPlataformaPage() {
                 <>
                   Facebook com a conta que administra (ideal: da imobiliária). Abra{" "}
                   <a
-                    className="font-medium text-brand-accent underline-offset-2 hover:underline"
+                    className="font-medium text-primary underline-offset-2 hover:underline"
                     href="https://www.facebook.com/pages/create"
                     target="_blank"
                     rel="noreferrer"
@@ -598,7 +598,7 @@ export function GuiaPlataformaPage() {
                 <>
                   Abra o{" "}
                   <a
-                    className="font-medium text-brand-accent underline-offset-2 hover:underline"
+                    className="font-medium text-primary underline-offset-2 hover:underline"
                     href="https://www.facebook.com/adsmanager"
                     target="_blank"
                     rel="noreferrer"

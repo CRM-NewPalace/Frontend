@@ -494,7 +494,7 @@ function AnalisePage() {
                     key={item.id}
                     type="button"
                     onClick={() => openDetail(item)}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover:border-[#079ED4]/40 hover:bg-muted/30"
+                    className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
                   >
                     <div className="min-w-0 space-y-1">
                       <div className="table-person-name text-sm truncate">
@@ -549,7 +549,7 @@ function AnalisePage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="overflow-x-auto rounded-lg border border-border/60">
-              <table className="w-full min-w-[36rem] text-sm">
+              <table className="w-full min-w-xl text-sm">
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/30 text-left text-xs text-muted-foreground">
                     <th className="px-3 py-2.5 font-medium w-10">#</th>
@@ -591,7 +591,7 @@ function AnalisePage() {
                           className={cn(
                             "border-b border-border/40 last:border-0 cursor-pointer transition-colors",
                             selected
-                              ? "bg-[#079ED4]/10"
+                              ? "bg-primary/10"
                               : "hover:bg-muted/40",
                           )}
                           onClick={() => toggleCorretor(row.id)}
@@ -606,7 +606,7 @@ function AnalisePage() {
                               </div>
                               <div className="h-1.5 max-w-56 overflow-hidden rounded-full bg-muted">
                                 <div
-                                  className="h-full rounded-full bg-[#079ED4]"
+                                  className="h-full rounded-full bg-primary"
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
@@ -615,7 +615,7 @@ function AnalisePage() {
                           <td className="px-3 py-2.5 text-right font-semibold tabular-nums">
                             {row.total}
                           </td>
-                          <td className="px-3 py-2.5 text-right tabular-nums text-[#057AA8]">
+                          <td className="px-3 py-2.5 text-right tabular-nums text-primary">
                             {row.emAnalise}
                           </td>
                           <td className="px-3 py-2.5 text-right tabular-nums text-emerald-600">
@@ -704,7 +704,7 @@ function AnalisePage() {
                         key={item.id}
                         type="button"
                         onClick={() => openDetail(item)}
-                        className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover:border-[#079ED4]/40 hover:bg-muted/30"
+                        className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
                       >
                         <div className="min-w-0 space-y-1">
                           <div className="table-person-name text-sm truncate">

@@ -27,12 +27,12 @@ const TONE: Record<FinanceKpiTone, { bar: string; icon: string }> = {
   blue: { bar: "bg-blue-600", icon: "bg-blue-600" },
   violet: { bar: "bg-violet-600", icon: "bg-violet-600" },
   rose: { bar: "bg-rose-500", icon: "bg-rose-500" },
-  "blue-1": { bar: "bg-[#5BC4E8]", icon: "bg-[#5BC4E8]" },
-  "blue-2": { bar: "bg-[#079ED4]", icon: "bg-[#079ED4]" },
-  "blue-3": { bar: "bg-[#0689BD]", icon: "bg-[#0689BD]" },
-  "blue-4": { bar: "bg-[#057AA8]", icon: "bg-[#057AA8]" },
-  "blue-5": { bar: "bg-[#04648A]", icon: "bg-[#04648A]" },
-  "blue-6": { bar: "bg-[#034E6E]", icon: "bg-[#034E6E]" },
+  "blue-1": { bar: "bg-[var(--kpi-seq-1,#5BC4E8)]", icon: "bg-[var(--kpi-seq-1,#5BC4E8)]" },
+  "blue-2": { bar: "bg-[var(--kpi-seq-2,#079ED4)]", icon: "bg-[var(--kpi-seq-2,#079ED4)]" },
+  "blue-3": { bar: "bg-[var(--kpi-seq-3,#0689BD)]", icon: "bg-[var(--kpi-seq-3,#0689BD)]" },
+  "blue-4": { bar: "bg-[var(--kpi-seq-4,#057AA8)]", icon: "bg-[var(--kpi-seq-4,#057AA8)]" },
+  "blue-5": { bar: "bg-[var(--kpi-seq-5,#04648A)]", icon: "bg-[var(--kpi-seq-5,#04648A)]" },
+  "blue-6": { bar: "bg-[var(--kpi-seq-6,#034E6E)]", icon: "bg-[var(--kpi-seq-6,#034E6E)]" },
 };
 
 function money(n: number) {
@@ -160,7 +160,7 @@ export function FinanceKpiCard({
       className={cn(
         "h-full rounded-xl bg-card text-card-foreground shadow-sm border border-border/60 overflow-hidden min-w-0 flex flex-col",
         interactive && "transition-shadow hover:shadow-md",
-        active && "border-[#079ED4]/50 ring-2 ring-[#079ED4]/25 shadow-md",
+        active && "border-primary/50 ring-2 ring-primary/25 shadow-md",
         className,
       )}
       title={display}

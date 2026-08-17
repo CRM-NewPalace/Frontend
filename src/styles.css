@@ -35,6 +35,7 @@
   --color-info-foreground: var(--info-foreground);
   --color-brand-accent: var(--brand-accent);
   --color-brand-dark: #053647;
+  --color-module-title: var(--module-title);
   --color-surface-muted: #f8fafc;
   --color-text-muted: #64748b;
   --background-image-brand-text: linear-gradient(to right, #079ed4, #053647);
@@ -70,8 +71,9 @@
   --card-foreground: #053647;
   --popover: #ffffff;
   --popover-foreground: #053647;
-  --primary: #053647;
+  --primary: #079ed4;
   --primary-foreground: #ffffff;
+  --module-title: #053647;
   --secondary: #eef6fb;
   --secondary-foreground: #053647;
   --muted: #f1f5f9;
@@ -87,6 +89,15 @@
   --info: #079ed4;
   --info-foreground: #ffffff;
   --brand-accent: #079ed4;
+  --btn-gradient-from: #0e6f8a;
+  --btn-gradient-to: #079ed4;
+  /* Escala sequencial dos KPIs (claro → escuro) */
+  --kpi-seq-1: #5bc4e8;
+  --kpi-seq-2: #079ed4;
+  --kpi-seq-3: #0689bd;
+  --kpi-seq-4: #057aa8;
+  --kpi-seq-5: #04648a;
+  --kpi-seq-6: #034e6e;
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #079ed4;
@@ -97,7 +108,7 @@
   --chart-5: #64748b;
   --sidebar: #032b43;
   --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #079ed4;
+  --sidebar-primary: #075a82;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #075a82;
   --sidebar-accent-foreground: #f8fafc;
@@ -115,6 +126,7 @@
   --popover-foreground: #f8fafc;
   --primary: #079ed4;
   --primary-foreground: #ffffff;
+  --module-title: #f8fafc;
   --secondary: #1c2430;
   --secondary-foreground: #f8fafc;
   --muted: #1c2430;
@@ -160,10 +172,10 @@ html.tenant-sidebar-compact aside {
   --tenant-sidebar-pad: 0.35rem;
 }
 
-/* Scrollbar do aside: trilho = fundo do sidebar; thumb = #075A82 */
+/* Scrollbar do aside: trilho = fundo; thumb = cor ativa / principal */
 .sidebar-nav-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #075a82 var(--sidebar);
+  scrollbar-color: var(--sidebar-primary, #075a82) var(--sidebar);
 }
 
 .sidebar-nav-scroll::-webkit-scrollbar {
@@ -175,13 +187,17 @@ html.tenant-sidebar-compact aside {
 }
 
 .sidebar-nav-scroll::-webkit-scrollbar-thumb {
-  background: #075a82;
+  background: var(--sidebar-primary, #075a82);
   border-radius: 999px;
   border: 2px solid var(--sidebar);
 }
 
 .sidebar-nav-scroll::-webkit-scrollbar-thumb:hover {
-  background: #086a96;
+  background: color-mix(
+    in srgb,
+    var(--sidebar-primary, #075a82) 82%,
+    white
+  );
 }
 
 html.tenant-density-compact {
@@ -263,16 +279,14 @@ html.tenant-density-compact .space-y-6 {
     background-image: var(--background-image-brand-cta);
   }
 
-  /** Avatar de iniciais — mesmo degradê do usuário no nav. */
+  /** Avatar de iniciais — acompanha o degradê escolhido na aparência. */
   .avatar-fallback-brand {
     background-color: transparent !important;
-    background-image: linear-gradient(
-      135deg,
-      #079ed4 0%,
-      #057aa8 55%,
-      #034e6e 100%
+    background-image: var(
+      --background-image-brand-cta,
+      linear-gradient(135deg, #0e6f8a 0%, #079ed4 100%)
     ) !important;
-    color: #ffffff !important;
+    color: var(--btn-gradient-fg, #ffffff) !important;
     font-weight: 600;
   }
 

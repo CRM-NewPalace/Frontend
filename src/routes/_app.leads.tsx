@@ -118,6 +118,8 @@ import {
   DetailField,
 } from "@/components/form-dialog";
 import { ApiError } from "@/lib/api";
+import { SOFT_BTN } from "@/lib/soft-btn";
+import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -243,11 +245,7 @@ const TIPO_RENDA_OPTIONS = [
 
 const LEADS_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110 disabled:opacity-50";
-const LEADS_GRADIENT_STYLE = {
-  backgroundImage: "linear-gradient(135deg, #0e6f8a 0%, #079ED4 100%)",
-} as const;
-const LEADS_SOFT_BTN =
-  "border-2 border-[#079ED4]/15 bg-[#079ED4]/5 text-[#053647] hover:bg-[#079ED4]/20 hover:text-[#053647]";
+const LEADS_GRADIENT_STYLE = BRAND_GRADIENT_STYLE;
 
 function LeadsPage() {
   const navigate = useNavigate();
@@ -1045,7 +1043,7 @@ function LeadsPage() {
               size="sm"
               disabled={importParsing}
               onClick={() => setImportHelpOpen(true)}
-              className={LEADS_SOFT_BTN}
+              className={SOFT_BTN}
               data-guia="leads-importar"
             >
               {importParsing ? (
@@ -1060,7 +1058,7 @@ function LeadsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setDistribuirOpen(true)}
-                className={LEADS_SOFT_BTN}
+                className={SOFT_BTN}
                 data-guia="leads-distribuir"
               >
                 <Share2 className="w-4 h-4 mr-1" />
@@ -1073,7 +1071,7 @@ function LeadsPage() {
                   variant="outline"
                   size="sm"
                   disabled={filteredLeads.length === 0}
-                  className={LEADS_SOFT_BTN}
+                  className={SOFT_BTN}
                   data-guia="leads-exportar"
                 >
                   <Download className="w-4 h-4 mr-1" />
@@ -1433,17 +1431,20 @@ function LeadsPage() {
                     {
                       value: "Alta" as const,
                       active:
-                        "border-destructive/40 bg-destructive/10 text-destructive",
+                        "border-red-300 bg-red-100 text-red-800 shadow-sm ring-1 ring-red-200/80",
+                      idle: "hover:border-red-200 hover:bg-red-50 hover:text-red-700",
                     },
                     {
                       value: "Média" as const,
                       active:
-                        "border-warning/50 bg-warning/15 text-warning-foreground",
+                        "border-amber-300 bg-amber-100 text-amber-900 shadow-sm ring-1 ring-amber-200/80",
+                      idle: "hover:border-amber-200 hover:bg-amber-50 hover:text-amber-800",
                     },
                     {
                       value: "Baixa" as const,
                       active:
-                        "border-primary/30 bg-secondary text-secondary-foreground",
+                        "border-sky-300 bg-sky-100 text-sky-800 shadow-sm ring-1 ring-sky-200/80",
+                      idle: "hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700",
                     },
                   ].map((opt) => (
                     <button
@@ -1454,7 +1455,7 @@ function LeadsPage() {
                         "h-10 rounded-lg border text-sm font-medium transition-colors",
                         form.prioridade === opt.value
                           ? opt.active
-                          : "bg-background text-muted-foreground hover:bg-accent",
+                          : cn("bg-background text-muted-foreground", opt.idle),
                       )}
                     >
                       {opt.value}
@@ -1471,16 +1472,20 @@ function LeadsPage() {
                     {
                       value: "Quente" as const,
                       active:
-                        "border-destructive/40 bg-destructive/10 text-destructive",
+                        "border-orange-300 bg-orange-100 text-orange-900 shadow-sm ring-1 ring-orange-200/80",
+                      idle: "hover:border-orange-200 hover:bg-orange-50 hover:text-orange-800",
                     },
                     {
                       value: "Morno" as const,
                       active:
-                        "border-warning/50 bg-warning/15 text-warning-foreground",
+                        "border-yellow-300 bg-yellow-100 text-yellow-900 shadow-sm ring-1 ring-yellow-200/80",
+                      idle: "hover:border-yellow-200 hover:bg-yellow-50 hover:text-yellow-800",
                     },
                     {
                       value: "Frio" as const,
-                      active: "border-info/40 bg-info/10 text-info",
+                      active:
+                        "border-cyan-300 bg-cyan-100 text-cyan-900 shadow-sm ring-1 ring-cyan-200/80",
+                      idle: "hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-800",
                     },
                   ].map((opt) => (
                     <button
@@ -1491,7 +1496,7 @@ function LeadsPage() {
                         "h-10 rounded-lg border text-sm font-medium transition-colors",
                         form.temperatura === opt.value
                           ? opt.active
-                          : "bg-background text-muted-foreground hover:bg-accent",
+                          : cn("bg-background text-muted-foreground", opt.idle),
                       )}
                     >
                       {opt.value}
@@ -2019,8 +2024,8 @@ function LeadsPage() {
             variant="outline"
             size="sm"
             className={cn(
-              LEADS_SOFT_BTN,
-              extraFiltersActive && "border-[#079ED4]/40",
+              SOFT_BTN,
+              extraFiltersActive && "border-primary/40",
             )}
             onClick={() => setShowExtraFilters((v) => !v)}
           >
@@ -2161,10 +2166,10 @@ function LeadsPage() {
                   <Badge
                     variant={selected ? "secondary" : "outline"}
                     className={cn(
-                      "h-5 px-1.5 tabular-nums text-[10px]",
+                      "h-5 px-1.5 tabular-nums text-[11px]",
                       selected
-                        ? "border-transparent bg-white/20 text-white"
-                        : "border-transparent bg-[#079ED4]/15 text-brand-dark",
+                        ? "border-transparent bg-black/15 text-current"
+                        : "border-transparent bg-primary/15 text-foreground",
                     )}
                   >
                     {opt.count}

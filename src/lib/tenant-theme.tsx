@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthUser, TenantBranding } from "@/lib/auth";
+import { initAppearance } from "@/lib/appearance";
 
 /** Logo padrão Zone Connection (fundo transparente). */
 export const DEFAULT_TENANT_LOGO = "/LozoZone.png";
@@ -81,6 +82,8 @@ export function TenantThemeProvider({
 
   useEffect(() => {
     clearTenantThemeOverrides();
+    // Preferências do usuário (aside/primary/fundo) — só no painel (_app).
+    initAppearance();
   }, [tenant]);
 
   return (

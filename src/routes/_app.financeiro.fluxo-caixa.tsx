@@ -423,7 +423,7 @@ function Page() {
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   view === opt.id
-                    ? "bg-[#079ED4]/5 text-brand-dark shadow-sm"
+                    ? "bg-primary/10 text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

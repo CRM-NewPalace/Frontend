@@ -4,10 +4,11 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/sonner";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
@@ -15,7 +16,7 @@ import { GoogleAnalytics } from "@/components/google-analytics";
 
 import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { initTheme } from "../lib/theme";
+import { syncSurfaceForPath } from "../lib/crm-surface";
 
 function NotFoundComponent() {
   return (
@@ -213,7 +214,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <link rel="icon" href="/favicon.ico?v=11" sizes="any" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem("crm_theme_zone_light_v1");if(!m){localStorage.setItem("crm_theme_zone_light_v1","1");localStorage.setItem("crm_theme","light")}var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light"}}catch(e){}})();`,
+            __html: `(function(){try{var p=location.pathname;var pub=p==="/"||p==="/login"||p==="/demonstracao"||p==="/termos"||p==="/privacidade"||p.indexOf("/produtos/")===0;if(pub){document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light";return}var m=localStorage.getItem("crm_theme_zone_light_v1");if(!m){localStorage.setItem("crm_theme_zone_light_v1","1");localStorage.setItem("crm_theme","light")}var t=localStorage.getItem("crm_theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light"}}catch(e){}})();`,
           }}
         />
       </head>
@@ -227,10 +228,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  useEffect(() => {
-    initTheme();
-  }, []);
+  useLayoutEffect(() => {
+    syncSurfaceForPath(pathname);
+  }, [pathname]);
 
   return (
     <HelmetProvider>
