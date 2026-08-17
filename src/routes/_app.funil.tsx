@@ -74,6 +74,7 @@ import {
   type MonitoramentoFiltro,
 } from "@/lib/lead-monitoramento";
 import { MeuLeadBadge } from "@/components/meu-lead-badge";
+import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { ApiError } from "@/lib/api";
 import {
   FormDialogActions,

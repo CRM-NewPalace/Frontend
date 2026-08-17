@@ -73,8 +73,16 @@ import {
   UserCheck,
   Users,
   Flame,
+  Briefcase,
+  type LucideIcon,
 } from "lucide-react";
-import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
+import {
+  brl,
+  isLeadCarteiraPropria,
+  prioridadeBadgeClass,
+  type Lead,
+} from "@/lib/crm-types";
+import { MeuLeadBadge } from "@/components/meu-lead-badge";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
@@ -128,8 +136,10 @@ import {
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
 
+type DistribuicaoFilter = "all" | "chegaram" | "distribuidos" | "meus";
+
 type LeadsSearch = {
-  distribuicao?: "all" | "chegaram" | "distribuidos";
+  distribuicao?: DistribuicaoFilter;
   parados?: boolean;
 };
 
@@ -151,7 +161,12 @@ export const Route = createFileRoute("/_app/leads")({
   validateSearch: (search: Record<string, unknown>): LeadsSearch => {
     const result: LeadsSearch = {};
     const d = search.distribuicao;
-    if (d === "chegaram" || d === "distribuidos" || d === "all") {
+    if (
+      d === "chegaram" ||
+      d === "distribuidos" ||
+      d === "all" ||
+      d === "meus"
+    ) {
       result.distribuicao = d;
     }
     if (
@@ -338,9 +353,8 @@ function LeadsPage() {
   const [showExtraFilters, setShowExtraFilters] = useState(false);
   const routeSearch = Route.useSearch();
   /** Separação pool (chegaram) × já atribuídos a equipe/corretor. */
-  const [distribuicaoFilter, setDistribuicaoFilter] = useState<
-    "all" | "chegaram" | "distribuidos"
-  >(routeSearch.distribuicao ?? "all");
+  const [distribuicaoFilter, setDistribuicaoFilter] =
+    useState<DistribuicaoFilter>(routeSearch.distribuicao ?? "all");
   const [paradosFilter, setParadosFilter] = useState(
     () => Boolean(routeSearch.parados),
   );
@@ -508,6 +522,12 @@ function LeadsPage() {
         !isLeadDistribuido(l)
       )
         return false;
+      if (
+        isGerente &&
+        distribuicaoFilter === "meus" &&
+        !isLeadCarteiraPropria(l, user?.id)
+      )
+        return false;
       if (paradosFilter && !isLeadParado(l)) return false;
       return true;
     });
@@ -525,7 +545,9 @@ function LeadsPage() {
     distribuicaoFilter,
     paradosFilter,
     isCorretor,
+    isGerente,
     canFilterEquipe,
+    user?.id,
   ]);
 
   const sortedLeads = useMemo(
@@ -542,12 +564,14 @@ function LeadsPage() {
   const distribuicaoCounts = useMemo(() => {
     let chegaram = 0;
     let distribuidos = 0;
+    let meus = 0;
     for (const l of leads) {
       if (isLeadChegou(l)) chegaram += 1;
       else if (isLeadDistribuido(l)) distribuidos += 1;
+      if (isLeadCarteiraPropria(l, user?.id)) meus += 1;
     }
-    return { chegaram, distribuidos, todos: leads.length };
-  }, [leads]);
+    return { chegaram, distribuidos, meus, todos: leads.length };
+  }, [leads, user?.id]);
 
   const kpiCounts = useMemo(() => {
     let alta = 0;
@@ -563,6 +587,7 @@ function LeadsPage() {
       novos,
       chegaram: distribuicaoCounts.chegaram,
       distribuidos: distribuicaoCounts.distribuidos,
+      meus: distribuicaoCounts.meus,
     };
   }, [leads, funnelStages, distribuicaoCounts]);
 
@@ -1832,7 +1857,12 @@ function LeadsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div
+        className={cn(
+          "mb-4 grid grid-cols-2 gap-3",
+          isGerente ? "lg:grid-cols-5" : "lg:grid-cols-4",
+        )}
+      >
         <button
           type="button"
           className="min-w-0 cursor-pointer text-left"
@@ -1910,6 +1940,34 @@ function LeadsPage() {
                 )}
               />
             </button>
+            {isGerente && (
+              <button
+                type="button"
+                className="min-w-0 cursor-pointer text-left"
+                onClick={() => {
+                  setDistribuicaoFilter("meus");
+                  setCorretorFilter("all");
+                  setPrioridadeFilter("all");
+                  setParadosFilter(false);
+                  void navigate({
+                    to: "/leads",
+                    search: { distribuicao: "meus" },
+                    replace: true,
+                  });
+                }}
+              >
+                <FinanceKpiCard
+                  label="Meus leads"
+                  value={kpiCounts.meus}
+                  icon={Briefcase}
+                  tone="blue-4"
+                  format="number"
+                  className={cn(
+                    distribuicaoFilter === "meus" && "shadow-md",
+                  )}
+                />
+              </button>
+            )}
           </>
         ) : (
           <button
@@ -1948,7 +2006,7 @@ function LeadsPage() {
             label="Prioridade alta"
             value={kpiCounts.alta}
             icon={Flame}
-            tone={isCorretor ? "blue-3" : "blue-4"}
+            tone={isCorretor ? "blue-3" : isGerente ? "blue-5" : "blue-4"}
             format="number"
             className={cn(prioridadeFilter === "Alta" && "shadow-md")}
           />
@@ -2036,9 +2094,12 @@ function LeadsPage() {
                   const count =
                     leadsAtivosPorCorretor.find((r) => r.id === a.id)?.count ??
                     0;
-                  return (
+                    return (
                     <SelectItem key={a.id} value={a.id}>
-                      {a.name} ({count})
+                      {isGerente && a.id === user?.id
+                        ? `${a.name} (eu)`
+                        : a.name}{" "}
+                      ({count})
                     </SelectItem>
                   );
                 })}
@@ -2170,7 +2231,22 @@ function LeadsPage() {
                   count: distribuicaoCounts.distribuidos,
                   icon: UserCheck,
                 },
-              ] as const
+                ...(isGerente
+                  ? [
+                      {
+                        id: "meus" as const,
+                        label: "Meus leads",
+                        count: distribuicaoCounts.meus,
+                        icon: Briefcase,
+                      },
+                    ]
+                  : []),
+              ] satisfies {
+                id: DistribuicaoFilter;
+                label: string;
+                count: number;
+                icon: LucideIcon | null;
+              }[]
             ).map((opt) => {
               const Icon = opt.icon;
               const selected = distribuicaoFilter === opt.id;
@@ -2178,7 +2254,10 @@ function LeadsPage() {
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setDistribuicaoFilter(opt.id)}
+                  onClick={() => {
+                    setDistribuicaoFilter(opt.id);
+                    if (opt.id === "meus") setCorretorFilter("all");
+                  }}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer",
                     selected
@@ -2211,7 +2290,9 @@ function LeadsPage() {
                 ? "Leads no pool, ainda sem equipe nem corretor."
                 : distribuicaoFilter === "distribuidos"
                   ? "Leads já atribuídos a uma equipe ou corretor."
-                  : "Visão completa do funil."}
+                  : distribuicaoFilter === "meus"
+                    ? "Somente leads da sua carteira, não os da equipe."
+                    : "Visão completa do funil."}
           </p>
         </div>
       )}
@@ -2307,8 +2388,14 @@ function LeadsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <div className="table-person-name truncate text-sm leading-snug">
-                            {l.nome}
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <div className="table-person-name truncate text-sm leading-snug">
+                              {l.nome}
+                            </div>
+                            {isGerente &&
+                              isLeadCarteiraPropria(l, user?.id) && (
+                                <MeuLeadBadge />
+                              )}
                           </div>
                           <div className="truncate text-[10px] text-muted-foreground">
                             {l.telefone}
