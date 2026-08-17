@@ -154,7 +154,7 @@ function ColorSwatchPicker({
 }
 
 export function ConfigFunisPanel() {
-  const { refresh: refreshCatalog } = useCatalog();
+  const { refresh: refreshCatalog, applyFunnelEtapas } = useCatalog();
   const { refresh: refreshLeads } = useLeads();
   const [funis, setFunis] = useState<Funil[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -226,6 +226,7 @@ export function ConfigFunisPanel() {
       );
     });
     setSelectedId(updated.id);
+    applyFunnelEtapas(updated.etapas);
     await refreshCatalog();
   }
 

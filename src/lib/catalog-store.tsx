@@ -24,6 +24,7 @@ import {
   type UpdateCatalogInput,
 } from "@/lib/catalog-api";
 import { DEFAULT_CATALOG_COLOR } from "@/lib/catalog-colors";
+import type { FunilEtapa } from "@/lib/funis-api";
 import {
   normalizeDocStatus,
   statusesMatch,
@@ -59,7 +60,9 @@ type CatalogContextValue = {
   catalog: GroupedCatalog;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (opts?: { silent?: boolean }) => Promise<void>;
+  /** Aplica etapas de um funil no catálogo (ex.: após recuperar etapas órfãs). */
+  applyFunnelEtapas: (etapas: FunilEtapa[]) => void;
   /** Etapas do funil ativas, ordenadas (id = slug). */
   funnelStages: FunnelStage[];
   /** Slug da etapa usada ao criar lead (papel inicial). */
@@ -252,6 +255,27 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const applyFunnelEtapas = useCallback((etapas: FunilEtapa[]) => {
+    setCatalog((prev) => ({
+      ...prev,
+      funil_etapa: [...etapas]
+        .filter((e) => e.active)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((e) => ({
+          id: e.id,
+          type: "funil_etapa" as const,
+          label: e.label,
+          slug: e.slug,
+          color: e.color,
+          sortOrder: e.sortOrder,
+          active: e.active,
+          papel: e.papel,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+        })),
+    }));
+  }, []);
+
   const installDefaultFunnel = useCallback(async () => {
     const stages = await installDefaultFunnelStages();
     setCatalog((prev) => ({
@@ -266,6 +290,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       refresh,
+      applyFunnelEtapas,
       funnelStages,
       defaultStageId,
       stageByPapel,
@@ -302,6 +327,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       removeItem,
       reorder,
       installDefaultFunnel,
+      applyFunnelEtapas,
     ],
   );
 

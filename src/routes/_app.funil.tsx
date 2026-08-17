@@ -166,6 +166,24 @@ function analiseBadgeClass(status: AnaliseStatus) {
 const LOST_STAGE_SLUG_FALLBACK = "perdido";
 /** Coluna virtual: leads cujo stage não existe no funil ativo. */
 const FORA_DO_FUNIL_STAGE = "__fora_do_funil__";
+
+function stageKey(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function leadMatchesStage(
+  leadStage: string,
+  columnId: string,
+  exactIds: Set<string>,
+) {
+  if (leadStage === columnId) return true;
+  if (exactIds.has(leadStage)) return false;
+  return stageKey(leadStage) === stageKey(columnId);
+}
 const MAX_HISTORICO_TEXTO = 400;
 
 /** Largura da coluna (w-72) + gap (gap-3) — um passo de scroll. */
@@ -213,13 +231,14 @@ export function ComercialFunilBoard({
     markLeadLost,
     applyLead,
     loading,
+    refresh: refreshLeads,
   } = useLeads();
   const {
     funnelStages,
     loading: catalogLoading,
     colorByLabel,
     stageByPapel,
-    refresh: refreshCatalog,
+    applyFunnelEtapas,
   } = useCatalog();
   const lostStageSlug = stageByPapel("perdido") ?? LOST_STAGE_SLUG_FALLBACK;
 
@@ -403,8 +422,14 @@ export function ComercialFunilBoard({
     [funnelStages],
   );
   const orphanLeads = useMemo(
-    () => leads.filter((l) => !funnelStageIds.has(l.stage)),
-    [leads, funnelStageIds],
+    () =>
+      leads.filter(
+        (l) =>
+          !funnelStages.some((s) =>
+            leadMatchesStage(l.stage, s.id, funnelStageIds),
+          ),
+      ),
+    [leads, funnelStages, funnelStageIds],
   );
   const boardStages = useMemo(() => {
     if (orphanLeads.length === 0) return funnelStages;
@@ -824,7 +849,8 @@ export function ComercialFunilBoard({
     try {
       const updated = await recoverFunilEtapas(funilAtivo.id);
       setFunilAtivo(updated);
-      await refreshCatalog();
+      applyFunnelEtapas(updated.etapas);
+      await refreshLeads({ silent: true });
       toast.success(
         "Etapas do funil anterior foram restauradas. Os leads voltam a aparecer nas colunas.",
       );
@@ -1159,7 +1185,9 @@ export function ComercialFunilBoard({
           const isOrphanColumn = stage.id === FORA_DO_FUNIL_STAGE;
           const stageLeads = isOrphanColumn
             ? orphanLeads
-            : leads.filter((l) => l.stage === stage.id);
+            : leads.filter((l) =>
+                leadMatchesStage(l.stage, stage.id, funnelStageIds),
+              );
           const total = stageLeads.reduce((s, l) => s + (l.renda ?? 0), 0);
           return (
             <div
