@@ -57,6 +57,7 @@ type LeadsContextValue = {
       temDependente?: boolean;
     },
   ) => Promise<Lead>;
+  applyLead: (lead: Lead) => void;
   /** Marca como perdido (sai das listas operacionais). */
   markLeadLost: (id: string, motivo: string) => Promise<void>;
   /** Exclusão definitiva (admin, lead já perdido). */
@@ -192,8 +193,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   const updateLead = useCallback(
     async (id: string, patch: UpdateLeadInput & { corretor?: string }) => {
-      const { corretor, corretorId, equipeId, ...rest } = patch;
-      const body: UpdateLeadInput = { ...rest };
+      const { corretor, corretorId, equipeId, createdAt, ...rest } = patch;
+      const body: UpdateLeadInput = {
+        ...rest,
+        ...(createdAt !== undefined ? { createdAt } : {}),
+      };
 
       if (corretorId !== undefined) {
         body.corretorId = corretorId;
@@ -223,6 +227,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
               ? {
                   ...l,
                   ...rest,
+                  ...(createdAt ? { createdAt } : {}),
                   ...(body.corretorId !== undefined
                     ? { corretorId: body.corretorId, corretor: assigneeName }
                     : {}),
@@ -286,6 +291,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     [leads],
   );
 
+  const applyLead = useCallback((lead: Lead) => {
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? lead : l)));
+  }, []);
+
   const markLeadLost = useCallback(async (id: string, motivo: string) => {
     let previous: Lead | undefined;
     setLeads((prev) => {
@@ -336,6 +345,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       addLead,
       updateLead,
       updateLeadStage,
+      applyLead,
       markLeadLost,
       deleteLead,
     }),
@@ -349,6 +359,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       addLead,
       updateLead,
       updateLeadStage,
+      applyLead,
       markLeadLost,
       deleteLead,
     ],

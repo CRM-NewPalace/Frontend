@@ -4,6 +4,7 @@
  */
 
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+import type { LeadMonitoramento } from "@/lib/lead-monitoramento";
 
 export type StageId = string;
 
@@ -56,6 +57,7 @@ export interface Lead {
     parecer: string | null;
     analistaId?: string | null;
   } | null;
+  monitoramento?: LeadMonitoramento | null;
 }
 
 export function brl(n: number) {

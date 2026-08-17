@@ -11,6 +11,9 @@ export type FunilEtapa = {
   sortOrder: number;
   active: boolean;
   papel: FunilEtapaPapel | null;
+  prazoValor: number | null;
+  prazoUnidade: "minutos" | "horas" | "dias";
+  alertaAntecedenciaPercent: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -20,6 +23,8 @@ export type Funil = {
   tenantId: string;
   name: string;
   ativo: boolean;
+  inatividadeValor: number;
+  inatividadeUnidade: "minutos" | "horas" | "dias";
   createdAt: string;
   updatedAt: string;
   etapas: FunilEtapa[];
@@ -42,6 +47,9 @@ export type CreateFunilEtapaInput = {
   color?: string;
   sortOrder?: number;
   papel?: FunilEtapaPapel | null;
+  prazoValor?: number | null;
+  prazoUnidade?: "minutos" | "horas" | "dias";
+  alertaAntecedenciaPercent?: number;
 };
 
 export type UpdateFunilEtapaInput = {
@@ -49,6 +57,9 @@ export type UpdateFunilEtapaInput = {
   color?: string;
   active?: boolean;
   papel?: FunilEtapaPapel | null;
+  prazoValor?: number | null;
+  prazoUnidade?: "minutos" | "horas" | "dias";
+  alertaAntecedenciaPercent?: number;
 };
 
 export async function fetchFunis(): Promise<Funil[]> {
@@ -65,7 +76,11 @@ export async function createFunil(input: CreateFunilInput): Promise<Funil> {
 
 export async function updateFunil(
   id: string,
-  input: { name: string },
+  input: {
+    name?: string;
+    inatividadeValor?: number;
+    inatividadeUnidade?: "minutos" | "horas" | "dias";
+  },
 ): Promise<Funil> {
   return apiFetch<Funil>(`/funis/${id}`, { method: "PATCH", body: input });
 }

@@ -7,7 +7,9 @@ export type NotificacaoTipo =
   | "agenda_atribuicao"
   | "agenda_lembrete_1d"
   | "agenda_lembrete_2h"
-  | "agenda_lembrete_1h";
+  | "agenda_lembrete_1h"
+  | "lead_prazo_proximo"
+  | "lead_prazo_ultrapassado";
 
 export type Notificacao = {
   id: string;

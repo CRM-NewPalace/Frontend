@@ -33,6 +33,7 @@ import {
   Network,
   Menu,
   X,
+  Headset,
   BookOpen,
   BookMarked,
   GraduationCap,
@@ -55,6 +56,7 @@ import {
   markNotificacaoLida,
   type Notificacao,
 } from "@/lib/notificacoes-api";
+import { syncLeadMonitoramento } from "@/lib/leads-api";
 import {
   fetchAgendaLembretes,
   type AgendaProximo,
@@ -91,6 +93,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getWhatsAppUrl } from "@/lib/env";
 
 const AGENDA_BADGE_BY_URGENCIA: Record<
   Exclude<AgendaUrgencia, "nenhuma">,
@@ -109,6 +112,8 @@ const AGENDA_DOT_BY_URGENCIA: Record<
   duas_horas: "bg-orange-500",
   uma_hora: "bg-red-600",
 };
+
+const SUPPORT_WHATSAPP_URL = getWhatsAppUrl(undefined, "558191702203");
 
 const SESSION_LEMBRETE_KEY = "agenda-lembretes-card-shown";
 const SESSION_ANALISE_ALERT_KEY = "analise-resultado-alerted-ids";
@@ -335,6 +340,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const loadNotificacoes = useCallback(async () => {
     try {
+      try {
+        await syncLeadMonitoramento();
+      } catch {
+        // sync de prazo não deve impedir o sino
+      }
       setNotificacoes(await fetchNotificacoes());
     } catch {
       // silencioso: sino não deve quebrar o shell
@@ -527,6 +537,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       });
       return;
     }
+    if (
+      n.tipo === "lead_prazo_proximo" ||
+      n.tipo === "lead_prazo_ultrapassado"
+    ) {
+      void navigate({
+        to: "/funil",
+        search: { lead: n.leadId ?? undefined },
+      });
+      return;
+    }
     void navigate({
       to: user?.role === "analista" ? "/documentacao" : "/funil",
     });
@@ -667,6 +687,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem(SESSION_ANALISE_ALERT_KEY);
     toast.success("Você saiu da conta");
     navigate({ to: "/login", replace: true });
+  }
+
+  function renderAccountFooter(collapsedView: boolean) {
+    return (
+      <div className="border-t border-sidebar-border">
+        <a
+          href={SUPPORT_WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center gap-2 p-3 text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+          title="Suporte técnico"
+        >
+          <Headset className="h-4 w-4 shrink-0" />
+          {!collapsedView && <span>Suporte técnico</span>}
+        </a>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="flex w-full cursor-pointer items-center gap-2 p-3 text-xs text-[#f87171] hover:bg-[#f87171]/15 hover:text-[#fca5a5]"
+          title="Sair"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsedView && <span>Sair da conta</span>}
+        </button>
+      </div>
+    );
   }
 
   const initials =
@@ -934,17 +980,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
         {renderNavSections(collapsed)}
-        <div className="border-t border-sidebar-border">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-full p-3 flex items-center gap-2 text-xs text-[#f87171] hover:bg-[#f87171]/15 hover:text-[#fca5a5] cursor-pointer"
-            title="Sair"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            {!collapsed && <span>Sair da conta</span>}
-          </button>
-        </div>
+        {renderAccountFooter(collapsed)}
       </aside>
 
       {/* Backdrop do menu mobile */}
@@ -1000,17 +1036,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
         {renderNavSections(false, () => setMobileNavOpen(false))}
-        <div className="border-t border-sidebar-border">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-full p-3 flex items-center gap-2 text-xs text-[#f87171] hover:bg-[#f87171]/15 hover:text-[#fca5a5] cursor-pointer"
-            title="Sair"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            <span>Sair da conta</span>
-          </button>
-        </div>
+        {renderAccountFooter(false)}
       </aside>
 
       <div

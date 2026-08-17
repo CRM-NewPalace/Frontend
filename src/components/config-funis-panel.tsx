@@ -62,6 +62,11 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import {
+  formatPrazoUnidade,
+  PRAZO_UNIDADE_OPTIONS,
+  type PrazoUnidade,
+} from "@/lib/lead-monitoramento";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -166,11 +171,24 @@ export function ConfigFunisPanel() {
   const [etapaLabel, setEtapaLabel] = useState("");
   const [etapaColor, setEtapaColor] = useState<string>(DEFAULT_CATALOG_COLOR);
   const [etapaPapel, setEtapaPapel] = useState<FunilEtapaPapel | "">("");
+  const [etapaPrazoValor, setEtapaPrazoValor] = useState("");
+  const [etapaPrazoUnidade, setEtapaPrazoUnidade] =
+    useState<PrazoUnidade>("horas");
+  const [etapaAlertaPercent, setEtapaAlertaPercent] = useState("20");
+  const [inatividadeValor, setInatividadeValor] = useState("48");
+  const [inatividadeUnidade, setInatividadeUnidade] =
+    useState<PrazoUnidade>("horas");
 
   const [deleteFunilId, setDeleteFunilId] = useState<string | null>(null);
 
   const selected = funis.find((f) => f.id === selectedId) ?? null;
   const activeEtapas = (selected?.etapas ?? []).filter((e) => e.active);
+
+  useEffect(() => {
+    if (!selected) return;
+    setInatividadeValor(String(selected.inatividadeValor ?? 48));
+    setInatividadeUnidade(selected.inatividadeUnidade ?? "horas");
+  }, [selected?.id, selected?.inatividadeValor, selected?.inatividadeUnidade]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -267,6 +285,30 @@ export function ConfigFunisPanel() {
     }
   }
 
+  async function handleSaveInatividade() {
+    if (!selected) return;
+    const valor = Number(inatividadeValor);
+    if (!Number.isInteger(valor) || valor < 1) {
+      toast.error("Informe um período de inatividade válido.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateFunil(selected.id, {
+        inatividadeValor: valor,
+        inatividadeUnidade,
+      });
+      toast.success("Alerta de inatividade atualizado.");
+      await afterMutation(updated);
+    } catch (err) {
+      toast.error(
+        errorMessage(err, "Não foi possível salvar o período de inatividade."),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleAtivar(id: string) {
     setSaving(true);
     try {
@@ -302,6 +344,9 @@ export function ConfigFunisPanel() {
     setEtapaLabel("");
     setEtapaColor(nextCatalogColor(activeEtapas.length));
     setEtapaPapel("");
+    setEtapaPrazoValor("");
+    setEtapaPrazoUnidade("horas");
+    setEtapaAlertaPercent("20");
     setEtapaOpen(true);
   }
 
@@ -310,6 +355,9 @@ export function ConfigFunisPanel() {
     setEtapaLabel(etapa.label);
     setEtapaColor(etapa.color || DEFAULT_CATALOG_COLOR);
     setEtapaPapel(resolveEtapaPapel(etapa) ?? "");
+    setEtapaPrazoValor(etapa.prazoValor ? String(etapa.prazoValor) : "");
+    setEtapaPrazoUnidade(etapa.prazoUnidade ?? "horas");
+    setEtapaAlertaPercent(String(etapa.alertaAntecedenciaPercent ?? 20));
     setEtapaOpen(true);
   }
 
@@ -322,19 +370,29 @@ export function ConfigFunisPanel() {
       return;
     }
     const papel = etapaPapel === "" ? null : etapaPapel;
+    const prazoRaw = etapaPrazoValor.trim();
+    const prazoValor = prazoRaw === "" ? null : Number(prazoRaw);
+    if (prazoRaw !== "" && (!Number.isInteger(prazoValor) || (prazoValor ?? 0) < 1)) {
+      toast.error("Informe um prazo válido ou deixe em branco.");
+      return;
+    }
+    const alertaPercent = Number(etapaAlertaPercent);
     setSaving(true);
     try {
+      const payload = {
+        label,
+        color: etapaColor,
+        papel,
+        prazoValor,
+        prazoUnidade: etapaPrazoUnidade,
+        alertaAntecedenciaPercent:
+          Number.isInteger(alertaPercent) && alertaPercent >= 1
+            ? alertaPercent
+            : 20,
+      };
       const updated = etapaEdit
-        ? await updateFunilEtapa(selected.id, etapaEdit.id, {
-            label,
-            color: etapaColor,
-            papel,
-          })
-        : await addFunilEtapa(selected.id, {
-            label,
-            color: etapaColor,
-            papel,
-          });
+        ? await updateFunilEtapa(selected.id, etapaEdit.id, payload)
+        : await addFunilEtapa(selected.id, payload);
       toast.success(etapaEdit ? "Etapa atualizada." : "Etapa adicionada.");
       setEtapaOpen(false);
       await afterMutation(updated);
@@ -540,6 +598,52 @@ export function ConfigFunisPanel() {
                 Selecione um funil à esquerda.
               </p>
             )}
+            {selected && (
+              <div className="rounded-lg border border-border/60 p-3 space-y-2">
+                <p className="text-xs font-medium">Alerta de inatividade</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Leads sem mudança de etapa, triagem, tarefa ou atividade neste
+                  período recebem borda vermelha no funil.
+                </p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Período</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="h-8 w-24"
+                      value={inatividadeValor}
+                      onChange={(e) => setInatividadeValor(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Unidade</Label>
+                    <select
+                      className="h-8 rounded-md border bg-background px-2 text-sm"
+                      value={inatividadeUnidade}
+                      onChange={(e) =>
+                        setInatividadeUnidade(e.target.value as PrazoUnidade)
+                      }
+                    >
+                      {PRAZO_UNIDADE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={saving}
+                    onClick={() => void handleSaveInatividade()}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            )}
             {selected && activeEtapas.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 Nenhuma etapa ativa. Adicione etapas ou use &quot;Etapas
@@ -570,6 +674,15 @@ export function ConfigFunisPanel() {
                     <Badge variant="secondary" className="text-[10px]">
                       {PAPEL_BADGE_LABEL[papel]}
                     </Badge>
+                  )}
+                  {s.prazoValor ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      Prazo {formatPrazoUnidade(s.prazoValor, s.prazoUnidade)}
+                    </Badge>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">
+                      Sem prazo
+                    </span>
                   )}
                   <span className="text-xs text-muted-foreground ml-auto">
                     {s.slug}
@@ -734,6 +847,48 @@ export function ConfigFunisPanel() {
                 <p className="text-xs text-muted-foreground">
                   Análise envia à fila do analista; Venda conta na conversão;
                   Perdido dispara exclusão operacional.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Prazo máximo</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Sem prazo"
+                    value={etapaPrazoValor}
+                    onChange={(e) => setEtapaPrazoValor(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Unidade</Label>
+                  <select
+                    className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                    value={etapaPrazoUnidade}
+                    onChange={(e) =>
+                      setEtapaPrazoUnidade(e.target.value as PrazoUnidade)
+                    }
+                  >
+                    {PRAZO_UNIDADE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Alerta próximo do vencimento (%)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={etapaAlertaPercent}
+                  onChange={(e) => setEtapaAlertaPercent(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Percentual restante do prazo para destacar o card em laranja.
+                  Deixe o prazo em branco para não monitorar a etapa.
                 </p>
               </div>
               <ColorSwatchPicker

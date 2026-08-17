@@ -5,6 +5,13 @@ import type {
   Lead,
   StageId,
 } from "@/lib/crm-types";
+import type {
+  CorretorMonitoramento,
+  LeadMonitoramento,
+  LeadPrazoAdiamento,
+  MonitoramentoFiltro,
+  PrazoUnidade,
+} from "@/lib/lead-monitoramento";
 
 /** Shape retornado pelo backend (Prisma select). */
 export interface ApiLead {
@@ -43,6 +50,7 @@ export interface ApiLead {
   perdidoPor?: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
+  monitoramento?: LeadMonitoramento | null;
 }
 
 export interface PaginatedLeads {
@@ -112,6 +120,7 @@ export function mapApiLead(api: ApiLead): Lead {
     updatedAtIso: api.updatedAt,
     tags: api.tags ?? [],
     analise: api.analise ?? null,
+    monitoramento: api.monitoramento ?? null,
   };
 }
 
@@ -141,6 +150,7 @@ export async function fetchLeads(params?: {
   page?: number;
   limit?: number;
   sort?: string;
+  monitoramento?: MonitoramentoFiltro;
 }): Promise<PaginatedLeads> {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
@@ -151,6 +161,9 @@ export async function fetchLeads(params?: {
   if (params?.origem) qs.set("origem", params.origem);
   if (params?.corretorId) qs.set("corretorId", params.corretorId);
   if (params?.sort) qs.set("sort", params.sort);
+  if (params?.monitoramento && params.monitoramento !== "todos") {
+    qs.set("monitoramento", params.monitoramento);
+  }
   qs.set("page", String(params?.page ?? 1));
   qs.set("limit", String(params?.limit ?? 100));
   const query = qs.toString();
@@ -335,4 +348,33 @@ export async function fetchLostClientes(params?: {
 /** Exclusão definitiva (admin, só leads já perdidos). */
 export async function deleteLeadApi(id: string): Promise<void> {
   await apiFetch<void>(`/leads/${id}`, { method: "DELETE" });
+}
+
+export async function fetchCorretoresMonitoramento(): Promise<
+  CorretorMonitoramento[]
+> {
+  return apiFetch<CorretorMonitoramento[]>("/leads/monitoramento/corretores");
+}
+
+export async function syncLeadMonitoramento(): Promise<{
+  ok: boolean;
+  created: number;
+}> {
+  return apiFetch("/leads/monitoramento/sync", { method: "POST" });
+}
+
+export async function adiarPrazoLead(
+  id: string,
+  input: { valor: number; unidade: PrazoUnidade; motivo?: string },
+): Promise<ApiLead> {
+  return apiFetch<ApiLead>(`/leads/${id}/prazo/adiar`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function fetchPrazoAdiamentos(
+  id: string,
+): Promise<LeadPrazoAdiamento[]> {
+  return apiFetch<LeadPrazoAdiamento[]>(`/leads/${id}/prazo/adiamentos`);
 }

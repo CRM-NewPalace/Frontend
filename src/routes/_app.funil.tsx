@@ -56,6 +56,17 @@ import { getSession } from "@/lib/auth";
 import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
+import {
+  LeadFunilAlerta,
+  leadMonitoramentoCardClass,
+} from "@/components/lead-funil-alerta";
+import {
+  MONITORAMENTO_FILTRO_OPTIONS,
+  MOTIVO_SEM_MOVIMENTACAO_LABEL,
+  formatDateTimePt,
+  formatPrazoUnidade,
+  type MonitoramentoFiltro,
+} from "@/lib/lead-monitoramento";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { ApiError } from "@/lib/api";
 import {
@@ -95,9 +106,12 @@ import {
 import {
   Clock,
   User,
+  CircleUser,
   Eye,
   Sparkles,
   Wallet,
+  Banknote,
+  Phone,
   MapPin,
   ChevronLeft,
   ChevronRight,
@@ -106,6 +120,7 @@ import {
   Plus,
   Check,
   ChevronsUpDown,
+  AlertTriangle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -149,20 +164,26 @@ const FUNIL_GRADIENT_BTN =
 const FUNIL_GRADIENT_STYLE = BRAND_GRADIENT_STYLE;
 
 export const Route = createFileRoute("/_app/funil")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    lead: typeof search.lead === "string" ? search.lead : undefined,
+  }),
   head: () => ({ meta: [{ title: "Funil de Vendas — Zone Connection" }] }),
   component: Funil,
 });
 
 function Funil() {
-  return <ComercialFunilBoard tipoFiltro="lead" />;
+  const { lead } = Route.useSearch();
+  return <ComercialFunilBoard tipoFiltro="lead" openLeadId={lead} />;
 }
 
 export type ComercialFunilTipoFiltro = "lead" | "cliente";
 
 export function ComercialFunilBoard({
   tipoFiltro = "lead",
+  openLeadId,
 }: {
   tipoFiltro?: ComercialFunilTipoFiltro;
+  openLeadId?: string;
 }) {
   const isClientesFunil = tipoFiltro === "cliente";
   const user = getSession();
@@ -177,6 +198,7 @@ export function ComercialFunilBoard({
     assignees,
     updateLeadStage,
     markLeadLost,
+    applyLead,
     loading,
   } = useLeads();
   const {
@@ -196,6 +218,8 @@ export function ComercialFunilBoard({
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [filterEquipeId, setFilterEquipeId] = useState("__all__");
   const [filterCorretorId, setFilterCorretorId] = useState("__all__");
+  const [filterMonitoramento, setFilterMonitoramento] =
+    useState<MonitoramentoFiltro>("todos");
   const [corretorFilterOpen, setCorretorFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -269,11 +293,33 @@ export function ComercialFunilBoard({
       }
     }
 
+    if (filterMonitoramento !== "todos") {
+      list = list.filter((l) => {
+        const mon = l.monitoramento;
+        if (!mon) return false;
+        if (filterMonitoramento === "sem_movimentacao") {
+          return mon.problemas.some((p) => p.tipo === "sem_movimentacao");
+        }
+        if (filterMonitoramento === "em_atraso") {
+          return mon.problemas.some((p) => p.tipo === "prazo_ultrapassado");
+        }
+        if (filterMonitoramento === "proximo_vencimento") {
+          return mon.problemas.some((p) => p.tipo === "prazo_proximo");
+        }
+        return (
+          Boolean(mon.prazoDueAt) &&
+          mon.visual === "none" &&
+          !mon.problemas.some((p) => p.tipo === "prazo_ultrapassado")
+        );
+      });
+    }
+
     return list;
   }, [
     allLeads,
     filterCorretorId,
     filterEquipeId,
+    filterMonitoramento,
     isAdmin,
     isClientesFunil,
     isCorretor,
@@ -285,6 +331,12 @@ export function ComercialFunilBoard({
   const [activeDropStage, setActiveDropStage] = useState<StageId | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const didDrag = useRef(false);
+
+  useEffect(() => {
+    if (!openLeadId || loading) return;
+    const found = allLeads.find((l) => l.id === openLeadId);
+    if (found) setDetailLead(found);
+  }, [openLeadId, allLeads, loading]);
   const boardRef = useRef<HTMLDivElement>(null);
   const dragSession = useRef<{
     leadId: string;
@@ -844,6 +896,23 @@ export function ComercialFunilBoard({
                 </PopoverContent>
               </Popover>
             )}
+            <Select
+              value={filterMonitoramento}
+              onValueChange={(v) =>
+                setFilterMonitoramento(v as MonitoramentoFiltro)
+              }
+            >
+              <SelectTrigger className="h-8 w-52 bg-background">
+                <SelectValue placeholder="Monitoramento" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONITORAMENTO_FILTRO_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="flex items-center rounded-md border bg-background">
               <Button
                 type="button"
@@ -938,11 +1007,16 @@ export function ComercialFunilBoard({
                     className={cn(
                       "p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow touch-manipulation select-none",
                       dragging === l.id && "opacity-40 touch-none shadow-md",
+                      leadMonitoramentoCardClass(l),
                     )}
                   >
-                    <div className="flex items-start justify-between mb-1.5 gap-2">
-                      <div className="table-person-name text-sm truncate">
-                        {l.nome}
+                    <div className="mb-1.5 flex items-start justify-between gap-2">
+                      <div className="table-person-name flex min-w-0 items-center gap-1.5 text-sm">
+                        <CircleUser
+                          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                          aria-hidden
+                        />
+                        <span className="truncate">{l.nome}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {l.tipo === "cliente" && (
@@ -974,16 +1048,26 @@ export function ComercialFunilBoard({
                         {ANALISE_STATUS_LABEL[l.analise.status]}
                       </Badge>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      {l.telefone}
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone
+                        className="h-3.5 w-3.5 shrink-0"
+                        aria-hidden
+                      />
+                      <span className="truncate">{l.telefone}</span>
                     </div>
                     {l.tipo === "cliente" && !isCorretor && !isClientesFunil && (
                       <div className="text-[10px] text-violet-600 dark:text-violet-300 mt-1">
                         Carteira de {l.corretor.split(" ")[0]}
                       </div>
                     )}
-                    <div className="text-sm font-semibold text-primary mt-1.5">
-                      {l.renda != null ? brl(l.renda) : "—"}
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <Banknote
+                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <span className="text-sm font-semibold text-primary">
+                        {l.renda != null ? brl(l.renda) : "—"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t text-[11px] text-muted-foreground">
                       <div className="flex items-center gap-1">
@@ -995,6 +1079,15 @@ export function ComercialFunilBoard({
                         {l.updatedAt}
                       </div>
                     </div>
+                    <LeadFunilAlerta
+                      lead={l}
+                      onUpdated={(next) => {
+                        applyLead(next);
+                        setDetailLead((cur) =>
+                          cur && cur.id === next.id ? next : cur,
+                        );
+                      }}
+                    />
                   </Card>
                 ))}
               </div>
@@ -1017,6 +1110,86 @@ export function ComercialFunilBoard({
         {detailLead && (
           <>
             <FormDialogBody>
+              {detailLead.monitoramento &&
+                detailLead.monitoramento.problemas.length > 0 && (
+                  <FormSection
+                    icon={
+                      <AlertTriangle
+                        className={
+                          detailLead.monitoramento.visual === "vermelho"
+                            ? "w-3.5 h-3.5 text-red-600"
+                            : "w-3.5 h-3.5 text-orange-500"
+                        }
+                      />
+                    }
+                    title="Alertas de monitoramento"
+                  >
+                    <div className="space-y-2">
+                      {detailLead.monitoramento.problemas.map((problema) => (
+                        <div
+                          key={problema.tipo}
+                          className="rounded-md border border-border/70 p-2 text-sm"
+                        >
+                          <p className="font-medium">{problema.titulo}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {problema.detalhe}
+                          </p>
+                          {problema.motivos && problema.motivos.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {problema.motivos.map((motivo) => (
+                                <Badge
+                                  key={motivo}
+                                  variant="outline"
+                                  className="text-[10px]"
+                                >
+                                  {MOTIVO_SEM_MOVIMENTACAO_LABEL[motivo]}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <DetailField
+                          label="Entrada na etapa"
+                          value={formatDateTimePt(
+                            detailLead.monitoramento.stageEnteredAt,
+                          )}
+                        />
+                        <DetailField
+                          label="Última movimentação"
+                          value={formatDateTimePt(
+                            detailLead.monitoramento.lastMovementAt,
+                          )}
+                        />
+                        <DetailField
+                          label="Prazo da etapa"
+                          value={
+                            detailLead.monitoramento.prazoConfigurado
+                              ? formatPrazoUnidade(
+                                  detailLead.monitoramento.prazoConfigurado
+                                    .valor,
+                                  detailLead.monitoramento.prazoConfigurado
+                                    .unidade,
+                                )
+                              : "Sem prazo"
+                          }
+                        />
+                        <DetailField
+                          label="Responsável"
+                          value={detailLead.corretor}
+                        />
+                      </div>
+                      <LeadFunilAlerta
+                        lead={detailLead}
+                        onUpdated={(next) => {
+                          applyLead(next);
+                          setDetailLead(next);
+                        }}
+                      />
+                    </div>
+                  </FormSection>
+                )}
               <FormSection
                 icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
                 title="Contato"

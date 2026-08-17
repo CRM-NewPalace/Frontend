@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -43,12 +43,17 @@ import {
   Trophy,
   UsersRound,
   Wallet,
+  AlertTriangle,
 } from "lucide-react";
 import { SemConexao } from "@/components/sem-conexao";
 import { VendasResumoDialog } from "@/components/vendas-resumo-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fetchConstrutoraVendas, type ConstrutoraVenda } from "@/lib/construtoras-api";
+import {
+  fetchCorretoresMonitoramento,
+} from "@/lib/leads-api";
+import type { CorretorMonitoramento } from "@/lib/lead-monitoramento";
 
 export const Route = createFileRoute("/_app/corretores")({
   head: () => ({ meta: [{ title: "Ranking — Zone Connection" }] }),
@@ -187,6 +192,10 @@ function Page() {
   } | null>(null);
   const [vendasItems, setVendasItems] = useState<ConstrutoraVenda[]>([]);
   const [loadingVendas, setLoadingVendas] = useState(false);
+  const [monitoramento, setMonitoramento] = useState<CorretorMonitoramento[]>(
+    [],
+  );
+  const [soPendencias, setSoPendencias] = useState(false);
 
   const anosDisponiveis = useMemo(() => {
     const list: number[] = [];
@@ -217,6 +226,21 @@ function Page() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!canView) return;
+    let cancelled = false;
+    void fetchCorretoresMonitoramento()
+      .then((rows) => {
+        if (!cancelled) setMonitoramento(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setMonitoramento([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canView]);
 
   useEffect(() => {
     if (!vendasAlvo) {
@@ -263,6 +287,17 @@ function Page() {
     [granularidade],
   );
   const periodoNoun = PERIODO_NOUN[granularidade];
+  const pendingById = useMemo(() => {
+    const map = new Map<string, CorretorMonitoramento>();
+    for (const row of monitoramento) map.set(row.id, row);
+    return map;
+  }, [monitoramento]);
+
+  const corretoresVisiveis = useMemo(() => {
+    const list = data?.corretores ?? [];
+    if (!soPendencias) return list;
+    return list.filter((row) => pendingById.has(row.corretorId));
+  }, [data?.corretores, pendingById, soPendencias]);
 
   const filtros = (
     <div className="flex flex-wrap items-end gap-2">
@@ -323,6 +358,14 @@ function Page() {
           </SelectContent>
         </Select>
       </div>
+      <label className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs">
+        <input
+          type="checkbox"
+          checked={soPendencias}
+          onChange={(e) => setSoPendencias(e.target.checked)}
+        />
+        Só com pendências
+      </label>
     </div>
   );
 
@@ -365,6 +408,60 @@ function Page() {
         />
       ) : (
         <>
+          {monitoramento.length > 0 && (
+            <section className="mt-4">
+              <Card className="border-red-500/40">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    Corretores com leads em atraso
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {monitoramento.length} corretor
+                    {monitoramento.length === 1 ? "" : "es"} com leads sem
+                    movimentação ou fora do prazo da etapa.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {monitoramento.map((row) => (
+                    <div
+                      key={row.id}
+                      className="rounded-lg border-2 border-red-500/70 p-3"
+                    >
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <p className="font-medium">{row.name}</p>
+                        <p className="text-xs text-red-700 dark:text-red-300">
+                          {row.totalAtrasos} lead
+                          {row.totalAtrasos === 1 ? "" : "s"} em atraso
+                        </p>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {row.semMovimentacao} sem movimentação · {row.foraDoPrazo}{" "}
+                        fora do prazo da etapa
+                      </p>
+                      <ul className="mt-2 space-y-1">
+                        {row.leads.slice(0, 8).map((lead) => (
+                          <li key={lead.id}>
+                            <Link
+                              to="/funil"
+                              search={{ lead: lead.id }}
+                              className="text-xs text-primary hover:underline"
+                            >
+                              {lead.nome}
+                            </Link>
+                            <span className="text-[11px] text-muted-foreground">
+                              {" "}
+                              — {lead.problemas.map((p) => p.titulo).join(" · ")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+          )}
           <section className="mt-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
             <FinanceKpiCard
               label={`Entradas do ${periodoNoun}`}
@@ -416,7 +513,7 @@ function Page() {
             <div className="grid gap-4 xl:grid-cols-2">
               <PodioVendas
                 title="Pódio de vendas · corretores"
-                items={data.corretores.map((row) => ({
+                items={corretoresVisiveis.map((row) => ({
                   id: row.corretorId,
                   nome: row.nome,
                   vendas: row.vendas.valor,
@@ -449,7 +546,8 @@ function Page() {
             </div>
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
               <RankingList
-                corretores={data.corretores}
+                corretores={corretoresVisiveis}
+                pendingById={pendingById}
                 onSelect={(row) =>
                   setVendasAlvo({
                     kind: "corretor",
@@ -696,9 +794,11 @@ function PodioVendas({
 
 function RankingList({
   corretores,
+  pendingById,
   onSelect,
 }: {
   corretores: DashboardRankingCorretor[];
+  pendingById: Map<string, CorretorMonitoramento>;
   onSelect: (row: DashboardRankingCorretor) => void;
 }) {
   const maxVgv = Math.max(...corretores.map((row) => row.vgv.valor ?? 0), 1);
@@ -722,7 +822,11 @@ function RankingList({
               key={row.corretorId}
               type="button"
               onClick={() => onSelect(row)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
+              className={cn(
+                "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60",
+                pendingById.has(row.corretorId) &&
+                  "border-l-4 border-l-red-500 bg-red-500/5",
+              )}
             >
               <span
                 className={cn(
@@ -755,6 +859,14 @@ function RankingList({
                   >
                     {row.nome}
                   </span>
+                  {pendingById.get(row.corretorId) && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5">
+                      {pendingById.get(row.corretorId)!.totalAtrasos} atraso
+                      {pendingById.get(row.corretorId)!.totalAtrasos === 1
+                        ? ""
+                        : "s"}
+                    </Badge>
+                  )}
                   <span className="shrink-0 text-xs font-semibold tabular-nums">
                     {money(row.vgv.valor)}
                   </span>
