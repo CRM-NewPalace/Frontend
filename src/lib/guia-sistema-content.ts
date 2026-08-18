@@ -400,7 +400,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Abrir ficha nova",
             detail:
-              "Vincule o contato, construtora, empreendimento, VGV, fonte, FGTS/entrada e os dois status. Status 1 começa em análise/pré-análise conforme o catálogo.",
+              "Vincule o contato (dá para pesquisar pelo nome), construtora, empreendimento, VGV, fonte, FGTS/entrada e os dois status. Status 1 começa em análise/pré-análise conforme o catálogo.",
           },
           {
             title: "Status 1 — parecer",
@@ -415,7 +415,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Filtrar o pipeline",
             detail:
-              "Por status 1/2, corretor, equipe, construtora, período. Cards de aprovadas / reprovadas / em análise / VGV usam o Status 1.",
+              "Por status 1/2, corretor, equipe, construtora e período. Em Por mês, escolha o mês para ver quantas fichas subiram. O card No mês mostra o total da lista filtrada; aprovadas, reprovadas e em análise usam o Status 1.",
           },
           {
             title: "Anexos e parecer",

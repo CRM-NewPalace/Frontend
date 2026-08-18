@@ -37,16 +37,18 @@ export function setCookieConsent(value: CookieConsent) {
 let gtagLoaded = false;
 
 /**
- * `cookie_domain: auto` usa eTLD+1 (ex.: `.vercel.app`). `vercel.app` está na
- * Public Suffix List, então o Firefox rejeita `_ga` / `_ga_*` nesses hosts.
+ * `cookie_domain: auto` usa eTLD+1. No Firefox isso rejeita `_ga` em hosts
+ * da Public Suffix List (vercel.app) e, em alguns casos, em www.
+ * `none` = cookie só neste host.
  */
 function gaCookieDomain(): "auto" | "none" {
-  if (typeof window === "undefined") return "auto";
+  if (typeof window === "undefined") return "none";
   const host = window.location.hostname;
   if (
     host === "localhost" ||
     host.endsWith(".vercel.app") ||
-    host.endsWith(".onrender.com")
+    host.endsWith(".onrender.com") ||
+    host.startsWith("www.")
   ) {
     return "none";
   }

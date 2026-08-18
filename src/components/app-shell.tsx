@@ -1279,7 +1279,7 @@ export function PageHeader({
       {actions && (
         <div
           data-guia="page-actions"
-          className="flex w-full flex-wrap items-end gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0 lg:justify-end"
+          className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0 lg:justify-end"
         >
           {actions}
         </div>

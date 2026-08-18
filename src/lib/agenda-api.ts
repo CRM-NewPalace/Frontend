@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import type { Role } from "@/lib/auth";
 import type { ContatoTipo, StageId } from "@/lib/crm-types";
 
@@ -301,10 +301,26 @@ export async function fetchSolicitacoesAgendaCount(): Promise<{
 export async function createAgendamento(
   input: CreateAgendamentoInput,
 ): Promise<Agendamento> {
-  return apiFetch<Agendamento>("/agenda", {
-    method: "POST",
-    body: input,
-  });
+  try {
+    return await apiFetch<Agendamento>("/agenda", {
+      method: "POST",
+      body: input,
+    });
+  } catch (err) {
+    if (
+      input.funilStage &&
+      err instanceof ApiError &&
+      err.status === 400 &&
+      /funilStage/i.test(err.message)
+    ) {
+      const { funilStage: _funilStage, ...rest } = input;
+      return apiFetch<Agendamento>("/agenda", {
+        method: "POST",
+        body: rest,
+      });
+    }
+    throw err;
+  }
 }
 
 export async function updateAgendamento(

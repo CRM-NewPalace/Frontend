@@ -119,6 +119,7 @@ export function FunilTarefaDialog({
         startsAt,
         endsAt,
         funilStage: prompt.stage,
+        observacoes: `Etapa do funil: ${prompt.stageName}.`,
       });
       toast.success("Tarefa criada na agenda.");
       onCreated?.();

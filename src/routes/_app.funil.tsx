@@ -1047,7 +1047,7 @@ export function ComercialFunilBoard({
                   setFilterCorretorId("__all__");
                 }}
               >
-                <SelectTrigger className="h-8 w-46 bg-background">
+                <SelectTrigger className="h-8 w-46 rounded-full bg-background py-0">
                   <SelectValue placeholder="Equipe" />
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -1072,7 +1072,7 @@ export function ComercialFunilBoard({
                     variant="outline"
                     role="combobox"
                     aria-expanded={corretorFilterOpen}
-                    className="h-8 w-46 justify-between bg-background font-normal"
+                    className="h-8 w-46 justify-between rounded-full bg-background font-normal"
                   >
                     <span className="truncate">{selectedCorretorLabel}</span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1156,7 +1156,7 @@ export function ComercialFunilBoard({
                 type="button"
                 variant={filterMeusLeads ? "default" : "outline"}
                 className={cn(
-                  "h-8 font-normal",
+                  "h-8 rounded-full font-normal",
                   !filterMeusLeads && "bg-background",
                 )}
                 onClick={() => {
@@ -1174,7 +1174,7 @@ export function ComercialFunilBoard({
                 setFilterMonitoramento(v as MonitoramentoFiltro)
               }
             >
-              <SelectTrigger className="h-8 w-52 bg-background">
+              <SelectTrigger className="h-8 w-52 rounded-full bg-background py-0">
                 <SelectValue placeholder="Monitoramento" />
               </SelectTrigger>
               <SelectContent>
@@ -1185,12 +1185,12 @@ export function ComercialFunilBoard({
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center rounded-md border bg-background">
+            <div className="flex h-8 items-center overflow-hidden rounded-full border bg-background">
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 rounded-r-none"
+                className="h-8 w-8 rounded-none"
                 disabled={!canScrollLeft}
                 aria-label="Coluna anterior"
                 title="Coluna anterior"
@@ -1198,12 +1198,12 @@ export function ComercialFunilBoard({
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <div className="w-px h-4 bg-border" />
+              <div className="h-4 w-px bg-border" />
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 rounded-l-none"
+                className="h-8 w-8 rounded-none"
                 disabled={!canScrollRight}
                 aria-label="Próxima coluna"
                 title="Próxima coluna"
@@ -1216,7 +1216,7 @@ export function ComercialFunilBoard({
               <Button
                 size="sm"
                 asChild
-                className={FUNIL_GRADIENT_BTN}
+                className={cn("h-8 rounded-full", FUNIL_GRADIENT_BTN)}
                 style={FUNIL_GRADIENT_STYLE}
               >
                 <Link to="/configuracoes">Configurar funil</Link>
@@ -1368,18 +1368,18 @@ export function ComercialFunilBoard({
                         {ANALISE_STATUS_LABEL[l.analise.status]}
                       </Badge>
                     )}
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <div className="grid grid-cols-[14px_minmax(0,1fr)_22px] items-center gap-1.5 text-xs text-muted-foreground">
                       <Phone
                         className="h-3.5 w-3.5 shrink-0"
                         aria-hidden
                       />
-                      <span className="min-w-0 truncate">{l.telefone}</span>
+                      <span className="truncate">{l.telefone}</span>
                       <button
                         type="button"
                         title="Abrir WhatsApp"
                         aria-label="Abrir WhatsApp"
                         disabled={phoneDigits(l.telefone).length < 10}
-                        className="ml-auto shrink-0 rounded p-0.5 text-[#25D366] hover:bg-[#25D366]/15 disabled:pointer-events-none disabled:opacity-40"
+                        className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full text-[#25D366] hover:bg-[#25D366]/15 disabled:pointer-events-none disabled:opacity-40"
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1394,7 +1394,7 @@ export function ComercialFunilBoard({
                         Carteira de {l.corretor.split(" ")[0]}
                       </div>
                     )}
-                    <div className="mt-1.5 flex items-center gap-1.5">
+                    <div className="mt-1.5 grid grid-cols-[14px_minmax(0,1fr)_22px] items-center gap-1.5">
                       <Banknote
                         className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
                         aria-hidden
@@ -1404,42 +1404,44 @@ export function ComercialFunilBoard({
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t text-[11px] text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {l.corretor.split(" ")[0]}
+                      <div className="flex min-w-0 items-center gap-1">
+                        <User className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{l.corretor.split(" ")[0]}</span>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex shrink-0 items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {l.updatedAt}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-border/70 bg-muted/30 px-1.5 py-1 text-[11px] font-medium text-foreground hover:border-primary/30 hover:bg-muted/60"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openTriagemFromCard(l);
-                      }}
-                    >
-                      <ClipboardList
-                        className="h-3 w-3 text-primary"
-                        aria-hidden
+                    <div className="mt-2 flex w-full flex-col gap-1.5">
+                      <button
+                        type="button"
+                        className="flex h-7 w-full items-center justify-center gap-1 rounded-md border border-border/70 bg-muted/30 px-1.5 text-[11px] font-medium text-foreground hover:border-primary/30 hover:bg-muted/60"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openTriagemFromCard(l);
+                        }}
+                      >
+                        <ClipboardList
+                          className="h-3 w-3 text-primary"
+                          aria-hidden
+                        />
+                        Triagem
+                      </button>
+                      <LeadFunilAlerta
+                        lead={l}
+                        onUpdated={(next) => {
+                          applyLead(next);
+                          setDetailLead((cur) =>
+                            cur && cur.id === next.id ? next : cur,
+                          );
+                          setTriagemLead((cur) =>
+                            cur && cur.id === next.id ? next : cur,
+                          );
+                        }}
                       />
-                      Triagem
-                    </button>
-                    <LeadFunilAlerta
-                      lead={l}
-                      onUpdated={(next) => {
-                        applyLead(next);
-                        setDetailLead((cur) =>
-                          cur && cur.id === next.id ? next : cur,
-                        );
-                        setTriagemLead((cur) =>
-                          cur && cur.id === next.id ? next : cur,
-                        );
-                      }}
-                    />
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -1550,6 +1552,7 @@ export function ComercialFunilBoard({
                           value={detailLead.corretor}
                         />
                       </div>
+                      <div className="mt-2 w-full">
                       <LeadFunilAlerta
                         lead={detailLead}
                         onUpdated={(next) => {
@@ -1557,6 +1560,7 @@ export function ComercialFunilBoard({
                           setDetailLead(next);
                         }}
                       />
+                      </div>
                     </div>
                   </FormSection>
                 )}

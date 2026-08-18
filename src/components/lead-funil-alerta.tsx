@@ -1,5 +1,21 @@
-import { useEffect, useState, type MouseEvent, type PointerEvent } from "react";
-import { AlertTriangle, Clock, Loader2 } from "lucide-react";
+import {
+  useEffect,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  ClipboardList,
+  Clock,
+  Hourglass,
+  Loader2,
+  LogIn,
+  Timer,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ApiError } from "@/lib/api";
+import { BRAND_GRADIENT_BTN, BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 import type { Lead } from "@/lib/crm-types";
 import {
   adiarPrazoLead,
@@ -38,8 +55,65 @@ import {
   PRAZO_UNIDADE_OPTIONS,
   type LeadPrazoAdiamento,
   type PrazoUnidade,
+  type ProblemaMonitoramento,
 } from "@/lib/lead-monitoramento";
 import { cn } from "@/lib/utils";
+
+function problemaTone(tipo: ProblemaMonitoramento["tipo"]) {
+  if (tipo === "prazo_ultrapassado" || tipo === "tarefa_atrasada") return "red";
+  if (tipo === "prazo_proximo") return "orange";
+  return "slate";
+}
+
+function ProblemaIcon({
+  tipo,
+  className,
+}: {
+  tipo: ProblemaMonitoramento["tipo"];
+  className?: string;
+}) {
+  const cls = cn("h-3.5 w-3.5 shrink-0", className);
+  if (tipo === "tarefa_atrasada") return <ClipboardList className={cls} />;
+  if (tipo === "prazo_proximo") return <Hourglass className={cls} />;
+  if (tipo === "sem_movimentacao") return <Timer className={cls} />;
+  return <AlertTriangle className={cls} />;
+}
+
+function MetricRow({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 px-2.5 py-1.5",
+        accent && "bg-red-500/10",
+      )}
+    >
+      <dt className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted-foreground/80">
+          {icon}
+        </span>
+        <span className="truncate">{label}</span>
+      </dt>
+      <dd
+        className={cn(
+          "shrink-0 text-right text-[11px] font-medium tabular-nums",
+          accent && "text-red-600 dark:text-red-300",
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
 
 function stopCardEvents(e: PointerEvent | MouseEvent) {
   e.stopPropagation();
@@ -96,18 +170,19 @@ export function LeadFunilAlerta({
     : (mon.tempoRestanteLabel ?? mon.permanenciaLabel);
 
   return (
+    <div className="w-full min-w-0">
     <TooltipProvider delayDuration={200}>
       <Popover open={open} onOpenChange={setOpen}>
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger asChild className="flex w-full">
             <PopoverTrigger asChild>
               <button
                 type="button"
                 className={cn(
-                  "mt-2 flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[10px] font-medium",
+                  "flex h-7 w-full items-center gap-1.5 rounded-md border px-1.5 text-left text-[10px] font-medium",
                   isRed
-                    ? "bg-red-500/10 text-red-700 dark:text-red-300"
-                    : "bg-orange-500/10 text-orange-800 dark:text-orange-300",
+                    ? "border-red-500/25 bg-gradient-to-r from-red-500/15 via-rose-500/10 to-red-500/15 text-red-700 dark:text-red-300"
+                    : "border-orange-400/30 bg-gradient-to-r from-orange-400/18 via-amber-400/10 to-orange-400/18 text-orange-800 dark:text-orange-300",
                 )}
                 onPointerDown={stopCardEvents}
                 onClick={stopCardEvents}
@@ -128,117 +203,189 @@ export function LeadFunilAlerta({
         </Tooltip>
         <PopoverContent
           align="start"
-          className="w-80 p-3"
+          className="w-[20.5rem] overflow-hidden rounded-xl border-border/70 p-0 shadow-xl"
           onPointerDown={stopCardEvents}
           onClick={stopCardEvents}
         >
-          <div className="space-y-3 text-sm">
-            <div>
-              <p className="font-medium">Monitoramento</p>
-              <p className="text-xs text-muted-foreground">
-                Responsável: {lead.corretor}
-              </p>
+          <div
+            className={cn(
+              "px-3.5 py-3 text-white",
+              isRed
+                ? "bg-gradient-to-br from-red-500 via-rose-500 to-red-700"
+                : "bg-gradient-to-br from-orange-400 via-amber-500 to-orange-600",
+            )}
+          >
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/35">
+                <AlertTriangle className="h-4 w-4" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80">
+                  Monitoramento
+                </p>
+                <p className="truncate text-sm font-semibold leading-tight">
+                  {lead.nome}
+                </p>
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-white/90">
+                  <User className="h-3 w-3 shrink-0" aria-hidden />
+                  <span className="truncate">{lead.corretor}</span>
+                </p>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              {mon.problemas.map((problema) => (
-                <div
-                  key={problema.tipo}
-                  className="rounded-md border border-border/70 p-2"
-                >
-                  <p className="text-xs font-semibold">{problema.titulo}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {problema.detalhe}
-                  </p>
-                  {problema.motivos && problema.motivos.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {problema.motivos.map((motivo) => (
-                        <Badge
-                          key={motivo}
-                          variant="outline"
-                          className="text-[10px] px-1.5 py-0"
-                        >
-                          {MOTIVO_SEM_MOVIMENTACAO_LABEL[motivo]}
-                        </Badge>
-                      ))}
+          </div>
+
+          <div className="space-y-3 p-3">
+            <div className="space-y-2">
+              {mon.problemas.map((problema) => {
+                const tone = problemaTone(problema.tipo);
+                return (
+                  <div
+                    key={problema.tipo}
+                    className={cn(
+                      "rounded-lg p-2.5 ring-1",
+                      tone === "red" &&
+                        "bg-gradient-to-br from-red-50 to-rose-100/90 ring-red-200/80 dark:from-red-950/50 dark:to-rose-950/30 dark:ring-red-800/40",
+                      tone === "orange" &&
+                        "bg-gradient-to-br from-orange-50 to-amber-100/90 ring-orange-200/80 dark:from-orange-950/40 dark:to-amber-950/25 dark:ring-orange-800/40",
+                      tone === "slate" &&
+                        "bg-gradient-to-br from-slate-50 to-slate-100/90 ring-slate-200/80 dark:from-slate-900/50 dark:to-slate-800/40 dark:ring-slate-700/50",
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span
+                        className={cn(
+                          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                          tone === "red" &&
+                            "bg-red-500/15 text-red-600 dark:text-red-300",
+                          tone === "orange" &&
+                            "bg-orange-500/15 text-orange-600 dark:text-orange-300",
+                          tone === "slate" &&
+                            "bg-slate-500/15 text-slate-600 dark:text-slate-300",
+                        )}
+                      >
+                        <ProblemaIcon tipo={problema.tipo} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold leading-snug">
+                          {problema.titulo}
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                          {problema.detalhe}
+                        </p>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {problema.motivos && problema.motivos.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {problema.motivos.map((motivo) => (
+                          <Badge
+                            key={motivo}
+                            variant="outline"
+                            className="h-5 border-border/70 bg-background/70 px-1.5 py-0 text-[10px]"
+                          >
+                            {MOTIVO_SEM_MOVIMENTACAO_LABEL[motivo]}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
             {mon.tarefasAtrasadas && mon.tarefasAtrasadas.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-red-700 dark:text-red-300">
+                <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">
                   Tarefas atrasadas
                 </p>
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   {mon.tarefasAtrasadas.map((tarefa) => (
                     <li
                       key={tarefa.id}
-                      className="rounded-md border border-red-500/40 bg-red-500/5 p-2 text-xs"
+                      className="rounded-lg bg-gradient-to-br from-red-50 to-rose-100/80 p-2.5 ring-1 ring-red-200/70 dark:from-red-950/40 dark:to-rose-950/20 dark:ring-red-800/40"
                     >
-                      <p className="font-medium">{tarefa.titulo}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs font-medium">{tarefa.titulo}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
                         Prazo: {tarefa.prazo}
-                        {tarefa.funilStage ? ` · etapa ${tarefa.funilStage}` : ""}
+                        {tarefa.funilStage
+                          ? ` · etapa ${tarefa.funilStage}`
+                          : ""}
                       </p>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            <dl className="grid grid-cols-1 gap-1 text-xs">
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Entrada na etapa</dt>
-                <dd>{formatDateTimePt(mon.stageEnteredAt)}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Permanência</dt>
-                <dd>{mon.permanenciaLabel}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Prazo configurado</dt>
-                <dd>
-                  {mon.prazoConfigurado
+
+            <dl className="divide-y divide-border/60 overflow-hidden rounded-lg bg-muted/45 ring-1 ring-border/60">
+              <MetricRow
+                icon={<LogIn className="h-3 w-3" />}
+                label="Entrada na etapa"
+                value={formatDateTimePt(mon.stageEnteredAt)}
+              />
+              <MetricRow
+                icon={<Timer className="h-3 w-3" />}
+                label="Permanência"
+                value={mon.permanenciaLabel}
+              />
+              <MetricRow
+                icon={<Clock className="h-3 w-3" />}
+                label="Prazo configurado"
+                value={
+                  (mon.prazoConfigurado
                     ? formatPrazoUnidade(
                         mon.prazoConfigurado.valor,
                         mon.prazoConfigurado.unidade,
                       )
-                    : "Sem prazo"}
-                  {mon.prazoAdiado ? " · adiado" : ""}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Vencimento</dt>
-                <dd>{formatDateTimePt(mon.prazoDueAt)}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Última movimentação</dt>
-                <dd>{formatDateTimePt(mon.lastMovementAt)}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Sem movimentação</dt>
-                <dd>{mon.tempoSemMovimentacaoLabel}</dd>
-              </div>
+                    : "Sem prazo") + (mon.prazoAdiado ? " · adiado" : "")
+                }
+              />
+              <MetricRow
+                icon={<CalendarClock className="h-3 w-3" />}
+                label="Vencimento"
+                value={formatDateTimePt(mon.prazoDueAt)}
+              />
+              <MetricRow
+                icon={<Hourglass className="h-3 w-3" />}
+                label="Última movimentação"
+                value={formatDateTimePt(mon.lastMovementAt)}
+              />
+              <MetricRow
+                icon={<Timer className="h-3 w-3" />}
+                label="Sem movimentação"
+                value={mon.tempoSemMovimentacaoLabel}
+              />
               {mon.tempoRestanteLabel && (
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Tempo restante</dt>
-                  <dd>{mon.tempoRestanteLabel}</dd>
-                </div>
+                <MetricRow
+                  icon={<Hourglass className="h-3 w-3" />}
+                  label="Tempo restante"
+                  value={mon.tempoRestanteLabel}
+                />
               )}
               {mon.tempoAtrasoLabel && (
-                <div className="flex justify-between gap-2 text-red-700 dark:text-red-300">
-                  <dt>Tempo em atraso</dt>
-                  <dd>{mon.tempoAtrasoLabel}</dd>
-                </div>
+                <MetricRow
+                  icon={<AlertTriangle className="h-3 w-3" />}
+                  label="Tempo em atraso"
+                  value={mon.tempoAtrasoLabel}
+                  accent
+                />
               )}
             </dl>
+
             {adiamentos && adiamentos.length > 0 && (
               <div>
-                <p className="mb-1 text-xs font-medium">Adiamentos</p>
-                <ul className="space-y-1 text-[11px] text-muted-foreground">
+                <p className="mb-1.5 px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Adiamentos
+                </p>
+                <ul className="space-y-1.5">
                   {adiamentos.map((item) => (
-                    <li key={item.id}>
-                      {item.prazoAnteriorLabel} → {item.prazoNovoLabel} por{" "}
+                    <li
+                      key={item.id}
+                      className="rounded-lg bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground ring-1 ring-border/50"
+                    >
+                      <span className="font-medium text-foreground">
+                        {item.prazoAnteriorLabel} → {item.prazoNovoLabel}
+                      </span>
+                      {" · "}
                       {item.autorNome} · {formatDateTimePt(item.createdAt)}
                       {item.motivo ? ` — ${item.motivo}` : ""}
                     </li>
@@ -246,15 +393,16 @@ export function LeadFunilAlerta({
                 </ul>
               </div>
             )}
+
             {mon.podeAdiar && (
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
-                className="w-full"
+                className={cn("h-8 w-full", BRAND_GRADIENT_BTN)}
+                style={BRAND_GRADIENT_STYLE}
                 onClick={() => setAdiarOpen(true)}
               >
-                <Clock className="mr-1 h-3.5 w-3.5" />
+                <Clock className="h-3.5 w-3.5" />
                 Adiar prazo
               </Button>
             )}
@@ -272,6 +420,7 @@ export function LeadFunilAlerta({
         }}
       />
     </TooltipProvider>
+    </div>
   );
 }
 

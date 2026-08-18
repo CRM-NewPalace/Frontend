@@ -154,6 +154,8 @@ import { CorPicker } from "@/components/cor-picker";
 import { fetchEquipeGerentes, type EquipeOptionUser } from "@/lib/equipes-api";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Check,
+  ChevronsUpDown,
   FolderOpen,
   Plus,
   Loader2,
@@ -191,6 +193,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 const DOC_STATUS_CHIP = cn(STATUS_CHIP_CLASS, "justify-start text-left");
 
@@ -341,7 +351,7 @@ const PERIODO_DOC_OPTIONS: { value: DocPeriodo; label: string }[] = [
   { value: "todos", label: "Todo o período" },
   { value: "7d", label: "Últimos 7 dias" },
   { value: "30d", label: "Últimos 30 dias" },
-  { value: "mes", label: "Mês atual" },
+  { value: "mes", label: "Por mês" },
   { value: "custom", label: "Personalizado" },
 ];
 
@@ -358,10 +368,40 @@ function toIsoDay(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+function currentYearMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMesLabel(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return ym;
+  const label = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function listMesOptions(createdAts: string[]): string[] {
+  const set = new Set<string>();
+  const now = new Date();
+  for (let i = 0; i < 18; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  for (const createdAt of createdAts) {
+    const day = toDateInput(createdAt);
+    if (day.length >= 7) set.add(day.slice(0, 7));
+  }
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
 function resolveDocPeriodRange(
   periodo: DocPeriodo,
   de: string,
   ate: string,
+  mes: string,
 ): { de: string | null; ate: string | null } {
   if (periodo === "todos") return { de: null, ate: null };
   if (periodo === "custom") {
@@ -379,8 +419,11 @@ function resolveDocPeriodRange(
     from.setDate(from.getDate() - 29);
     return { de: toIsoDay(from), ate: toIsoDay(today) };
   }
-  const from = new Date(today.getFullYear(), today.getMonth(), 1);
-  const to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const [y, m] = (mes || currentYearMonth()).split("-").map(Number);
+  const year = y || today.getFullYear();
+  const month = m || today.getMonth() + 1;
+  const from = new Date(year, month - 1, 1);
+  const to = new Date(year, month, 0);
   return { de: toIsoDay(from), ate: toIsoDay(to) };
 }
 
@@ -479,6 +522,7 @@ function DocumentacaoPage() {
   const [filterPeriodo, setFilterPeriodo] = useState<DocPeriodo>(() =>
     getSession()?.role === "analista" ? "todos" : "mes",
   );
+  const [filterMes, setFilterMes] = useState(currentYearMonth);
   const [filterCampoData, setFilterCampoData] =
     useState<DocCampoData>("createdAt");
   const [filterDataDe, setFilterDataDe] = useState("");
@@ -494,6 +538,7 @@ function DocumentacaoPage() {
   const [importFileName, setImportFileName] = useState("");
 
   const [open, setOpen] = useState(false);
+  const [contatoPickerOpen, setContatoPickerOpen] = useState(false);
   const [createLocked, setCreateLocked] = useState(false);
   const [leaveCreateOpen, setLeaveCreateOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
@@ -618,6 +663,11 @@ function DocumentacaoPage() {
     );
   }, [visibleLeads]);
 
+  const selectedContato = contatoOptions.find((l) => l.id === form.contatoId);
+  const selectedContatoLabel = selectedContato
+    ? `${selectedContato.nome} · ${selectedContato.tipo === "cliente" ? "Cliente" : "Lead"}`
+    : "—";
+
   const status1Options = useMemo(() => {
     return dedupeStatusOptions(
       [
@@ -710,8 +760,19 @@ function DocumentacaoPage() {
   }, []);
 
   const periodRange = useMemo(
-    () => resolveDocPeriodRange(filterPeriodo, filterDataDe, filterDataAte),
-    [filterPeriodo, filterDataDe, filterDataAte],
+    () =>
+      resolveDocPeriodRange(
+        filterPeriodo,
+        filterDataDe,
+        filterDataAte,
+        filterMes,
+      ),
+    [filterPeriodo, filterDataDe, filterDataAte, filterMes],
+  );
+
+  const mesOptions = useMemo(
+    () => listMesOptions(items.map((doc) => doc.createdAt)),
+    [items],
   );
 
   const filteredItems = useMemo(() => {
@@ -820,8 +881,9 @@ function DocumentacaoPage() {
         else if (raw.includes("analise")) summary.emAnalise += 1;
         return summary;
       },
-      { aprovadas: 0, reprovadas: 0, emAnalise: 0, vgv: 0 },
+      { aprovadas: 0, reprovadas: 0, emAnalise: 0, vgv: 0, total: 0 },
     );
+    base.total = filteredItems.length;
 
     // VGV: mesmo critério do dashboard (status vendido + data venda ou cadastro no período)
     const vgvItems = items.filter((doc) => {
@@ -955,6 +1017,8 @@ function DocumentacaoPage() {
         const de = filterDataDe ? formatDayBr(filterDataDe) : "…";
         const ate = filterDataAte ? formatDayBr(filterDataAte) : "…";
         label += `${de} – ${ate}`;
+      } else if (filterPeriodo === "mes") {
+        label += formatMesLabel(filterMes);
       } else {
         label +=
           PERIODO_DOC_OPTIONS.find((o) => o.value === filterPeriodo)?.label ??
@@ -968,6 +1032,7 @@ function DocumentacaoPage() {
           setFilterDataDe("");
           setFilterDataAte("");
           setFilterCampoData("createdAt");
+          setFilterMes(currentYearMonth());
         },
       });
     } else if (filterCampoData !== "createdAt") {
@@ -1055,6 +1120,7 @@ function DocumentacaoPage() {
   }, [
     filterSearch,
     filterPeriodo,
+    filterMes,
     filterCampoData,
     filterDataDe,
     filterDataAte,
@@ -1086,6 +1152,7 @@ function DocumentacaoPage() {
     setFilterCorretorId("__all__");
     setFilterGerenteId("__all__");
     setFilterPeriodo("todos");
+    setFilterMes(currentYearMonth());
     setFilterCampoData("createdAt");
     setFilterDataDe("");
     setFilterDataAte("");
@@ -1175,6 +1242,7 @@ function DocumentacaoPage() {
 
   function closeDocDialog() {
     setOpen(false);
+    setContatoPickerOpen(false);
     setCreateLocked(false);
     setLeaveCreateOpen(false);
   }
@@ -1963,6 +2031,9 @@ function DocumentacaoPage() {
                 onValueChange={(v) => {
                   const next = v as DocPeriodo;
                   setFilterPeriodo(next);
+                  if (next === "mes" && !filterMes) {
+                    setFilterMes(currentYearMonth());
+                  }
                   if (next !== "custom") {
                     setFilterDataDe("");
                     setFilterDataAte("");
@@ -1981,6 +2052,26 @@ function DocumentacaoPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {filterPeriodo === "mes" ? (
+              <div className="w-full sm:w-48">
+                <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                  Mês
+                </Label>
+                <Select value={filterMes} onValueChange={setFilterMes}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {mesOptions.map((ym) => (
+                      <SelectItem key={ym} value={ym}>
+                        {formatMesLabel(ym)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
 
             {filterPeriodo === "custom" ? (
               <>
@@ -2299,12 +2390,27 @@ function DocumentacaoPage() {
         ) : null}
       </div>
 
-      <section className="mb-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <section className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        <FinanceKpiCard
+          label={filterPeriodo === "mes" ? "No mês" : "Documentações"}
+          value={pipelineSummary.total}
+          icon={FolderOpen}
+          tone="blue-1"
+          format="number"
+          compact
+          suffix={
+            filterPeriodo === "mes" ? formatMesLabel(filterMes) : undefined
+          }
+          onClick={() => {
+            setFilterStatus1("__all__");
+            void navigate({ to: "/documentacao", search: {}, replace: true });
+          }}
+        />
         <FinanceKpiCard
           label="Aprovadas"
           value={pipelineSummary.aprovadas}
           icon={CheckCircle2}
-          tone="blue-1"
+          tone="blue-2"
           format="number"
           compact
           active={filterStatus1 === "Aprovado"}
@@ -2326,7 +2432,7 @@ function DocumentacaoPage() {
           label="Reprovadas"
           value={pipelineSummary.reprovadas}
           icon={XCircle}
-          tone="blue-2"
+          tone="blue-3"
           format="number"
           compact
           active={filterStatus1 === "Reprovado"}
@@ -2348,7 +2454,7 @@ function DocumentacaoPage() {
           label="Em análise"
           value={pipelineSummary.emAnalise}
           icon={Clock3}
-          tone="blue-3"
+          tone="blue-4"
           format="number"
           compact
           active={filterStatus1 === "Em análise"}
@@ -2370,7 +2476,7 @@ function DocumentacaoPage() {
           label="VGV vendido"
           value={pipelineSummary.vgv}
           icon={Wallet}
-          tone="blue-4"
+          tone="blue-5"
           compact
           href="/vendas"
         />
@@ -2603,6 +2709,7 @@ function DocumentacaoPage() {
                           novoCliente: on,
                           contatoId: on ? "" : prev.contatoId,
                         }));
+                        if (on) setContatoPickerOpen(false);
                       }}
                       disabled={readOnly}
                       className="mt-0.5"
@@ -2620,33 +2727,94 @@ function DocumentacaoPage() {
                 {!form.novoCliente ? (
                   <div className="space-y-2">
                     <Label>Lead ou cliente</Label>
-                    <Select
-                      value={form.contatoId || "__none__"}
-                      onValueChange={(v) => {
-                        if (v === "__none__") {
-                          setForm((prev) => ({
-                            ...prev,
-                            contatoId: "",
-                          }));
-                          return;
-                        }
-                        selectContato(v);
+                    <Popover
+                      modal
+                      open={contatoPickerOpen}
+                      onOpenChange={(next) => {
+                        if (readOnly || formMode === "edit") return;
+                        setContatoPickerOpen(next);
                       }}
-                      disabled={readOnly || formMode === "edit"}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">—</SelectItem>
-                        {contatoOptions.map((l) => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.nome} ·{" "}
-                            {l.tipo === "cliente" ? "Cliente" : "Lead"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={contatoPickerOpen}
+                          disabled={readOnly || formMode === "edit"}
+                          className="h-9 w-full justify-between rounded-md font-normal"
+                        >
+                          <span className="truncate">{selectedContatoLabel}</span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                        align="start"
+                        onWheel={(event) => event.stopPropagation()}
+                      >
+                        <Command
+                          filter={(value, search) => {
+                            const norm = (s: string) =>
+                              s
+                                .normalize("NFD")
+                                .replace(/\p{M}/gu, "")
+                                .toLowerCase();
+                            return norm(value).includes(norm(search)) ? 1 : 0;
+                          }}
+                        >
+                          <CommandInput placeholder="Pesquisar pelo nome…" />
+                          <CommandList className="max-h-72">
+                            <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                value="nenhum contato"
+                                onSelect={() => {
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    contatoId: "",
+                                  }));
+                                  setContatoPickerOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    !form.contatoId
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                />
+                                —
+                              </CommandItem>
+                              {contatoOptions.map((l) => (
+                                <CommandItem
+                                  key={l.id}
+                                  value={`${l.nome} ${l.telefone ?? ""} ${l.tipo} ${l.id}`}
+                                  onSelect={() => {
+                                    selectContato(l.id);
+                                    setContatoPickerOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      form.contatoId === l.id
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  <span className="truncate">
+                                    {l.nome} ·{" "}
+                                    {l.tipo === "cliente" ? "Cliente" : "Lead"}
+                                  </span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 ) : null}
               </div>
