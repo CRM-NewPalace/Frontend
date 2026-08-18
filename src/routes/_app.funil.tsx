@@ -617,6 +617,7 @@ export function ComercialFunilBoard({
       toast.success("Histórico registrado na Triagem.");
       closeTriagemPrompt();
       finishTriagemThenTarefa();
+      void refreshLeads({ silent: true });
     } catch (err) {
       triagemFinalizedRef.current = false;
       toast.error(
@@ -669,6 +670,7 @@ export function ComercialFunilBoard({
       });
       toast.success("Histórico registrado (etapa mantida).");
       closeManualTriagem();
+      void refreshLeads({ silent: true });
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -1825,6 +1827,9 @@ export function ComercialFunilBoard({
         }
         canWrite={canWriteTriagem}
         onOpenDetails={openDetailFromTriagem}
+        onLeadTouched={() => {
+          void refreshLeads({ silent: true });
+        }}
       />
 
       <FunilTarefaDialog

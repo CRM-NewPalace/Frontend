@@ -271,6 +271,7 @@ function CorretorTriagem() {
       ]);
       setQuickTexto("");
       toast.success("Relato registrado (etapa mantida).");
+      void refresh({ silent: true });
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -326,9 +327,7 @@ function CorretorTriagem() {
       toast.success("Relato registrado na triagem.");
       closeCreate();
       setSelectedId(leadId);
-      if (createStage !== "__none__") {
-        void refresh({ silent: true });
-      }
+      void refresh({ silent: true });
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -512,11 +511,12 @@ function CorretorTriagem() {
                   fallbackStage={selectedContact.stage}
                   loading={historyLoading}
                   leadId={selectedId}
-                  onEventUpdated={(updated) =>
+                  onEventUpdated={(updated) => {
                     setEvents((prev) =>
                       prev.map((e) => (e.id === updated.id ? updated : e)),
-                    )
-                  }
+                    );
+                    void refresh({ silent: true });
+                  }}
                 />
               </div>
             </div>
@@ -672,7 +672,7 @@ function ManagerTriagem() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const canWrite = canWriteTriagem(user?.role);
-  const { leads: allLeads, assignees, loading } = useLeads();
+  const { leads: allLeads, assignees, loading, refresh } = useLeads();
   const { funnelStages } = useCatalog();
   const stageName = useStageLabel();
 
@@ -812,6 +812,7 @@ function ManagerTriagem() {
       ]);
       setQuickTexto("");
       toast.success("Relato registrado (etapa mantida).");
+      void refresh({ silent: true });
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -1062,11 +1063,12 @@ function ManagerTriagem() {
                   fallbackStage={selectedLead.stage}
                   loading={historyLoading}
                   leadId={selectedLeadId}
-                  onEventUpdated={(updated) =>
+                  onEventUpdated={(updated) => {
                     setEvents((prev) =>
                       prev.map((e) => (e.id === updated.id ? updated : e)),
-                    )
-                  }
+                    );
+                    void refresh({ silent: true });
+                  }}
                 />
               </div>
             </div>
