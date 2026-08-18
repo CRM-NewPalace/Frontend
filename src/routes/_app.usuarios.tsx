@@ -871,19 +871,22 @@ function Usuarios() {
       </Card>
 
       <Card className="overflow-hidden">
-        <Table className="[&_th]:px-4 [&_td]:px-4">
+        <Table
+          containerClassName="overflow-x-hidden"
+          className="w-full table-fixed [&_th]:px-3 [&_td]:px-3 [&_th]:whitespace-nowrap"
+        >
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Cargo</TableHead>
-              <TableHead>CRECI</TableHead>
-              <TableHead>Perfil</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Último acesso</TableHead>
-              <TableHead>Tempo hoje</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="w-[16%]">Nome</TableHead>
+              <TableHead className="w-[18%]">Email</TableHead>
+              <TableHead className="w-[10%]">Telefone</TableHead>
+              <TableHead className="w-[9%]">Cargo</TableHead>
+              <TableHead className="w-[8%]">CRECI</TableHead>
+              <TableHead className="w-[9%]">Perfil</TableHead>
+              <TableHead className="w-[8%]">Status</TableHead>
+              <TableHead className="w-[10%]">Último acesso</TableHead>
+              <TableHead className="w-[8%]">Tempo hoje</TableHead>
+              <TableHead className="w-12 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -908,38 +911,73 @@ function Usuarios() {
             ) : (
               sorted.map((u) => (
                 <TableRow key={u.id} className="hover:bg-muted/40">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-8 h-8">
+                  <TableCell className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar className="w-8 h-8 shrink-0">
                         <AvatarFallback className="avatar-fallback-brand text-xs">
                           {initials(u.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="table-person-name text-sm">{u.name}</span>
+                      <span
+                        className="table-person-name min-w-0 truncate text-sm"
+                        title={u.name}
+                      >
+                        {u.name}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">{u.email}</TableCell>
-                  <TableCell className="text-sm">{u.phone || "—"}</TableCell>
-                  <TableCell className="text-sm">{u.cargo || "—"}</TableCell>
-                  <TableCell className="text-sm">{u.creci || "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={roleBadgeClass(u.role)}>
+                  <TableCell
+                    className="min-w-0 truncate text-sm"
+                    title={u.email}
+                  >
+                    {u.email}
+                  </TableCell>
+                  <TableCell
+                    className="min-w-0 truncate text-sm"
+                    title={u.phone || undefined}
+                  >
+                    {u.phone || "—"}
+                  </TableCell>
+                  <TableCell
+                    className="min-w-0 truncate text-sm"
+                    title={u.cargo || undefined}
+                  >
+                    {u.cargo || "—"}
+                  </TableCell>
+                  <TableCell
+                    className="min-w-0 truncate text-sm"
+                    title={u.creci || undefined}
+                  >
+                    {u.creci || "—"}
+                  </TableCell>
+                  <TableCell className="min-w-0">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "max-w-full truncate",
+                        roleBadgeClass(u.role),
+                      )}
+                      title={ROLE_LABEL[u.role]}
+                    >
                       {ROLE_LABEL[u.role]}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="min-w-0">
                     <Badge
                       variant={u.status === "ativo" ? "default" : "secondary"}
-                      className={STATUS_CHIP_CLASS}
+                      className="max-w-full truncate"
                       title={STATUS_LABEL[u.status]}
                     >
                       {STATUS_LABEL[u.status]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell
+                    className="min-w-0 truncate text-xs text-muted-foreground"
+                    title={formatLastAccess(u.lastLoginAt)}
+                  >
                     {formatLastAccess(u.lastLoginAt)}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="min-w-0 truncate text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       {presenceByUser[u.id]?.online ? (
                         <span
