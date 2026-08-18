@@ -244,7 +244,7 @@ function TimeGridBoard({
     PX_PER_HOUR;
 
   return (
-    <div className="relative overflow-auto rounded-xl border bg-card">
+    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-xl border bg-card">
       {loading ? (
         <div className="absolute inset-0 z-20 bg-background/50 flex items-center justify-center text-sm text-muted-foreground">
           Carregando…
@@ -252,9 +252,9 @@ function TimeGridBoard({
       ) : null}
 
       <div
-        className="grid min-w-160"
+        className={cn("grid", days.length > 1 ? "min-w-220" : "min-w-0")}
         style={{
-          gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `56px repeat(${days.length}, minmax(9rem, 1fr))`,
         }}
       >
         <div className="sticky top-0 z-10 border-b bg-card" />
@@ -325,9 +325,7 @@ function TimeGridBoard({
                         return false;
                       }
                       const bStart = new Date(item.startsAt);
-                      const bEnd = item.endsAt
-                        ? new Date(item.endsAt)
-                        : bStart;
+                      const bEnd = item.endsAt ? new Date(item.endsAt) : bStart;
                       const slotStart = new Date(day);
                       slotStart.setHours(h, 0, 0, 0);
                       const slotEnd = new Date(day);
@@ -456,102 +454,104 @@ function MonthBoard({
   }, [items]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border bg-card">
+    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-xl border bg-card">
       {loading ? (
         <div className="absolute inset-0 z-20 bg-background/50 flex items-center justify-center text-sm text-muted-foreground">
           Carregando…
         </div>
       ) : null}
 
-      <div className="grid grid-cols-7 border-b bg-muted/30">
-        {weekdays.map((w) => (
-          <div
-            key={w}
-            className="px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-          >
-            {w}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 auto-rows-[minmax(110px,1fr)]">
-        {cells.map((day) => {
-          const key = toDateInput(day);
-          const inMonth = day.getMonth() === anchor.getMonth();
-          const isToday = sameDay(day, today);
-          const dayItems = byDay.get(key) ?? [];
-          const shown = dayItems.slice(0, 3);
-          const extra = dayItems.length - shown.length;
-
-          return (
+      <div className="min-w-200">
+        <div className="grid grid-cols-7 border-b bg-muted/30">
+          {weekdays.map((w) => (
             <div
-              key={key}
-              className={cn(
-                "border-t border-l p-1.5 min-h-27.5 flex flex-col gap-1",
-                !inMonth && "bg-muted/20 text-muted-foreground",
-                isToday && "bg-primary/4",
-              )}
+              key={w}
+              className="px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
             >
-              <div className="flex items-center justify-between gap-1">
-                <button
-                  type="button"
-                  onClick={() => onSelectDay(day)}
-                  className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-muted",
-                    isToday &&
-                      "bg-primary text-primary-foreground hover:bg-primary",
-                  )}
-                >
-                  {day.getDate()}
-                </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-1.5 text-[10px] text-muted-foreground"
-                  onClick={() => onCreateAt(day, 9)}
-                >
-                  +
-                </Button>
-              </div>
-
-              <div className="flex flex-col gap-0.5 min-h-0">
-                {shown.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onEdit(item)}
-                    className={cn(
-                      "truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-tight border",
-                      AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
-                      item.status === "cancelado" && "opacity-50 grayscale",
-                    )}
-                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${AGENDAMENTO_TIPO_LABEL[item.tipo]} · ${getAgendamentoCardTitle(item)}${
-                      getAgendamentoCardSubtitle(item)
-                        ? ` · ${getAgendamentoCardSubtitle(item)}`
-                        : ""
-                    } · ${AGENDAMENTO_STATUS_LABEL[item.status]}`}
-                  >
-                    {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    {getAgendamentoCardTitle(item)}
-                  </button>
-                ))}
-                {extra > 0 ? (
-                  <button
-                    type="button"
-                    className="text-[10px] text-muted-foreground hover:text-foreground text-left px-1"
-                    onClick={() => onSelectDay(day)}
-                  >
-                    +{extra} mais
-                  </button>
-                ) : null}
-              </div>
+              {w}
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 auto-rows-[minmax(110px,1fr)]">
+          {cells.map((day) => {
+            const key = toDateInput(day);
+            const inMonth = day.getMonth() === anchor.getMonth();
+            const isToday = sameDay(day, today);
+            const dayItems = byDay.get(key) ?? [];
+            const shown = dayItems.slice(0, 3);
+            const extra = dayItems.length - shown.length;
+
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "border-t border-l p-1.5 min-h-27.5 flex flex-col gap-1",
+                  !inMonth && "bg-muted/20 text-muted-foreground",
+                  isToday && "bg-primary/4",
+                )}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onSelectDay(day)}
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-muted",
+                      isToday &&
+                        "bg-primary text-primary-foreground hover:bg-primary",
+                    )}
+                  >
+                    {day.getDate()}
+                  </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                    onClick={() => onCreateAt(day, 9)}
+                  >
+                    +
+                  </Button>
+                </div>
+
+                <div className="flex flex-col gap-0.5 min-h-0">
+                  {shown.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onEdit(item)}
+                      className={cn(
+                        "truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-tight border",
+                        AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
+                        item.status === "cancelado" && "opacity-50 grayscale",
+                      )}
+                      title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${AGENDAMENTO_TIPO_LABEL[item.tipo]} · ${getAgendamentoCardTitle(item)}${
+                        getAgendamentoCardSubtitle(item)
+                          ? ` · ${getAgendamentoCardSubtitle(item)}`
+                          : ""
+                      } · ${AGENDAMENTO_STATUS_LABEL[item.status]}`}
+                    >
+                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      {getAgendamentoCardTitle(item)}
+                    </button>
+                  ))}
+                  {extra > 0 ? (
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-foreground text-left px-1"
+                      onClick={() => onSelectDay(day)}
+                    >
+                      +{extra} mais
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -901,10 +901,10 @@ function Usuarios() {
         </div>
       </Card>
 
-      <Card className="overflow-hidden">
+      <Card className="min-w-0 overflow-hidden">
         <Table
-          containerClassName="overflow-x-hidden"
-          className="w-full table-fixed [&_th]:px-3 [&_td]:px-3 [&_th]:whitespace-nowrap"
+          containerClassName="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]"
+          className="w-full min-w-320 table-fixed [&_th]:px-3 [&_td]:overflow-hidden [&_td]:px-3 [&_th]:whitespace-nowrap"
         >
           <TableHeader>
             <TableRow>

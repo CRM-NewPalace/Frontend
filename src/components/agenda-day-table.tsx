@@ -14,7 +14,6 @@ import {
   AGENDAMENTO_ORIGEM_SOFT,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_LABEL,
-  getAgendamentoCardSubtitle,
   getAgendamentoCardTitle,
   getAgendamentoOrigem,
   isAgendamentoAniversario,
@@ -36,7 +35,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { sameDay, toDateInput } from "@/components/agenda-board";
+import { sameDay } from "@/components/agenda-board";
 import { toast } from "sonner";
 
 /** Horários da tabela: 07:00 até 00:00. */
@@ -176,9 +175,7 @@ function canCompleteItem(
   }
   if (canMutateItem(item, role)) return true;
   // Destinatário da tarefa atribuída pode concluir.
-  return Boolean(
-    currentUserId && item.atribuidoParaId === currentUserId,
-  );
+  return Boolean(currentUserId && item.atribuidoParaId === currentUserId);
 }
 
 export function AgendaDayTable({
@@ -204,7 +201,7 @@ export function AgendaDayTable({
   const currentHour = now.getHours();
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-xl border bg-card max-sm:-mx-3 max-sm:rounded-none max-sm:border-x-0">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 bg-muted/20">
         <div>
           <h3 className="text-sm font-semibold capitalize">
@@ -231,324 +228,314 @@ export function AgendaDayTable({
           Carregando horários…
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <Table className="[&_th]:px-4 [&_td]:px-4 [&_th]:h-11 [&_th]:py-3">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[110px]">Horário</TableHead>
-                <TableHead>Compromisso</TableHead>
-                <TableHead className="hidden md:table-cell">Contato</TableHead>
-                {showCorretor ? (
-                  <TableHead className="hidden lg:table-cell">
-                    Corretor
-                  </TableHead>
-                ) : null}
-                <TableHead className="hidden sm:table-cell w-[120px]">
-                  Status
-                </TableHead>
-                <TableHead className="w-[72px] text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {slots.map((slot) => {
-                if (slot.kind === "empty") {
-                  const isNow = isToday && slot.hour === currentHour;
-                  const bloqueio = findCoveringBloqueio(day, slot.hour, items);
-                  return (
-                    <TableRow
-                      key={`empty-${slot.hour}`}
-                      className={cn("group", isNow && "bg-primary/[0.04]")}
-                    >
-                      <TableCell className="align-middle">
-                        <div
-                          className={cn(
-                            "inline-flex items-center gap-1.5 text-sm font-medium tabular-nums text-muted-foreground",
-                            isNow && "text-primary",
-                          )}
-                        >
-                          <Clock className="w-3.5 h-3.5" />
-                          {formatHourLabel(slot.hour)}
-                        </div>
-                      </TableCell>
-                      <TableCell colSpan={showCorretor ? 4 : 3}>
-                        {bloqueio ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (canMutateItem(bloqueio, currentUserRole)) {
-                                onEdit(bloqueio);
-                              } else {
-                                toast.message("Horário bloqueado", {
-                                  description: bloqueio.titulo,
-                                });
-                              }
-                            }}
-                            className="w-full rounded-lg border border-dashed border-slate-400 bg-slate-100/80 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-200/80"
-                          >
-                            Bloqueado — {bloqueio.autor.name}
-                            {bloqueio.titulo
-                              ? ` · ${bloqueio.titulo}`
-                              : ""}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => onCreateAt(day, slot.hour)}
-                            className="w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm text-muted-foreground transition hover:border-primary/40 hover:bg-muted/40 hover:text-foreground"
-                          >
-                            Livre — clicar para agendar
-                          </button>
-                        )}
-                      </TableCell>
-                      <TableCell />
-                    </TableRow>
-                  );
-                }
-
-                const { item } = slot;
-                const cancelled = item.status === "cancelado";
-                const canMutate = canMutateItem(item, currentUserRole);
-                const origem = getAgendamentoOrigem(item);
-                const isAdminEvent =
-                  item.alvoTipo === "todos" ||
-                  item.alvoTipo === "equipe" ||
-                  item.alvoTipo === "gerente" ||
-                  item.alvoTipo === "gerentes" ||
-                  item.autor.role === "admin";
-                const alvoBadgeLabel =
-                  item.alvoTipo === "todos"
-                    ? "Todas as equipes"
-                    : item.alvoTipo === "equipe"
-                      ? item.alvoEquipe?.name
-                        ? `Equipe: ${item.alvoEquipe.name}`
-                        : "Equipe"
-                      : item.alvoTipo === "gerente"
-                        ? item.alvoGerente?.name
-                          ? `Gerente: ${item.alvoGerente.name}`
-                          : "Gerente"
-                        : item.alvoTipo === "gerentes"
-                          ? "Todos os gerentes"
-                          : item.autor.role === "admin"
-                            ? "Equipe"
-                            : null;
-                const isNow =
-                  isToday && new Date(item.startsAt).getHours() === currentHour;
-
+        <Table
+          containerClassName="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]"
+          className="w-full min-w-200 [&_th]:px-4 [&_td]:px-4 [&_th]:h-11 [&_th]:py-3 [&_th]:whitespace-nowrap"
+        >
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-27.5">Horário</TableHead>
+              <TableHead>Compromisso</TableHead>
+              <TableHead>Contato</TableHead>
+              {showCorretor ? <TableHead>Corretor</TableHead> : null}
+              <TableHead className="w-30">Status</TableHead>
+              <TableHead className="w-18 text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {slots.map((slot) => {
+              if (slot.kind === "empty") {
+                const isNow = isToday && slot.hour === currentHour;
+                const bloqueio = findCoveringBloqueio(day, slot.hour, items);
                 return (
                   <TableRow
-                    key={item.id}
-                    className={cn(
-                      cancelled && "opacity-55",
-                      isNow && "bg-primary/[0.04]",
-                    )}
+                    key={`empty-${slot.hour}`}
+                    className={cn("group", isNow && "bg-primary/4")}
                   >
-                    <TableCell className="align-top">
-                      <div className="flex items-start gap-2">
-                        <span
-                          className={cn(
-                            "mt-1.5 h-8 w-1 shrink-0 rounded-full",
-                            AGENDAMENTO_ORIGEM_DOT[origem],
-                          )}
-                          title={AGENDAMENTO_ORIGEM_LABEL[origem]}
-                        />
-                        <div>
-                          <div className="text-sm font-semibold tabular-nums">
-                            {formatTimeRange(item)}
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px]",
-                                AGENDAMENTO_ORIGEM_SOFT[origem],
-                              )}
-                            >
-                              {AGENDAMENTO_TIPO_LABEL[item.tipo]}
-                            </Badge>
-                          </div>
-                        </div>
+                    <TableCell className="align-middle">
+                      <div
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-sm font-medium tabular-nums text-muted-foreground",
+                          isNow && "text-primary",
+                        )}
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        {formatHourLabel(slot.hour)}
                       </div>
                     </TableCell>
-                    <TableCell className="align-top">
-                      {canMutate ? (
+                    <TableCell colSpan={showCorretor ? 4 : 3}>
+                      {bloqueio ? (
                         <button
                           type="button"
-                          onClick={() => onEdit(item)}
-                          className="text-left font-medium hover:underline"
+                          onClick={() => {
+                            if (canMutateItem(bloqueio, currentUserRole)) {
+                              onEdit(bloqueio);
+                            } else {
+                              toast.message("Horário bloqueado", {
+                                description: bloqueio.titulo,
+                              });
+                            }
+                          }}
+                          className="w-full rounded-lg border border-dashed border-slate-400 bg-slate-100/80 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-200/80"
                         >
-                          {getAgendamentoCardTitle(item)}
+                          Bloqueado — {bloqueio.autor.name}
+                          {bloqueio.titulo ? ` · ${bloqueio.titulo}` : ""}
                         </button>
                       ) : (
-                        <span className="font-medium">
-                          {getAgendamentoCardTitle(item)}
-                        </span>
-                      )}
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {isAdminEvent && alvoBadgeLabel ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-sky-300 text-sky-800"
-                          >
-                            {alvoBadgeLabel}
-                          </Badge>
-                        ) : isAgendamentoBloqueio(item) ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-slate-400 text-slate-800"
-                          >
-                            Bloqueado · {item.autor.name}
-                          </Badge>
-                        ) : item.atribuidoParaId ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-violet-300 text-violet-800"
-                          >
-                            De {item.autor.name}
-                          </Badge>
-                        ) : item.escopo === "pessoal" ? (
-                          <Badge variant="outline" className="text-[10px]">
-                            Pessoal
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-amber-300 text-amber-800"
-                          >
-                            Com gerente
-                          </Badge>
-                        )}
-                        {item.solicitacaoStatus === "pendente" ? (
-                          <Badge
-                            className={`${STATUS_CHIP_CLASS} bg-amber-500 hover:bg-amber-500`}
-                            title="Aguardando"
-                          >
-                            Aguardando
-                          </Badge>
-                        ) : null}
-                      </div>
-                      {isAgendamentoBloqueio(item) && item.titulo ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {item.titulo}
-                        </p>
-                      ) : null}
-                      {item.atribuidoParaId ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {item.atribuidoPara
-                            ? `Para ${item.atribuidoPara.name} · `
-                            : ""}
-                          Passada por {item.autor.name}
-                        </p>
-                      ) : null}
-                      {item.local ? (
-                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="w-3 h-3" />
-                          {item.local}
-                        </p>
-                      ) : null}
-                      {item.observacoes ? (
-                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                          {item.observacoes}
-                        </p>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="align-top hidden md:table-cell">
-                      {item.lead ? (
-                        <>
-                          <div className="inline-flex items-center gap-1.5 text-sm">
-                            <User className="w-3.5 h-3.5 text-muted-foreground" />
-                            {item.lead.nome}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {item.lead.telefone}
-                          </p>
-                        </>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
+                        <button
+                          type="button"
+                          onClick={() => onCreateAt(day, slot.hour)}
+                          className="w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm text-muted-foreground transition hover:border-primary/40 hover:bg-muted/40 hover:text-foreground"
+                        >
+                          Livre — clicar para agendar
+                        </button>
                       )}
                     </TableCell>
-                    {showCorretor ? (
-                      <TableCell className="align-top hidden lg:table-cell">
-                        <div className="inline-flex items-center gap-1.5 text-sm">
-                          <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                          {item.atribuidoPara?.name ??
-                            item.lead?.corretor?.name ??
-                            item.autor?.name ??
-                            "—"}
-                        </div>
-                      </TableCell>
-                    ) : null}
-                    <TableCell className="align-top hidden sm:table-cell">
-                      <Badge
-                        variant="secondary"
-                        className={STATUS_BADGE[item.status]}
-                        title={AGENDAMENTO_STATUS_LABEL[item.status]}
-                      >
-                        {AGENDAMENTO_STATUS_LABEL[item.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="align-top text-right">
-                      <div className="inline-flex items-center gap-0.5">
-                        {canCompleteItem(item, currentUserRole, currentUserId) ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-amber-700 hover:text-amber-800 hover:bg-amber-500/10"
-                            onClick={() => onComplete(item)}
-                            disabled={
-                              completingId === item.id ||
-                              cancelingId === item.id
-                            }
-                            aria-label="Concluir"
-                            title="Concluir"
-                          >
-                            {completingId === item.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                          </Button>
-                        ) : null}
-                        {canMutate && item.status === "agendado" ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-500/10"
-                            onClick={() => onCancel(item)}
-                            disabled={
-                              completingId === item.id ||
-                              cancelingId === item.id
-                            }
-                            aria-label="Cancelar"
-                            title="Cancelar"
-                          >
-                            {cancelingId === item.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <X className="w-4 h-4" />
-                            )}
-                          </Button>
-                        ) : null}
-                        {canMutate ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onEdit(item)}
-                            aria-label="Editar"
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
+                    <TableCell />
                   </TableRow>
                 );
-              })}
-            </TableBody>
-          </Table>
-          <p className="sr-only">{toDateInput(day)}</p>
-        </div>
+              }
+
+              const { item } = slot;
+              const cancelled = item.status === "cancelado";
+              const canMutate = canMutateItem(item, currentUserRole);
+              const origem = getAgendamentoOrigem(item);
+              const isAdminEvent =
+                item.alvoTipo === "todos" ||
+                item.alvoTipo === "equipe" ||
+                item.alvoTipo === "gerente" ||
+                item.alvoTipo === "gerentes" ||
+                item.autor.role === "admin";
+              const alvoBadgeLabel =
+                item.alvoTipo === "todos"
+                  ? "Todas as equipes"
+                  : item.alvoTipo === "equipe"
+                    ? item.alvoEquipe?.name
+                      ? `Equipe: ${item.alvoEquipe.name}`
+                      : "Equipe"
+                    : item.alvoTipo === "gerente"
+                      ? item.alvoGerente?.name
+                        ? `Gerente: ${item.alvoGerente.name}`
+                        : "Gerente"
+                      : item.alvoTipo === "gerentes"
+                        ? "Todos os gerentes"
+                        : item.autor.role === "admin"
+                          ? "Equipe"
+                          : null;
+              const isNow =
+                isToday && new Date(item.startsAt).getHours() === currentHour;
+
+              return (
+                <TableRow
+                  key={item.id}
+                  className={cn(
+                    cancelled && "opacity-55",
+                    isNow && "bg-primary/4",
+                  )}
+                >
+                  <TableCell className="align-top">
+                    <div className="flex items-start gap-2">
+                      <span
+                        className={cn(
+                          "mt-1.5 h-8 w-1 shrink-0 rounded-full",
+                          AGENDAMENTO_ORIGEM_DOT[origem],
+                        )}
+                        title={AGENDAMENTO_ORIGEM_LABEL[origem]}
+                      />
+                      <div>
+                        <div className="text-sm font-semibold tabular-nums">
+                          {formatTimeRange(item)}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px]",
+                              AGENDAMENTO_ORIGEM_SOFT[origem],
+                            )}
+                          >
+                            {AGENDAMENTO_TIPO_LABEL[item.tipo]}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top">
+                    {canMutate ? (
+                      <button
+                        type="button"
+                        onClick={() => onEdit(item)}
+                        className="text-left font-medium hover:underline"
+                      >
+                        {getAgendamentoCardTitle(item)}
+                      </button>
+                    ) : (
+                      <span className="font-medium">
+                        {getAgendamentoCardTitle(item)}
+                      </span>
+                    )}
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {isAdminEvent && alvoBadgeLabel ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-sky-300 text-sky-800"
+                        >
+                          {alvoBadgeLabel}
+                        </Badge>
+                      ) : isAgendamentoBloqueio(item) ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-slate-400 text-slate-800"
+                        >
+                          Bloqueado · {item.autor.name}
+                        </Badge>
+                      ) : item.atribuidoParaId ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-violet-300 text-violet-800"
+                        >
+                          De {item.autor.name}
+                        </Badge>
+                      ) : item.escopo === "pessoal" ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          Pessoal
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-amber-300 text-amber-800"
+                        >
+                          Com gerente
+                        </Badge>
+                      )}
+                      {item.solicitacaoStatus === "pendente" ? (
+                        <Badge
+                          className={`${STATUS_CHIP_CLASS} bg-amber-500 hover:bg-amber-500`}
+                          title="Aguardando"
+                        >
+                          Aguardando
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {isAgendamentoBloqueio(item) && item.titulo ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {item.titulo}
+                      </p>
+                    ) : null}
+                    {item.atribuidoParaId ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {item.atribuidoPara
+                          ? `Para ${item.atribuidoPara.name} · `
+                          : ""}
+                        Passada por {item.autor.name}
+                      </p>
+                    ) : null}
+                    {item.local ? (
+                      <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3" />
+                        {item.local}
+                      </p>
+                    ) : null}
+                    {item.observacoes ? (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        {item.observacoes}
+                      </p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="align-top whitespace-nowrap">
+                    {item.lead ? (
+                      <>
+                        <div className="inline-flex items-center gap-1.5 text-sm">
+                          <User className="w-3.5 h-3.5 text-muted-foreground" />
+                          {item.lead.nome}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.lead.telefone}
+                        </p>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  {showCorretor ? (
+                    <TableCell className="align-top whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5 text-sm">
+                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                        {item.atribuidoPara?.name ??
+                          item.lead?.corretor?.name ??
+                          item.autor?.name ??
+                          "—"}
+                      </div>
+                    </TableCell>
+                  ) : null}
+                  <TableCell className="align-top whitespace-nowrap">
+                    <Badge
+                      variant="secondary"
+                      className={STATUS_BADGE[item.status]}
+                      title={AGENDAMENTO_STATUS_LABEL[item.status]}
+                    >
+                      {AGENDAMENTO_STATUS_LABEL[item.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="align-top text-right">
+                    <div className="inline-flex items-center gap-0.5">
+                      {canCompleteItem(item, currentUserRole, currentUserId) ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-amber-700 hover:text-amber-800 hover:bg-amber-500/10"
+                          onClick={() => onComplete(item)}
+                          disabled={
+                            completingId === item.id || cancelingId === item.id
+                          }
+                          aria-label="Concluir"
+                          title="Concluir"
+                        >
+                          {completingId === item.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </Button>
+                      ) : null}
+                      {canMutate && item.status === "agendado" ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-500/10"
+                          onClick={() => onCancel(item)}
+                          disabled={
+                            completingId === item.id || cancelingId === item.id
+                          }
+                          aria-label="Cancelar"
+                          title="Cancelar"
+                        >
+                          {cancelingId === item.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
+                        </Button>
+                      ) : null}
+                      {canMutate ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onEdit(item)}
+                          aria-label="Editar"
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

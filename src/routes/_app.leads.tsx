@@ -86,6 +86,7 @@ import { MeuLeadBadge } from "@/components/meu-lead-badge";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
+  catalogColorSoftBadgeClass,
   DEFAULT_CATALOG_COLOR,
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
@@ -361,8 +362,8 @@ function LeadsPage() {
   /** Separação pool (chegaram) × já atribuídos a equipe/corretor. */
   const [distribuicaoFilter, setDistribuicaoFilter] =
     useState<DistribuicaoFilter>(routeSearch.distribuicao ?? "all");
-  const [paradosFilter, setParadosFilter] = useState(
-    () => Boolean(routeSearch.parados),
+  const [paradosFilter, setParadosFilter] = useState(() =>
+    Boolean(routeSearch.parados),
   );
 
   useEffect(() => {
@@ -1082,112 +1083,114 @@ function LeadsPage() {
               : `${filteredLeads.length} de ${leads.length} leads`
         }
         actions={
-          <>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setImportHelpOpen(false);
-                  void handleImportFile(file);
-                }
-              }}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={importParsing}
-              onClick={() => setImportHelpOpen(true)}
-              className={SOFT_BTN}
-              data-guia="leads-importar"
-            >
-              {importParsing ? (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4 mr-1" />
-              )}
-              Importar
-            </Button>
-            {canDistribuir && (
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setImportHelpOpen(false);
+                    void handleImportFile(file);
+                  }
+                }}
+              />
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDistribuirOpen(true)}
+                disabled={importParsing}
+                onClick={() => setImportHelpOpen(true)}
                 className={SOFT_BTN}
-                data-guia="leads-distribuir"
+                data-guia="leads-importar"
               >
-                <Share2 className="w-4 h-4 mr-1" />
-                Distribuir
+                {importParsing ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-1" />
+                )}
+                Importar
               </Button>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              {canDistribuir && (
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={filteredLeads.length === 0}
+                  onClick={() => setDistribuirOpen(true)}
                   className={SOFT_BTN}
-                  data-guia="leads-exportar"
+                  data-guia="leads-distribuir"
                 >
-                  <Download className="w-4 h-4 mr-1" />
-                  Exportar
+                  <Share2 className="w-4 h-4 mr-1" />
+                  Distribuir
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() =>
-                    exportLeadsToExcel(
-                      filteredLeads,
-                      `leads-${new Date().toISOString().slice(0, 10)}.xlsx`,
-                    )
-                  }
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={filteredLeads.length === 0}
+                    className={SOFT_BTN}
+                    data-guia="leads-exportar"
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Exportar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() =>
+                      exportLeadsToExcel(
+                        filteredLeads,
+                        `leads-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                      )
+                    }
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Excel (.xlsx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      exportLeadsToPdf(
+                        filteredLeads,
+                        `leads-${new Date().toISOString().slice(0, 10)}.pdf`,
+                        user?.tenant?.name?.trim() || "Imobiliária",
+                      )
+                    }
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {selectedCount > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulkDeleting}
+                  onClick={() => setBulkDeleteOpen(true)}
                 >
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Excel (.xlsx)
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    exportLeadsToPdf(
-                      filteredLeads,
-                      `leads-${new Date().toISOString().slice(0, 10)}.pdf`,
-                      user?.tenant?.name?.trim() || "Imobiliária",
-                    )
-                  }
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {selectedCount > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={bulkDeleting}
-                onClick={() => setBulkDeleteOpen(true)}
-              >
-                {bulkDeleting ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4 mr-1" />
-                )}
-                Excluir ({selectedCount})
-              </Button>
-            )}
+                  {bulkDeleting ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-1" />
+                  )}
+                  Excluir ({selectedCount})
+                </Button>
+              )}
+            </div>
             <Button
               size="sm"
               onClick={openCreate}
-              className={LEADS_GRADIENT_BTN}
+              className={cn(LEADS_GRADIENT_BTN, "shrink-0")}
               style={LEADS_GRADIENT_STYLE}
               data-guia="leads-novo"
             >
               <Plus className="w-4 h-4 mr-1" />
               Novo lead
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -1670,7 +1673,8 @@ function LeadsPage() {
                     value={
                       detailLead.origem ? (
                         <Badge
-                          className={catalogColorBadgeClass(
+                          variant="outline"
+                          className={catalogColorSoftBadgeClass(
                             colorByLabel("origem", detailLead.origem),
                           )}
                           title={detailLead.origem}
@@ -1729,7 +1733,10 @@ function LeadsPage() {
                         {detailLead.tags.map((t) => (
                           <Badge
                             key={t}
-                            className={cn(STATUS_CHIP_CLASS, colorByLabel("tag", t))}
+                            className={cn(
+                              STATUS_CHIP_CLASS,
+                              colorByLabel("tag", t),
+                            )}
                             title={t}
                           >
                             {t}
@@ -1969,9 +1976,7 @@ function LeadsPage() {
                   icon={Briefcase}
                   tone="blue-4"
                   format="number"
-                  className={cn(
-                    distribuicaoFilter === "meus" && "shadow-md",
-                  )}
+                  className={cn(distribuicaoFilter === "meus" && "shadow-md")}
                 />
               </button>
             )}
@@ -2101,7 +2106,7 @@ function LeadsPage() {
                   const count =
                     leadsAtivosPorCorretor.find((r) => r.id === a.id)?.count ??
                     0;
-                    return (
+                  return (
                     <SelectItem key={a.id} value={a.id}>
                       {isGerente && a.id === user?.id
                         ? `${a.name} (eu)`
@@ -2117,10 +2122,7 @@ function LeadsPage() {
             type="button"
             variant="outline"
             size="sm"
-            className={cn(
-              SOFT_BTN,
-              extraFiltersActive && "border-primary/40",
-            )}
+            className={cn(SOFT_BTN, extraFiltersActive && "border-primary/40")}
             onClick={() => setShowExtraFilters((v) => !v)}
           >
             <Filter className="w-4 h-4 mr-1" />
@@ -2304,8 +2306,11 @@ function LeadsPage() {
         </div>
       )}
 
-      <Card className="overflow-hidden">
-        <Table className="w-full table-fixed text-[11px] leading-tight [&_th]:h-8 [&_th]:px-1.5 [&_th]:py-1 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-1.5 [&_td]:py-1.5 [&_td]:text-left [&_td]:align-middle">
+      <Card className="min-w-0 overflow-hidden">
+        <Table
+          containerClassName="overflow-x-auto overscroll-x-contain touch-pan-x"
+          className="w-full min-w-280 table-fixed text-[11px] leading-tight [&_th]:h-8 [&_th]:px-2.5 [&_th]:py-1 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2.5 [&_td]:py-1.5 [&_td]:text-left [&_td]:align-middle"
+        >
           <TableHeader>
             <TableRow>
               <TableHead className="w-8 pr-0">
@@ -2318,18 +2323,20 @@ function LeadsPage() {
                   disabled={filteredLeads.length === 0 || bulkDeleting}
                 />
               </TableHead>
-              <TableHead className="w-[20%]">Lead</TableHead>
-              <TableHead className="w-[7%]">Origem</TableHead>
-              <TableHead className="w-[7%]">Tipo de renda</TableHead>
-              <TableHead className="w-[8%]">Etapa</TableHead>
-              {!isCorretor && <TableHead className="w-[7%]">Equipe</TableHead>}
+              <TableHead className="w-[16%]">Lead</TableHead>
+              <TableHead className="w-32">Origem</TableHead>
+              <TableHead className="w-22 pr-4 text-center!">
+                Tipo de renda
+              </TableHead>
+              <TableHead className="w-36">Etapa</TableHead>
+              {!isCorretor && <TableHead className="w-28">Equipe</TableHead>}
               {!isCorretor && (
                 <TableHead className="w-[14%]">Corretor</TableHead>
               )}
               <TableHead className="w-[7%]">Renda</TableHead>
               <TableHead className="w-[8%]">Estado civil</TableHead>
-              <TableHead className="w-[7%]">Prioridade</TableHead>
-              <TableHead className="w-[6%]">Atualizado</TableHead>
+              <TableHead className="w-19">Prioridade</TableHead>
+              <TableHead className="w-28">Atualizado</TableHead>
               <TableHead className="sticky right-0 z-20 w-16 text-right">
                 Ações
               </TableHead>
@@ -2410,11 +2417,12 @@ function LeadsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="truncate">
+                    <TableCell className="overflow-visible">
                       {l.origem ? (
                         <Badge
+                          variant="outline"
                           className={cn(
-                            catalogColorBadgeClass(
+                            catalogColorSoftBadgeClass(
                               colorByLabel("origem", l.origem),
                             ),
                             "w-auto max-w-full",
@@ -2427,16 +2435,16 @@ function LeadsPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="truncate">
+                    <TableCell className="truncate pr-4 text-center!">
                       {l.tipoRenda || (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="truncate">
+                    <TableCell>
                       <Badge
                         className={cn(
                           catalogColorBadgeClass(stage.color),
-                          "w-auto max-w-full",
+                          "w-28 justify-center",
                           isNovoStage && "badge-novo-glow",
                         )}
                         style={
@@ -2489,7 +2497,7 @@ function LeadsPage() {
                         {l.prioridade}
                       </Badge>
                     </TableCell>
-                    <TableCell className="truncate text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
                       {l.updatedAt}
                     </TableCell>
                     <TableCell className="sticky right-0 z-10 bg-card text-right group-hover:bg-muted/40 group-data-[state=selected]:bg-muted">
@@ -2527,7 +2535,8 @@ function LeadsPage() {
                               disabled={phoneDigits(l.telefone).length < 10}
                               onClick={() => openLeadWhatsApp(l.telefone)}
                             >
-                              <MessageCircle className="w-4 h-4 mr-2 text-emerald-600" /> WhatsApp
+                              <MessageCircle className="w-4 h-4 mr-2 text-emerald-600" />{" "}
+                              WhatsApp
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

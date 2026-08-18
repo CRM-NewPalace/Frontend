@@ -62,7 +62,6 @@ import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { SOFT_BTN } from "@/lib/soft-btn";
 
-
 const chartConfig = {
   total: { label: "Leads", color: "hsl(var(--primary))" },
 } satisfies ChartConfig;
@@ -459,7 +458,9 @@ function DashboardAdminView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-module-title">Pipeline de documentação</h2>
+          <h2 className="text-base font-semibold text-module-title">
+            Pipeline de documentação
+          </h2>
           <p className="text-xs text-muted-foreground">
             Processos cadastrados em {mesLabel}.
           </p>
@@ -789,68 +790,78 @@ function DashboardAdminView() {
         </Card>
       </section>
 
-      <section className="mt-5 grid gap-4 xl:grid-cols-2">
-        <Card>
+      <section className="mt-5 grid min-w-0 gap-4 xl:grid-cols-2">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Ranking de corretores</CardTitle>
             <p className="text-sm text-muted-foreground">
               Ordenado por VGV do mês.
             </p>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent className="min-w-0">
             {summary.ranking.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">
+              <p className="py-4 text-sm text-muted-foreground">
                 Nenhum corretor ativo.
               </p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 pr-2 font-medium">Corretor</th>
-                    <th className="pb-2 pr-2 font-medium text-right">Leads</th>
-                    <th className="pb-2 pr-2 font-medium text-right">
-                      Visitas
-                    </th>
-                    <th className="pb-2 pr-2 font-medium text-right">Vendas</th>
-                    <th className="pb-2 font-medium text-right">VGV</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.ranking.slice(0, 10).map((r) => (
-                    <tr key={r.corretorId} className="border-b last:border-0">
-                      <td className="py-2.5 pr-2">
-                        <div className="font-medium">{r.nome}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {r.equipe ?? "Sem equipe"}
-                        </div>
-                      </td>
-                      <td className="py-2.5 pr-2 text-right tabular-nums">
-                        {r.leads}
-                      </td>
-                      <td className="py-2.5 pr-2 text-right tabular-nums">
-                        {r.visitas}
-                      </td>
-                      <td className="py-2.5 pr-2 text-right">
-                        <div className="tabular-nums font-medium">
-                          {r.vendas.valor}
-                        </div>
-                        <EvolucaoBadge value={r.vendas.evolucaoPct} />
-                      </td>
-                      <td className="py-2.5 text-right">
-                        <div className="tabular-nums font-medium">
-                          {money(r.vgv.valor)}
-                        </div>
-                        <EvolucaoBadge value={r.vgv.evolucaoPct} />
-                      </td>
+              <div className="-mx-6 overflow-x-auto overscroll-x-contain px-6 touch-pan-x">
+                <table className="w-full min-w-140 text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 pr-3 font-medium whitespace-nowrap">
+                        Corretor
+                      </th>
+                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                        Leads
+                      </th>
+                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                        Visitas
+                      </th>
+                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                        Vendas
+                      </th>
+                      <th className="pb-2 text-right font-medium whitespace-nowrap">
+                        VGV
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {summary.ranking.slice(0, 10).map((r) => (
+                      <tr key={r.corretorId} className="border-b last:border-0">
+                        <td className="max-w-48 py-2.5 pr-3">
+                          <div className="truncate font-medium">{r.nome}</div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {r.equipe ?? "Sem equipe"}
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                          {r.leads}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                          {r.visitas}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right whitespace-nowrap">
+                          <div className="font-medium tabular-nums">
+                            {r.vendas.valor}
+                          </div>
+                          <EvolucaoBadge value={r.vendas.evolucaoPct} />
+                        </td>
+                        <td className="py-2.5 text-right whitespace-nowrap">
+                          <div className="font-medium tabular-nums">
+                            {money(r.vgv.valor)}
+                          </div>
+                          <EvolucaoBadge value={r.vgv.evolucaoPct} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Carteira por equipe</CardTitle>
           </CardHeader>
@@ -912,7 +923,9 @@ function DashboardAdminView() {
 
             {summary.metas.equipes.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-primary">Por equipe</h3>
+                <h3 className="text-sm font-semibold text-primary">
+                  Por equipe
+                </h3>
                 {summary.metas.equipes.map((eq) => (
                   <div key={eq.equipeId}>
                     <div className="mb-1 flex justify-between text-sm">
@@ -929,7 +942,9 @@ function DashboardAdminView() {
 
             {summary.metas.corretores.length > 0 ? (
               <div className="overflow-x-auto">
-                <h3 className="text-sm font-semibold text-primary mb-2">Por corretor</h3>
+                <h3 className="text-sm font-semibold text-primary mb-2">
+                  Por corretor
+                </h3>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
@@ -1190,7 +1205,9 @@ function DashboardCorretorView() {
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-module-title">Sua comissão do mês</h2>
+          <h2 className="text-base font-semibold text-module-title">
+            Sua comissão do mês
+          </h2>
           <p className="text-xs text-muted-foreground">
             Quanto você recebe nas vendas de {mesLabel}.
           </p>

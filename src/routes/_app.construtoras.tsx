@@ -101,6 +101,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   formatPhone,
   isValidPhone,
@@ -171,6 +172,25 @@ function construtoraIniciais(nome: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function ConstrutoraNomeChip({
+  nome,
+  cor,
+}: {
+  nome: string;
+  cor?: string | null;
+}) {
+  return (
+    <Badge
+      variant="secondary"
+      className={cn(STATUS_CHIP_CLASS, "border-transparent font-medium")}
+      style={cor ? construtoraBadgeStyle(cor) : undefined}
+      title={nome}
+    >
+      {nome}
+    </Badge>
+  );
 }
 
 function uniqueLocalidades(items: Construtora[]) {
@@ -1138,32 +1158,20 @@ function ConstrutorasPage() {
                           {canViewVendas ? (
                             <button
                               type="button"
-                              className="text-left hover:underline"
+                              className="text-left hover:opacity-90"
                               onClick={() => openVendas(item)}
                               title="Ver vendas"
                             >
-                              {item.cor ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="border-transparent font-medium"
-                                  style={construtoraBadgeStyle(item.cor)}
-                                >
-                                  {item.nome}
-                                </Badge>
-                              ) : (
-                                item.nome
-                              )}
+                              <ConstrutoraNomeChip
+                                nome={item.nome}
+                                cor={item.cor}
+                              />
                             </button>
-                          ) : item.cor ? (
-                            <Badge
-                              variant="secondary"
-                              className="border-transparent font-medium"
-                              style={construtoraBadgeStyle(item.cor)}
-                            >
-                              {item.nome}
-                            </Badge>
                           ) : (
-                            item.nome
+                            <ConstrutoraNomeChip
+                              nome={item.nome}
+                              cor={item.cor}
+                            />
                           )}
                         </TableCell>
                         <TableCell>

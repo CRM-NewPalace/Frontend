@@ -68,7 +68,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+
 export const Route = createFileRoute("/_app/equipes")({
   head: () => ({ meta: [{ title: "Equipes — Zone Connection" }] }),
   component: EquipesPage,
@@ -114,7 +114,7 @@ function MemberRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
+        "flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-2.5 sm:gap-3 sm:px-3",
         accent ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-muted/50",
       )}
     >
@@ -131,16 +131,15 @@ function MemberRow({
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           {accent && <Crown className="h-3.5 w-3.5 shrink-0 text-primary" />}
-          <span className="table-person-name truncate text-sm font-medium">
+          <span className="table-person-name min-w-0 flex-1 truncate text-sm font-medium">
             {member.name}
           </span>
           <Badge
             variant="outline"
             className={cn(
-              STATUS_CHIP_CLASS,
-              "shrink-0 text-[10px] capitalize",
+              "h-5 shrink-0 px-2 text-[10px] font-medium capitalize",
               accent && "border-primary/30 text-primary",
             )}
             title={roleLabel}
@@ -395,7 +394,7 @@ function EquipesPage() {
   }
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full">
       <PageHeader
         title="Equipes"
         description={
@@ -435,37 +434,34 @@ function EquipesPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {items.map((eq) => {
             const expanded = expandedIds.has(eq.id);
             return (
               <section
                 key={eq.id}
-                className="overflow-hidden rounded-2xl border border-border/80 bg-card"
+                className="min-w-0 overflow-hidden rounded-2xl border border-border/80 bg-card"
               >
-                <div className="flex items-stretch gap-2 border-b border-border/60 bg-linear-to-r from-primary/[0.07] to-transparent px-3 py-3 sm:px-4">
+                <div className="flex min-w-0 items-stretch gap-1 border-b border-border/60 bg-linear-to-r from-primary/[0.07] to-transparent px-3 py-3 sm:gap-2 sm:px-4">
                   <button
                     type="button"
                     onClick={() => toggleExpanded(eq.id)}
-                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left sm:gap-3"
                     aria-expanded={expanded}
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
                       <Users className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate text-sm font-semibold text-primary">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <h2 className="min-w-0 max-w-full truncate text-sm font-semibold text-primary">
                           {eq.name}
                         </h2>
                         <Badge
                           variant={
                             eq.status === "ativo" ? "default" : "outline"
                           }
-                          className={cn(
-                            STATUS_CHIP_CLASS,
-                            "shrink-0 text-[10px] capitalize",
-                          )}
+                          className="h-5 shrink-0 px-2 text-[10px] font-medium capitalize"
                         >
                           {eq.status}
                         </Badge>
@@ -526,8 +522,8 @@ function EquipesPage() {
                 </div>
 
                 {expanded && (
-                  <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(0,16rem)_1fr]">
-                    <div className="space-y-2">
+                  <div className="grid min-w-0 gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(0,16rem)_1fr]">
+                    <div className="min-w-0 space-y-2">
                       <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
                         Gerente
                       </p>
@@ -538,7 +534,7 @@ function EquipesPage() {
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Corretores ({eq.membros.length})
                       </p>
@@ -547,7 +543,7 @@ function EquipesPage() {
                           Sem corretores nesta equipe
                         </div>
                       ) : (
-                        <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid min-w-0 gap-1 sm:grid-cols-2 xl:grid-cols-3">
                           {eq.membros.map((m) => (
                             <MemberRow
                               key={m.id}

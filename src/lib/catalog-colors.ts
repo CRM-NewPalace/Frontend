@@ -211,6 +211,49 @@ export function catalogColorBadgeClass(
     .join(" ");
 }
 
+/** Texto legível (tom escuro) a partir da cor de catálogo — não usa branco. */
+const CATALOG_BG_TO_SOFT_TEXT: Record<string, string> = {
+  "bg-slate-500": "text-slate-700 dark:text-slate-300",
+  "bg-blue-500": "text-blue-700 dark:text-blue-300",
+  "bg-indigo-500": "text-indigo-700 dark:text-indigo-300",
+  "bg-violet-500": "text-violet-700 dark:text-violet-300",
+  "bg-purple-500": "text-purple-700 dark:text-purple-300",
+  "bg-fuchsia-500": "text-fuchsia-700 dark:text-fuchsia-300",
+  "bg-pink-500": "text-pink-700 dark:text-pink-300",
+  "bg-rose-500": "text-rose-700 dark:text-rose-300",
+  "bg-red-500": "text-red-700 dark:text-red-300",
+  "bg-orange-500": "text-orange-700 dark:text-orange-300",
+  "bg-amber-500": "text-amber-800 dark:text-amber-300",
+  "bg-yellow-400": "text-yellow-800 dark:text-yellow-300",
+  "bg-lime-500": "text-lime-800 dark:text-lime-300",
+  "bg-green-500": "text-green-700 dark:text-green-300",
+  "bg-emerald-500": "text-emerald-700 dark:text-emerald-300",
+  "bg-teal-500": "text-teal-700 dark:text-teal-300",
+  "bg-cyan-500": "text-cyan-700 dark:text-cyan-300",
+  "bg-sky-500": "text-sky-700 dark:text-sky-300",
+};
+
+/**
+ * Badge suave (origem etc.): sem fundo cinza, texto colorido legível,
+ * hover com a cor principal do tema.
+ */
+export function catalogColorSoftBadgeClass(
+  color: string | null | undefined,
+  extra?: string,
+): string {
+  const bg = catalogColorSwatch(color);
+  const text = CATALOG_BG_TO_SOFT_TEXT[bg] ?? "text-foreground";
+  return [
+    STATUS_CHIP_CLASS,
+    "border-transparent bg-transparent shadow-none",
+    text,
+    "hover:bg-primary hover:text-primary-foreground",
+    extra ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 function catalogGradientStops(color: string | null | undefined) {
   const bg = catalogColorSwatch(color);
   return CATALOG_BG_SOFT_STOPS[bg] ?? CATALOG_BG_SOFT_STOPS["bg-slate-500"];

@@ -2515,7 +2515,7 @@ function DocumentacaoPage() {
         ) : null}
       </div>
 
-      <section className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+      <section className="mb-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <FinanceKpiCard
           label={PERIODO_KPI_LABEL[filterPeriodo] ?? "Documentações"}
           value={pipelineSummary.total}
@@ -2609,8 +2609,8 @@ function DocumentacaoPage() {
         />
       </section>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <Card className="min-w-0 overflow-hidden">
+        <CardContent className="min-w-0 p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -2635,18 +2635,21 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
-            <Table className="min-w-280 table-fixed text-xs [&_th]:h-9 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle">
+            <Table
+              containerClassName="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]"
+              className="w-full min-w-340 table-fixed text-xs [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:overflow-hidden [&_td]:px-3 [&_td]:py-2.5 [&_td]:text-left [&_td]:align-middle"
+            >
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[18%]">Nome</TableHead>
-                  <TableHead className="w-[13%]">Construtora</TableHead>
-                  <TableHead className="w-[13%]">Empreend.</TableHead>
-                  <TableHead className="w-37">Status 1</TableHead>
-                  <TableHead className="w-37">Status 2</TableHead>
-                  <TableHead className="w-[13%]">Corretor</TableHead>
-                  <TableHead className="w-[13%]">Gerente</TableHead>
-                  <TableHead className="w-37">Fonte</TableHead>
-                  <TableHead className="w-10" />
+                  <TableHead className="w-48">Nome</TableHead>
+                  <TableHead className="w-40">Construtora</TableHead>
+                  <TableHead className="w-40">Empreend.</TableHead>
+                  <TableHead className="w-40">Status 1</TableHead>
+                  <TableHead className="w-40">Status 2</TableHead>
+                  <TableHead className="w-40">Corretor</TableHead>
+                  <TableHead className="w-40">Gerente</TableHead>
+                  <TableHead className="w-40">Fonte</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2694,14 +2697,14 @@ function DocumentacaoPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-37">
+                    <TableCell>
                       <DocCatalogBadge
                         type="documentacao_status1"
                         label={doc.status1}
                         colorByLabel={colorByLabel}
                       />
                     </TableCell>
-                    <TableCell className="w-37">
+                    <TableCell>
                       <DocCatalogBadge
                         type="documentacao_status2"
                         label={doc.status2}
@@ -2742,7 +2745,7 @@ function DocumentacaoPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="w-37">
+                    <TableCell>
                       {(() => {
                         const fonte = displayFonte(doc.fonte);
                         if (!fonte) {
