@@ -199,13 +199,18 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [tenantSlug, setTenantSlug] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const user = await signIn(email, password);
+      const user = await signIn(
+        email,
+        password,
+        tenantSlug.trim() || undefined,
+      );
       toast.success(`Bem-vindo(a), ${user.name.split(" ")[0]}!`);
       navigate({ to: defaultRouteForRole(user.role, user) });
     } catch (error) {
@@ -355,6 +360,18 @@ function LoginPage() {
                   </button>
                 }
               />
+
+              <LoginAuthField
+                id="tenant-slug"
+                label="Imobiliária (opcional)"
+                value={tenantSlug}
+                onChange={(value) => setTenantSlug(value.toLowerCase())}
+                icon={Building2}
+                placeholder="slug da imobiliária"
+              />
+              <p className="-mt-3 text-xs text-text-muted">
+                Só é necessário se o mesmo e-mail existir em mais de um tenant.
+              </p>
 
               <div className="flex items-center gap-2">
                 <Checkbox id="remember" defaultChecked />

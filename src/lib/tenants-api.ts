@@ -119,6 +119,27 @@ export type UpdateOzapConnectionInput = {
   ativo?: boolean;
 };
 
+export type DuplicateTenantCopied = {
+  users: number;
+  equipes: number;
+  catalogItems: number;
+  funis: number;
+  localidades: number;
+  construtoras: number;
+  empreendimentos: number;
+  leads: number;
+  documentacoes: number;
+  propostas: number;
+  analises: number;
+  agendamentos: number;
+  metas: number;
+  financeiro: number;
+};
+
+export type DuplicateTenantResult = TenantDetail & {
+  copied: DuplicateTenantCopied;
+};
+
 export type ResetTenantAdminPasswordResult = {
   user: TenantAdminUser;
   temporaryPassword: string;
@@ -194,6 +215,16 @@ export async function deleteTenant(
   id: string,
 ): Promise<{ id: string; name: string; slug: string }> {
   return apiFetch(`/tenants/${id}`, { method: "DELETE" });
+}
+
+export async function duplicateTenant(
+  id: string,
+  input: { name?: string; slug?: string } = {},
+): Promise<DuplicateTenantResult> {
+  return apiFetch<DuplicateTenantResult>(`/tenants/${id}/duplicate`, {
+    method: "POST",
+    body: input,
+  });
 }
 
 export async function createMetaConnection(
