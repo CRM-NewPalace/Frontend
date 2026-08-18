@@ -171,9 +171,9 @@ export const GUIA_GROUPS: GuiaGroup[] = [
               "Dá para cadastrar já na etapa certa, sem passar pela lista.",
           },
           {
-            title: "Registrar triagem a partir do card",
+            title: "Consultar triagem no card",
             detail:
-              "Primeiro contato fica no histórico do lead. Não substitui a ficha de Documentação.",
+              "O botão Triagem abre os relatos em um modal, sem sair do quadro. Feche para voltar ao funil; use Ver detalhes se precisar da ficha completa.",
           },
         ],
         how: [

@@ -221,6 +221,16 @@ export function isCorretorLike(role: string | null | undefined): boolean {
   return role === "corretor" || role === "treinee";
 }
 
+/** Quem pode registrar relatos e editar o próprio texto na triagem. */
+export function canWriteTriagem(role: string | null | undefined): boolean {
+  return (
+    role === "corretor" ||
+    role === "treinee" ||
+    role === "gerente" ||
+    role === "admin"
+  );
+}
+
 /**
  * Quem vê o lead no funil / monitoramento de atraso:
  * - admin: todos do tenant

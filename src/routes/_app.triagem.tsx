@@ -1,9 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,30 +26,32 @@ import {
   FormSection,
 } from "@/components/form-dialog";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import {
+  canViewTeamData,
+  canWriteTriagem,
+  isCorretorLike,
+} from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import type { Lead } from "@/lib/crm-types";
 import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import {
   createTriagemEvent,
-  updateTriagemEvent,
   type TriagemContact,
-  type TriagemEvent,
   type TriagemOrigem,
 } from "@/lib/triagem-api";
-import {
-  getTriagemHistoryCached,
-  loadTriagemHistory,
-  prependTriagemHistoryCached,
-  replaceTriagemHistoryCached,
-} from "@/lib/triagem-history-cache";
+import { prependTriagemHistoryCached } from "@/lib/triagem-history-cache";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  HistoryTimeline,
+  MAX_TRIAGEM_TEXTO,
+  personInitials,
+  useTriagemHistory,
+} from "@/components/triagem-history-timeline";
+import {
   ClipboardList,
   Clock,
-  Pencil,
   Plus,
   Search,
   User,
@@ -54,16 +61,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 type TriagemSearch = {
   leadId?: string;
@@ -79,7 +76,7 @@ export const Route = createFileRoute("/_app/triagem")({
   component: TriagemPage,
 });
 
-const MAX_TEXTO = 400;
+const MAX_TEXTO = MAX_TRIAGEM_TEXTO;
 
 function leadToContact(l: Lead): TriagemContact {
   return {
@@ -106,323 +103,6 @@ function TriagemPage() {
   if (!user) return null;
   if (isManager) return <ManagerTriagem />;
   return <CorretorTriagem />;
-}
-
-function formatWhen(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function HistoryTimeline({
-  events,
-  contactName,
-  stageLabel,
-  fallbackStage,
-  loading,
-  leadId,
-  onEventUpdated,
-}: {
-  events: TriagemEvent[];
-  contactName: string;
-  stageLabel: (slug: string | null) => string;
-  /** Etapa atual do lead — usada só em relatos antigos sem stage gravado. */
-  fallbackStage?: string | null;
-  loading?: boolean;
-  leadId?: string | null;
-  onEventUpdated?: (event: TriagemEvent) => void;
-}) {
-  const session = getSession();
-  const canSeeOriginal =
-    session?.role === "admin" || session?.role === "gerente";
-  const canEditOwn =
-    isCorretorLike(session?.role) && Boolean(session?.id);
-
-  const [editEvent, setEditEvent] = useState<TriagemEvent | null>(null);
-  const [editTexto, setEditTexto] = useState("");
-  const [editSaving, setEditSaving] = useState(false);
-  const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(
-    null,
-  );
-
-  function openEdit(ev: TriagemEvent) {
-    setEditEvent(ev);
-    setEditTexto(ev.texto);
-  }
-
-  async function submitEdit() {
-    if (!editEvent) return;
-    const texto = editTexto.trim();
-    if (!texto) {
-      toast.error("Informe o relato.");
-      return;
-    }
-    if (texto.length > MAX_TEXTO) {
-      toast.error(`O relato deve ter no máximo ${MAX_TEXTO} caracteres.`);
-      return;
-    }
-    if (texto === editEvent.texto) {
-      setEditEvent(null);
-      return;
-    }
-
-    setEditSaving(true);
-    try {
-      const updated = await updateTriagemEvent(editEvent.id, texto);
-      if (leadId) replaceTriagemHistoryCached(leadId, updated);
-      onEventUpdated?.(updated);
-      setEditEvent(null);
-      toast.success("Relato atualizado.");
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível atualizar o relato.",
-      );
-    } finally {
-      setEditSaving(false);
-    }
-  }
-
-  if (loading && events.length === 0) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        Carregando histórico...
-      </div>
-    );
-  }
-  if (events.length === 0) {
-    return (
-      <div className="text-sm text-muted-foreground text-center py-10 border border-dashed rounded-xl">
-        Nenhum relato registrado para este contato.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <ClipboardList className="w-4 h-4 text-primary" />
-        Linha do tempo da triagem
-      </div>
-      <ol className="relative space-y-0">
-        {events.map((ev, index) => {
-          const stageSlug = ev.stageNovo || ev.stageAnterior || fallbackStage;
-          const stageName = stageSlug ? stageLabel(stageSlug) : null;
-          const changedStage = Boolean(
-            ev.stageAnterior &&
-              ev.stageNovo &&
-              ev.stageAnterior !== ev.stageNovo,
-          );
-          const isLast = index === events.length - 1;
-          const isOwn =
-            canEditOwn && session?.id != null && ev.autor.id === session.id;
-          const showOriginal =
-            canSeeOriginal &&
-            Boolean(ev.textoAnterior) &&
-            expandedOriginalId === ev.id;
-
-          return (
-            <li key={ev.id} className="relative flex gap-3 pb-6 last:pb-0">
-              {/* Trilho vertical */}
-              <div className="flex flex-col items-center w-5 shrink-0">
-                <span className="relative z-10 mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                  <FileText className="h-2.5 w-2.5" />
-                </span>
-                {!isLast && (
-                  <span
-                    aria-hidden
-                    className="mt-1 w-px flex-1 min-h-6 bg-border"
-                  />
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-xs text-muted-foreground tabular-nums">
-                    {formatWhen(ev.createdAt)}
-                    {ev.editedAt ? (
-                      <span className="ml-1.5">
-                        · editado {formatWhen(ev.editedAt)}
-                      </span>
-                    ) : null}
-                  </div>
-                  {isOwn ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => openEdit(ev)}
-                    >
-                      <Pencil className="w-3.5 h-3.5 mr-1" />
-                      Editar
-                    </Button>
-                  ) : null}
-                </div>
-
-                <div
-                  className={cn(
-                    "rounded-xl border bg-card p-3.5 space-y-2.5 shadow-sm",
-                  )}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
-                        {initials(ev.autor.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 space-y-1.5">
-                      <p className="text-sm leading-snug">
-                        <span className="font-semibold">{ev.autor.name}</span>
-                        {changedStage
-                          ? " atualizou a triagem de "
-                          : " registrou um relato sobre "}
-                        <span className="font-semibold">{contactName}</span>
-                      </p>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {stageName && (
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              STATUS_CHIP_CLASS,
-                              "font-medium bg-primary/10 text-primary border-primary/20",
-                            )}
-                            title={
-                              changedStage
-                                ? stageName
-                                : `Manteve ${stageName}`
-                            }
-                          >
-                            {changedStage
-                              ? stageName
-                              : `Manteve ${stageName}`}
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-[10px]">
-                          {ev.origem === "funil" ? "Funil" : "Manual"}
-                        </Badge>
-                        {ev.editedAt ? (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] font-medium bg-amber-500/15 text-amber-800 border-amber-500/25"
-                          >
-                            Editado
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap pl-0 sm:pl-10.5">
-                    {ev.texto}
-                  </p>
-                  {canSeeOriginal && ev.textoAnterior ? (
-                    <div className="pl-0 sm:pl-10.5 space-y-2">
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="h-auto p-0 text-xs"
-                        onClick={() =>
-                          setExpandedOriginalId((prev) =>
-                            prev === ev.id ? null : ev.id,
-                          )
-                        }
-                      >
-                        {showOriginal ? "Ocultar original" : "Ver original"}
-                      </Button>
-                      {showOriginal ? (
-                        <div className="rounded-lg border border-dashed bg-muted/30 p-2.5">
-                          <p className="text-[11px] font-medium text-muted-foreground mb-1">
-                            Texto anterior
-                          </p>
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {ev.textoAnterior}
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      <Dialog
-        open={Boolean(editEvent)}
-        onOpenChange={(open) => {
-          if (!open && !editSaving) setEditEvent(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Editar relato</DialogTitle>
-            <DialogDescription>
-              Altere o texto do seu relato. A etapa do funil não muda.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="triagem-edit-texto">Relato</Label>
-              <span className="text-xs text-muted-foreground">
-                {editTexto.length}/{MAX_TEXTO}
-              </span>
-            </div>
-            <Textarea
-              id="triagem-edit-texto"
-              value={editTexto}
-              maxLength={MAX_TEXTO}
-              rows={4}
-              disabled={editSaving}
-              onChange={(e) => setEditTexto(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={editSaving}
-              onClick={() => setEditEvent(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={editSaving || !editTexto.trim()}
-              onClick={() => void submitEdit()}
-            >
-              {editSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Salvando…
-                </>
-              ) : (
-                "Salvar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
 }
 
 function ContactButton({
@@ -461,54 +141,6 @@ function useStageLabel() {
   );
 }
 
-function useHistory(leadId: string | null) {
-  const [events, setEvents] = useState<TriagemEvent[]>(() =>
-    leadId ? (getTriagemHistoryCached(leadId) ?? []) : [],
-  );
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!leadId) {
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
-
-    const cached = getTriagemHistoryCached(leadId);
-    if (cached) {
-      setEvents(cached);
-      setLoading(false);
-    } else {
-      setEvents([]);
-      setLoading(true);
-    }
-
-    let cancelled = false;
-    void loadTriagemHistory(leadId, (next) => {
-      if (!cancelled) {
-        setEvents(next);
-        setLoading(false);
-      }
-    }).catch((err) => {
-      if (cancelled) return;
-      setLoading(false);
-      if (!cached) {
-        toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Não foi possível carregar o histórico.",
-        );
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [leadId]);
-
-  return { events, setEvents, loading };
-}
-
 /* ───────────────────────── Corretor ───────────────────────── */
 
 function CorretorTriagem() {
@@ -538,7 +170,11 @@ function CorretorTriagem() {
   const [selectedId, setSelectedId] = useState<string | null>(
     search.leadId ?? null,
   );
-  const { events, setEvents, loading: historyLoading } = useHistory(selectedId);
+  const {
+    events,
+    setEvents,
+    loading: historyLoading,
+  } = useTriagemHistory(selectedId);
 
   const [createOpen, setCreateOpen] = useState(Boolean(search.leadId));
   const [createOrigem, setCreateOrigem] = useState<TriagemOrigem>(
@@ -1035,7 +671,7 @@ function CorretorTriagem() {
 function ManagerTriagem() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
-  const canWrite = user?.role === "gerente";
+  const canWrite = canWriteTriagem(user?.role);
   const { leads: allLeads, assignees, loading } = useLeads();
   const { funnelStages } = useCatalog();
   const stageName = useStageLabel();
@@ -1049,8 +685,11 @@ function ManagerTriagem() {
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<string>("__all__");
-  const { events, setEvents, loading: historyLoading } =
-    useHistory(selectedLeadId);
+  const {
+    events,
+    setEvents,
+    loading: historyLoading,
+  } = useTriagemHistory(selectedLeadId);
   const [quickTexto, setQuickTexto] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
 
@@ -1114,7 +753,8 @@ function ManagerTriagem() {
     [leads, stageFilter],
   );
 
-  const selectedLead = filteredLeads.find((l) => l.id === selectedLeadId) ??
+  const selectedLead =
+    filteredLeads.find((l) => l.id === selectedLeadId) ??
     leads.find((l) => l.id === selectedLeadId) ??
     null;
   const selectedCorretor =
@@ -1266,7 +906,7 @@ function ManagerTriagem() {
               >
                 <Avatar className="h-8 w-8 shrink-0">
                   <AvatarFallback className="avatar-fallback-brand text-[10px] font-semibold text-white">
-                    {initials(c.name)}
+                    {personInitials(c.name)}
                   </AvatarFallback>
                 </Avatar>
                 <span className="min-w-0 truncate">{c.name}</span>
@@ -1374,7 +1014,10 @@ function ManagerTriagem() {
               {canWrite && (
                 <div className="shrink-0 space-y-2 rounded-xl border bg-muted/20 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="triagem-gerente-quick-texto" className="text-sm">
+                    <Label
+                      htmlFor="triagem-gerente-quick-texto"
+                      className="text-sm"
+                    >
                       Adicionar relato
                     </Label>
                     <span className="text-xs text-muted-foreground">
@@ -1470,10 +1113,7 @@ function TriagemEmptyState({
 
 function LeadsEmptyIllustration() {
   return (
-    <div
-      aria-hidden
-      className="relative flex w-30 flex-col items-center gap-2"
-    >
+    <div aria-hidden className="relative flex w-30 flex-col items-center gap-2">
       <div className="h-3.5 w-18 rounded-full bg-primary/15" />
       <div className="flex w-full items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-2.5 shadow-sm">
         <span className="h-7 w-7 shrink-0 rounded-lg bg-primary/25" />

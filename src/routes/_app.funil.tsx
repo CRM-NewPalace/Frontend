@@ -56,6 +56,7 @@ import {
 import { getSession } from "@/lib/auth";
 import {
   canViewTeamData,
+  canWriteTriagem as roleCanWriteTriagem,
   isCorretorLike,
   isLeadInAtrasoScope,
 } from "@/lib/permissions";
@@ -92,6 +93,7 @@ import {
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { fetchFunilAtivo, recoverFunilEtapas, type Funil } from "@/lib/funis-api";
 import { createTriagemEvent } from "@/lib/triagem-api";
+import { TriagemFunilDialog } from "@/components/triagem-funil-dialog";
 import {
   assumirAnalise,
   fetchAnalises,
@@ -219,8 +221,7 @@ export function ComercialFunilBoard({
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
-  const canWriteTriagem =
-    isCorretor || user?.role === "gerente";
+  const canWriteTriagem = roleCanWriteTriagem(user?.role);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isGerente = user?.role === "gerente";
   const isManager = canSeeTeam;
@@ -518,6 +519,9 @@ export function ComercialFunilBoard({
   const [triagemSaving, setTriagemSaving] = useState(false);
   const triagemFinalizedRef = useRef(false);
 
+  /** Consulta a triagem sem sair do quadro. */
+  const [triagemLead, setTriagemLead] = useState<Lead | null>(null);
+
   /** Relato sem mudar etapa (só corretor), a partir dos detalhes do card. */
   const [manualTriagem, setManualTriagem] = useState<{
     leadId: string;
@@ -527,7 +531,7 @@ export function ComercialFunilBoard({
   const [manualTriagemSaving, setManualTriagemSaving] = useState(false);
 
   function offerTriagemHistory(lead: Lead, stage: StageId) {
-    if (!isCorretor) return;
+    if (!canWriteTriagem) return;
     const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
     const fromStageName =
       funnelStages.find((s) => s.id === lead.stage)?.name ?? lead.stage;
@@ -896,6 +900,18 @@ export function ComercialFunilBoard({
 
   function openDetail(lead: Lead) {
     if (didDrag.current) return;
+    setDetailLead(lead);
+  }
+
+  function openTriagemFromCard(lead: Lead) {
+    if (didDrag.current) return;
+    setTriagemLead(lead);
+  }
+
+  function openDetailFromTriagem() {
+    if (!triagemLead) return;
+    const lead = triagemLead;
+    setTriagemLead(null);
     setDetailLead(lead);
   }
 
@@ -1323,11 +1339,29 @@ export function ComercialFunilBoard({
                         {l.updatedAt}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-border/70 bg-muted/30 px-1.5 py-1 text-[11px] font-medium text-foreground hover:border-primary/30 hover:bg-muted/60"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openTriagemFromCard(l);
+                      }}
+                    >
+                      <ClipboardList
+                        className="h-3 w-3 text-primary"
+                        aria-hidden
+                      />
+                      Triagem
+                    </button>
                     <LeadFunilAlerta
                       lead={l}
                       onUpdated={(next) => {
                         applyLead(next);
                         setDetailLead((cur) =>
+                          cur && cur.id === next.id ? next : cur,
+                        );
+                        setTriagemLead((cur) =>
                           cur && cur.id === next.id ? next : cur,
                         );
                       }}
@@ -1580,6 +1614,18 @@ export function ComercialFunilBoard({
             </FormDialogBody>
             <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
               <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const lead = detailLead;
+                    setDetailLead(null);
+                    setTriagemLead(lead);
+                  }}
+                >
+                  <ClipboardList className="w-4 h-4 mr-1" />
+                  Ver triagem
+                </Button>
                 {canWriteTriagem && (
                   <Button
                     type="button"
@@ -1668,6 +1714,19 @@ export function ComercialFunilBoard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <TriagemFunilDialog
+        lead={triagemLead}
+        open={Boolean(triagemLead)}
+        onOpenChange={(open) => {
+          if (!open) setTriagemLead(null);
+        }}
+        stageName={(slug) =>
+          slug ? (funnelStages.find((s) => s.id === slug)?.name ?? slug) : "—"
+        }
+        canWrite={canWriteTriagem}
+        onOpenDetails={openDetailFromTriagem}
+      />
 
       <Dialog
         open={Boolean(triagemPrompt)}
