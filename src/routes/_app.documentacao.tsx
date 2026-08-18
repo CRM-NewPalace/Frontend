@@ -243,10 +243,7 @@ function DocCatalogBadge({
   );
 }
 
-const DOC_PERSON_CHIP = cn(
-  STATUS_CHIP_CLASS,
-  "border-transparent font-normal",
-);
+const DOC_PERSON_CHIP = cn(STATUS_CHIP_CLASS, "border-transparent font-normal");
 
 type DocumentacaoSearch = {
   status?: DocPipelineStatus;
@@ -280,7 +277,6 @@ export const Route = createFileRoute("/_app/documentacao")({
   }),
   component: DocumentacaoPage,
 });
-
 
 function creditUserLabel(user: { name: string; role?: string | null }) {
   if (user.role === "gerente") return `${user.name} · Gerente`;
@@ -2874,12 +2870,14 @@ function DocumentacaoPage() {
                           disabled={readOnly || formMode === "edit"}
                           className="h-9 w-full justify-between rounded-md font-normal"
                         >
-                          <span className="truncate">{selectedContatoLabel}</span>
+                          <span className="truncate">
+                            {selectedContatoLabel}
+                          </span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent
-                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                        className="w-(--radix-popover-trigger-width) p-0"
                         align="start"
                         onWheel={(event) => event.stopPropagation()}
                       >
@@ -2895,7 +2893,9 @@ function DocumentacaoPage() {
                         >
                           <CommandInput placeholder="Pesquisar pelo nome…" />
                           <CommandList className="max-h-72">
-                            <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+                            <CommandEmpty>
+                              Nenhum contato encontrado.
+                            </CommandEmpty>
                             <CommandGroup>
                               <CommandItem
                                 value="nenhum contato"
