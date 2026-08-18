@@ -38,8 +38,10 @@ import {
   catalogColorBadgeStyle,
   catalogColorSoftSurfaceClass,
   catalogColorSoftSurfaceStyle,
-  catalogColorSwatch,
+  catalogColorSwatchStyle,
   nextCatalogColor,
+  normalizeCatalogColor,
+  sameCatalogColor,
 } from "@/lib/catalog-colors";
 import {
   addFunilEtapa,
@@ -131,7 +133,7 @@ function ColorSwatchPicker({
       </div>
       <div className="flex flex-wrap gap-2">
         {CATALOG_COLORS.map((color) => {
-          const selected = value === color;
+          const selected = sameCatalogColor(value, color);
           return (
             <button
               key={color}
@@ -142,9 +144,9 @@ function ColorSwatchPicker({
               onClick={() => onChange(color)}
               className={cn(
                 "h-7 w-7 rounded-md border-2 transition",
-                catalogColorSwatch(color),
                 selected ? "border-foreground scale-110" : "border-transparent",
               )}
+              style={catalogColorSwatchStyle(color)}
             />
           );
         })}
@@ -361,7 +363,7 @@ export function ConfigFunisPanel() {
   function openEditEtapa(etapa: FunilEtapa) {
     setEtapaEdit(etapa);
     setEtapaLabel(etapa.label);
-    setEtapaColor(etapa.color || DEFAULT_CATALOG_COLOR);
+    setEtapaColor(normalizeCatalogColor(etapa.color));
     setEtapaPapel(resolveEtapaPapel(etapa) ?? "");
     setEtapaPrazoValor(etapa.prazoValor ? String(etapa.prazoValor) : "");
     setEtapaPrazoUnidade(etapa.prazoUnidade ?? "horas");

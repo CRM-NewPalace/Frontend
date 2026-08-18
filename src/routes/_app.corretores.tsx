@@ -419,7 +419,7 @@ function Page() {
                   <p className="text-sm text-muted-foreground">
                     {monitoramento.length} corretor
                     {monitoramento.length === 1 ? "" : "es"} com leads sem
-                    movimentação ou fora do prazo da etapa.
+                    movimentação, fora do prazo da etapa ou com tarefa atrasada.
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -438,6 +438,9 @@ function Page() {
                       <p className="mt-1 text-xs text-muted-foreground">
                         {row.semMovimentacao} sem movimentação · {row.foraDoPrazo}{" "}
                         fora do prazo da etapa
+                        {typeof row.tarefasAtrasadas === "number"
+                          ? ` · ${row.tarefasAtrasadas} tarefa${row.tarefasAtrasadas === 1 ? "" : "s"} atrasada${row.tarefasAtrasadas === 1 ? "" : "s"}`
+                          : ""}
                       </p>
                       <ul className="mt-2 space-y-1">
                         {row.leads.slice(0, 8).map((lead) => (
@@ -453,6 +456,19 @@ function Page() {
                               {" "}
                               — {lead.problemas.map((p) => p.titulo).join(" · ")}
                             </span>
+                            {lead.tarefasAtrasadas &&
+                              lead.tarefasAtrasadas.length > 0 && (
+                                <ul className="mt-0.5 ml-3 space-y-0.5">
+                                  {lead.tarefasAtrasadas.map((tarefa) => (
+                                    <li
+                                      key={tarefa.id}
+                                      className="text-[11px] text-red-700 dark:text-red-300"
+                                    >
+                                      {tarefa.titulo} · prazo {tarefa.prazo}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                           </li>
                         ))}
                       </ul>

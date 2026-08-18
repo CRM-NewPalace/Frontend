@@ -95,6 +95,10 @@ import { fetchFunilAtivo, recoverFunilEtapas, type Funil } from "@/lib/funis-api
 import { createTriagemEvent } from "@/lib/triagem-api";
 import { TriagemFunilDialog } from "@/components/triagem-funil-dialog";
 import {
+  FunilTarefaDialog,
+  type FunilTarefaPrompt,
+} from "@/components/funil-tarefa-dialog";
+import {
   assumirAnalise,
   fetchAnalises,
   updateAnalise,
@@ -136,7 +140,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { FaWhatsapp } from "react-icons/fa";
 import { cn } from "@/lib/utils";
+import { getWhatsAppUrl } from "@/lib/env";
+import { phoneDigits } from "@/lib/phone";
 import { displayEmail } from "@/lib/email";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 import { isStatusVendido } from "@/lib/documentacao-status";
@@ -388,7 +395,10 @@ export function ComercialFunilBoard({
           return mon.problemas.some((p) => p.tipo === "sem_movimentacao");
         }
         if (filterMonitoramento === "em_atraso") {
-          return mon.problemas.some((p) => p.tipo === "prazo_ultrapassado");
+          return mon.problemas.some(
+            (p) =>
+              p.tipo === "prazo_ultrapassado" || p.tipo === "tarefa_atrasada",
+          );
         }
         if (filterMonitoramento === "proximo_vencimento") {
           return mon.problemas.some((p) => p.tipo === "prazo_proximo");
@@ -518,6 +528,10 @@ export function ComercialFunilBoard({
   const [triagemTexto, setTriagemTexto] = useState("");
   const [triagemSaving, setTriagemSaving] = useState(false);
   const triagemFinalizedRef = useRef(false);
+  const pendingTarefaRef = useRef<{ lead: Lead; stage: StageId } | null>(null);
+  const [tarefaPrompt, setTarefaPrompt] = useState<FunilTarefaPrompt | null>(
+    null,
+  );
 
   /** Consulta a triagem sem sair do quadro. */
   const [triagemLead, setTriagemLead] = useState<Lead | null>(null);
@@ -529,6 +543,41 @@ export function ComercialFunilBoard({
   } | null>(null);
   const [manualTriagemTexto, setManualTriagemTexto] = useState("");
   const [manualTriagemSaving, setManualTriagemSaving] = useState(false);
+
+  function offerTarefaAfterMove(lead: Lead, stage: StageId) {
+    const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
+    setTarefaPrompt({
+      leadId: lead.id,
+      leadNome: lead.nome,
+      stage,
+      stageName,
+    });
+  }
+
+  function afterStageAdvanced(lead: Lead, stage: StageId) {
+    pendingTarefaRef.current = { lead, stage };
+    if (canWriteTriagem) {
+      offerTriagemHistory(lead, stage);
+      return;
+    }
+    pendingTarefaRef.current = null;
+    offerTarefaAfterMove(lead, stage);
+  }
+
+  function finishTriagemThenTarefa() {
+    const pending = pendingTarefaRef.current;
+    pendingTarefaRef.current = null;
+    if (!pending) return;
+    window.setTimeout(() => {
+      offerTarefaAfterMove(pending.lead, pending.stage);
+    }, 150);
+  }
+
+  function cancelStageFollowUps() {
+    pendingTarefaRef.current = null;
+    closeTriagemPrompt();
+    setTarefaPrompt(null);
+  }
 
   function offerTriagemHistory(lead: Lead, stage: StageId) {
     if (!canWriteTriagem) return;
@@ -567,6 +616,7 @@ export function ComercialFunilBoard({
       });
       toast.success("Histórico registrado na Triagem.");
       closeTriagemPrompt();
+      finishTriagemThenTarefa();
     } catch (err) {
       triagemFinalizedRef.current = false;
       toast.error(
@@ -832,7 +882,7 @@ export function ComercialFunilBoard({
     const stageName = funnelStages.find((s) => s.id === stage)?.name ?? stage;
     // Feedback imediato (a API já atualiza o board de forma otimista no store).
     toast.success(`${lead.nome} movido para ${stageName}`);
-    offerTriagemHistory(lead, stage);
+    afterStageAdvanced(lead, stage);
     try {
       await updateLeadStage(
         leadId,
@@ -840,7 +890,7 @@ export function ComercialFunilBoard({
         isCorretor ? { omitTriagem: true } : undefined,
       );
     } catch (err) {
-      closeTriagemPrompt();
+      cancelStageFollowUps();
       toast.error(
         err instanceof Error ? err.message : "Não foi possível mover o lead.",
       );
@@ -908,6 +958,16 @@ export function ComercialFunilBoard({
     setTriagemLead(lead);
   }
 
+  function openLeadWhatsApp(telefone: string) {
+    const digits = phoneDigits(telefone);
+    if (digits.length < 10) {
+      toast.error("Este lead não tem telefone.");
+      return;
+    }
+    const e164 = digits.startsWith("55") ? digits : `55${digits}`;
+    window.open(getWhatsAppUrl(undefined, e164), "_blank", "noopener,noreferrer");
+  }
+
   function openDetailFromTriagem() {
     if (!triagemLead) return;
     const lead = triagemLead;
@@ -933,7 +993,7 @@ export function ComercialFunilBoard({
     // Atualização otimista no próprio modal + feedback imediato.
     setDetailLead({ ...detailLead, stage });
     toast.success(`${detailLead.nome} movido para ${stageName}`);
-    offerTriagemHistory(detailLead, stage);
+    afterStageAdvanced(detailLead, stage);
     try {
       await updateLeadStage(
         detailLead.id,
@@ -941,7 +1001,7 @@ export function ComercialFunilBoard({
         isCorretor ? { omitTriagem: true } : undefined,
       );
     } catch (err) {
-      closeTriagemPrompt();
+      cancelStageFollowUps();
       setDetailLead((cur) =>
         cur && cur.id === detailLead.id
           ? { ...cur, stage: previousStage }
@@ -1313,7 +1373,21 @@ export function ComercialFunilBoard({
                         className="h-3.5 w-3.5 shrink-0"
                         aria-hidden
                       />
-                      <span className="truncate">{l.telefone}</span>
+                      <span className="min-w-0 truncate">{l.telefone}</span>
+                      <button
+                        type="button"
+                        title="Abrir WhatsApp"
+                        aria-label="Abrir WhatsApp"
+                        disabled={phoneDigits(l.telefone).length < 10}
+                        className="ml-auto shrink-0 rounded p-0.5 text-[#25D366] hover:bg-[#25D366]/15 disabled:pointer-events-none disabled:opacity-40"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openLeadWhatsApp(l.telefone);
+                        }}
+                      >
+                        <FaWhatsapp className="h-3.5 w-3.5" aria-hidden />
+                      </button>
                     </div>
                     {l.tipo === "cliente" && !isCorretor && !isClientesFunil && (
                       <div className="text-[10px] text-violet-600 dark:text-violet-300 mt-1">
@@ -1513,7 +1587,28 @@ export function ComercialFunilBoard({
                       </div>
                     }
                   />
-                  <DetailField label="Telefone" value={detailLead.telefone} />
+                  <DetailField
+                    label="Telefone"
+                    value={
+                      <div className="flex items-center gap-2">
+                        <span className="min-w-0 break-all">
+                          {detailLead.telefone || "—"}
+                        </span>
+                        <button
+                          type="button"
+                          title="Abrir WhatsApp"
+                          aria-label="Abrir WhatsApp"
+                          disabled={phoneDigits(detailLead.telefone).length < 10}
+                          className="shrink-0 rounded p-0.5 text-[#25D366] hover:bg-[#25D366]/15 disabled:pointer-events-none disabled:opacity-40"
+                          onClick={() =>
+                            openLeadWhatsApp(detailLead.telefone)
+                          }
+                        >
+                          <FaWhatsapp className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
+                    }
+                  />
                   <DetailField
                     label="E-mail"
                     value={displayEmail(detailLead.email) || "—"}
@@ -1726,6 +1821,14 @@ export function ComercialFunilBoard({
         }
         canWrite={canWriteTriagem}
         onOpenDetails={openDetailFromTriagem}
+      />
+
+      <FunilTarefaDialog
+        prompt={tarefaPrompt}
+        onClose={() => setTarefaPrompt(null)}
+        onCreated={() => {
+          void refreshLeads({ silent: true });
+        }}
       />
 
       <Dialog

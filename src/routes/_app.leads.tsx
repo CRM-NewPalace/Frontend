@@ -86,6 +86,7 @@ import { MeuLeadBadge } from "@/components/meu-lead-badge";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
+  DEFAULT_CATALOG_COLOR,
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import { getSession } from "@/lib/auth";
@@ -2358,7 +2359,7 @@ function LeadsPage() {
                 const stage = funnelStages.find((s) => s.id === l.stage) ?? {
                   id: l.stage,
                   name: l.stage,
-                  color: "bg-slate-200 text-slate-700",
+                  color: DEFAULT_CATALOG_COLOR,
                   papel: null,
                 };
                 const isNovoStage =

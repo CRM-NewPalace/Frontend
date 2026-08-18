@@ -23,7 +23,10 @@ import {
   type GroupedCatalog,
   type UpdateCatalogInput,
 } from "@/lib/catalog-api";
-import { DEFAULT_CATALOG_COLOR } from "@/lib/catalog-colors";
+import {
+  DEFAULT_CATALOG_COLOR,
+  normalizeCatalogColor,
+} from "@/lib/catalog-colors";
 import type { FunilEtapa } from "@/lib/funis-api";
 import {
   normalizeDocStatus,
@@ -139,7 +142,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       catalog.funil_etapa.map((item) => ({
         id: item.slug ?? item.id,
         name: item.label,
-        color: item.color ?? DEFAULT_CATALOG_COLOR,
+        color: normalizeCatalogColor(item.color),
         papel: resolvePapel(item),
       })),
     [catalog.funil_etapa],
@@ -185,20 +188,20 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     (type: CatalogType, label: string) => {
       const list = catalog[type];
       const exact = list.find((i) => i.label === label);
-      if (exact) return exact.color ?? DEFAULT_CATALOG_COLOR;
+      if (exact) return normalizeCatalogColor(exact.color);
 
       const trimmed = label.trim().toLowerCase();
       const byCase = list.find((i) => i.label.trim().toLowerCase() === trimmed);
-      if (byCase) return byCase.color ?? DEFAULT_CATALOG_COLOR;
+      if (byCase) return normalizeCatalogColor(byCase.color);
 
       if (type === "documentacao_status1" || type === "documentacao_status2") {
         const normalized = normalizeDocStatus(label);
         const byNorm = list.find(
           (i) => normalizeDocStatus(i.label) === normalized,
         );
-        if (byNorm) return byNorm.color ?? DEFAULT_CATALOG_COLOR;
+        if (byNorm) return normalizeCatalogColor(byNorm.color);
         const byGroup = list.find((i) => statusesMatch(i.label, label));
-        if (byGroup) return byGroup.color ?? DEFAULT_CATALOG_COLOR;
+        if (byGroup) return normalizeCatalogColor(byGroup.color);
       }
 
       return DEFAULT_CATALOG_COLOR;

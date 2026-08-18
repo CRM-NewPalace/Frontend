@@ -23,9 +23,13 @@ import {
   CATALOG_COLORS,
   DEFAULT_CATALOG_COLOR,
   DEFAULT_CCA_COLOR,
-  catalogColorSwatch,
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+  catalogColorSwatchStyle,
   isHexColor,
   nextCatalogColor,
+  normalizeCatalogColor,
+  sameCatalogColor,
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import {
@@ -154,10 +158,8 @@ function ColorSwatchPicker({
         <Label>Cor</Label>
         {previewLabel?.trim() && (
           <Badge
-            className={cn(
-              STATUS_CHIP_CLASS,
-              value || DEFAULT_CATALOG_COLOR,
-            )}
+            className={catalogColorBadgeClass(value)}
+            style={catalogColorBadgeStyle(value)}
             title={previewLabel.trim()}
           >
             {previewLabel.trim()}
@@ -166,7 +168,7 @@ function ColorSwatchPicker({
       </div>
       <div className="flex flex-wrap gap-2">
         {CATALOG_COLORS.map((color) => {
-          const selected = value === color;
+          const selected = sameCatalogColor(value, color);
           return (
             <button
               key={color}
@@ -177,11 +179,11 @@ function ColorSwatchPicker({
               onClick={() => onChange(color)}
               className={cn(
                 "h-7 w-7 rounded-full border-2 transition-transform",
-                catalogColorSwatch(color),
                 selected
                   ? "border-foreground scale-110 ring-2 ring-foreground/20"
                   : "border-transparent hover:scale-105",
               )}
+              style={catalogColorSwatchStyle(color)}
             />
           );
         })}
@@ -205,7 +207,8 @@ function CatalogItemBadge({ item }: { item: CatalogItem }) {
   }
   return (
     <Badge
-      className={cn(STATUS_CHIP_CLASS, item.color ?? DEFAULT_CATALOG_COLOR)}
+      className={catalogColorBadgeClass(item.color)}
+      style={catalogColorBadgeStyle(item.color)}
       title={item.label}
     >
       {item.label}
@@ -270,7 +273,7 @@ function Config() {
         ? isHexColor(item.color)
           ? item.color!
           : DEFAULT_CCA_COLOR
-        : (item.color ?? DEFAULT_CATALOG_COLOR),
+        : normalizeCatalogColor(item.color),
     );
     setEditOpen(true);
   }

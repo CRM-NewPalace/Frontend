@@ -539,7 +539,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     if (
       n.tipo === "lead_prazo_proximo" ||
-      n.tipo === "lead_prazo_ultrapassado"
+      n.tipo === "lead_prazo_ultrapassado" ||
+      n.tipo === "tarefa_atrasada"
     ) {
       void navigate({
         to: "/funil",

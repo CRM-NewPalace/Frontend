@@ -165,6 +165,27 @@ export function LeadFunilAlerta({
                 </div>
               ))}
             </div>
+            {mon.tarefasAtrasadas && mon.tarefasAtrasadas.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-red-700 dark:text-red-300">
+                  Tarefas atrasadas
+                </p>
+                <ul className="space-y-1">
+                  {mon.tarefasAtrasadas.map((tarefa) => (
+                    <li
+                      key={tarefa.id}
+                      className="rounded-md border border-red-500/40 bg-red-500/5 p-2 text-xs"
+                    >
+                      <p className="font-medium">{tarefa.titulo}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Prazo: {tarefa.prazo}
+                        {tarefa.funilStage ? ` · etapa ${tarefa.funilStage}` : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <dl className="grid grid-cols-1 gap-1 text-xs">
               <div className="flex justify-between gap-2">
                 <dt className="text-muted-foreground">Entrada na etapa</dt>

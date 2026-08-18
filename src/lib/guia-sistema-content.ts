@@ -175,6 +175,16 @@ export const GUIA_GROUPS: GuiaGroup[] = [
             detail:
               "O botão Triagem abre os relatos em um modal, sem sair do quadro. Feche para voltar ao funil; use Ver detalhes se precisar da ficha completa.",
           },
+          {
+            title: "Abrir o WhatsApp do card",
+            detail:
+              "O ícone do WhatsApp ao lado do telefone abre a conversa com o lead (wa.me), sem sair do quadro nem abrir a ficha.",
+          },
+          {
+            title: "Criar tarefa ao avançar etapa",
+            detail:
+              "Depois de mover o card, o sistema pergunta se deseja criar uma tarefa na agenda (título, data, início e término), já vinculada ao lead e à etapa.",
+          },
         ],
         how: [
           "Etapas e cores: Configurações → Funis. Só um funil fica ativo.",
@@ -185,6 +195,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         tips: [
           "Colunas intermediárias não têm papel especial — só organizam o atendimento.",
           "O Funil de Clientes é o mesmo quadro, filtrado em tipo Cliente.",
+          "Borda vermelha no card: prazo da etapa, inatividade ou tarefa atrasada. Some quando a tarefa é concluída.",
         ],
       },
       {

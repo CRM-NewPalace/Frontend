@@ -1,28 +1,90 @@
 /**
  * Paleta de cores das badges de catálogo (etapas, origens, tags, motivos).
  * Valores = classes Tailwind persistidas em CatalogItem.color.
+ * Tons 500: saturados, para leitura em chips e no seletor de Configurações.
  */
 export const CATALOG_COLORS = [
-  "bg-slate-200 text-slate-700",
-  "bg-blue-100 text-blue-700",
-  "bg-indigo-100 text-indigo-700",
-  "bg-violet-100 text-violet-700",
-  "bg-purple-100 text-purple-700",
-  "bg-pink-100 text-pink-700",
-  "bg-rose-100 text-rose-700",
-  "bg-red-100 text-red-700",
-  "bg-orange-100 text-orange-700",
-  "bg-amber-100 text-amber-700",
-  "bg-yellow-100 text-yellow-800",
-  "bg-lime-100 text-lime-800",
-  "bg-green-100 text-green-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-teal-100 text-teal-700",
-  "bg-cyan-100 text-cyan-700",
-  "bg-sky-100 text-sky-700",
+  "bg-slate-500 text-white",
+  "bg-blue-500 text-white",
+  "bg-indigo-500 text-white",
+  "bg-violet-500 text-white",
+  "bg-purple-500 text-white",
+  "bg-fuchsia-500 text-white",
+  "bg-pink-500 text-white",
+  "bg-rose-500 text-white",
+  "bg-red-500 text-white",
+  "bg-orange-500 text-white",
+  "bg-amber-500 text-amber-950",
+  "bg-yellow-400 text-yellow-950",
+  "bg-lime-500 text-lime-950",
+  "bg-green-500 text-white",
+  "bg-emerald-500 text-white",
+  "bg-teal-500 text-white",
+  "bg-cyan-500 text-white",
+  "bg-sky-500 text-white",
 ] as const;
 
 export type CatalogColor = (typeof CATALOG_COLORS)[number];
+
+/** Itens gravados na paleta pastel antiga passam a renderizar no tom vivo. */
+const LEGACY_CATALOG_COLORS: Record<string, CatalogColor> = {
+  "bg-slate-200 text-slate-700": "bg-slate-500 text-white",
+  "bg-blue-100 text-blue-700": "bg-blue-500 text-white",
+  "bg-indigo-100 text-indigo-700": "bg-indigo-500 text-white",
+  "bg-violet-100 text-violet-700": "bg-violet-500 text-white",
+  "bg-purple-100 text-purple-700": "bg-purple-500 text-white",
+  "bg-pink-100 text-pink-700": "bg-pink-500 text-white",
+  "bg-rose-100 text-rose-700": "bg-rose-500 text-white",
+  "bg-red-100 text-red-700": "bg-red-500 text-white",
+  "bg-orange-100 text-orange-700": "bg-orange-500 text-white",
+  "bg-amber-100 text-amber-700": "bg-amber-500 text-amber-950",
+  "bg-yellow-100 text-yellow-800": "bg-yellow-400 text-yellow-950",
+  "bg-lime-100 text-lime-800": "bg-lime-500 text-lime-950",
+  "bg-green-100 text-green-700": "bg-green-500 text-white",
+  "bg-emerald-100 text-emerald-700": "bg-emerald-500 text-white",
+  "bg-teal-100 text-teal-700": "bg-teal-500 text-white",
+  "bg-cyan-100 text-cyan-700": "bg-cyan-500 text-white",
+  "bg-sky-100 text-sky-700": "bg-sky-500 text-white",
+};
+
+const LEGACY_BG_TO_COLOR: Record<string, CatalogColor> = {
+  "bg-slate-200": "bg-slate-500 text-white",
+  "bg-blue-100": "bg-blue-500 text-white",
+  "bg-indigo-100": "bg-indigo-500 text-white",
+  "bg-violet-100": "bg-violet-500 text-white",
+  "bg-purple-100": "bg-purple-500 text-white",
+  "bg-pink-100": "bg-pink-500 text-white",
+  "bg-rose-100": "bg-rose-500 text-white",
+  "bg-red-100": "bg-red-500 text-white",
+  "bg-orange-100": "bg-orange-500 text-white",
+  "bg-amber-100": "bg-amber-500 text-amber-950",
+  "bg-yellow-100": "bg-yellow-400 text-yellow-950",
+  "bg-lime-100": "bg-lime-500 text-lime-950",
+  "bg-green-100": "bg-green-500 text-white",
+  "bg-emerald-100": "bg-emerald-500 text-white",
+  "bg-teal-100": "bg-teal-500 text-white",
+  "bg-cyan-100": "bg-cyan-500 text-white",
+  "bg-sky-100": "bg-sky-500 text-white",
+};
+
+export function normalizeCatalogColor(
+  color: string | null | undefined,
+): string {
+  if (!color?.trim()) return DEFAULT_CATALOG_COLOR;
+  if (isHexColor(color)) return color;
+  const key = color.trim();
+  if (LEGACY_CATALOG_COLORS[key]) return LEGACY_CATALOG_COLORS[key];
+  const bg = key.split(/\s+/).find((c) => c.startsWith("bg-"));
+  if (bg && LEGACY_BG_TO_COLOR[bg]) return LEGACY_BG_TO_COLOR[bg];
+  return key;
+}
+
+export function sameCatalogColor(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  return normalizeCatalogColor(a) === normalizeCatalogColor(b);
+}
 
 /**
  * Tamanho único dos chips de status (etapas, origem, tags, documentação, etc.).
@@ -37,25 +99,24 @@ export function isHexColor(color: string | null | undefined): boolean {
 
 export const DEFAULT_CCA_COLOR = "#3B82F6";
 
-export const DEFAULT_CATALOG_COLOR: CatalogColor =
-  "bg-slate-200 text-slate-700";
+export const DEFAULT_CATALOG_COLOR: CatalogColor = "bg-slate-500 text-white";
 
-/** Extrai a classe de fundo para o swatch (ex.: bg-blue-100). */
+/** Extrai a classe de fundo para o swatch (ex.: bg-blue-500). */
 export function catalogColorSwatch(color: string | null | undefined): string {
-  const bg = (color ?? DEFAULT_CATALOG_COLOR)
+  const bg = normalizeCatalogColor(color)
     .split(/\s+/)
     .find((c) => c.startsWith("bg-"));
-  return bg ?? "bg-slate-200";
+  return bg ?? "bg-slate-500";
 }
 
-/** Extrai a classe de texto (ex.: text-blue-700). */
+/** Extrai a classe de texto (ex.: text-white). */
 export function catalogColorTextClass(
   color: string | null | undefined,
 ): string {
-  const text = (color ?? DEFAULT_CATALOG_COLOR)
+  const text = normalizeCatalogColor(color)
     .split(/\s+/)
     .find((c) => c.startsWith("text-"));
-  return text ?? "text-slate-700";
+  return text ?? "text-white";
 }
 
 /**
@@ -63,122 +124,115 @@ export function catalogColorTextClass(
  * Usa tom médio/saturado para ficar legível nas barras.
  */
 const CATALOG_BG_TO_CHART_HEX: Record<string, string> = {
-  "bg-slate-200": "#64748b",
-  "bg-blue-100": "#3b82f6",
-  "bg-indigo-100": "#6366f1",
-  "bg-violet-100": "#8b5cf6",
-  "bg-purple-100": "#a855f7",
-  "bg-pink-100": "#ec4899",
-  "bg-rose-100": "#f43f5e",
-  "bg-red-100": "#ef4444",
-  "bg-orange-100": "#f97316",
-  "bg-amber-100": "#f59e0b",
-  "bg-yellow-100": "#eab308",
-  "bg-lime-100": "#84cc16",
-  "bg-green-100": "#22c55e",
-  "bg-emerald-100": "#10b981",
-  "bg-teal-100": "#14b8a6",
-  "bg-cyan-100": "#06b6d4",
-  "bg-sky-100": "#0ea5e9",
+  "bg-slate-500": "#64748b",
+  "bg-blue-500": "#3b82f6",
+  "bg-indigo-500": "#6366f1",
+  "bg-violet-500": "#8b5cf6",
+  "bg-purple-500": "#a855f7",
+  "bg-fuchsia-500": "#d946ef",
+  "bg-pink-500": "#ec4899",
+  "bg-rose-500": "#f43f5e",
+  "bg-red-500": "#ef4444",
+  "bg-orange-500": "#f97316",
+  "bg-amber-500": "#f59e0b",
+  "bg-yellow-400": "#eab308",
+  "bg-lime-500": "#84cc16",
+  "bg-green-500": "#22c55e",
+  "bg-emerald-500": "#10b981",
+  "bg-teal-500": "#14b8a6",
+  "bg-cyan-500": "#06b6d4",
+  "bg-sky-500": "#0ea5e9",
 };
 
-/** Tons claros (50 / 100 / 200) para degradês discretos nas badges. */
+/** Degradê saturado (claro → vivo → escuro) nas badges e no seletor. */
 const CATALOG_BG_SOFT_STOPS: Record<
   string,
   { a: string; b: string; c: string }
 > = {
-  "bg-slate-200": { a: "#f8fafc", b: "#e2e8f0", c: "#cbd5e1" },
-  "bg-blue-100": { a: "#eff6ff", b: "#dbeafe", c: "#bfdbfe" },
-  "bg-indigo-100": { a: "#eef2ff", b: "#e0e7ff", c: "#c7d2fe" },
-  "bg-violet-100": { a: "#f5f3ff", b: "#ede9fe", c: "#ddd6fe" },
-  "bg-purple-100": { a: "#faf5ff", b: "#f3e8ff", c: "#e9d5ff" },
-  "bg-pink-100": { a: "#fdf2f8", b: "#fce7f3", c: "#fbcfe8" },
-  "bg-rose-100": { a: "#fff1f2", b: "#ffe4e6", c: "#fecdd3" },
-  "bg-red-100": { a: "#fef2f2", b: "#fee2e2", c: "#fecaca" },
-  "bg-orange-100": { a: "#fff7ed", b: "#ffedd5", c: "#fed7aa" },
-  "bg-amber-100": { a: "#fffbeb", b: "#fef3c7", c: "#fde68a" },
-  "bg-yellow-100": { a: "#fefce8", b: "#fef9c3", c: "#fef08a" },
-  "bg-lime-100": { a: "#f7fee7", b: "#ecfccb", c: "#d9f99d" },
-  "bg-green-100": { a: "#f0fdf4", b: "#dcfce7", c: "#bbf7d0" },
-  "bg-emerald-100": { a: "#ecfdf5", b: "#d1fae5", c: "#a7f3d0" },
-  "bg-teal-100": { a: "#f0fdfa", b: "#ccfbf1", c: "#99f6e4" },
-  "bg-cyan-100": { a: "#ecfeff", b: "#cffafe", c: "#a5f3fc" },
-  "bg-sky-100": { a: "#f0f9ff", b: "#e0f2fe", c: "#bae6fd" },
-};
-
-/** Hover sólido na mesma família (sobrescreve hover:bg-primary do Badge). */
-const CATALOG_BG_HOVER: Record<string, string> = {
-  "bg-slate-200": "hover:bg-slate-300",
-  "bg-blue-100": "hover:bg-blue-200",
-  "bg-indigo-100": "hover:bg-indigo-200",
-  "bg-violet-100": "hover:bg-violet-200",
-  "bg-purple-100": "hover:bg-purple-200",
-  "bg-pink-100": "hover:bg-pink-200",
-  "bg-rose-100": "hover:bg-rose-200",
-  "bg-red-100": "hover:bg-red-200",
-  "bg-orange-100": "hover:bg-orange-200",
-  "bg-amber-100": "hover:bg-amber-200",
-  "bg-yellow-100": "hover:bg-yellow-200",
-  "bg-lime-100": "hover:bg-lime-200",
-  "bg-green-100": "hover:bg-green-200",
-  "bg-emerald-100": "hover:bg-emerald-200",
-  "bg-teal-100": "hover:bg-teal-200",
-  "bg-cyan-100": "hover:bg-cyan-200",
-  "bg-sky-100": "hover:bg-sky-200",
+  "bg-slate-500": { a: "#cbd5e1", b: "#64748b", c: "#334155" },
+  "bg-blue-500": { a: "#93c5fd", b: "#3b82f6", c: "#1d4ed8" },
+  "bg-indigo-500": { a: "#a5b4fc", b: "#6366f1", c: "#4338ca" },
+  "bg-violet-500": { a: "#c4b5fd", b: "#8b5cf6", c: "#6d28d9" },
+  "bg-purple-500": { a: "#d8b4fe", b: "#a855f7", c: "#7e22ce" },
+  "bg-fuchsia-500": { a: "#f0abfc", b: "#d946ef", c: "#a21caf" },
+  "bg-pink-500": { a: "#f9a8d4", b: "#ec4899", c: "#be185d" },
+  "bg-rose-500": { a: "#fda4af", b: "#f43f5e", c: "#be123c" },
+  "bg-red-500": { a: "#fca5a5", b: "#ef4444", c: "#b91c1c" },
+  "bg-orange-500": { a: "#fdba74", b: "#f97316", c: "#c2410c" },
+  "bg-amber-500": { a: "#fcd34d", b: "#f59e0b", c: "#b45309" },
+  "bg-yellow-400": { a: "#fde047", b: "#eab308", c: "#a16207" },
+  "bg-lime-500": { a: "#bef264", b: "#84cc16", c: "#4d7c0f" },
+  "bg-green-500": { a: "#86efac", b: "#22c55e", c: "#15803d" },
+  "bg-emerald-500": { a: "#6ee7b7", b: "#10b981", c: "#047857" },
+  "bg-teal-500": { a: "#5eead4", b: "#14b8a6", c: "#0f766e" },
+  "bg-cyan-500": { a: "#67e8f9", b: "#06b6d4", c: "#0e7490" },
+  "bg-sky-500": { a: "#7dd3fc", b: "#0ea5e9", c: "#0369a1" },
 };
 
 /** Hover mais claro para a linha da lista (não a badge). */
 const CATALOG_BG_SURFACE_HOVER: Record<string, string> = {
-  "bg-slate-200": "hover:bg-slate-100",
-  "bg-blue-100": "hover:bg-blue-50",
-  "bg-indigo-100": "hover:bg-indigo-50",
-  "bg-violet-100": "hover:bg-violet-50",
-  "bg-purple-100": "hover:bg-purple-50",
-  "bg-pink-100": "hover:bg-pink-50",
-  "bg-rose-100": "hover:bg-rose-50",
-  "bg-red-100": "hover:bg-red-50",
-  "bg-orange-100": "hover:bg-orange-50",
-  "bg-amber-100": "hover:bg-amber-50",
-  "bg-yellow-100": "hover:bg-yellow-50",
-  "bg-lime-100": "hover:bg-lime-50",
-  "bg-green-100": "hover:bg-green-50",
-  "bg-emerald-100": "hover:bg-emerald-50",
-  "bg-teal-100": "hover:bg-teal-50",
-  "bg-cyan-100": "hover:bg-cyan-50",
-  "bg-sky-100": "hover:bg-sky-50",
+  "bg-slate-500": "hover:bg-slate-100",
+  "bg-blue-500": "hover:bg-blue-50",
+  "bg-indigo-500": "hover:bg-indigo-50",
+  "bg-violet-500": "hover:bg-violet-50",
+  "bg-purple-500": "hover:bg-purple-50",
+  "bg-fuchsia-500": "hover:bg-fuchsia-50",
+  "bg-pink-500": "hover:bg-pink-50",
+  "bg-rose-500": "hover:bg-rose-50",
+  "bg-red-500": "hover:bg-red-50",
+  "bg-orange-500": "hover:bg-orange-50",
+  "bg-amber-500": "hover:bg-amber-50",
+  "bg-yellow-400": "hover:bg-yellow-50",
+  "bg-lime-500": "hover:bg-lime-50",
+  "bg-green-500": "hover:bg-green-50",
+  "bg-emerald-500": "hover:bg-emerald-50",
+  "bg-teal-500": "hover:bg-teal-50",
+  "bg-cyan-500": "hover:bg-cyan-50",
+  "bg-sky-500": "hover:bg-sky-50",
 };
 
 /**
- * Classes de badge de catálogo: texto da cor + hover na mesma família
- * (evita o hover escuro padrão do Badge).
+ * Classes de badge de catálogo: texto da cor, fundo via degradê em
+ * `catalogColorBadgeStyle` (evita o hover sólido padrão do Badge).
  */
 export function catalogColorBadgeClass(
   color: string | null | undefined,
   extra?: string,
 ): string {
-  const bg = catalogColorSwatch(color);
   const text = catalogColorTextClass(color);
-  const hover = CATALOG_BG_HOVER[bg] ?? "hover:bg-slate-300";
   return [
     STATUS_CHIP_CLASS,
     "border-transparent bg-transparent shadow-none",
     text,
-    hover,
-    "hover:[background-image:none]",
+    "hover:brightness-110",
     extra ?? "",
   ]
     .filter(Boolean)
     .join(" ");
 }
 
-/** Degradê discreto para o fundo da badge. */
+function catalogGradientStops(color: string | null | undefined) {
+  const bg = catalogColorSwatch(color);
+  return CATALOG_BG_SOFT_STOPS[bg] ?? CATALOG_BG_SOFT_STOPS["bg-slate-500"];
+}
+
+/** Degradê vivo para o fundo da badge. */
 export function catalogColorBadgeStyle(
   color: string | null | undefined,
 ): { backgroundImage: string } {
-  const bg = catalogColorSwatch(color);
-  const stops = CATALOG_BG_SOFT_STOPS[bg] ?? CATALOG_BG_SOFT_STOPS["bg-slate-200"];
+  const stops = catalogGradientStops(color);
   return {
-    backgroundImage: `linear-gradient(135deg, ${stops.a} 0%, ${stops.b} 48%, ${stops.c} 100%)`,
+    backgroundImage: `linear-gradient(135deg, ${stops.a} 0%, ${stops.b} 46%, ${stops.c} 100%)`,
+  };
+}
+
+/** Degradê com brilho para o círculo do seletor de cor. */
+export function catalogColorSwatchStyle(
+  color: string | null | undefined,
+): { backgroundImage: string } {
+  const stops = catalogGradientStops(color);
+  return {
+    backgroundImage: `linear-gradient(145deg, rgba(255,255,255,0.42) 0%, transparent 38%), linear-gradient(135deg, ${stops.a} 0%, ${stops.b} 48%, ${stops.c} 100%)`,
   };
 }
 
@@ -198,7 +252,7 @@ export function catalogColorSoftSurfaceStyle(
   color: string | null | undefined,
 ): { backgroundImage: string } {
   const bg = catalogColorSwatch(color);
-  const stops = CATALOG_BG_SOFT_STOPS[bg] ?? CATALOG_BG_SOFT_STOPS["bg-slate-200"];
+  const stops = CATALOG_BG_SOFT_STOPS[bg] ?? CATALOG_BG_SOFT_STOPS["bg-slate-500"];
   return {
     backgroundImage: `linear-gradient(90deg, color-mix(in oklab, ${stops.b} 28%, white) 0%, color-mix(in oklab, ${stops.a} 18%, white) 55%, white 100%)`,
   };

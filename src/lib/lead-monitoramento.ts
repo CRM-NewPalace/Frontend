@@ -10,22 +10,27 @@ export type MonitoramentoFiltro =
 export type MonitoramentoVisual = "none" | "laranja" | "vermelho";
 
 export type MonitoramentoNivel =
-  | "normal"
-  | "proximo"
-  | "atrasado"
-  | "sem_movimentacao";
+  "normal" | "proximo" | "atrasado" | "sem_movimentacao";
 
 export type MotivoSemMovimentacao =
-  | "sem_status"
-  | "sem_triagem"
-  | "sem_atividade"
-  | "sem_tarefa";
+  "sem_status" | "sem_triagem" | "sem_atividade" | "sem_tarefa";
 
 export type ProblemaMonitoramento = {
-  tipo: "prazo_ultrapassado" | "sem_movimentacao" | "prazo_proximo";
+  tipo:
+    | "prazo_ultrapassado"
+    | "sem_movimentacao"
+    | "prazo_proximo"
+    | "tarefa_atrasada";
   titulo: string;
   detalhe: string;
   motivos?: MotivoSemMovimentacao[];
+};
+
+export type TarefaAtrasadaResumo = {
+  id: string;
+  titulo: string;
+  prazo: string;
+  funilStage: string | null;
 };
 
 export type LeadMonitoramento = {
@@ -52,6 +57,7 @@ export type LeadMonitoramento = {
   inatividadeThresholdMs: number;
   inatividadeConfig?: { valor: number; unidade: PrazoUnidade } | null;
   podeAdiar: boolean;
+  tarefasAtrasadas?: TarefaAtrasadaResumo[];
 };
 
 export type LeadPrazoAdiamento = {
@@ -68,6 +74,7 @@ export type CorretorMonitoramentoLead = {
   nome: string;
   stage: string;
   problemas: ProblemaMonitoramento[];
+  tarefasAtrasadas?: TarefaAtrasadaResumo[];
 };
 
 export type CorretorMonitoramento = {
@@ -76,6 +83,7 @@ export type CorretorMonitoramento = {
   totalAtrasos: number;
   semMovimentacao: number;
   foraDoPrazo: number;
+  tarefasAtrasadas?: number;
   leads: CorretorMonitoramentoLead[];
 };
 
@@ -109,7 +117,10 @@ export const PRAZO_UNIDADE_OPTIONS: Array<{
   { value: "dias", label: "Dias" },
 ];
 
-export function formatPrazoUnidade(valor: number, unidade: PrazoUnidade): string {
+export function formatPrazoUnidade(
+  valor: number,
+  unidade: PrazoUnidade,
+): string {
   if (unidade === "minutos") return `${valor}min`;
   if (unidade === "horas") return `${valor}h`;
   return valor === 1 ? "1 dia" : `${valor} dias`;
@@ -169,17 +180,19 @@ export function applyInatividadeThreshold(
       tipo: "sem_movimentacao",
       titulo: "Lead sem movimentação",
       detalhe: `Sem movimentação há ${formatDurationPt(idleMs)}.`,
-      motivos: mon.problemas.find((p) => p.tipo === "sem_movimentacao")?.motivos,
+      motivos: mon.problemas.find((p) => p.tipo === "sem_movimentacao")
+        ?.motivos,
     });
   }
 
   const hasOverdue = problemas.some((p) => p.tipo === "prazo_ultrapassado");
   const hasIdle = problemas.some((p) => p.tipo === "sem_movimentacao");
   const hasNear = problemas.some((p) => p.tipo === "prazo_proximo");
+  const hasTarefa = problemas.some((p) => p.tipo === "tarefa_atrasada");
 
   let nivel: LeadMonitoramento["nivel"] = "normal";
   let visual: LeadMonitoramento["visual"] = "none";
-  if (hasOverdue) {
+  if (hasOverdue || hasTarefa) {
     nivel = "atrasado";
     visual = "vermelho";
   } else if (hasIdle) {

@@ -99,11 +99,7 @@ export const WEEKDAY_OPTIONS = [
 
 /** Origem visual no calendário: quem criou o compromisso. */
 export type AgendamentoOrigem =
-  | "admin"
-  | "gerente"
-  | "corretor"
-  | "aniversario"
-  | "bloqueio";
+  "admin" | "gerente" | "corretor" | "aniversario" | "bloqueio";
 
 export const AGENDAMENTO_ORIGEM_LABEL: Record<AgendamentoOrigem, string> = {
   admin: "Administrador",
@@ -214,6 +210,7 @@ export interface Agendamento {
   endsAt: string | null;
   local: string | null;
   observacoes: string | null;
+  funilStage: string | null;
   motivoRecusa: string | null;
   aprovadoAt: string | null;
   createdAt: string;
@@ -249,6 +246,7 @@ export type CreateAgendamentoInput = {
   endsAt?: string | null;
   local?: string | null;
   observacoes?: string | null;
+  funilStage?: string | null;
   recurrenceFreq?: AgendamentoRecurrenceFreq;
   recurrenceDays?: number[];
   recurrenceUntil?: string | null;
@@ -257,7 +255,11 @@ export type CreateAgendamentoInput = {
 export type UpdateAgendamentoInput = Partial<
   Omit<
     CreateAgendamentoInput,
-    "leadId" | "atribuidoParaId" | "recurrenceFreq" | "recurrenceDays" | "recurrenceUntil"
+    | "leadId"
+    | "atribuidoParaId"
+    | "recurrenceFreq"
+    | "recurrenceDays"
+    | "recurrenceUntil"
   >
 > & {
   status?: AgendamentoStatus;
@@ -333,8 +335,7 @@ export async function deleteAgendamento(
   id: string,
   opts?: { series?: "one" | "all" },
 ): Promise<void> {
-  const qs =
-    opts?.series === "all" ? "?series=all" : "";
+  const qs = opts?.series === "all" ? "?series=all" : "";
   await apiFetch<{ ok: boolean }>(`/agenda/${id}${qs}`, {
     method: "DELETE",
   });

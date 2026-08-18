@@ -181,7 +181,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
 import {
-  DEFAULT_CATALOG_COLOR,
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
   isHexColor,
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
@@ -220,7 +221,11 @@ function DocCatalogBadge({
   }
   return (
     <Badge
-      className={cn(DOC_STATUS_CHIP, color || DEFAULT_CATALOG_COLOR)}
+      className={cn(
+        catalogColorBadgeClass(color),
+        "justify-start text-left font-normal",
+      )}
+      style={catalogColorBadgeStyle(color)}
       title={label}
     >
       {label}
