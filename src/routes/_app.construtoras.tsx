@@ -1120,7 +1120,6 @@ function ConstrutorasPage() {
                       <TableHead>CCA</TableHead>
                       <TableHead>Contato</TableHead>
                       <TableHead>Viabilizador</TableHead>
-                      <TableHead>Localidades</TableHead>
                       <TableHead className="text-center">Empreend.</TableHead>
                       {canViewVendas ? (
                         <>
@@ -1193,19 +1192,6 @@ function ConstrutorasPage() {
                                     {item.viabilizadorContato}
                                   </div>
                                 )}
-                            </div>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.localidades && item.localidades.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {item.localidades.map((loc) => (
-                                <Badge key={loc.id} variant="secondary">
-                                  {loc.nome}
-                                </Badge>
-                              ))}
                             </div>
                           ) : (
                             "—"
