@@ -207,6 +207,7 @@ function Clientes() {
     origens: origemOptions,
     tags: tagOptions,
     colorByLabel,
+    refresh: refreshCatalog,
   } = useCatalog();
 
   const stageName = (stage: Lead["stage"]) =>
@@ -530,6 +531,7 @@ function Clientes() {
       setImportOpen(false);
       setImportRows([]);
       await refresh({ silent: true });
+      await refreshCatalog({ silent: true });
       if (result.failed > 0) {
         const sample = result.errors
           .slice(0, 3)

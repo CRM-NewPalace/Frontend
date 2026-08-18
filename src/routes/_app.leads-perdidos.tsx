@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +48,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Loader2,
 } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
@@ -61,6 +63,7 @@ import {
   getLostLeadsCache,
   loadLostLeads,
   removeLostLeadFromCache,
+  removeLostLeadsFromCache,
   type LostLead,
 } from "@/lib/lost-leads-cache";
 import {
@@ -100,6 +103,9 @@ function LeadsPerdidos() {
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const [detail, setDetail] = useState<LostLead | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<LostLead | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPurgeOpen, setBulkPurgeOpen] = useState(false);
+  const [bulkPurging, setBulkPurging] = useState(false);
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? Boolean(getLostLeadsCache()?.length);
@@ -150,6 +156,26 @@ function LeadsPerdidos() {
     [filtered, sort],
   );
 
+  const allVisibleIds = useMemo(() => sorted.map((l) => l.id), [sorted]);
+  const allSelected =
+    allVisibleIds.length > 0 &&
+    allVisibleIds.every((id) => selectedIds.has(id));
+  const someSelected = allVisibleIds.some((id) => selectedIds.has(id));
+  const selectedCount = selectedIds.size;
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(allVisibleIds) : new Set());
+  }
+
+  function toggleSelectOne(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   async function confirmPurge() {
     if (!purgeTarget) return;
     const target = purgeTarget;
@@ -172,6 +198,53 @@ function LeadsPerdidos() {
     }
   }
 
+  async function confirmBulkPurge() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const targets = leads.filter((l) => ids.includes(l.id));
+    setBulkPurgeOpen(false);
+    setBulkPurging(true);
+    setLeads((prev) => prev.filter((l) => !ids.includes(l.id)));
+    removeLostLeadsFromCache(ids);
+    setSelectedIds(new Set());
+    if (detail && ids.includes(detail.id)) setDetail(null);
+
+    let ok = 0;
+    let fail = 0;
+    const failed: LostLead[] = [];
+    for (const id of ids) {
+      try {
+        await deleteLeadApi(id);
+        ok += 1;
+      } catch {
+        fail += 1;
+        const target = targets.find((l) => l.id === id);
+        if (target) failed.push(target);
+      }
+    }
+
+    if (failed.length > 0) {
+      setLeads((prev) => {
+        const existing = new Set(prev.map((l) => l.id));
+        return [...failed.filter((l) => !existing.has(l.id)), ...prev];
+      });
+    }
+
+    setBulkPurging(false);
+    if (fail === 0) {
+      toast.success(
+        ok === 1
+          ? "1 lead excluído definitivamente."
+          : `${ok} leads excluídos definitivamente.`,
+      );
+    } else {
+      toast.error(
+        `${ok} excluído(s), ${fail} com erro. A lista foi atualizada.`,
+      );
+      void refresh({ silent: true });
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -184,7 +257,23 @@ function LeadsPerdidos() {
               }`
         }
         actions={
-          <DropdownMenu>
+          <>
+            {selectedCount > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={bulkPurging}
+                onClick={() => setBulkPurgeOpen(true)}
+              >
+                {bulkPurging ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-1" />
+                )}
+                Excluir ({selectedCount})
+              </Button>
+            )}
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -221,6 +310,7 @@ function LeadsPerdidos() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </>
         }
       />
 
@@ -245,6 +335,16 @@ function LeadsPerdidos() {
         <Table className="[&_th]:px-4 [&_td]:px-4">
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10 pr-0">
+                <Checkbox
+                  checked={
+                    allSelected ? true : someSelected ? "indeterminate" : false
+                  }
+                  onCheckedChange={(v) => toggleSelectAll(v === true)}
+                  aria-label="Selecionar todos os leads perdidos"
+                  disabled={filtered.length === 0 || bulkPurging}
+                />
+              </TableHead>
               <TableHead>Lead</TableHead>
               <TableHead>Motivo</TableHead>
               <TableHead>Corretor</TableHead>
@@ -257,7 +357,7 @@ function LeadsPerdidos() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Carregando...
@@ -266,7 +366,7 @@ function LeadsPerdidos() {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum lead perdido.
@@ -274,7 +374,19 @@ function LeadsPerdidos() {
               </TableRow>
             ) : (
               sorted.map((l) => (
-                <TableRow key={l.id} className="hover:bg-muted/40">
+                <TableRow
+                  key={l.id}
+                  className="hover:bg-muted/40"
+                  data-state={selectedIds.has(l.id) ? "selected" : undefined}
+                >
+                  <TableCell className="pr-0">
+                    <Checkbox
+                      checked={selectedIds.has(l.id)}
+                      onCheckedChange={(v) => toggleSelectOne(l.id, v === true)}
+                      aria-label={`Selecionar ${l.nome}`}
+                      disabled={bulkPurging}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-8 h-8">
@@ -448,6 +560,44 @@ function LeadsPerdidos() {
               }}
             >
               Excluir do banco
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkPurgeOpen}
+        onOpenChange={(o) => !o && setBulkPurgeOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {selectedCount} lead(s) definitivamente?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedCount === allVisibleIds.length && search.trim() === ""
+                ? `Todos os ${selectedCount} lead(s) da lista serão removidos do banco para sempre. Esta ação não pode ser desfeita.`
+                : `${selectedCount} lead(s) selecionado(s) serão removidos do banco para sempre. Esta ação não pode ser desfeita.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkPurging}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkPurging}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmBulkPurge();
+              }}
+            >
+              {bulkPurging ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  Excluindo…
+                </>
+              ) : (
+                "Excluir do banco"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

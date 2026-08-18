@@ -71,6 +71,14 @@ export function removeLostLeadFromCache(id: string) {
   setLostLeadsCache(current.filter((l) => l.id !== id));
 }
 
+export function removeLostLeadsFromCache(ids: string[]) {
+  if (ids.length === 0) return;
+  const drop = new Set(ids);
+  const current = getLostLeadsCache();
+  if (!current) return;
+  setLostLeadsCache(current.filter((l) => !drop.has(l.id)));
+}
+
 /** Após marcar como perdido, injeta no cache para a lista abrir já atualizada. */
 export function prependLostLeadToCache(api: ApiLead) {
   const item = mapLostLead(api);

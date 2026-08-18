@@ -284,7 +284,12 @@ function LeadsPage() {
     assignees,
     refresh,
   } = useLeads();
-  const { funnelStages, origens: origemOptions, colorByLabel } = useCatalog();
+  const {
+    funnelStages,
+    origens: origemOptions,
+    colorByLabel,
+    refresh: refreshCatalog,
+  } = useCatalog();
   // Backend atribui a etapa inicial (Novo lead) quando stage é omitido.
   const defaultStageName =
     funnelStages.find((s) => s.id === "novo")?.name ??
@@ -1035,6 +1040,7 @@ function LeadsPage() {
       setImportOpen(false);
       setImportRows([]);
       await refresh({ silent: true });
+      await refreshCatalog({ silent: true });
       if (result.failed > 0) {
         const sample = result.errors
           .slice(0, 3)
