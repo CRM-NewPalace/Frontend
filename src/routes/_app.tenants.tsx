@@ -56,6 +56,7 @@ import {
   updateMetaConnection,
   updateOzapConnection,
   updateTenant,
+  updateTenantAdmin,
   type Tenant,
   type TenantAdminUser,
   type TenantDetail,
@@ -178,6 +179,8 @@ function TenantsPage() {
   const [editingAdmin, setEditingAdmin] = useState<TenantAdminUser | null>(
     null,
   );
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
   const [editingUserCount, setEditingUserCount] = useState<number | null>(null);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [credentials, setCredentials] = useState<{
@@ -224,6 +227,8 @@ function TenantsPage() {
     setFormMode("edit");
     setEditingId(item.id);
     setEditingAdmin(item.admin);
+    setAdminName(item.admin?.name ?? "");
+    setAdminEmail(item.admin?.email ?? "");
     setEditingUserCount(null);
     setTenantFormTab("dados");
     setForm({
@@ -242,6 +247,8 @@ function TenantsPage() {
     try {
       const detail = await fetchTenant(item.id);
       setEditingAdmin(detail.admin);
+      setAdminName(detail.admin?.name ?? "");
+      setAdminEmail(detail.admin?.email ?? "");
       setEditingUserCount(detail.userCount);
       setForm({
         name: detail.name,
@@ -385,6 +392,21 @@ function TenantsPage() {
 
     if (!editingId) return;
 
+    let nextAdmin: { name: string; email: string } | null = null;
+    if (editingAdmin) {
+      const nextName = adminName.trim();
+      const nextEmail = adminEmail.trim().toLowerCase();
+      if (nextName.length < 2) {
+        toast.error("Informe o nome do administrador.");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+        toast.error("Informe um e-mail de login válido.");
+        return;
+      }
+      nextAdmin = { name: nextName, email: nextEmail };
+    }
+
     setSaving(true);
     try {
       await updateTenant(editingId, {
@@ -397,6 +419,15 @@ function TenantsPage() {
         iaBotEnabled: form.iaBotEnabled,
         modules,
       });
+      if (
+        editingAdmin &&
+        nextAdmin &&
+        (nextAdmin.name !== editingAdmin.name ||
+          nextAdmin.email !== editingAdmin.email)
+      ) {
+        const updatedAdmin = await updateTenantAdmin(editingId, nextAdmin);
+        setEditingAdmin({ ...editingAdmin, ...updatedAdmin });
+      }
       toast.success("Tenant atualizado.");
       setFormOpen(false);
       await loadItems();
@@ -421,6 +452,8 @@ function TenantsPage() {
       });
       if (editingId === tenantId) {
         setEditingAdmin(result.user);
+        setAdminName(result.user.name);
+        setAdminEmail(result.user.email);
       }
       toast.success("Administrador gerado.");
       if (detail?.id === tenantId) {
@@ -768,7 +801,7 @@ function TenantsPage() {
         description={
           formMode === "create"
             ? "Cadastre o cliente (imobiliária), documento, plano e módulos. O admin é gerado automaticamente."
-            : "Atualize documento, plano, cota, logo e módulos do cliente."
+            : "Atualize documento, plano, cota, logo, módulos e o e-mail de login deste cliente."
         }
         className={
           formMode === "edit" || formMode === "create" ? "max-w-2xl" : undefined
@@ -1154,29 +1187,38 @@ function TenantsPage() {
                   <FormSection title="Administrador">
                     {editingAdmin ? (
                       <div className="space-y-3">
-                        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                          <div className="text-[11px] text-muted-foreground">
-                            Nome
-                          </div>
-                          <div className="text-sm font-medium">
-                            {editingAdmin.name}
-                          </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tenant-admin-name">Nome</Label>
+                          <Input
+                            id="tenant-admin-name"
+                            value={adminName}
+                            onChange={(e) => setAdminName(e.target.value)}
+                            placeholder="Admin da imobiliária"
+                          />
                         </div>
-                        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                          <div className="text-[11px] text-muted-foreground">
+                        <div className="space-y-2">
+                          <Label htmlFor="tenant-admin-email">
                             E-mail de login
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <code className="text-sm break-all">
-                              {editingAdmin.email}
-                            </code>
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id="tenant-admin-email"
+                              type="email"
+                              value={adminEmail}
+                              onChange={(e) =>
+                                setAdminEmail(e.target.value.toLowerCase())
+                              }
+                              placeholder="admin@imobiliaria.com"
+                              className="font-mono text-sm"
+                            />
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               className="shrink-0"
+                              disabled={!adminEmail.trim()}
                               onClick={() =>
-                                void copyText(editingAdmin.email, "email")
+                                void copyText(adminEmail.trim(), "email")
                               }
                             >
                               {copiedField === "email" ? (
@@ -1187,11 +1229,12 @@ function TenantsPage() {
                               Copiar
                             </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground pt-1">
-                            Slug no login (opcional):{" "}
+                          <p className="text-xs text-muted-foreground">
+                            Este e-mail pertence só a este tenant (
                             <code className="rounded bg-muted px-1">
                               {form.slug}
                             </code>
+                            ). Alterar não muda o login do cliente original.
                           </p>
                         </div>
                         <Button

@@ -211,6 +211,16 @@ export async function updateTenant(
   return apiFetch<Tenant>(`/tenants/${id}`, { method: "PATCH", body: input });
 }
 
+export async function updateTenantAdmin(
+  tenantId: string,
+  input: { name?: string; email?: string },
+): Promise<TenantAdminUser> {
+  return apiFetch<TenantAdminUser>(`/tenants/${tenantId}/admin`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
 export async function deleteTenant(
   id: string,
 ): Promise<{ id: string; name: string; slug: string }> {
