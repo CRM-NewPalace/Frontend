@@ -141,16 +141,19 @@ export function FormDialogActions({
   return (
     <DialogFooter
       className={cn(
-        "px-4 sm:px-6 py-3 sm:py-4 border-t bg-muted/30 sm:justify-between gap-3 shrink-0",
+        "gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t bg-muted/30 shrink-0",
+        "flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:space-x-0",
         className,
       )}
     >
       {hint ? (
-        <p className="text-xs text-muted-foreground hidden sm:block">{hint}</p>
+        <p className="hidden min-w-0 max-w-full text-xs text-muted-foreground sm:block">
+          {hint}
+        </p>
       ) : (
         <span className="hidden sm:block" />
       )}
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+      <div className="flex w-full min-w-0 max-w-full flex-col-reverse items-stretch gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end [&_button]:w-full sm:[&_button]:w-auto">
         {children}
       </div>
     </DialogFooter>

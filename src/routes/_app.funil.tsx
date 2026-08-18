@@ -1714,7 +1714,7 @@ export function ComercialFunilBoard({
               </FormSection>
             </FormDialogBody>
             <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
-              <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:[&_button]:w-full">
                 <Button
                   type="button"
                   variant="outline"
@@ -1737,15 +1737,15 @@ export function ComercialFunilBoard({
                     Registrar histórico
                   </Button>
                 )}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 text-xs text-muted-foreground">
                     Etapa:
                   </span>
                   <Select
                     value={detailLead.stage}
                     onValueChange={(v) => void moveDetailToStage(v)}
                   >
-                    <SelectTrigger className="h-9 min-w-45">
+                    <SelectTrigger className="h-9 min-w-0 flex-1">
                       <SelectValue placeholder="Selecione a etapa" />
                     </SelectTrigger>
                     <SelectContent>
