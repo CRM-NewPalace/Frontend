@@ -444,7 +444,7 @@ function AgendaPage() {
     void fetchEquipes()
       .then((list) => setEquipes(list.filter((e) => e.status === "ativo")))
       .catch(() => setEquipes([]));
-    void fetchUsers({ status: "ativo", page: 1, limit: 200 })
+    void fetchUsers({ status: "ativo", page: 1, limit: 100 })
       .then((res) =>
         setAssignUsers(
           res.data

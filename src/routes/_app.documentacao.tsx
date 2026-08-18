@@ -344,16 +344,89 @@ function toDateInput(value: string | null | undefined): string {
   return value.slice(0, 10);
 }
 
-type DocPeriodo = "todos" | "7d" | "30d" | "mes" | "custom";
+type DocPeriodo =
+  | "todos"
+  | "7d"
+  | "30d"
+  | "mes"
+  | "bimestre"
+  | "trimestre"
+  | "semestre"
+  | "anual"
+  | "custom";
 type DocCampoData = "createdAt" | "dataAnalise" | "dataVenda";
 
 const PERIODO_DOC_OPTIONS: { value: DocPeriodo; label: string }[] = [
   { value: "todos", label: "Todo o período" },
   { value: "7d", label: "Últimos 7 dias" },
   { value: "30d", label: "Últimos 30 dias" },
-  { value: "mes", label: "Por mês" },
+  { value: "mes", label: "Mês" },
+  { value: "bimestre", label: "Bimestre" },
+  { value: "trimestre", label: "Trimestre" },
+  { value: "semestre", label: "Semestre" },
+  { value: "anual", label: "Ano" },
   { value: "custom", label: "Personalizado" },
 ];
+
+const PERIODO_SPAN_MESES: Partial<Record<DocPeriodo, number>> = {
+  mes: 1,
+  bimestre: 2,
+  trimestre: 3,
+  semestre: 6,
+  anual: 12,
+};
+
+const PERIODO_RECORTE_LABEL: Partial<Record<DocPeriodo, string>> = {
+  mes: "Mês",
+  bimestre: "Bimestre",
+  trimestre: "Trimestre",
+  semestre: "Semestre",
+  anual: "Ano",
+};
+
+const PERIODO_KPI_LABEL: Partial<Record<DocPeriodo, string>> = {
+  mes: "No mês",
+  bimestre: "No bimestre",
+  trimestre: "No trimestre",
+  semestre: "No semestre",
+  anual: "No ano",
+};
+
+const MESES_CURTOS = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+] as const;
+
+function isRecortePeriodo(periodo: DocPeriodo): boolean {
+  return PERIODO_SPAN_MESES[periodo] != null;
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function snapMonth(month: number, span: number) {
+  return Math.floor((month - 1) / span) * span + 1;
+}
+
+function snapYearMonth(ym: string, periodo: DocPeriodo): string {
+  const span = PERIODO_SPAN_MESES[periodo];
+  if (!span) return ym;
+  const [y, m] = ym.split("-").map(Number);
+  const year = y || new Date().getFullYear();
+  const start = snapMonth(m || 1, span);
+  return `${year}-${pad2(start)}`;
+}
 
 const CAMPO_DATA_OPTIONS: { value: DocCampoData; label: string }[] = [
   { value: "createdAt", label: "Cadastro" },
@@ -383,18 +456,56 @@ function formatMesLabel(ym: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function listMesOptions(createdAts: string[]): string[] {
+function formatRecorteLabel(periodo: DocPeriodo, ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  const year = y || new Date().getFullYear();
+  const span = PERIODO_SPAN_MESES[periodo] ?? 1;
+  const start = snapMonth(m || 1, span);
+  if (periodo === "anual") return String(year);
+  if (periodo === "mes") return formatMesLabel(`${year}-${pad2(start)}`);
+  const end = start + span - 1;
+  const idx = Math.floor((start - 1) / span) + 1;
+  const noun =
+    periodo === "bimestre"
+      ? "bimestre"
+      : periodo === "trimestre"
+        ? "trimestre"
+        : "semestre";
+  return `${idx}º ${noun} (${MESES_CURTOS[start - 1]}–${MESES_CURTOS[end - 1]}) ${year}`;
+}
+
+function listRecorteOptions(
+  periodo: DocPeriodo,
+  createdAts: string[],
+): { value: string; label: string }[] {
+  const span = PERIODO_SPAN_MESES[periodo] ?? 1;
   const set = new Set<string>();
   const now = new Date();
-  for (let i = 0; i < 18; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  let year = now.getFullYear();
+  let month = snapMonth(now.getMonth() + 1, span);
+  const steps = Math.max(8, Math.ceil(24 / span));
+  for (let i = 0; i < steps; i++) {
+    set.add(`${year}-${pad2(month)}`);
+    month -= span;
+    while (month < 1) {
+      month += 12;
+      year -= 1;
+    }
   }
   for (const createdAt of createdAts) {
     const day = toDateInput(createdAt);
-    if (day.length >= 7) set.add(day.slice(0, 7));
+    if (day.length < 7) continue;
+    const y = Number(day.slice(0, 4));
+    const m = Number(day.slice(5, 7));
+    if (!y || !m) continue;
+    set.add(`${y}-${pad2(snapMonth(m, span))}`);
   }
-  return [...set].sort((a, b) => b.localeCompare(a));
+  return [...set]
+    .sort((a, b) => b.localeCompare(a))
+    .map((value) => ({
+      value,
+      label: formatRecorteLabel(periodo, value),
+    }));
 }
 
 function resolveDocPeriodRange(
@@ -419,11 +530,14 @@ function resolveDocPeriodRange(
     from.setDate(from.getDate() - 29);
     return { de: toIsoDay(from), ate: toIsoDay(today) };
   }
-  const [y, m] = (mes || currentYearMonth()).split("-").map(Number);
+  const span = PERIODO_SPAN_MESES[periodo] ?? 1;
+  const [y, m] = snapYearMonth(mes || currentYearMonth(), periodo)
+    .split("-")
+    .map(Number);
   const year = y || today.getFullYear();
   const month = m || today.getMonth() + 1;
   const from = new Date(year, month - 1, 1);
-  const to = new Date(year, month, 0);
+  const to = new Date(year, month - 1 + span, 0);
   return { de: toIsoDay(from), ate: toIsoDay(to) };
 }
 
@@ -770,9 +884,15 @@ function DocumentacaoPage() {
     [filterPeriodo, filterDataDe, filterDataAte, filterMes],
   );
 
-  const mesOptions = useMemo(
-    () => listMesOptions(items.map((doc) => doc.createdAt)),
-    [items],
+  const recorteOptions = useMemo(
+    () =>
+      isRecortePeriodo(filterPeriodo)
+        ? listRecorteOptions(
+            filterPeriodo,
+            items.map((doc) => doc.createdAt),
+          )
+        : [],
+    [filterPeriodo, items],
   );
 
   const filteredItems = useMemo(() => {
@@ -1017,8 +1137,8 @@ function DocumentacaoPage() {
         const de = filterDataDe ? formatDayBr(filterDataDe) : "…";
         const ate = filterDataAte ? formatDayBr(filterDataAte) : "…";
         label += `${de} – ${ate}`;
-      } else if (filterPeriodo === "mes") {
-        label += formatMesLabel(filterMes);
+      } else if (isRecortePeriodo(filterPeriodo)) {
+        label += formatRecorteLabel(filterPeriodo, filterMes);
       } else {
         label +=
           PERIODO_DOC_OPTIONS.find((o) => o.value === filterPeriodo)?.label ??
@@ -2031,8 +2151,10 @@ function DocumentacaoPage() {
                 onValueChange={(v) => {
                   const next = v as DocPeriodo;
                   setFilterPeriodo(next);
-                  if (next === "mes" && !filterMes) {
-                    setFilterMes(currentYearMonth());
+                  if (isRecortePeriodo(next)) {
+                    setFilterMes(
+                      snapYearMonth(filterMes || currentYearMonth(), next),
+                    );
                   }
                   if (next !== "custom") {
                     setFilterDataDe("");
@@ -2053,19 +2175,22 @@ function DocumentacaoPage() {
               </Select>
             </div>
 
-            {filterPeriodo === "mes" ? (
-              <div className="w-full sm:w-48">
+            {isRecortePeriodo(filterPeriodo) ? (
+              <div className="w-full sm:w-56">
                 <Label className="text-[11px] text-muted-foreground mb-1.5 block">
-                  Mês
+                  {PERIODO_RECORTE_LABEL[filterPeriodo] ?? "Recorte"}
                 </Label>
-                <Select value={filterMes} onValueChange={setFilterMes}>
+                <Select
+                  value={snapYearMonth(filterMes, filterPeriodo)}
+                  onValueChange={setFilterMes}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
-                    {mesOptions.map((ym) => (
-                      <SelectItem key={ym} value={ym}>
-                        {formatMesLabel(ym)}
+                    {recorteOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2392,14 +2517,16 @@ function DocumentacaoPage() {
 
       <section className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <FinanceKpiCard
-          label={filterPeriodo === "mes" ? "No mês" : "Documentações"}
+          label={PERIODO_KPI_LABEL[filterPeriodo] ?? "Documentações"}
           value={pipelineSummary.total}
           icon={FolderOpen}
           tone="blue-1"
           format="number"
           compact
           suffix={
-            filterPeriodo === "mes" ? formatMesLabel(filterMes) : undefined
+            isRecortePeriodo(filterPeriodo)
+              ? formatRecorteLabel(filterPeriodo, filterMes)
+              : undefined
           }
           onClick={() => {
             setFilterStatus1("__all__");

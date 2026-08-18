@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -67,6 +66,7 @@ import {
   Kanban,
   CalendarDays,
   Users,
+  IdCard,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
 import { isAnalistaAllowed } from "@/lib/tenant-modules";
@@ -87,15 +87,23 @@ import {
 } from "@/lib/dashboard-api";
 import {
   createUser,
+  creciProcessoBadgeClass,
+  CRECI_PROCESSO_ETAPAS,
+  CRECI_PROCESSO_HINT,
+  CRECI_PROCESSO_LABEL,
+  CRECI_PROCESSO_SHORT,
+  CRECI_PROCESSO_STATUS,
   deleteUser,
   fetchUserPresenceWeek,
   fetchUsers,
   fetchUsersPresenceToday,
   fetchUsersQuota,
+  normalizeCreciStatus,
   resetUserPassword,
   updateUser,
   updateUserStatus,
   type ApiUser,
+  type CreciProcessoStatus,
   type UserPresenceToday,
   type UserPresenceWeek,
   type UsersQuota,
@@ -118,7 +126,7 @@ export const Route = createFileRoute("/_app/usuarios")({
 });
 
 /** Cache da lista para abrir a tela sem esperar a API (sincroniza em background). */
-const USERS_CACHE_KEY = "crm_users_cache_v3";
+const USERS_CACHE_KEY = "crm_users_cache_v4";
 let usersMemoryCache: ApiUser[] | null = null;
 
 function getUsersCache(): ApiUser[] | null {
@@ -170,7 +178,7 @@ type FormState = {
   whatsapp: string;
   dataNascimento: string;
   cargo: string;
-  temCreci: boolean;
+  creciStatus: CreciProcessoStatus;
   creci: string;
   cor: string;
   role: Role;
@@ -185,7 +193,7 @@ const emptyForm = (): FormState => ({
   whatsapp: "",
   dataNascimento: "",
   cargo: "",
-  temCreci: false,
+  creciStatus: "nao_iniciado",
   creci: "",
   cor: "",
   role: "corretor",
@@ -212,7 +220,7 @@ function userToForm(u: ApiUser): FormState {
     whatsapp: u.whatsapp ? formatPhone(u.whatsapp) : "",
     dataNascimento: toDateInput(u.dataNascimento),
     cargo: u.cargo ?? "",
-    temCreci: Boolean(u.creci?.trim()),
+    creciStatus: normalizeCreciStatus(u.creciStatus, u.creci),
     creci: u.creci ?? "",
     cor: u.cor ?? "",
     role: u.role,
@@ -259,6 +267,25 @@ function formatLastAccess(iso: string | null): string {
 
 function userHasCreci(u: Pick<ApiUser, "creci">) {
   return Boolean(u.creci?.trim());
+}
+
+function CreciAndamentoBadge({
+  user,
+  short = false,
+}: {
+  user: Pick<ApiUser, "creci" | "creciStatus">;
+  short?: boolean;
+}) {
+  const status = normalizeCreciStatus(user.creciStatus, user.creci);
+  return (
+    <Badge
+      variant="outline"
+      className={cn("max-w-full truncate", creciProcessoBadgeClass(status))}
+      title={CRECI_PROCESSO_LABEL[status]}
+    >
+      {short ? CRECI_PROCESSO_SHORT[status] : CRECI_PROCESSO_LABEL[status]}
+    </Badge>
+  );
 }
 
 /** Corretor do sistema ou qualquer usuário com CRECI cadastrado. */
@@ -583,7 +610,9 @@ function Usuarios() {
     const phone = form.phone.trim();
     const whatsapp = form.whatsapp.trim();
     const cargo = form.cargo.trim();
-    const creci = form.temCreci ? form.creci.trim() : "";
+    const creciStatus = form.creciStatus;
+    const creci =
+      creciStatus === "nao_iniciado" ? "" : form.creci.trim();
     const cor = form.cor.trim();
 
     if (!name || !email) {
@@ -598,7 +627,7 @@ function Usuarios() {
       toast.error("Informe um WhatsApp válido com DDD.");
       return;
     }
-    if (form.temCreci && creci.length < 3) {
+    if (creciStatus === "creci_recebido" && creci.length < 3) {
       toast.error("Informe o CRECI do usuário.");
       return;
     }
@@ -619,6 +648,7 @@ function Usuarios() {
           dataNascimento: form.dataNascimento || null,
           cargo: cargo || undefined,
           creci: creci || undefined,
+          creciStatus,
           cor: cor || undefined,
           role: form.role,
           status: form.status,
@@ -646,6 +676,7 @@ function Usuarios() {
           dataNascimento: form.dataNascimento || null,
           cargo: cargo || null,
           creci: creci || null,
+          creciStatus,
           cor: cor || null,
           role: form.role,
           status: form.status,
@@ -880,8 +911,8 @@ function Usuarios() {
               <TableHead className="w-[16%]">Nome</TableHead>
               <TableHead className="w-[18%]">Email</TableHead>
               <TableHead className="w-[10%]">Telefone</TableHead>
-              <TableHead className="w-[9%]">Cargo</TableHead>
               <TableHead className="w-[8%]">CRECI</TableHead>
+              <TableHead className="w-[12%]">Andamento CRECI</TableHead>
               <TableHead className="w-[9%]">Perfil</TableHead>
               <TableHead className="w-[8%]">Status</TableHead>
               <TableHead className="w-[10%]">Último acesso</TableHead>
@@ -940,15 +971,12 @@ function Usuarios() {
                   </TableCell>
                   <TableCell
                     className="min-w-0 truncate text-sm"
-                    title={u.cargo || undefined}
-                  >
-                    {u.cargo || "—"}
-                  </TableCell>
-                  <TableCell
-                    className="min-w-0 truncate text-sm"
                     title={u.creci || undefined}
                   >
                     {u.creci || "—"}
+                  </TableCell>
+                  <TableCell className="min-w-0">
+                    <CreciAndamentoBadge user={u} short />
                   </TableCell>
                   <TableCell className="min-w-0">
                     <Badge
@@ -1202,25 +1230,85 @@ function Usuarios() {
                   className="h-10 bg-background"
                 />
               </div>
-              <label
-                htmlFor="usr-tem-creci"
-                className="flex cursor-pointer items-center gap-3 rounded-lg border bg-background px-3 py-2.5"
-              >
-                <Checkbox
-                  id="usr-tem-creci"
-                  checked={form.temCreci}
-                  onCheckedChange={(value) => {
-                    const checked = value === true;
+              <CorPicker
+                id="usr-cor"
+                value={form.cor}
+                onChange={(hex) => setField("cor", hex)}
+                previewLabel={form.name}
+              />
+            </FormSection>
+            <FormSection
+              icon={<IdCard className="w-3.5 h-3.5 text-primary" />}
+              title="Processo CRECI"
+              description="Acompanhe o andamento da documentação até o CRECI ser recebido."
+            >
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Etapa atual
+                </Label>
+                <Select
+                  value={form.creciStatus}
+                  onValueChange={(v) => {
+                    const next = v as CreciProcessoStatus;
                     setForm((prev) => ({
                       ...prev,
-                      temCreci: checked,
-                      creci: checked ? prev.creci : "",
+                      creciStatus: next,
+                      creci: next === "nao_iniciado" ? "" : prev.creci,
                     }));
                   }}
-                />
-                <span className="text-sm">Este usuário tem CRECI</span>
-              </label>
-              {form.temCreci ? (
+                >
+                  <SelectTrigger className="h-10 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CRECI_PROCESSO_STATUS.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {CRECI_PROCESSO_LABEL[status]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  {CRECI_PROCESSO_HINT[form.creciStatus]}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {CRECI_PROCESSO_ETAPAS.map((status, index) => {
+                  const current = CRECI_PROCESSO_ETAPAS.findIndex(
+                    (item) => item === form.creciStatus,
+                  );
+                  const reached = current >= 0 && index <= current;
+                  const active = form.creciStatus === status;
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          creciStatus: status,
+                        }))
+                      }
+                      className={cn(
+                        "rounded-lg border px-2 py-2 text-left transition-colors",
+                        active
+                          ? "border-primary bg-primary/10"
+                          : reached
+                            ? "border-primary/30 bg-primary/5"
+                            : "bg-background",
+                      )}
+                    >
+                      <div className="text-[10px] font-medium text-muted-foreground">
+                        {index + 1}ª etapa
+                      </div>
+                      <div className="text-xs font-medium leading-snug">
+                        {CRECI_PROCESSO_SHORT[status]}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {form.creciStatus === "creci_recebido" ? (
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="usr-creci"
@@ -1238,12 +1326,6 @@ function Usuarios() {
                   />
                 </div>
               ) : null}
-              <CorPicker
-                id="usr-cor"
-                value={form.cor}
-                onChange={(hex) => setField("cor", hex)}
-                previewLabel={form.name}
-              />
             </FormSection>
             <FormSection
               icon={<Shield className="w-3.5 h-3.5 text-primary" />}
@@ -1429,6 +1511,10 @@ function Usuarios() {
                   />
                   <DetailField label="Cargo" value={detail.cargo || "—"} />
                   <DetailField label="CRECI" value={detail.creci || "—"} />
+                  <DetailField
+                    label="Andamento CRECI"
+                    value={<CreciAndamentoBadge user={detail} />}
+                  />
                   <DetailField
                     label="Último acesso"
                     value={formatLastAccess(detail.lastLoginAt)}

@@ -32,6 +32,7 @@ import { isCorretorLike } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import { fetchUsers, type ApiUser } from "@/lib/users-api";
+import { fetchLeadAssignees, type LeadAssignee } from "@/lib/leads-api";
 import {
   META_ESCOPO_LABEL,
   META_PERIODOS,
@@ -80,6 +81,7 @@ function Page() {
   const [metas, setMetas] = useState<Meta[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [usuarios, setUsuarios] = useState<ApiUser[]>([]);
+  const [assignees, setAssignees] = useState<LeadAssignee[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -96,18 +98,23 @@ function Page() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [itens, equipesAtuais, usuariosAtuais] = await Promise.all([
-        fetchMetas(),
-        isAdmin || isGerente ? fetchEquipes() : Promise.resolve([]),
-        isAdmin || isGerente
-          ? fetchUsers({ status: "ativo", page: 1, limit: 200 })
-              .then((res) => res.data)
-              .catch(() => [] as ApiUser[])
-          : Promise.resolve([]),
-      ]);
+      const [itens, equipesAtuais, usuariosAtuais, assigneesAtuais] =
+        await Promise.all([
+          fetchMetas(),
+          isAdmin || isGerente ? fetchEquipes() : Promise.resolve([]),
+          isAdmin || isGerente
+            ? fetchUsers({ status: "ativo", page: 1, limit: 100 })
+                .then((res) => res.data)
+                .catch(() => [] as ApiUser[])
+            : Promise.resolve([]),
+          isAdmin || isGerente
+            ? fetchLeadAssignees().catch(() => [] as LeadAssignee[])
+            : Promise.resolve([]),
+        ]);
       setMetas(itens);
       setEquipes(equipesAtuais);
       setUsuarios(usuariosAtuais);
+      setAssignees(assigneesAtuais);
     } catch (error) {
       toast.error(
         error instanceof ApiError
@@ -145,6 +152,20 @@ function Page() {
       });
     }
 
+    for (const assignee of assignees) {
+      if (assignee.role && !isCorretorLike(assignee.role)) continue;
+      if (map.has(assignee.id)) continue;
+      map.set(assignee.id, {
+        id: assignee.id,
+        name: assignee.name,
+        equipeNome:
+          equipeNomeByUserId.get(assignee.id) ??
+          (assignee.gerente?.name
+            ? `Equipe de ${assignee.gerente.name}`
+            : "Sem equipe"),
+      });
+    }
+
     for (const equipe of equipes) {
       if (isGerente && equipe.gerenteId !== user?.id) continue;
       for (const membro of equipe.membros) {
@@ -163,7 +184,7 @@ function Page() {
     return [...map.values()].sort((a, b) =>
       a.name.localeCompare(b.name, "pt-BR"),
     );
-  }, [equipes, isGerente, user?.id, usuarios]);
+  }, [assignees, equipes, isGerente, user?.id, usuarios]);
 
   const gerentes = useMemo(() => {
     const map = new Map<string, { id: string; name: string; equipeNome: string }>();

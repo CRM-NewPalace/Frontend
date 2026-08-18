@@ -1,5 +1,74 @@
 import { apiFetch } from "@/lib/api";
 import type { Role, UserStatus } from "@/lib/auth";
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+
+export const CRECI_PROCESSO_STATUS = [
+  "nao_iniciado",
+  "envio_documentacao",
+  "pagamento_boleto",
+  "aguardando_creci",
+  "creci_recebido",
+] as const;
+
+export type CreciProcessoStatus = (typeof CRECI_PROCESSO_STATUS)[number];
+
+export const CRECI_PROCESSO_ETAPAS = CRECI_PROCESSO_STATUS.filter(
+  (status) => status !== "nao_iniciado",
+);
+
+export const CRECI_PROCESSO_LABEL: Record<CreciProcessoStatus, string> = {
+  nao_iniciado: "Não iniciado",
+  envio_documentacao: "Envio de documentação",
+  pagamento_boleto: "Pagamento de boleto",
+  aguardando_creci: "Aguardando CRECI",
+  creci_recebido: "CRECI recebido",
+};
+
+export const CRECI_PROCESSO_SHORT: Record<CreciProcessoStatus, string> = {
+  nao_iniciado: "—",
+  envio_documentacao: "Envio docs",
+  pagamento_boleto: "Boleto",
+  aguardando_creci: "Aguardando",
+  creci_recebido: "Recebido",
+};
+
+export const CRECI_PROCESSO_HINT: Record<CreciProcessoStatus, string> = {
+  nao_iniciado: "O processo de obtenção do CRECI ainda não começou.",
+  envio_documentacao: "Documentos enviados para o CRECI.",
+  pagamento_boleto: "Boleto da taxa em pagamento.",
+  aguardando_creci: "Aguardando a emissão do CRECI.",
+  creci_recebido: "CRECI emitido. Informe o número no cadastro.",
+};
+
+export function creciProcessoBadgeClass(status: CreciProcessoStatus): string {
+  const size = STATUS_CHIP_CLASS;
+  if (status === "creci_recebido") {
+    return `${size} bg-emerald-500/15 text-emerald-700 border-emerald-500/30`;
+  }
+  if (status === "aguardando_creci") {
+    return `${size} bg-violet-500/15 text-violet-700 border-violet-500/30`;
+  }
+  if (status === "pagamento_boleto") {
+    return `${size} bg-amber-500/15 text-amber-800 border-amber-500/30`;
+  }
+  if (status === "envio_documentacao") {
+    return `${size} bg-sky-500/15 text-sky-700 border-sky-500/30`;
+  }
+  return `${size} text-muted-foreground`;
+}
+
+export function normalizeCreciStatus(
+  value: string | null | undefined,
+  creci?: string | null,
+): CreciProcessoStatus {
+  if (
+    value &&
+    (CRECI_PROCESSO_STATUS as readonly string[]).includes(value)
+  ) {
+    return value as CreciProcessoStatus;
+  }
+  return creci?.trim() ? "creci_recebido" : "nao_iniciado";
+}
 
 export type ApiUser = {
   id: string;
@@ -10,6 +79,7 @@ export type ApiUser = {
   dataNascimento: string | null;
   cargo: string | null;
   creci: string | null;
+  creciStatus?: CreciProcessoStatus | null;
   cor: string | null;
   role: Role;
   status: UserStatus;
@@ -33,6 +103,7 @@ export type CreateUserInput = {
   dataNascimento?: string | null;
   cargo?: string;
   creci?: string | null;
+  creciStatus?: CreciProcessoStatus;
   cor?: string | null;
   role: Role;
   status?: UserStatus;
@@ -46,6 +117,7 @@ export type UpdateUserInput = {
   dataNascimento?: string | null;
   cargo?: string | null;
   creci?: string | null;
+  creciStatus?: CreciProcessoStatus;
   cor?: string | null;
   role?: Role;
   status?: UserStatus;
