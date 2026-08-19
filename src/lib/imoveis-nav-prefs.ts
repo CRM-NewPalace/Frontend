@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { getSession } from "@/lib/auth";
 
 const KEY_PREFIX = "imoveis.hideFromSidebar";
+const VISTA_KEY_PREFIX = "imoveis.vista";
 export const IMOVEIS_NAV_EVENT = "imoveis-nav-pref";
+export type ImoveisVista = "cards" | "tabela";
 
 function storageKey() {
   const session = getSession();
@@ -41,4 +43,25 @@ export function useHideImoveisFromSidebar() {
   }, []);
 
   return hide;
+}
+
+function vistaStorageKey() {
+  const session = getSession();
+  const tenantId = session?.tenant?.id ?? session?.tenantId ?? "default";
+  const userId = session?.id ?? "anon";
+  return `${VISTA_KEY_PREFIX}.${tenantId}.${userId}`;
+}
+
+export function getImoveisVista(): ImoveisVista {
+  try {
+    return localStorage.getItem(vistaStorageKey()) === "tabela"
+      ? "tabela"
+      : "cards";
+  } catch {
+    return "cards";
+  }
+}
+
+export function setImoveisVista(vista: ImoveisVista): void {
+  localStorage.setItem(vistaStorageKey(), vista);
 }

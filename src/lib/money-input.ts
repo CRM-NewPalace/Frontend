@@ -36,6 +36,6 @@ export function maskMoneyInput(raw: string): string {
   const digits = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 15);
   if (!digits) return "";
   const cents = Number(digits);
-  if (!Number.isFinite(cents)) return "";
+  if (!Number.isFinite(cents) || cents === 0) return "";
   return formatMoneyInput(cents / 100);
 }

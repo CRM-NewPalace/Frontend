@@ -44,6 +44,14 @@ import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   DEFAULT_TABLE_SORT,
   sortByTableOrder,
   type TableSort,
@@ -87,12 +95,25 @@ import {
 } from "@/lib/localidades-api";
 import { CorPicker } from "@/components/cor-picker";
 import {
+  exportEmpreendimentosToPdf,
+  PDF_ORDEM_IMOVEIS_LABEL,
+  type PdfOrdemImoveis,
+} from "@/lib/imoveis-pdf";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  getImoveisVista,
+  setImoveisVista,
+  type ImoveisVista,
+} from "@/lib/imoveis-nav-prefs";
+import {
   assertImageFile,
   ImageUploadField,
 } from "@/components/image-upload-field";
 import {
   Building2,
   Car,
+  LayoutGrid,
+  LayoutList,
   Loader2,
   Pencil,
   Plus,
@@ -105,6 +126,7 @@ import {
   Layers,
   CircleDot,
   CalendarClock,
+  FileText,
   StickyNote,
   Palette,
   Users,
@@ -279,7 +301,9 @@ export function ImoveisPage({
   const [localidade, setLocalidade] = useState("");
   const [quartos, setQuartos] = useState("");
   const [construtoraId, setConstrutoraId] = useState("");
+  const [rendaAte, setRendaAte] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
+  const [vista, setVista] = useState<ImoveisVista>(() => getImoveisVista());
   const [catalogoLocalidades, setCatalogoLocalidades] = useState<Localidade[]>(
     [],
   );
@@ -308,6 +332,10 @@ export function ImoveisPage({
   const [matchesTitle, setMatchesTitle] = useState("");
   const [matchesResult, setMatchesResult] =
     useState<EmpreendimentoMatchesResult | null>(null);
+  const [pdfOpen, setPdfOpen] = useState(false);
+  const [pdfOrdem, setPdfOrdem] = useState<PdfOrdemImoveis>("alfabetica");
+  const [pdfConstrutoraId, setPdfConstrutoraId] = useState("");
+  const [pdfLocalidade, setPdfLocalidade] = useState("");
 
   async function openMatches(item: Empreendimento) {
     setMatchesTitle(item.nome);
@@ -823,8 +851,13 @@ export function ImoveisPage({
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [items],
   );
+  const rendaFiltro = useMemo(() => {
+    const limite = parseOptionalMoneyInput(rendaAte);
+    return limite != null && limite > 0 ? limite : null;
+  }, [rendaAte]);
+
   const hasActiveFilters = Boolean(
-    localidade || quartos || construtoraId || somenteLitoral,
+    localidade || quartos || construtoraId || rendaFiltro != null || somenteLitoral,
   );
 
   function clearFilters() {
@@ -832,6 +865,7 @@ export function ImoveisPage({
     setLocalidade("");
     setQuartos("");
     setConstrutoraId("");
+    setRendaAte("");
     setSomenteLitoral(false);
   }
 
@@ -853,10 +887,48 @@ export function ImoveisPage({
         (!localidade || empreendimentoLocalidadeNome(item) === localidade) &&
         (!quartos || item.quartos === Number(quartos)) &&
         (!construtoraId || item.construtoraId === construtoraId) &&
+        (rendaFiltro == null ||
+          (item.valorReferencia != null &&
+            item.valorReferencia <= rendaFiltro)) &&
         (!somenteLitoral || empreendimentoHasLitoral(item))
       );
     });
-  }, [items, search, localidade, quartos, construtoraId, somenteLitoral]);
+  }, [
+    items,
+    search,
+    localidade,
+    quartos,
+    construtoraId,
+    rendaFiltro,
+    somenteLitoral,
+  ]);
+
+  const pdfOpcoesConstrutoras = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          filtered.flatMap((item) =>
+            item.construtora
+              ? [[item.construtora.id, item.construtora.nome] as const]
+              : [],
+          ),
+        ),
+      )
+        .map(([id, nome]) => ({ id, nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [filtered],
+  );
+  const pdfOpcoesLocalidades = useMemo(
+    () =>
+      [
+        ...new Set(
+          filtered
+            .map((item) => empreendimentoLocalidadeNome(item))
+            .filter((nome): nome is string => Boolean(nome)),
+        ),
+      ].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [filtered],
+  );
 
   const sorted = useMemo(
     () =>
@@ -869,6 +941,71 @@ export function ImoveisPage({
     [filtered, sort],
   );
 
+  function openPdfDialog() {
+    if (sorted.length === 0) {
+      toast.error("Nenhum empreendimento para gerar o PDF.");
+      return;
+    }
+    setPdfOrdem("alfabetica");
+    setPdfConstrutoraId("");
+    setPdfLocalidade("");
+    setPdfOpen(true);
+  }
+
+  function confirmarGerarPdf() {
+    const pdfItems = filtered.filter((item) => {
+      if (pdfConstrutoraId && item.construtoraId !== pdfConstrutoraId) {
+        return false;
+      }
+      if (
+        pdfLocalidade &&
+        empreendimentoLocalidadeNome(item) !== pdfLocalidade
+      ) {
+        return false;
+      }
+      return true;
+    });
+    if (pdfItems.length === 0) {
+      toast.error("Nenhum empreendimento para gerar o PDF.");
+      return;
+    }
+    const paginaConstrutora = opcoesConstrutoras.find(
+      (item) => item.id === construtoraId,
+    )?.nome;
+    const pdfConstrutoraNome = pdfOpcoesConstrutoras.find(
+      (item) => item.id === pdfConstrutoraId,
+    )?.nome;
+    const localidadePdf = pdfLocalidade || localidade;
+    const construtoraPdf = pdfConstrutoraNome || paginaConstrutora;
+    const filtros = [
+      search.trim() ? `Busca: ${search.trim()}` : "",
+      localidadePdf ? `Localidade: ${localidadePdf}` : "",
+      quartos ? `${quartos} quarto${quartos === "1" ? "" : "s"}` : "",
+      construtoraPdf ? `Construtora: ${construtoraPdf}` : "",
+      rendaFiltro != null ? `Renda até ${rendaAte}` : "",
+      somenteLitoral ? "Somente litoral" : "",
+    ].filter(Boolean);
+    exportEmpreendimentosToPdf(pdfItems, {
+      imobiliariaNome: user?.tenant?.name?.trim() || "Imobiliária",
+      filtros,
+      ordem: pdfOrdem,
+    });
+    setPdfOpen(false);
+  }
+
+  const gerarPdfButton = (
+    <Button
+      type="button"
+      variant="outline"
+      className={SOFT_BTN}
+      disabled={sorted.length === 0}
+      onClick={openPdfDialog}
+    >
+      <FileText className="w-4 h-4 mr-1" />
+      Gerar PDF
+    </Button>
+  );
+
   return (
     <div>
       {embedded ? (
@@ -879,23 +1016,9 @@ export function ImoveisPage({
               Empreendimentos desta imobiliária.
             </p>
           </div>
-          {canCreate ? (
-            <Button
-              onClick={() => void openQuickCreate()}
-              className={IMOVEIS_GRADIENT_BTN}
-              style={IMOVEIS_GRADIENT_STYLE}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Novo imóvel
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <PageHeader
-          title="Imóveis"
-          description="Cadastre e gerencie os empreendimentos desta imobiliária."
-          actions={
-            canCreate ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {gerarPdfButton}
+            {canCreate ? (
               <Button
                 onClick={() => void openQuickCreate()}
                 className={IMOVEIS_GRADIENT_BTN}
@@ -904,104 +1027,198 @@ export function ImoveisPage({
                 <Plus className="w-4 h-4 mr-1" />
                 Novo imóvel
               </Button>
-            ) : undefined
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <PageHeader
+          title="Imóveis"
+          description="Cadastre e gerencie os empreendimentos desta imobiliária."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {gerarPdfButton}
+              {canCreate ? (
+                <Button
+                  onClick={() => void openQuickCreate()}
+                  className={IMOVEIS_GRADIENT_BTN}
+                  style={IMOVEIS_GRADIENT_STYLE}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Novo imóvel
+                </Button>
+              ) : null}
+            </div>
           }
         />
       )}
 
-      <div className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-6">
-        <div className="sm:col-span-2 xl:col-span-1">
-          <Label htmlFor="buscar-imovel" className="mb-1.5 block text-xs">
-            Buscar
-          </Label>
-          <Input
-            id="buscar-imovel"
-            placeholder="Nome ou endereço…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="mb-4 space-y-3 rounded-lg border bg-card p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="buscar-imovel" className="mb-1.5 block text-xs">
+              Buscar
+            </Label>
+            <Input
+              id="buscar-imovel"
+              placeholder="Nome ou endereço…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Exibir</Label>
+            <div className="inline-flex h-9 rounded-lg border bg-muted/40 p-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-3",
+                  vista === "cards" && "bg-background shadow-sm",
+                )}
+                title="Ver cards"
+                onClick={() => {
+                  setVista("cards");
+                  setImoveisVista("cards");
+                }}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="ml-1.5">Cards</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-3",
+                  vista === "tabela" && "bg-background shadow-sm",
+                )}
+                title="Ver tabela"
+                onClick={() => {
+                  setVista("tabela");
+                  setImoveisVista("tabela");
+                }}
+              >
+                <LayoutList className="h-4 w-4" />
+                <span className="ml-1.5">Tabela</span>
+              </Button>
+            </div>
+          </div>
         </div>
-        <div>
-          <Label className="mb-1.5 block text-xs">Ordenar</Label>
-          <TableSortSelect value={sort} onChange={setSort} className="w-full" />
-        </div>
-        <div>
-          <Label className="mb-1.5 block text-xs">Localidade</Label>
-          <Select
-            value={localidade || "__all__"}
-            onValueChange={(value) =>
-              setLocalidade(value === "__all__" ? "" : value)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas</SelectItem>
-              {localidades.map((cidade) => (
-                <SelectItem key={cidade} value={cidade}>
-                  {cidade}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="mb-1.5 block text-xs">Quartos</Label>
-          <Select
-            value={quartos || "__all__"}
-            onValueChange={(value) =>
-              setQuartos(value === "__all__" ? "" : value)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos</SelectItem>
-              {opcoesQuartos.map((quantidade) => (
-                <SelectItem key={quantidade} value={String(quantidade)}>
-                  {quantidade} quarto{quantidade === 1 ? "" : "s"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="mb-1.5 block text-xs">Construtora</Label>
-          <Select
-            value={construtoraId || "__all__"}
-            onValueChange={(value) =>
-              setConstrutoraId(value === "__all__" ? "" : value)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas</SelectItem>
-              {opcoesConstrutoras.map((construtora) => (
-                <SelectItem key={construtora.id} value={construtora.id}>
-                  {construtora.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className={`flex-1 ${somenteLitoral ? SOFT_BTN_ACTIVE : SOFT_BTN}`}
-            onClick={() => setSomenteLitoral((current) => !current)}
-          >
-            Litoral
-          </Button>
-          {(hasActiveFilters || search) && (
-            <Button type="button" variant="ghost" onClick={clearFilters}>
-              Limpar
-            </Button>
-          )}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div>
+            <Label className="mb-1.5 block text-xs">Ordenar</Label>
+            <TableSortSelect value={sort} onChange={setSort} className="w-full" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Localidade</Label>
+            <Select
+              value={localidade || "__all__"}
+              onValueChange={(value) =>
+                setLocalidade(value === "__all__" ? "" : value)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas</SelectItem>
+                {localidades.map((cidade) => (
+                  <SelectItem key={cidade} value={cidade}>
+                    {cidade}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Quartos</Label>
+            <Select
+              value={quartos || "__all__"}
+              onValueChange={(value) =>
+                setQuartos(value === "__all__" ? "" : value)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos</SelectItem>
+                {opcoesQuartos.map((quantidade) => (
+                  <SelectItem key={quantidade} value={String(quantidade)}>
+                    {quantidade} quarto{quantidade === 1 ? "" : "s"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Construtora</Label>
+            <Select
+              value={construtoraId || "__all__"}
+              onValueChange={(value) =>
+                setConstrutoraId(value === "__all__" ? "" : value)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas</SelectItem>
+                {opcoesConstrutoras.map((construtora) => (
+                  <SelectItem key={construtora.id} value={construtora.id}>
+                    {construtora.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="filtro-renda-ate" className="mb-1.5 block text-xs">
+              Renda até
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                R$
+              </span>
+              <Input
+                id="filtro-renda-ate"
+                inputMode="numeric"
+                value={rendaAte}
+                onChange={(event) =>
+                  setRendaAte(maskMoneyInput(event.target.value))
+                }
+                placeholder="Ex.: 1.800,00"
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Destaque</Label>
+            <div className="flex h-9 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "h-9 flex-1",
+                  somenteLitoral ? SOFT_BTN_ACTIVE : SOFT_BTN,
+                )}
+                onClick={() => setSomenteLitoral((current) => !current)}
+              >
+                Litoral
+              </Button>
+              {(hasActiveFilters || search) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 px-3"
+                  onClick={clearFilters}
+                >
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1034,6 +1251,125 @@ export function ImoveisPage({
               </Button>
             )}
           </CardContent>
+        </Card>
+      ) : vista === "tabela" ? (
+        <Card className="overflow-hidden">
+          <Table className="[&_th]:px-4 [&_td]:px-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Empreendimento</TableHead>
+                <TableHead>Construtora</TableHead>
+                <TableHead>Localidade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Previsão</TableHead>
+                <TableHead>Quartos</TableHead>
+                <TableHead>Metragem</TableHead>
+                <TableHead>A partir de</TableHead>
+                <TableHead className="w-28 text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sorted.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <p className="font-bold leading-snug">{item.nome}</p>
+                    {item.endereco ? (
+                      <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">
+                        {item.endereco}
+                      </p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {item.construtora?.nome ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {empreendimentoLocalidadeNome(item) || "—"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {item.tipo ? (
+                        <Badge
+                          className={cn(
+                            STATUS_CHIP_CLASS,
+                            colorByLabel("empreendimento_tipo", item.tipo),
+                          )}
+                        >
+                          {empreendimentoTipoLabel(item.tipo)}
+                        </Badge>
+                      ) : null}
+                      {item.status ? (
+                        <Badge
+                          className={cn(
+                            STATUS_CHIP_CLASS,
+                            colorByLabel(
+                              "empreendimento_status",
+                              item.status,
+                            ),
+                          )}
+                        >
+                          {empreendimentoStatusLabel(item.status)}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {item.previsaoEntrega
+                      ? formatPrevisao(item.previsaoEntrega)
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {item.quartos != null ? item.quartos : "—"}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {item.areaM2 != null ? `${item.areaM2} m²` : "—"}
+                  </TableCell>
+                  <TableCell className="font-semibold tabular-nums">
+                    {item.valorReferencia != null
+                      ? brl(item.valorReferencia)
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Clientes compatíveis"
+                        onClick={() => void openMatches(item)}
+                      >
+                        <Users className="h-4 w-4" />
+                      </Button>
+                      {canManage ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Editar"
+                          onClick={() => void openEdit(item)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                      {canDelete ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Excluir"
+                          onClick={() => setDeleteId(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -1202,7 +1538,7 @@ export function ImoveisPage({
                   )}
                   {item.valorReferencia != null && (
                     <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                      {brl(item.valorReferencia)}
+                      A partir de {brl(item.valorReferencia)}
                     </span>
                   )}
                 </div>
@@ -1887,8 +2223,8 @@ export function ImoveisPage({
             <TabsContent value="previsao" className="mt-4">
           <FormSection
             icon={<CalendarClock className="h-4 w-4" />}
-            title="Previsão, metragem e matching"
-            description="Entrega, área, valor e vagas usados no matching de clientes."
+            title="Previsão, metragem e valor"
+            description="Entrega, área, quartos e o valor a partir do qual o empreendimento é vendido."
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -1937,7 +2273,7 @@ export function ImoveisPage({
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="imovel-valor">Valor de referência</Label>
+                <Label htmlFor="imovel-valor">A partir de (R$)</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
                     R$
@@ -1952,10 +2288,14 @@ export function ImoveisPage({
                         maskMoneyInput(event.target.value),
                       )
                     }
-                    placeholder="0,00"
+                    placeholder="Ex.: 200.000,00"
                     className="pl-9"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Valor inicial do empreendimento. Aparece na tabela como “A
+                  partir de”.
+                </p>
               </div>
             </div>
           </FormSection>
@@ -2069,6 +2409,125 @@ export function ImoveisPage({
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               )}
               {quickCatalogEditing ? "Salvar" : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pdfOpen} onOpenChange={setPdfOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gerar PDF</DialogTitle>
+            <DialogDescription>
+              Escolha a ordem e, se quiser, filtre por construtora ou
+              localidade.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-2 block">Organizar por</Label>
+              <RadioGroup
+                value={pdfOrdem}
+                onValueChange={(value) =>
+                  setPdfOrdem(value as PdfOrdemImoveis)
+                }
+                className="space-y-2"
+              >
+                {(
+                  [
+                    [
+                      "alfabetica",
+                      "Lista A–Z pelo nome do empreendimento.",
+                    ],
+                    [
+                      "construtora",
+                      "Agrupa e ordena pelos nomes das construtoras.",
+                    ],
+                    [
+                      "localidade",
+                      "Agrupa e ordena pelas localidades.",
+                    ],
+                  ] as const
+                ).map(([value, hint]) => (
+                  <label
+                    key={value}
+                    htmlFor={`pdf-ordem-${value}`}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 p-3 hover:bg-muted/40"
+                  >
+                    <RadioGroupItem
+                      id={`pdf-ordem-${value}`}
+                      value={value}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {PDF_ORDEM_IMOVEIS_LABEL[value]}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{hint}</p>
+                    </div>
+                  </label>
+                ))}
+              </RadioGroup>
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Construtora</Label>
+              <Select
+                value={pdfConstrutoraId || "__all__"}
+                onValueChange={(value) =>
+                  setPdfConstrutoraId(value === "__all__" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas</SelectItem>
+                  {pdfOpcoesConstrutoras.map((construtora) => (
+                    <SelectItem key={construtora.id} value={construtora.id}>
+                      {construtora.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Localidade</Label>
+              <Select
+                value={pdfLocalidade || "__all__"}
+                onValueChange={(value) =>
+                  setPdfLocalidade(value === "__all__" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas</SelectItem>
+                  {pdfOpcoesLocalidades.map((cidade) => (
+                    <SelectItem key={cidade} value={cidade}>
+                      {cidade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPdfOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className={IMOVEIS_GRADIENT_BTN}
+              style={IMOVEIS_GRADIENT_STYLE}
+              onClick={confirmarGerarPdf}
+            >
+              <FileText className="w-4 h-4 mr-1" />
+              Gerar PDF
             </Button>
           </DialogFooter>
         </DialogContent>
