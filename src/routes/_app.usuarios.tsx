@@ -370,9 +370,10 @@ function Usuarios() {
   const navigate = useNavigate();
   const session = getSession();
   const isAdmin = session?.role === "admin";
+  const isGerente = session?.role === "gerente";
   const isManager = session ? canViewTeamData(session.role) : false;
   const canCreateBroker =
-    isAdmin || session?.role === "gerente" || session?.role === "analista";
+    isAdmin || isGerente || session?.role === "analista";
   const canUseAnalista = isAnalistaAllowed(
     session?.tenant?.plano,
     session?.tenant?.modules ?? null,
@@ -699,6 +700,14 @@ function Usuarios() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
+    if (
+      !isAdmin &&
+      !(isGerente && isCorretorLike(deleteTarget.role))
+    ) {
+      toast.error("Você não tem permissão para excluir este usuário.");
+      setDeleteTarget(null);
+      return;
+    }
     const target = deleteTarget;
     // Otimista: some da tabela na hora; volta se a API falhar.
     setUsers((prev) => prev.filter((u) => u.id !== target.id));
@@ -1079,7 +1088,8 @@ function Usuarios() {
                             )}
                           </DropdownMenuItem>
                         )}
-                        {isAdmin && (
+                        {(isAdmin ||
+                          (isGerente && isCorretorLike(u.role))) && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

@@ -24,11 +24,24 @@ import { maskMoneyInput, parseMoneyInput } from "@/lib/money-input";
 import { reaisPorExtenso } from "@/lib/valor-extenso";
 import { formatCpfCnpj } from "@/lib/utils";
 import { useTenantTheme } from "@/lib/tenant-theme";
-import type { TenantBranding } from "@/lib/auth";
+import { getSession, type TenantBranding } from "@/lib/auth";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+
+/** Modelos que o corretor não pode emitir. */
+const TEMPLATES_BLOQUEADOS_CORRETOR: ReadonlySet<ContratoTemplateId> = new Set([
+  "recibo-pagamento",
+]);
+
+function canUseContratoTemplate(templateId: ContratoTemplateId): boolean {
+  const role = getSession()?.role;
+  if (role === "corretor" && TEMPLATES_BLOQUEADOS_CORRETOR.has(templateId)) {
+    return false;
+  }
+  return true;
+}
 
 const INTERMEDIACAO_SECTIONS = [
   {
@@ -517,6 +530,11 @@ function ContratosPage() {
   const [intermediacaoSection, setIntermediacaoSection] =
     useState<IntermediacaoSectionId>("contratante");
 
+  const templatesVisiveis = useMemo(
+    () => CONTRATO_TEMPLATES.filter((t) => canUseContratoTemplate(t.id)),
+    [],
+  );
+
   useEffect(() => {
     let cancelled = false;
     void resolveContratoBrandHex(logoUrl, tenant?.primaryColor).then((hex) => {
@@ -528,6 +546,10 @@ function ContratosPage() {
   }, [logoUrl, tenant?.primaryColor]);
 
   const openTemplate = (template: ContratoTemplate) => {
+    if (!canUseContratoTemplate(template.id)) {
+      toast.error("Seu perfil não tem acesso a este modelo.");
+      return;
+    }
     setSelected(template);
     setForm(prefillFromTenant(template, tenant));
     setIntermediacaoSection("contratante");
@@ -551,6 +573,11 @@ function ContratosPage() {
   async function handleGenerate(e: FormEvent) {
     e.preventDefault();
     if (!selected) return;
+    if (!canUseContratoTemplate(selected.id)) {
+      toast.error("Seu perfil não tem acesso a este modelo.");
+      setSelected(null);
+      return;
+    }
     if (requiredMissing.length) {
       toast.error(
         `Preencha: ${requiredMissing.slice(0, 3).join(", ")}${requiredMissing.length > 3 ? "…" : ""}`,
@@ -582,7 +609,7 @@ function ContratosPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {CONTRATO_TEMPLATES.map((template) => (
+        {templatesVisiveis.map((template) => (
           <Card
             key={template.id}
             className="flex flex-col gap-3 p-4 border-border/60"
