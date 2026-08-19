@@ -214,6 +214,54 @@ function addMonthsIso(iso: string, months: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+const RECORRENCIAS = [
+  { value: "unica", label: "Parcela única" },
+  { value: "semanal", label: "Semanal" },
+  { value: "quinzenal", label: "Quinzenal" },
+  { value: "mensal", label: "Mensal" },
+  { value: "bimestral", label: "Bimestral" },
+  { value: "trimestral", label: "Trimestral" },
+  { value: "semestral", label: "Semestral" },
+  { value: "anual", label: "Anual" },
+] as const;
+
+type Recorrencia = (typeof RECORRENCIAS)[number]["value"];
+
+const RECORRENCIA_QTD_PADRAO: Record<Recorrencia, string> = {
+  unica: "1",
+  semanal: "4",
+  quinzenal: "2",
+  mensal: "12",
+  bimestral: "6",
+  trimestral: "4",
+  semestral: "2",
+  anual: "2",
+};
+
+function addRecorrenciaIso(
+  iso: string,
+  freq: Recorrencia,
+  index: number,
+): string {
+  if (index <= 0 || freq === "unica") return iso.slice(0, 10);
+  if (freq === "semanal") return addDaysIso(iso, 7 * index);
+  if (freq === "quinzenal") return addDaysIso(iso, 14 * index);
+  if (freq === "mensal") return addMonthsIso(iso, index);
+  if (freq === "bimestral") return addMonthsIso(iso, 2 * index);
+  if (freq === "trimestral") return addMonthsIso(iso, 3 * index);
+  if (freq === "semestral") return addMonthsIso(iso, 6 * index);
+  return addMonthsIso(iso, 12 * index);
+}
+
 type ParcelaDraft = {
   id?: string;
   vencimento: string;
@@ -226,11 +274,13 @@ function buildParcelasDraft(
   valorParcela: number,
   quantidade: number,
   primeiroVencimento: string,
+  freq: Recorrencia,
 ): ParcelaDraft[] {
   const n = Math.max(2, Math.floor(quantidade));
   return Array.from({ length: n }, (_, i) => ({
-    vencimento: addMonthsIso(primeiroVencimento, i),
+    vencimento: addRecorrenciaIso(primeiroVencimento, freq, i),
     valor: formatValorInput(valorParcela),
+    label: `${i + 1}/${n}`,
   }));
 }
 
@@ -365,6 +415,7 @@ export function FinanceiroTitulosPanel({
   const [quickDocumento, setQuickDocumento] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
   const [parcelado, setParcelado] = useState(false);
+  const [recorrencia, setRecorrencia] = useState<Recorrencia>("unica");
   const [qtdParcelas, setQtdParcelas] = useState("2");
   const [parcelasDraft, setParcelasDraft] = useState<ParcelaDraft[]>([]);
   const [grupoParcelaSelecionada, setGrupoParcelaSelecionada] =
@@ -755,10 +806,12 @@ export function FinanceiroTitulosPanel({
     totalRaw: string,
     qtdRaw: string,
     primeiroVenc: string,
+    freq: Recorrencia = recorrencia,
   ) {
     const total = parseValor(totalRaw);
     const qtd = Number(qtdRaw);
     if (
+      freq === "unica" ||
       !Number.isFinite(total) ||
       total <= 0 ||
       !Number.isFinite(qtd) ||
@@ -768,8 +821,23 @@ export function FinanceiroTitulosPanel({
       return;
     }
     setParcelasDraft(
-      buildParcelasDraft(total, qtd, primeiroVenc || todayIso()),
+      buildParcelasDraft(total, qtd, primeiroVenc || todayIso(), freq),
     );
+  }
+
+  function applyRecorrencia(next: Recorrencia) {
+    setRecorrencia(next);
+    const recorrente = next !== "unica";
+    setParcelado(recorrente);
+    if (!recorrente) {
+      setParcelasDraft([]);
+      setQtdParcelas("1");
+      return;
+    }
+    const qtd = RECORRENCIA_QTD_PADRAO[next];
+    setQtdParcelas(qtd);
+    regenerateParcelas(form.valor, qtd, form.vencimento, next);
+    setFormTab("cobranca");
   }
 
   function isParcelaDoContrato(parcela: ParcelaDraft, grupo: GrupoParcelaTipo) {
@@ -814,6 +882,7 @@ export function FinanceiroTitulosPanel({
     const next = emptyForm(tipo, defaultCat, defaultCat);
     setForm(next);
     setParcelado(false);
+    setRecorrencia("unica");
     setQtdParcelas(canUseContrato ? "1" : "2");
     setParcelasDraft([]);
     setGrupoParcelaSelecionada(null);
@@ -1110,7 +1179,9 @@ export function FinanceiroTitulosPanel({
           centro: catalog.centro,
           parcelas,
         });
-        toast.success(`${parcelas.length} parcelas criadas.`);
+        toast.success(
+          `${parcelas.length} lançamentos criados. Eles aparecem no fluxo de caixa nas datas de vencimento.`,
+        );
         setOpen(false);
         await load();
       } catch (err) {
@@ -1693,9 +1764,11 @@ export function FinanceiroTitulosPanel({
               <span className="text-sm font-medium">
                 {comoContrato
                   ? "Contrato"
-                  : parcelado
-                    ? "Título parcelado"
-                    : "Título avulso"}
+                  : parcelado && formMode === "create"
+                    ? `Recorrência ${RECORRENCIAS.find((r) => r.value === recorrencia)?.label.toLowerCase()}`
+                    : parcelado
+                      ? "Título parcelado"
+                      : "Título avulso"}
               </span>
               <span className="text-xs text-muted-foreground sm:ml-auto">
                 {comoContrato
@@ -1705,7 +1778,12 @@ export function FinanceiroTitulosPanel({
                           (Number(qtdParcelas) || 1),
                     )}`
                   : form.valor
-                    ? `Valor: ${brl(parseValor(form.valor) || 0)}`
+                    ? parcelado && formMode === "create"
+                      ? `Total: ${brl(
+                          (parseValor(form.valor) || 0) *
+                            (Number(qtdParcelas) || 1),
+                        )}`
+                      : `Valor: ${brl(parseValor(form.valor) || 0)}`
                     : "Preencha os dados para continuar"}
               </span>
             </div>
@@ -1718,7 +1796,9 @@ export function FinanceiroTitulosPanel({
                 className={`grid w-full ${comoContrato ? "grid-cols-3" : "grid-cols-2"}`}
               >
                 <TabsTrigger value="dados">Dados</TabsTrigger>
-                <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
+                <TabsTrigger value="cobranca">
+                  {tipo === "pagar" ? "Pagamento" : "Cobrança"}
+                </TabsTrigger>
                 {comoContrato ? (
                   <TabsTrigger value="contrato">Contrato</TabsTrigger>
                 ) : null}
@@ -1731,7 +1811,9 @@ export function FinanceiroTitulosPanel({
                   ? "Identificação"
                   : formTab === "contrato"
                     ? "Configuração do contrato"
-                    : "Cobrança e parcelas"
+                    : tipo === "pagar"
+                      ? "Pagamento e recorrência"
+                      : "Cobrança e parcelas"
               }
             >
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1805,6 +1887,7 @@ export function FinanceiroTitulosPanel({
                         setFormTab(on ? "contrato" : "dados");
                         if (on) {
                           setParcelado(false);
+                          setRecorrencia("unica");
                           setParcelasDraft([]);
                           setQtdParcelas("1");
                           setParcelarAdesao(false);
@@ -1833,9 +1916,40 @@ export function FinanceiroTitulosPanel({
                           ? "Gera adesão + mensalidades vinculadas à imobiliária."
                           : tipo === "receber"
                             ? "Gera adesão + mensalidades vinculadas ao cliente."
-                            : "Gera adesão opcional e mensalidades para o fornecedor."}
+                            : "Adesão opcional e mensalidades do fornecedor. Para conta fixa simples (aluguel, condomínio), use recorrência abaixo."}
                       </p>
                     </div>
+                  </div>
+                ) : null}
+                {!comoContrato &&
+                formMode === "create" &&
+                formTab === "dados" ? (
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label>Conta fixa ou recorrente</Label>
+                    <Select
+                      value={recorrencia}
+                      onValueChange={(value) =>
+                        applyRecorrencia(value as Recorrencia)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RECORRENCIAS.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {recorrencia === "unica"
+                        ? tipo === "pagar"
+                          ? "Um único lançamento. Para aluguel, condomínio ou assinatura no período, escolha a frequência — valor e vencimentos ficam em Pagamento."
+                          : "Um único lançamento. Para repetir no período, escolha a frequência — valor e vencimentos ficam em Cobrança."
+                        : "Gera um lançamento por vencimento no fluxo de caixa. Informe valor, 1º vencimento e quantidade na aba seguinte."}
+                    </p>
                   </div>
                 ) : null}
                 {comoContrato &&
@@ -2109,7 +2223,36 @@ export function FinanceiroTitulosPanel({
                 ) : null}
                 {!comoContrato &&
                 formTab === "cobranca" &&
-                (formMode === "create" || formMode === "edit") ? (
+                formMode === "create" ? (
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label>Recorrência</Label>
+                    <Select
+                      value={recorrencia}
+                      onValueChange={(value) =>
+                        applyRecorrencia(value as Recorrencia)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RECORRENCIAS.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {recorrencia === "unica"
+                        ? "Um único lançamento na data de vencimento."
+                        : "Conta fixa no período: mesmo valor em cada vencimento, visível no fluxo de caixa."}
+                    </p>
+                  </div>
+                ) : null}
+                {!comoContrato &&
+                formTab === "cobranca" &&
+                formMode === "edit" ? (
                   <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
                     <Checkbox
                       id="titulo-parcelado"
@@ -2118,19 +2261,9 @@ export function FinanceiroTitulosPanel({
                       onCheckedChange={(checked) => {
                         const on = checked === true;
                         setParcelado(on);
-                        if (on) {
-                          if (formMode === "create") {
-                            regenerateParcelas(
-                              form.valor,
-                              qtdParcelas,
-                              form.vencimento,
-                            );
-                          }
-                        } else {
+                        if (!on) {
                           setParcelasDraft([]);
-                          if (formMode === "edit") {
-                            setForm((f) => ({ ...f, parcela: "" }));
-                          }
+                          setForm((f) => ({ ...f, parcela: "" }));
                         }
                       }}
                     />
@@ -2142,9 +2275,7 @@ export function FinanceiroTitulosPanel({
                         Parcelar
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        {formMode === "create"
-                          ? "Ative para informar a quantidade e os campos de cada parcela."
-                          : "Ative para informar o rótulo da parcela (ex.: 1/3)."}
+                        Ative para informar o rótulo da parcela (ex.: 1/3).
                       </p>
                     </div>
                   </div>
@@ -2206,7 +2337,7 @@ export function FinanceiroTitulosPanel({
                 parcelado &&
                 formMode === "create" ? (
                   <div className="sm:col-span-2 space-y-1.5">
-                    <Label>Quantidade de parcelas *</Label>
+                    <Label>Quantidade *</Label>
                     <Input
                       type="number"
                       min={2}
@@ -2218,6 +2349,11 @@ export function FinanceiroTitulosPanel({
                         regenerateParcelas(form.valor, next, form.vencimento);
                       }}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Quantas vezes o lançamento se repete (
+                      {RECORRENCIAS.find((r) => r.value === recorrencia)?.label.toLowerCase()}
+                      ).
+                    </p>
                   </div>
                 ) : null}
                 {!comoContrato &&
