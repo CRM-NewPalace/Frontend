@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
+import { Route as AppAtrasosRouteImport } from './routes/_app.atrasos'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppClientesPerdidosRouteImport } from './routes/_app.clientes-perdidos'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
@@ -91,6 +92,11 @@ const TermosRoute = TermosRouteImport.update({
 const AppAgendaRoute = AppAgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAtrasosRoute = AppAtrasosRouteImport.update({
+  id: '/atrasos',
+  path: '/atrasos',
   getParentRoute: () => AppRoute,
 } as any)
 const AppClientesRoute = AppClientesRouteImport.update({
@@ -318,6 +324,7 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
+  '/atrasos': typeof AppAtrasosRoute
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -368,6 +375,7 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
+  '/atrasos': typeof AppAtrasosRoute
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -420,6 +428,7 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/_app/agenda': typeof AppAgendaRoute
+  '/_app/atrasos': typeof AppAtrasosRoute
   '/_app/clientes': typeof AppClientesRoute
   '/_app/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
@@ -472,6 +481,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/agenda'
+    | '/atrasos'
     | '/clientes'
     | '/clientes-perdidos'
     | '/configuracoes'
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/agenda'
+    | '/atrasos'
     | '/clientes'
     | '/clientes-perdidos'
     | '/configuracoes'
@@ -573,6 +584,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/_app/agenda'
+    | '/_app/atrasos'
     | '/_app/clientes'
     | '/_app/clientes-perdidos'
     | '/_app/configuracoes'
@@ -678,6 +690,13 @@ declare module '@tanstack/react-router' {
       path: '/agenda'
       fullPath: '/agenda'
       preLoaderRoute: typeof AppAgendaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/atrasos': {
+      id: '/_app/atrasos'
+      path: '/atrasos'
+      fullPath: '/atrasos'
+      preLoaderRoute: typeof AppAtrasosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/clientes': {
@@ -1014,6 +1033,7 @@ const AppFinanceiroRouteWithChildren = AppFinanceiroRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
+  AppAtrasosRoute: typeof AppAtrasosRoute
   AppClientesRoute: typeof AppClientesRoute
   AppClientesPerdidosRoute: typeof AppClientesPerdidosRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
@@ -1045,6 +1065,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
+  AppAtrasosRoute: AppAtrasosRoute,
   AppClientesRoute: AppClientesRoute,
   AppClientesPerdidosRoute: AppClientesPerdidosRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,

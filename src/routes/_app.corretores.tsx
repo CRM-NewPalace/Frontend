@@ -1,13 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -48,9 +43,8 @@ import {
   Trophy,
   UsersRound,
   Wallet,
-  AlertTriangle,
-  ChevronDown,
 } from "lucide-react";
+import { AtrasosResumoBanner } from "@/components/corretores-atrasos";
 import { SemConexao } from "@/components/sem-conexao";
 import { VendasResumoDialog } from "@/components/vendas-resumo-dialog";
 import { toast } from "sonner";
@@ -202,7 +196,6 @@ function Page() {
     [],
   );
   const [soPendencias, setSoPendencias] = useState(false);
-  const [atrasosOpen, setAtrasosOpen] = useState(true);
 
   const anosDisponiveis = useMemo(() => {
     const list: number[] = [];
@@ -416,105 +409,7 @@ function Page() {
       ) : (
         <>
           {monitoramento.length > 0 && (
-            <section className="mt-4">
-              <Collapsible open={atrasosOpen} onOpenChange={setAtrasosOpen}>
-                <Card className="border-red-500/40">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start gap-3">
-                      <div className="min-w-0 flex-1">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
-                          Corretores com leads em atraso
-                        </CardTitle>
-                        <p className="mt-1.5 text-sm text-muted-foreground">
-                          {monitoramento.length} corretor
-                          {monitoramento.length === 1 ? "" : "es"} com leads
-                          sem movimentação, fora do prazo da etapa ou com
-                          tarefa atrasada.
-                        </p>
-                      </div>
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                          aria-label={
-                            atrasosOpen
-                              ? "Recolher corretores com leads em atraso"
-                              : "Expandir corretores com leads em atraso"
-                          }
-                          title={atrasosOpen ? "Recolher" : "Expandir"}
-                        >
-                          <ChevronDown
-                            className={cn(
-                              "h-4 w-4 transition-transform",
-                              !atrasosOpen && "-rotate-90",
-                            )}
-                          />
-                        </button>
-                      </CollapsibleTrigger>
-                    </div>
-                  </CardHeader>
-                  <CollapsibleContent>
-                    <CardContent className="space-y-3">
-                      {monitoramento.map((row) => (
-                        <div
-                          key={row.id}
-                          className="rounded-lg border-2 border-red-500/70 p-3"
-                        >
-                          <div className="flex flex-wrap items-baseline justify-between gap-2">
-                            <p className="font-medium">{row.name}</p>
-                            <p className="text-xs text-red-700 dark:text-red-300">
-                              {row.totalAtrasos} lead
-                              {row.totalAtrasos === 1 ? "" : "s"} em atraso
-                            </p>
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {row.semMovimentacao} sem movimentação ·{" "}
-                            {row.foraDoPrazo} fora do prazo da etapa
-                            {typeof row.tarefasAtrasadas === "number"
-                              ? ` · ${row.tarefasAtrasadas} tarefa${row.tarefasAtrasadas === 1 ? "" : "s"} atrasada${row.tarefasAtrasadas === 1 ? "" : "s"}`
-                              : ""}
-                          </p>
-                          <ul className="mt-2 space-y-1">
-                            {row.leads.slice(0, 8).map((lead) => (
-                              <li key={lead.id}>
-                                <Link
-                                  to="/funil"
-                                  search={{ lead: lead.id }}
-                                  className="text-xs text-primary hover:underline"
-                                >
-                                  {lead.nome}
-                                </Link>
-                                <span className="text-[11px] text-muted-foreground">
-                                  {" "}
-                                  —{" "}
-                                  {lead.problemas
-                                    .map((p) => p.titulo)
-                                    .join(" · ")}
-                                </span>
-                                {lead.tarefasAtrasadas &&
-                                  lead.tarefasAtrasadas.length > 0 && (
-                                    <ul className="mt-0.5 ml-3 space-y-0.5">
-                                      {lead.tarefasAtrasadas.map((tarefa) => (
-                                        <li
-                                          key={tarefa.id}
-                                          className="text-[11px] text-red-700 dark:text-red-300"
-                                        >
-                                          {tarefa.titulo} · prazo {tarefa.prazo}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            </section>
+            <AtrasosResumoBanner rows={monitoramento} className="mt-4" />
           )}
           <section className="mt-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
             <FinanceKpiCard

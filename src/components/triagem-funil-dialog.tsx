@@ -36,11 +36,8 @@ import {
   useTriagemHistory,
 } from "@/components/triagem-history-timeline";
 import { ApiError } from "@/lib/api";
-import {
-  AGENDAMENTO_TIPO_LABEL,
-  createAgendamento,
-  type AgendamentoTipo,
-} from "@/lib/agenda-api";
+import { createAgendamento, type AgendamentoTipo } from "@/lib/agenda-api";
+import { AgendamentoTipoOption } from "@/components/agenda-tipo-option";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { displayEmail } from "@/lib/email";
 import { createTriagemEvent } from "@/lib/triagem-api";
@@ -377,7 +374,7 @@ export function TriagemFunilDialog({
                           <SelectContent>
                             {ACTIVITY_TIPOS.map((tipo) => (
                               <SelectItem key={tipo} value={tipo}>
-                                {AGENDAMENTO_TIPO_LABEL[tipo]}
+                                <AgendamentoTipoOption tipo={tipo} />
                               </SelectItem>
                             ))}
                           </SelectContent>

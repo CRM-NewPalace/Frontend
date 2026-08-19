@@ -1,25 +1,55 @@
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  AGENDAMENTO_ORIGEM_BLOCK,
   AGENDAMENTO_ORIGEM_LABEL,
   AGENDAMENTO_STATUS_LABEL,
-  AGENDAMENTO_TIPO_LABEL,
+  AGENDAMENTO_TIPO_BLOCK,
+  AGENDAMENTO_TIPO_CARD,
+  AGENDAMENTO_VISUAL_LABEL,
   getAgendamentoCardSubtitle,
   getAgendamentoCardTitle,
   getAgendamentoOrigem,
+  getAgendamentoVisual,
+  isAgendamentoAniversario,
   isAgendamentoBloqueio,
   type Agendamento,
+  type AgendamentoTipo,
 } from "@/lib/agenda-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  Ban,
+  Cake,
+  CalendarDays,
+  CheckSquare,
+  MapPin,
+  Phone,
+  Plus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 export type AgendaViewMode = "dia" | "semana" | "mes";
 
 const HOUR_START = 7;
 const HOUR_END = 23;
-const PX_PER_HOUR = 56;
+const PX_PER_HOUR_WEEK = 56;
+const PX_PER_HOUR_DAY = 76;
 const DEFAULT_DURATION_MIN = 60;
+
+const TIPO_ICON: Record<AgendamentoTipo, LucideIcon> = {
+  visita: MapPin,
+  ligacao: Phone,
+  reuniao: Users,
+  tarefa: CheckSquare,
+  outro: CalendarDays,
+  bloqueio: Ban,
+};
+
+function eventIcon(item: Agendamento): LucideIcon {
+  if (isAgendamentoAniversario(item)) return Cake;
+  return TIPO_ICON[item.tipo] ?? CalendarDays;
+}
 
 export function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -216,7 +246,9 @@ function TimeGridBoard({
   onEdit: (item: Agendamento) => void;
 }) {
   const hours = hoursList();
-  const gridHeight = (HOUR_END - HOUR_START + 1) * PX_PER_HOUR;
+  const isDayView = days.length === 1;
+  const pxPerHour = isDayView ? PX_PER_HOUR_DAY : PX_PER_HOUR_WEEK;
+  const gridHeight = (HOUR_END - HOUR_START + 1) * pxPerHour;
   const today = startOfDay(new Date());
   const now = new Date();
 
@@ -241,10 +273,10 @@ function TimeGridBoard({
   const showNowLine = days.some((d) => sameDay(d, today));
   const nowTop =
     ((now.getHours() * 60 + now.getMinutes() - HOUR_START * 60) / 60) *
-    PX_PER_HOUR;
+    pxPerHour;
 
   return (
-    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-xl border bg-card">
+    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-2xl border bg-card">
       {loading ? (
         <div className="absolute inset-0 z-20 bg-background/50 flex items-center justify-center text-sm text-muted-foreground">
           Carregando…
@@ -254,7 +286,7 @@ function TimeGridBoard({
       <div
         className={cn("grid", days.length > 1 ? "min-w-220" : "min-w-0")}
         style={{
-          gridTemplateColumns: `56px repeat(${days.length}, minmax(9rem, 1fr))`,
+          gridTemplateColumns: `${isDayView ? 72 : 56}px repeat(${days.length}, minmax(9rem, 1fr))`,
         }}
       >
         <div className="sticky top-0 z-10 border-b bg-card" />
@@ -287,8 +319,11 @@ function TimeGridBoard({
           {hours.map((h) => (
             <div
               key={h}
-              className="absolute right-2 -translate-y-1/2 text-[11px] text-muted-foreground"
-              style={{ top: (h - HOUR_START) * PX_PER_HOUR }}
+              className={cn(
+                "absolute right-2 -translate-y-1/2 tabular-nums text-muted-foreground",
+                isDayView ? "text-xs font-medium" : "text-[11px]",
+              )}
+              style={{ top: (h - HOUR_START) * pxPerHour }}
             >
               {formatHour(h)}
             </div>
@@ -310,10 +345,13 @@ function TimeGridBoard({
                 <button
                   key={h}
                   type="button"
-                  className="absolute inset-x-0 border-t border-border/60 hover:bg-muted/40 transition-colors"
+                  className={cn(
+                    "group/slot absolute inset-x-0 border-t border-border/60 transition-colors hover:bg-primary/6",
+                    h % 2 === 0 && "bg-muted/15",
+                  )}
                   style={{
-                    top: (h - HOUR_START) * PX_PER_HOUR,
-                    height: PX_PER_HOUR,
+                    top: (h - HOUR_START) * pxPerHour,
+                    height: pxPerHour,
                   }}
                   aria-label={`Agendar ${key} às ${formatHour(h)}`}
                   onClick={() => {
@@ -341,7 +379,14 @@ function TimeGridBoard({
                     }
                     onCreateAt(day, h);
                   }}
-                />
+                >
+                  {isDayView ? (
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground opacity-0 transition group-hover/slot:opacity-70">
+                      <Plus className="mr-1 h-3.5 w-3.5" />
+                      Agendar
+                    </span>
+                  ) : null}
+                </button>
               ))}
 
               {isToday && showNowLine && nowTop >= 0 && nowTop <= gridHeight ? (
@@ -368,8 +413,12 @@ function TimeGridBoard({
                   Math.min(endMin, (HOUR_END - HOUR_START + 1) * 60),
                 );
 
-                const top = (topMin / 60) * PX_PER_HOUR;
-                const height = ((endMin - topMin) / 60) * PX_PER_HOUR;
+                const top = (topMin / 60) * pxPerHour;
+                const height = ((endMin - topMin) / 60) * pxPerHour;
+                const origem = getAgendamentoOrigem(item);
+                const visual = getAgendamentoVisual(item);
+                const Icon = eventIcon(item);
+                const cardHeight = Math.max(height, isDayView ? 44 : 22);
 
                 return (
                   <button
@@ -380,29 +429,62 @@ function TimeGridBoard({
                       onEdit(item);
                     }}
                     className={cn(
-                      "absolute left-1 right-1 z-6 overflow-hidden rounded-md border px-1.5 py-1 text-left shadow-sm transition hover:brightness-110",
-                      AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
+                      "absolute z-6 overflow-hidden text-left transition",
+                      isDayView
+                        ? cn(
+                            "left-2 right-3 rounded-xl border border-l-[3px] px-3 py-2 shadow-sm hover:shadow-md",
+                            AGENDAMENTO_TIPO_CARD[visual],
+                          )
+                        : cn(
+                            "left-1 right-1 rounded-md border px-1.5 py-1 shadow-sm hover:brightness-110",
+                            AGENDAMENTO_TIPO_BLOCK[visual],
+                          ),
                       item.status === "concluido" && "opacity-80",
                       item.status === "cancelado" && "opacity-50 grayscale",
                     )}
-                    style={{ top, height: Math.max(height, 22) }}
-                    title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${getAgendamentoCardTitle(item)}${
+                    style={{ top, height: cardHeight }}
+                    title={`${AGENDAMENTO_VISUAL_LABEL[visual]} · ${AGENDAMENTO_ORIGEM_LABEL[origem]} · ${getAgendamentoCardTitle(item)}${
                       getAgendamentoCardSubtitle(item)
                         ? ` · ${getAgendamentoCardSubtitle(item)}`
                         : ""
                     }`}
                   >
-                    <div className="truncate text-[11px] font-semibold leading-tight">
-                      {getAgendamentoCardTitle(item)}
-                    </div>
-                    {height > 36 ? (
-                      <div className="truncate text-[10px] opacity-90">
-                        {formatEventTime(item)}
-                        {getAgendamentoCardSubtitle(item)
-                          ? ` · ${getAgendamentoCardSubtitle(item)}`
-                          : ""}
+                    {isDayView ? (
+                      <div className="flex items-start gap-2">
+                        {cardHeight > 48 ? (
+                          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background/50">
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold leading-tight">
+                            {getAgendamentoCardTitle(item)}
+                          </div>
+                          {cardHeight > 40 ? (
+                            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {formatEventTime(item)}
+                              {getAgendamentoCardSubtitle(item)
+                                ? ` · ${getAgendamentoCardSubtitle(item)}`
+                                : ""}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    ) : null}
+                    ) : (
+                      <>
+                        <div className="truncate text-[11px] font-semibold leading-tight">
+                          {getAgendamentoCardTitle(item)}
+                        </div>
+                        {height > 36 ? (
+                          <div className="truncate text-[10px] opacity-90">
+                            {formatEventTime(item)}
+                            {getAgendamentoCardSubtitle(item)
+                              ? ` · ${getAgendamentoCardSubtitle(item)}`
+                              : ""}
+                          </div>
+                        ) : null}
+                      </>
+                    )}
                   </button>
                 );
               })}
@@ -454,7 +536,7 @@ function MonthBoard({
   }, [items]);
 
   return (
-    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-xl border bg-card">
+    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-2xl border bg-card">
       {loading ? (
         <div className="absolute inset-0 z-20 bg-background/50 flex items-center justify-center text-sm text-muted-foreground">
           Carregando…
@@ -522,10 +604,10 @@ function MonthBoard({
                       onClick={() => onEdit(item)}
                       className={cn(
                         "truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-tight border",
-                        AGENDAMENTO_ORIGEM_BLOCK[getAgendamentoOrigem(item)],
+                        AGENDAMENTO_TIPO_BLOCK[getAgendamentoVisual(item)],
                         item.status === "cancelado" && "opacity-50 grayscale",
                       )}
-                      title={`${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${AGENDAMENTO_TIPO_LABEL[item.tipo]} · ${getAgendamentoCardTitle(item)}${
+                      title={`${AGENDAMENTO_VISUAL_LABEL[getAgendamentoVisual(item)]} · ${AGENDAMENTO_ORIGEM_LABEL[getAgendamentoOrigem(item)]} · ${getAgendamentoCardTitle(item)}${
                         getAgendamentoCardSubtitle(item)
                           ? ` · ${getAgendamentoCardSubtitle(item)}`
                           : ""

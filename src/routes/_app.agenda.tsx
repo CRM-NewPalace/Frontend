@@ -64,7 +64,9 @@ import {
   AGENDAMENTO_STATUS,
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPOS,
+  AGENDAMENTO_TIPO_DOT,
   AGENDAMENTO_TIPO_LABEL,
+  AGENDAMENTO_VISUAL_LABEL,
   WEEKDAY_OPTIONS,
   aprovarAgendamento,
   createAgendamento,
@@ -82,6 +84,7 @@ import {
   type AgendamentoTipo,
   type CreateAgendamentoInput,
 } from "@/lib/agenda-api";
+import { AgendamentoTipoOption } from "@/components/agenda-tipo-option";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   CalendarDays,
@@ -387,8 +390,7 @@ function AgendaPage() {
   }, [assignees, assignUsers, isAdmin]);
 
   const corretorAlvoOptions = useMemo(
-    () =>
-      corretorAssignOptions.filter((c) => isCorretorLike(c.role ?? "")),
+    () => corretorAssignOptions.filter((c) => isCorretorLike(c.role ?? "")),
     [corretorAssignOptions],
   );
 
@@ -1319,7 +1321,7 @@ function AgendaPage() {
                         <SelectItem value="__all__">Todos os tipos</SelectItem>
                         {AGENDAMENTO_TIPOS.map((t) => (
                           <SelectItem key={t} value={t}>
-                            {AGENDAMENTO_TIPO_LABEL[t]}
+                            <AgendamentoTipoOption tipo={t} />
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1352,21 +1354,52 @@ function AgendaPage() {
             </div>
           </div>
 
-          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground/80">Cores:</span>
-            {(["admin", "gerente", "corretor", "bloqueio"] as const).map(
-              (origem) => (
-                <span key={origem} className="inline-flex items-center gap-1.5">
+          <div className="mb-3 space-y-1.5 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+              <span className="font-medium text-foreground/80">
+                Tipo de atividade:
+              </span>
+              {([...AGENDAMENTO_TIPOS, "aniversario"] as const).map(
+                (visual) => (
                   <span
-                    className={cn(
-                      "size-2.5 rounded-full",
-                      AGENDAMENTO_ORIGEM_DOT[origem],
-                    )}
-                  />
-                  {AGENDAMENTO_ORIGEM_LABEL[origem]}
+                    key={visual}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <span
+                      className={cn(
+                        "size-2.5 rounded-full",
+                        AGENDAMENTO_TIPO_DOT[visual],
+                      )}
+                    />
+                    {AGENDAMENTO_VISUAL_LABEL[visual]}
+                  </span>
+                ),
+              )}
+            </div>
+            {layoutMode === "tabela" ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                <span className="font-medium text-foreground/80">
+                  Quem criou:
                 </span>
-              ),
-            )}
+                {(["admin", "gerente", "corretor"] as const).map((origem) => (
+                  <span
+                    key={origem}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <span
+                      className={cn(
+                        "size-2.5 rounded-full",
+                        AGENDAMENTO_ORIGEM_DOT[origem],
+                      )}
+                    />
+                    {AGENDAMENTO_ORIGEM_LABEL[origem]}
+                  </span>
+                ))}
+                <span className="text-muted-foreground/70">
+                  (bolinha na linha do horário)
+                </span>
+              </div>
+            ) : null}
           </div>
 
           {layoutMode === "tabela" ? (
@@ -1739,7 +1772,7 @@ function AgendaPage() {
                     <SelectContent>
                       {tiposDisponiveis.map((t) => (
                         <SelectItem key={t} value={t}>
-                          {AGENDAMENTO_TIPO_LABEL[t]}
+                          <AgendamentoTipoOption tipo={t} />
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -119,7 +119,7 @@ import {
   PHONE_INVALID_MESSAGE,
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
-import { displayEmail, isPlaceholderEmail } from "@/lib/email";
+import { isPlaceholderEmail } from "@/lib/email";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -127,8 +127,8 @@ import {
   FormDialogBody,
   FormDialogShell,
   FormSection,
-  DetailField,
 } from "@/components/form-dialog";
+import { LeadDetalheDialog } from "@/components/lead-detalhe-dialog";
 import { ApiError } from "@/lib/api";
 import { SOFT_BTN } from "@/lib/soft-btn";
 import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
@@ -1643,121 +1643,20 @@ function LeadsPage() {
         </form>
       </FormDialogShell>
 
-      <FormDialogShell
+      <LeadDetalheDialog
+        lead={detailLead}
         open={!!detailLead}
         onOpenChange={(o) => !o && setDetailLead(null)}
-        icon={<Eye className="w-5 h-5" />}
-        title={detailLead?.nome ?? "Detalhes do lead"}
-        description={
-          detailLead
-            ? `${funnelStages.find((s) => s.id === detailLead.stage)?.name ?? detailLead.stage} · Prioridade ${detailLead.prioridade}`
-            : undefined
-        }
-        className="sm:max-w-xl"
-      >
-        {detailLead && (
-          <>
-            <FormDialogBody>
-              <FormSection
-                icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
-                title="Contato"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField label="Telefone" value={detailLead.telefone} />
-                  <DetailField
-                    label="E-mail"
-                    value={displayEmail(detailLead.email) || "—"}
-                  />
-                  <DetailField
-                    label="Origem"
-                    value={
-                      detailLead.origem ? (
-                        <Badge
-                          variant="outline"
-                          className={catalogColorSoftBadgeClass(
-                            colorByLabel("origem", detailLead.origem),
-                          )}
-                          title={detailLead.origem}
-                        >
-                          {detailLead.origem}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )
-                    }
-                  />
-                  {!isCorretor && (
-                    <DetailField label="Corretor" value={detailLead.corretor} />
-                  )}
-                  {!isCorretor && (
-                    <DetailField
-                      label="Equipe"
-                      value={equipeLabel(detailLead)}
-                    />
-                  )}
-                </div>
-              </FormSection>
-              <FormSection
-                icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
-                title="Renda"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField
-                    label="Renda mensal"
-                    value={
-                      detailLead.renda != null ? brl(detailLead.renda) : "—"
-                    }
-                  />
-                  <DetailField
-                    label="Tipo de renda"
-                    value={detailLead.tipoRenda || "—"}
-                  />
-                  <DetailField
-                    label="Estado civil"
-                    value={detailLead.estadoCivil || "—"}
-                  />
-                  <DetailField
-                    label="Prioridade"
-                    value={
-                      <Badge
-                        className={prioridadeBadgeClass(detailLead.prioridade)}
-                      >
-                        {detailLead.prioridade}
-                      </Badge>
-                    }
-                  />
-                  {detailLead.tags.length > 0 && (
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <div className="text-xs text-muted-foreground">Tags</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {detailLead.tags.map((t) => (
-                          <Badge
-                            key={t}
-                            className={cn(
-                              STATUS_CHIP_CLASS,
-                              colorByLabel("tag", t),
-                            )}
-                            title={t}
-                          >
-                            {t}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </FormSection>
-              <FormSection
-                icon={<MapPin className="w-3.5 h-3.5 text-primary" />}
-                title="Localização"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField label="Cidade" value={detailLead.cidade} />
-                  <DetailField label="Bairro" value={detailLead.bairro} />
-                </div>
-              </FormSection>
-            </FormDialogBody>
-            <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
+        showCorretor={!isCorretor}
+        equipe={detailLead && !isCorretor ? equipeLabel(detailLead) : null}
+        showMeuLeadBadge={Boolean(
+          isGerente &&
+          detailLead &&
+          isLeadCarteiraPropria(detailLead, user?.id),
+        )}
+        footer={
+          detailLead ? (
+            <FormDialogActions>
               <Button
                 variant="outline"
                 className="flex-1 sm:flex-none"
@@ -1776,9 +1675,9 @@ function LeadsPage() {
                 <Pencil className="w-4 h-4" /> Editar
               </Button>
             </FormDialogActions>
-          </>
-        )}
-      </FormDialogShell>
+          ) : null
+        }
+      />
 
       <AlertDialog
         open={!!deleteLead}

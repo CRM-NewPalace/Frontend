@@ -87,6 +87,28 @@ export type CorretorMonitoramento = {
   leads: CorretorMonitoramentoLead[];
 };
 
+export type AtrasosResumo = {
+  corretores: number;
+  leads: number;
+  semMovimentacao: number;
+  foraDoPrazo: number;
+  tarefas: number;
+};
+
+/** Consolida os contadores de atraso de vários corretores. */
+export function resumoAtrasos(rows: CorretorMonitoramento[]): AtrasosResumo {
+  return rows.reduce<AtrasosResumo>(
+    (acc, row) => ({
+      corretores: acc.corretores + 1,
+      leads: acc.leads + row.totalAtrasos,
+      semMovimentacao: acc.semMovimentacao + row.semMovimentacao,
+      foraDoPrazo: acc.foraDoPrazo + row.foraDoPrazo,
+      tarefas: acc.tarefas + (row.tarefasAtrasadas ?? 0),
+    }),
+    { corretores: 0, leads: 0, semMovimentacao: 0, foraDoPrazo: 0, tarefas: 0 },
+  );
+}
+
 export const MOTIVO_SEM_MOVIMENTACAO_LABEL: Record<
   MotivoSemMovimentacao,
   string

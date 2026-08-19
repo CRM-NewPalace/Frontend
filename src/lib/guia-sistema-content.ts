@@ -625,6 +625,35 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         ],
       },
       {
+        id: "atrasos",
+        title: "Atrasos",
+        href: "/atrasos",
+        who: "Só admin e gerente. Admin vê o time todo; gerente vê a própria equipe.",
+        summary:
+          "Lista, por corretor, os leads parados, fora do prazo da etapa ou com tarefa vencida. Não depende do período do Ranking — é a foto de agora, para cobrar ação no dia.",
+        actions: [
+          {
+            title: "Ler os indicadores",
+            detail:
+              "Sem movimentação usa o tempo de inatividade configurado no funil; fora do prazo é a etapa que passou do tempo; tarefas atrasadas são compromissos com prazo vencido.",
+          },
+          {
+            title: "Abrir o lead",
+            detail:
+              "Clique no nome do lead para cair direto no card dele no Funil e movimentar ou reagendar.",
+          },
+          {
+            title: "Buscar corretor ou lead",
+            detail:
+              "A busca filtra pelo nome do corretor ou de qualquer lead atrasado dele.",
+          },
+        ],
+        tips: [
+          "O Ranking mostra um aviso resumido com atalho para esta tela e marca em vermelho quem tem pendência.",
+          "Os prazos de etapa e o tempo de inatividade ficam em Configurações → funil.",
+        ],
+      },
+      {
         id: "metas",
         title: "Metas",
         href: "/metas",

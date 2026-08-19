@@ -48,7 +48,6 @@ import {
 import {
   brl,
   isLeadCarteiraPropria,
-  prioridadeBadgeClass,
   type AnaliseStatus,
   type Lead,
   type StageId,
@@ -68,14 +67,18 @@ import {
 } from "@/components/lead-funil-alerta";
 import {
   MONITORAMENTO_FILTRO_OPTIONS,
-  MOTIVO_SEM_MOVIMENTACAO_LABEL,
   applyInatividadeThreshold,
-  formatDateTimePt,
   formatPrazoUnidade,
   type MonitoramentoFiltro,
 } from "@/lib/lead-monitoramento";
 import { MeuLeadBadge } from "@/components/meu-lead-badge";
+import { LeadDetalheDialog } from "@/components/lead-detalhe-dialog";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
+import {
+  ANALISE_STATUS_LABEL,
+  analiseBadgeClass,
+  shouldShowAnaliseStatus,
+} from "@/lib/analise-status";
 import { ApiError } from "@/lib/api";
 import {
   FormDialogActions,
@@ -111,7 +114,11 @@ import {
   DEFAULT_STATUS1,
   DEFAULT_STATUS2,
 } from "@/lib/documentacao-api";
-import { funnelColumnBg, nextCatalogColor, catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+import {
+  funnelColumnBg,
+  nextCatalogColor,
+  STATUS_CHIP_CLASS,
+} from "@/lib/catalog-colors";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -121,12 +128,8 @@ import {
   Clock,
   User,
   CircleUser,
-  Eye,
-  Sparkles,
-  Wallet,
   Banknote,
   Phone,
-  MapPin,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -134,7 +137,6 @@ import {
   Plus,
   Check,
   ChevronsUpDown,
-  AlertTriangle,
   Briefcase,
   LifeBuoy,
 } from "lucide-react";
@@ -144,32 +146,9 @@ import { FaWhatsapp } from "react-icons/fa";
 import { cn } from "@/lib/utils";
 import { getWhatsAppUrl } from "@/lib/env";
 import { phoneDigits } from "@/lib/phone";
-import { displayEmail } from "@/lib/email";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 import { isStatusVendido } from "@/lib/documentacao-status";
 import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
-
-const ANALISE_STATUS_LABEL: Record<AnaliseStatus, string> = {
-  pendente: "Pendente",
-  em_analise: "Em análise",
-  aprovado: "Análise aprovada",
-  reprovado: "Análise reprovada",
-};
-
-function shouldShowAnaliseStatus(status: AnaliseStatus) {
-  return status === "aprovado" || status === "reprovado";
-}
-
-function analiseBadgeClass(status: AnaliseStatus) {
-  const size = STATUS_CHIP_CLASS;
-  if (status === "aprovado")
-    return `${size} border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
-  if (status === "reprovado")
-    return `${size} border-destructive/40 bg-destructive/10 text-destructive`;
-  if (status === "em_analise")
-    return `${size} border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300`;
-  return `${size} border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300`;
-}
 
 /** Slug legado (fallback se o funil não tiver papel configurado). */
 const LOST_STAGE_SLUG_FALLBACK = "perdido";
@@ -1452,268 +1431,39 @@ export function ComercialFunilBoard({
         })}
       </div>
 
-      <FormDialogShell
+      <LeadDetalheDialog
+        lead={detailLead}
         open={!!detailLead}
         onOpenChange={(o) => !o && setDetailLead(null)}
-        icon={<Eye className="w-5 h-5" />}
-        title={detailLead?.nome ?? "Detalhes"}
-        description={
-          detailLead
-            ? `${detailLead.tipo === "cliente" ? "Cliente" : "Lead"} · ${funnelStages.find((s) => s.id === detailLead.stage)?.name ?? detailLead.stage} · Prioridade ${detailLead.prioridade}`
+        showCorretor={!isCorretor}
+        showMeuLeadBadge={Boolean(
+          isGerente &&
+          !isClientesFunil &&
+          detailLead &&
+          isLeadCarteiraPropria(detailLead, user?.id),
+        )}
+        inatividadeFallback={
+          funilAtivo
+            ? formatPrazoUnidade(
+                funilAtivo.inatividadeValor,
+                funilAtivo.inatividadeUnidade,
+              )
             : undefined
         }
-      >
-        {detailLead && (
-          <>
-            <FormDialogBody>
-              {detailLead.monitoramento &&
-                detailLead.monitoramento.problemas.length > 0 && (
-                  <FormSection
-                    icon={
-                      <AlertTriangle
-                        className={
-                          detailLead.monitoramento.visual === "vermelho"
-                            ? "w-3.5 h-3.5 text-red-600"
-                            : "w-3.5 h-3.5 text-orange-500"
-                        }
-                      />
-                    }
-                    title="Alertas de monitoramento"
-                  >
-                    <div className="space-y-2">
-                      {detailLead.monitoramento.problemas.map((problema) => (
-                        <div
-                          key={problema.tipo}
-                          className="rounded-md border border-border/70 p-2 text-sm"
-                        >
-                          <p className="font-medium">{problema.titulo}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {problema.detalhe}
-                          </p>
-                          {problema.motivos && problema.motivos.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {problema.motivos.map((motivo) => (
-                                <Badge
-                                  key={motivo}
-                                  variant="outline"
-                                  className="text-[10px]"
-                                >
-                                  {MOTIVO_SEM_MOVIMENTACAO_LABEL[motivo]}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <DetailField
-                          label="Entrada na etapa"
-                          value={formatDateTimePt(
-                            detailLead.monitoramento.stageEnteredAt,
-                          )}
-                        />
-                        <DetailField
-                          label="Última movimentação"
-                          value={formatDateTimePt(
-                            detailLead.monitoramento.lastMovementAt,
-                          )}
-                        />
-                        <DetailField
-                          label="Prazo da etapa"
-                          value={
-                            detailLead.monitoramento.prazoConfigurado
-                              ? formatPrazoUnidade(
-                                  detailLead.monitoramento.prazoConfigurado
-                                    .valor,
-                                  detailLead.monitoramento.prazoConfigurado
-                                    .unidade,
-                                )
-                              : "Sem prazo"
-                          }
-                        />
-                        <DetailField
-                          label="Alerta de inatividade"
-                          value={
-                            detailLead.monitoramento.inatividadeConfig
-                              ? formatPrazoUnidade(
-                                  detailLead.monitoramento.inatividadeConfig
-                                    .valor,
-                                  detailLead.monitoramento.inatividadeConfig
-                                    .unidade,
-                                )
-                              : funilAtivo
-                                ? formatPrazoUnidade(
-                                    funilAtivo.inatividadeValor,
-                                    funilAtivo.inatividadeUnidade,
-                                  )
-                                : "—"
-                          }
-                        />
-                        <DetailField
-                          label="Responsável"
-                          value={detailLead.corretor}
-                        />
-                      </div>
-                      <div className="mt-2 w-full">
-                      <LeadFunilAlerta
-                        lead={detailLead}
-                        onUpdated={(next) => {
-                          applyLead(next);
-                          setDetailLead(next);
-                        }}
-                      />
-                      </div>
-                    </div>
-                  </FormSection>
-                )}
-              <FormSection
-                icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
-                title="Contato"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField
-                    label="Tipo"
-                    value={
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {detailLead.tipo === "cliente" ? (
-                          <Badge
-                            variant="outline"
-                            className="border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-                          >
-                            Cliente da carteira
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Lead de captação</Badge>
-                        )}
-                        {isGerente &&
-                          !isClientesFunil &&
-                          isLeadCarteiraPropria(detailLead, user?.id) && (
-                            <MeuLeadBadge />
-                          )}
-                      </div>
-                    }
-                  />
-                  <DetailField
-                    label="Telefone"
-                    value={
-                      <div className="flex items-center gap-2">
-                        <span className="min-w-0 break-all">
-                          {detailLead.telefone || "—"}
-                        </span>
-                        <button
-                          type="button"
-                          title="Abrir WhatsApp"
-                          aria-label="Abrir WhatsApp"
-                          disabled={phoneDigits(detailLead.telefone).length < 10}
-                          className="shrink-0 rounded p-0.5 text-[#25D366] hover:bg-[#25D366]/15 disabled:pointer-events-none disabled:opacity-40"
-                          onClick={() =>
-                            openLeadWhatsApp(detailLead.telefone)
-                          }
-                        >
-                          <FaWhatsapp className="h-4 w-4" aria-hidden />
-                        </button>
-                      </div>
-                    }
-                  />
-                  <DetailField
-                    label="E-mail"
-                    value={displayEmail(detailLead.email) || "—"}
-                  />
-                  <DetailField
-                    label="Origem"
-                    value={
-                      detailLead.origem ? (
-                        <Badge
-                          className={catalogColorBadgeClass(
-                            colorByLabel("origem", detailLead.origem),
-                          )}
-                          title={detailLead.origem}
-                        >
-                          {detailLead.origem}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )
-                    }
-                  />
-                  {!isCorretor && (
-                    <DetailField label="Corretor" value={detailLead.corretor} />
-                  )}
-                  {detailLead.analise &&
-                    shouldShowAnaliseStatus(detailLead.analise.status) && (
-                    <DetailField
-                      label="Análise"
-                      value={
-                        <div className="space-y-1">
-                          <Badge
-                            variant="outline"
-                            className={analiseBadgeClass(detailLead.analise.status)}
-                            title={ANALISE_STATUS_LABEL[detailLead.analise.status]}
-                          >
-                            {ANALISE_STATUS_LABEL[detailLead.analise.status]}
-                          </Badge>
-                          {detailLead.analise.parecer ? (
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                              {detailLead.analise.parecer}
-                            </p>
-                          ) : null}
-                        </div>
-                      }
-                    />
-                  )}
-                </div>
-              </FormSection>
-              <FormSection
-                icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
-                title="Interesse e renda"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField label="Interesse" value={detailLead.interesse} />
-                  <DetailField
-                    label="Renda mensal"
-                    value={
-                      detailLead.renda != null ? brl(detailLead.renda) : "—"
-                    }
-                  />
-                  <DetailField
-                    label="Prioridade"
-                    value={
-                      <Badge
-                        className={prioridadeBadgeClass(detailLead.prioridade)}
-                      >
-                        {detailLead.prioridade}
-                      </Badge>
-                    }
-                  />
-                  {detailLead.tags.length > 0 && (
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <div className="text-xs text-muted-foreground">Tags</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {detailLead.tags.map((t) => (
-                          <Badge
-                            key={t}
-                            className={cn(STATUS_CHIP_CLASS, colorByLabel("tag", t))}
-                            title={t}
-                          >
-                            {t}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </FormSection>
-              <FormSection
-                icon={<MapPin className="w-3.5 h-3.5 text-primary" />}
-                title="Localização"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DetailField label="Cidade" value={detailLead.cidade} />
-                  <DetailField label="Bairro" value={detailLead.bairro} />
-                </div>
-              </FormSection>
-            </FormDialogBody>
-            <FormDialogActions hint={`Atualizado em ${detailLead.updatedAt}`}>
+        monitoramentoSlot={
+          detailLead ? (
+            <LeadFunilAlerta
+              lead={detailLead}
+              onUpdated={(next) => {
+                applyLead(next);
+                setDetailLead(next);
+              }}
+            />
+          ) : null
+        }
+        footer={
+          detailLead ? (
+            <FormDialogActions>
               <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:[&_button]:w-full">
                 <Button
                   type="button"
@@ -1766,9 +1516,9 @@ export function ComercialFunilBoard({
                 </Button>
               </div>
             </FormDialogActions>
-          </>
-        )}
-      </FormDialogShell>
+          ) : null
+        }
+      />
 
       <AlertDialog
         open={!!lostTarget}

@@ -40,6 +40,7 @@ import {
   Handshake,
   Library,
   Receipt,
+  TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -271,6 +272,7 @@ const NAV_SECTIONS: {
       { to: "/tenants", label: "Clientes", icon: Building2 },
       { to: "/guia", label: "Guia", icon: BookOpen },
       { to: "/corretores", label: "Ranking", icon: UsersRound },
+      { to: "/atrasos", label: "Atrasos", icon: TriangleAlert },
       { to: "/metas", label: "Metas", icon: Target },
       { to: "/resultado", label: "Análise", icon: SearchCheck },
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },

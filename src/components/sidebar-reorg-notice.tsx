@@ -60,6 +60,7 @@ const GROUPS = [
     hint: "Time, resultado e ajustes",
     items: [
       { to: "/corretores", label: "Ranking" },
+      { to: "/atrasos", label: "Atrasos" },
       { to: "/metas", label: "Metas" },
       { to: "/resultado", label: "Análise" },
       { to: "/taxa-conversao", label: "Taxa de conversão" },
