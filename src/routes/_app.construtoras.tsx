@@ -184,7 +184,7 @@ function ConstrutoraNomeChip({
   return (
     <Badge
       variant="secondary"
-      className={cn(STATUS_CHIP_CLASS, "border-transparent font-medium")}
+      className={cn(STATUS_CHIP_CLASS, "border-transparent font-bold")}
       style={cor ? construtoraBadgeStyle(cor) : undefined}
       title={nome}
     >
@@ -1651,7 +1651,8 @@ function ConstrutorasPage() {
                       images={displayedLogo ? [displayedLogo] : []}
                       max={CONSTRUTORA_MAX_IMAGES}
                       label="Logo"
-                      hint="1 imagem (JPG, PNG ou WebP, máx. 5 MB)."
+                      hint="Tamanho ideal: 1920 × 1080 px (16:9). JPG, PNG ou WebP, máx. 5 MB."
+                      recommendedSize="1920 × 1080"
                       disabled={readOnly}
                       busy={logoBusy}
                       shape="logo"

@@ -13,6 +13,8 @@ type ImageUploadFieldProps = {
   max: number;
   label: string;
   hint?: string;
+  /** Ex.: "1920 × 1080" — aparece no slot vazio para o usuário enviar no tamanho certo. */
+  recommendedSize?: string;
   disabled?: boolean;
   busy?: boolean;
   shape?: "cover" | "logo";
@@ -26,6 +28,7 @@ export function ImageUploadField({
   max,
   label,
   hint,
+  recommendedSize,
   disabled,
   busy,
   shape = "cover",
@@ -71,7 +74,7 @@ export function ImageUploadField({
               className={cn(
                 "relative overflow-hidden rounded-xl border bg-muted/40",
                 shape === "logo"
-                  ? "aspect-[2/1] max-w-48 bg-white"
+                  ? "aspect-video max-w-72 bg-white"
                   : "aspect-video",
               )}
             >
@@ -120,6 +123,16 @@ export function ImageUploadField({
                     <ImagePlus className="h-5 w-5 text-primary" />
                   )}
                   <span>{busy ? "Enviando…" : slotLabel}</span>
+                  {!busy && recommendedSize ? (
+                    <span className="mt-0.5 flex flex-col items-center leading-tight">
+                      <span className="rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-foreground">
+                        {recommendedSize}
+                      </span>
+                      <span className="mt-0.5 text-[10px] text-muted-foreground">
+                        tamanho ideal
+                      </span>
+                    </span>
+                  ) : null}
                 </button>
               )}
             </div>

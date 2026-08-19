@@ -693,6 +693,19 @@ function PodioVendas({
   );
 }
 
+function podiumListRowClass(place: number) {
+  return cn(
+    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+    place === 1 &&
+      "bg-amber-200/75 hover:bg-amber-200 dark:bg-amber-500/25 dark:hover:bg-amber-500/35",
+    place === 2 &&
+      "bg-slate-200/85 hover:bg-slate-200 dark:bg-slate-400/25 dark:hover:bg-slate-400/35",
+    place === 3 &&
+      "bg-orange-200/75 hover:bg-orange-200 dark:bg-orange-500/25 dark:hover:bg-orange-500/35",
+    place > 3 && "hover:bg-muted/60",
+  );
+}
+
 function RankingList({
   corretores,
   onSelect,
@@ -721,7 +734,7 @@ function RankingList({
               key={row.corretorId}
               type="button"
               onClick={() => onSelect(row)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
+              className={podiumListRowClass(place)}
             >
               <span
                 className={cn(
@@ -827,8 +840,9 @@ function ConstrutorasRanking({
                 type="button"
                 onClick={() => onSelect(item)}
                 className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60",
-                  selected && "bg-primary/5",
+                  podiumListRowClass(place),
+                  selected && !topThree && "bg-primary/5",
+                  selected && "ring-1 ring-inset ring-primary/30",
                 )}
               >
                 <span
