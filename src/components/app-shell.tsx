@@ -64,7 +64,6 @@ import {
   type AgendaUrgencia,
 } from "@/lib/agenda-api";
 import { AgendaLembretesDialog } from "@/components/agenda-lembretes-dialog";
-import { SidebarReorgNotice } from "@/components/sidebar-reorg-notice";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1225,8 +1224,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
         <GuiaTourHost />
       </div>
-
-      <SidebarReorgNotice />
 
       <AgendaLembretesDialog
         open={lembretesOpen}
