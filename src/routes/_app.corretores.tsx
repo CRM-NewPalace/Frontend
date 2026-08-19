@@ -44,16 +44,11 @@ import {
   UsersRound,
   Wallet,
 } from "lucide-react";
-import { AtrasosResumoBanner } from "@/components/corretores-atrasos";
 import { SemConexao } from "@/components/sem-conexao";
 import { VendasResumoDialog } from "@/components/vendas-resumo-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fetchConstrutoraVendas, type ConstrutoraVenda } from "@/lib/construtoras-api";
-import {
-  fetchCorretoresMonitoramento,
-} from "@/lib/leads-api";
-import type { CorretorMonitoramento } from "@/lib/lead-monitoramento";
 
 export const Route = createFileRoute("/_app/corretores")({
   head: () => ({ meta: [{ title: "Ranking — Zone Connection" }] }),
@@ -192,10 +187,6 @@ function Page() {
   } | null>(null);
   const [vendasItems, setVendasItems] = useState<ConstrutoraVenda[]>([]);
   const [loadingVendas, setLoadingVendas] = useState(false);
-  const [monitoramento, setMonitoramento] = useState<CorretorMonitoramento[]>(
-    [],
-  );
-  const [soPendencias, setSoPendencias] = useState(false);
 
   const anosDisponiveis = useMemo(() => {
     const list: number[] = [];
@@ -226,21 +217,6 @@ function Page() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (!canView) return;
-    let cancelled = false;
-    void fetchCorretoresMonitoramento()
-      .then((rows) => {
-        if (!cancelled) setMonitoramento(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setMonitoramento([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [canView]);
 
   useEffect(() => {
     if (!vendasAlvo) {
@@ -287,18 +263,6 @@ function Page() {
     [granularidade],
   );
   const periodoNoun = PERIODO_NOUN[granularidade];
-  const pendingById = useMemo(() => {
-    const map = new Map<string, CorretorMonitoramento>();
-    for (const row of monitoramento) map.set(row.id, row);
-    return map;
-  }, [monitoramento]);
-
-  const corretoresVisiveis = useMemo(() => {
-    const list = data?.corretores ?? [];
-    if (!soPendencias) return list;
-    return list.filter((row) => pendingById.has(row.corretorId));
-  }, [data?.corretores, pendingById, soPendencias]);
-
   const filtros = (
     <div className="flex flex-wrap items-end gap-2">
       <div className="space-y-1">
@@ -358,14 +322,6 @@ function Page() {
           </SelectContent>
         </Select>
       </div>
-      <label className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs">
-        <input
-          type="checkbox"
-          checked={soPendencias}
-          onChange={(e) => setSoPendencias(e.target.checked)}
-        />
-        Só com pendências
-      </label>
     </div>
   );
 
@@ -408,9 +364,6 @@ function Page() {
         />
       ) : (
         <>
-          {monitoramento.length > 0 && (
-            <AtrasosResumoBanner rows={monitoramento} className="mt-4" />
-          )}
           <section className="mt-4 grid gap-3 grid-cols-2 xl:grid-cols-4">
             <FinanceKpiCard
               label={`Entradas do ${periodoNoun}`}
@@ -462,7 +415,7 @@ function Page() {
             <div className="grid gap-4 xl:grid-cols-2">
               <PodioVendas
                 title="Pódio de vendas · corretores"
-                items={corretoresVisiveis.map((row) => ({
+                items={data.corretores.map((row) => ({
                   id: row.corretorId,
                   nome: row.nome,
                   vendas: row.vendas.valor,
@@ -495,8 +448,7 @@ function Page() {
             </div>
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
               <RankingList
-                corretores={corretoresVisiveis}
-                pendingById={pendingById}
+                corretores={data.corretores}
                 onSelect={(row) =>
                   setVendasAlvo({
                     kind: "corretor",
@@ -743,11 +695,9 @@ function PodioVendas({
 
 function RankingList({
   corretores,
-  pendingById,
   onSelect,
 }: {
   corretores: DashboardRankingCorretor[];
-  pendingById: Map<string, CorretorMonitoramento>;
   onSelect: (row: DashboardRankingCorretor) => void;
 }) {
   const maxVgv = Math.max(...corretores.map((row) => row.vgv.valor ?? 0), 1);
@@ -771,11 +721,7 @@ function RankingList({
               key={row.corretorId}
               type="button"
               onClick={() => onSelect(row)}
-              className={cn(
-                "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60",
-                pendingById.has(row.corretorId) &&
-                  "border-l-4 border-l-red-500 bg-red-500/5",
-              )}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
             >
               <span
                 className={cn(
@@ -808,14 +754,6 @@ function RankingList({
                   >
                     {row.nome}
                   </span>
-                  {pendingById.get(row.corretorId) && (
-                    <Badge variant="destructive" className="text-[10px] px-1.5">
-                      {pendingById.get(row.corretorId)!.totalAtrasos} atraso
-                      {pendingById.get(row.corretorId)!.totalAtrasos === 1
-                        ? ""
-                        : "s"}
-                    </Badge>
-                  )}
                   <span className="shrink-0 text-xs font-semibold tabular-nums">
                     {money(row.vgv.valor)}
                   </span>
