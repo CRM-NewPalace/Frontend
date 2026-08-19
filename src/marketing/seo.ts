@@ -1,8 +1,10 @@
 /** Nome canônico da marca em titles e schema. */
 export const SITE_NAME = "Zone Connection";
 
-/** Imagem padrão para Open Graph / Twitter (1200×630 ideal). */
-export const DEFAULT_OG_IMAGE = "/og-default.png";
+/** Imagem padrão para Open Graph / Twitter ao compartilhar o link. */
+export const DEFAULT_OG_IMAGE = "/logoZoneConnection.png";
+export const DEFAULT_OG_IMAGE_WIDTH = "1029";
+export const DEFAULT_OG_IMAGE_HEIGHT = "711";
 
 /**
  * URL pública do site. Defina `VITE_SITE_URL` em produção
@@ -58,6 +60,10 @@ export function marketingHead({
       { property: "og:type", content: "website" },
       { property: "og:url", content: url },
       { property: "og:image", content: imageUrl },
+      { property: "og:image:type", content: "image/png" },
+      { property: "og:image:width", content: DEFAULT_OG_IMAGE_WIDTH },
+      { property: "og:image:height", content: DEFAULT_OG_IMAGE_HEIGHT },
+      { property: "og:image:alt", content: SITE_NAME },
       { property: "og:locale", content: "pt_BR" },
       { property: "og:site_name", content: SITE_NAME },
       { name: "twitter:card", content: "summary_large_image" },

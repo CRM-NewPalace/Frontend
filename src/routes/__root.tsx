@@ -17,6 +17,13 @@ import { GoogleAnalytics } from "@/components/google-analytics";
 import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { syncSurfaceForPath } from "../lib/crm-surface";
+import {
+  DEFAULT_OG_IMAGE,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_WIDTH,
+  SITE_NAME,
+  absoluteUrl,
+} from "@/marketing/seo";
 
 function NotFoundComponent() {
   return (
@@ -169,9 +176,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               "Ecossistema Zone Connection: CRM imobiliário, IA para WhatsApp e sites/landing pages — gestão, atendimento e captação no mesmo lugar.",
           },
           { property: "og:type", content: "website" },
-          { property: "og:image", content: "/og-default.png" },
+          { property: "og:image", content: absoluteUrl(DEFAULT_OG_IMAGE) },
+          { property: "og:image:type", content: "image/png" },
+          { property: "og:image:width", content: DEFAULT_OG_IMAGE_WIDTH },
+          { property: "og:image:height", content: DEFAULT_OG_IMAGE_HEIGHT },
+          { property: "og:image:alt", content: SITE_NAME },
           { name: "twitter:card", content: "summary_large_image" },
-          { name: "twitter:image", content: "/og-default.png" },
+          { name: "twitter:image", content: absoluteUrl(DEFAULT_OG_IMAGE) },
           {
             // frame-ancestors NÃO funciona em <meta> — só em header HTTP (ver server.ts).
             httpEquiv: "Content-Security-Policy",
