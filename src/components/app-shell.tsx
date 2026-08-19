@@ -543,9 +543,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       void navigate({ to: "/imoveis" });
       return;
     }
+    if (n.tipo === "proposta_vencimento_proximo") {
+      if (
+        user &&
+        canAccessRoute(
+          user.role,
+          "/propostas",
+          user.tenant?.modules ?? null,
+          user.tenant?.plano,
+        )
+      ) {
+        void navigate({ to: "/propostas" });
+      } else if (n.leadId) {
+        void navigate({
+          to: "/funil",
+          search: { lead: n.leadId },
+        });
+      } else {
+        void navigate({ to: "/funil" });
+      }
+      return;
+    }
     if (
       n.tipo === "lead_prazo_proximo" ||
       n.tipo === "lead_prazo_ultrapassado" ||
+      n.tipo === "lead_sem_atendimento" ||
       n.tipo === "tarefa_atrasada"
     ) {
       void navigate({

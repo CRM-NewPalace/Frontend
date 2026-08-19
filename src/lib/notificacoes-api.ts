@@ -10,8 +10,10 @@ export type NotificacaoTipo =
   | "agenda_lembrete_1h"
   | "lead_prazo_proximo"
   | "lead_prazo_ultrapassado"
+  | "lead_sem_atendimento"
   | "tarefa_atrasada"
-  | "imovel_compativel";
+  | "imovel_compativel"
+  | "proposta_vencimento_proximo";
 
 export type Notificacao = {
   id: string;
@@ -23,6 +25,7 @@ export type Notificacao = {
   analiseId: string | null;
   agendamentoId: string | null;
   empreendimentoId: string | null;
+  propostaId: string | null;
   createdAt: string;
 };
 
