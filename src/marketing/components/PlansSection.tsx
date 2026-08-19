@@ -42,6 +42,43 @@ interface Plan {
 
 const PLANS: Plan[] = [
   {
+    id: "solo",
+    medal: "👤",
+    name: "Solo",
+    audience: "Ideal para corretores autônomos",
+    users: "1 usuário + 1 extra",
+    setupFee: "R$ 490,00",
+    monthlyFee: "R$ 297,00/mensal",
+    theme: {
+      header: "from-sky-50 via-cyan-50/80 to-white",
+      medal: "bg-sky-100 ring-sky-200/80",
+      accent: "text-sky-700",
+      priceCard: "border-sky-100 bg-sky-50/60",
+      contractBest: "border-sky-300 bg-sky-50 ring-sky-200/60",
+    },
+    contractTerms: [
+      { duration: "3 meses", discount: "Sem desconto", price: "R$ 297,00/mês" },
+      {
+        duration: "6 meses",
+        discount: "10% de desconto",
+        price: "R$ 267,30/mês",
+      },
+      {
+        duration: "12 meses",
+        discount: "25% de desconto",
+        price: "R$ 222,75/mês",
+        bestValue: true,
+      },
+    ],
+    features: [
+      "CRM do corretor (leads, funil, agenda, clientes e imóveis)",
+      "Propostas, documentação e contratos",
+      "Metas pessoais",
+      "Comissão, contas a receber/pagar e fluxo de caixa",
+      "Usuário extra: R$ 15,00 por usuário/mês",
+    ],
+  },
+  {
     id: "bronze",
     medal: "🥉",
     name: "Bronze",
@@ -487,7 +524,7 @@ export function PlansSection() {
             Planos
           </span>
           <h2 className="text-2xl font-semibold leading-tight text-brand-dark sm:text-3xl lg:text-4xl">
-            O plano certo para cada fase da sua imobiliária.
+            O plano certo para cada fase: corretor solo ou imobiliária.
           </h2>
           <p className="text-base leading-relaxed text-text-muted sm:text-lg">
             Do primeiro passo longe das planilhas até a operação inteligente que
@@ -495,7 +532,7 @@ export function PlansSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+        <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
           {PLANS.map((plan) => (
             <PlanCard key={plan.id} plan={plan} />
           ))}

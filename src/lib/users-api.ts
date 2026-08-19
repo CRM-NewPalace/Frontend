@@ -144,7 +144,7 @@ export async function fetchUsers(params?: {
 }
 
 export type UsersQuota = {
-  plano: "bronze" | "prata" | "ouro";
+  plano: "solo" | "bronze" | "prata" | "ouro";
   maxUsuarios: number;
   usuariosExtras: number;
   limite: number;

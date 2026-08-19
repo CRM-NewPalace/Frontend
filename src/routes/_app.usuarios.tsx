@@ -69,7 +69,7 @@ import {
   IdCard,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
-import { isAnalistaAllowed } from "@/lib/tenant-modules";
+import { isAnalistaAllowed, isGerenteAllowed } from "@/lib/tenant-modules";
 import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
@@ -378,6 +378,7 @@ function Usuarios() {
     session?.tenant?.plano,
     session?.tenant?.modules ?? null,
   );
+  const canUseGerente = isGerenteAllowed(session?.tenant?.plano);
   const { leads, refresh: refreshLeads } = useLeads();
 
   const cachedUsers = getUsersCache();
@@ -879,7 +880,9 @@ function Usuarios() {
             <SelectContent>
               <SelectItem value="all">Todos os perfis</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
-              <SelectItem value="gerente">Gerente</SelectItem>
+              {canUseGerente && (
+                <SelectItem value="gerente">Gerente</SelectItem>
+              )}
               {canUseAnalista && (
                 <SelectItem value="analista">Analista</SelectItem>
               )}
@@ -1357,7 +1360,9 @@ function Usuarios() {
                       {isAdmin && (
                         <>
                           <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="gerente">Gerente</SelectItem>
+                          {canUseGerente && (
+                            <SelectItem value="gerente">Gerente</SelectItem>
+                          )}
                           {canUseAnalista && (
                             <SelectItem value="analista">Analista</SelectItem>
                           )}

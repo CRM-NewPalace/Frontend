@@ -769,7 +769,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/usuarios",
         who: "Admin cria. Gerente pode ver/gerar senha temporária da equipe, conforme permissão.",
         summary:
-          "Contas e papéis: admin, gerente, corretor, analista, treinee. O plano limita quantidade (Bronze 5, Prata 15, Ouro 30).",
+          "Contas e papéis: admin, gerente, corretor, analista, treinee. O plano limita quantidade (Solo 1, Bronze 5, Prata 15, Ouro 30).",
         actions: [
           {
             title: "Criar usuário",
@@ -779,11 +779,11 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Papéis",
             detail:
-              "Admin = operação + gestão + financeiro (se o plano tiver). Gerente = time. Corretor = carteira. Analista = documentação/análise (não no Bronze). Treinee ≈ corretor com mais cadastro de catálogo.",
+              "Admin = operação + gestão + financeiro (se o plano tiver). Gerente = time (não no Solo). Corretor = carteira. Analista = documentação/análise (não no Solo/Bronze). Treinee ≈ corretor com mais cadastro de catálogo.",
           },
         ],
         tips: [
-          "Bronze: CRM operacional. Prata: administrativo ou financeiro. Ouro: tudo.",
+          "Solo: CRM + fechamento + metas + financeiro enxuto. Bronze: CRM operacional. Prata: administrativo ou financeiro. Ouro: tudo.",
         ],
       },
       {

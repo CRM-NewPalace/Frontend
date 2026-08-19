@@ -22,7 +22,7 @@ export type Tenant = {
   density: string;
   homePath: string;
   modules: Record<string, boolean> | null;
-  plano: "bronze" | "prata" | "ouro";
+  plano: "solo" | "bronze" | "prata" | "ouro";
   maxUsuarios: number;
   usuariosExtras: number;
   iaBotEnabled: boolean;
@@ -65,7 +65,7 @@ export type CreateTenantInput = {
   status?: UserStatus;
   logoUrl?: string | null;
   modules?: Record<string, boolean> | null;
-  plano?: "bronze" | "prata" | "ouro";
+  plano?: "solo" | "bronze" | "prata" | "ouro";
   maxUsuarios?: number;
   usuariosExtras?: number;
   iaBotEnabled?: boolean;
@@ -93,7 +93,7 @@ export type UpdateTenantInput = {
   status?: UserStatus;
   logoUrl?: string | null;
   modules?: Record<string, boolean> | null;
-  plano?: "bronze" | "prata" | "ouro";
+  plano?: "solo" | "bronze" | "prata" | "ouro";
   maxUsuarios?: number;
   usuariosExtras?: number;
   iaBotEnabled?: boolean;

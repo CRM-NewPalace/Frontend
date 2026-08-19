@@ -143,19 +143,46 @@ export function modulesFromTenantJson(
   return base;
 }
 
-export type TenantPlano = "bronze" | "prata" | "ouro";
+export type TenantPlano = "solo" | "bronze" | "prata" | "ouro";
 
 export const PLANO_MAX_USUARIOS: Record<TenantPlano, number> = {
+  solo: 1,
   bronze: 5,
   prata: 15,
   ouro: 30,
 };
 
 export const PLANO_LABELS: Record<TenantPlano, string> = {
+  solo: "Solo — Corretor",
   bronze: "Bronze — CRM",
   prata: "Prata — CRM + Administrativo ou Financeiro",
   ouro: "Ouro — Todos os módulos",
 };
+
+/** Financeiro enxuto do Solo (o módulo `financeiro` continua ligado). */
+export const SOLO_FINANCEIRO_ROUTES = [
+  "/financeiro/comissao",
+  "/financeiro/contas-a-receber",
+  "/financeiro/contas-a-pagar",
+  "/financeiro/fluxo-caixa",
+] as const;
+
+const SOLO_ENABLED = new Set<TenantModuleKey>([
+  "dashboard",
+  "leads",
+  "funil",
+  "agenda",
+  "imoveis",
+  "clientes",
+  "construtoras",
+  "usuarios",
+  "configuracoes",
+  "documentacao",
+  "propostas",
+  "contratos",
+  "metas",
+  "financeiro",
+]);
 
 const ADMIN_TOGGLE_KEYS: TenantModuleKey[] = [
   "equipes",
@@ -176,24 +203,46 @@ export function isAdminGroupEnabled(
 /** @deprecated Use isAdminGroupEnabled */
 export const adminGroupEnabled = isAdminGroupEnabled;
 
-/** Analista: nunca no Bronze; Prata/Ouro só com administrativo ativo. */
+/** Analista: nunca no Solo/Bronze; Prata/Ouro só com administrativo ativo. */
 export function isAnalistaAllowed(
   plano: TenantPlano | null | undefined,
   modules?: Record<string, boolean> | null,
 ): boolean {
-  if (!plano || plano === "bronze") return false;
+  if (!plano || plano === "bronze" || plano === "solo") return false;
   const normalized = modulesFromTenantJson(modules);
   return isAdminGroupEnabled(normalized);
 }
 
+export function isGerenteAllowed(plano: TenantPlano | null | undefined): boolean {
+  return plano !== "solo";
+}
+
+export function isFinanceiroPathAllowed(
+  path: string,
+  plano?: TenantPlano | null,
+): boolean {
+  if (plano !== "solo") return true;
+  if (path === "/financeiro" || path === "/financeiro/") return true;
+  if (!path.startsWith("/financeiro")) return true;
+  return SOLO_FINANCEIRO_ROUTES.some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}
+
 /**
  * Normaliza módulos pelas regras do plano (espelha o backend).
- * Prata: administrativo XOR financeiro (se ambos, prioriza administrativo).
+ * Solo: recorte fixo. Prata: administrativo XOR financeiro (se ambos, prioriza administrativo).
  */
 export function normalizeModulesForPlano(
   plano: TenantPlano,
   modules: Record<TenantModuleKey, boolean>,
 ): Record<TenantModuleKey, boolean> {
+  if (plano === "solo") {
+    const next = defaultModulesRecord(false);
+    for (const key of SOLO_ENABLED) next[key] = true;
+    return next;
+  }
+
   const next = { ...modules };
   for (const key of TENANT_MODULE_GROUPS.find((g) => g.id === "operacional")!
     .modules.map((m) => m.key)) {
@@ -225,6 +274,9 @@ export function normalizeModulesForPlano(
 export function modulesPresetForPlano(
   plano: TenantPlano,
 ): Record<TenantModuleKey, boolean> {
+  if (plano === "solo") {
+    return normalizeModulesForPlano(plano, defaultModulesRecord(false));
+  }
   const next = defaultModulesRecord(false);
   for (const key of TENANT_MODULE_GROUPS.find((g) => g.id === "operacional")!
     .modules.map((m) => m.key)) {

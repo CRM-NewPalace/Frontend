@@ -987,8 +987,12 @@ function TenantsPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Cota base: {PLANO_MAX_USUARIOS[form.plano]} usuários.
-                      Extras liberam além do limite para o admin da imobiliária.
+                      Cota base: {PLANO_MAX_USUARIOS[form.plano]} usuário
+                      {PLANO_MAX_USUARIOS[form.plano] === 1 ? "" : "s"}.
+                      Extras liberam além do limite
+                      {form.plano === "solo"
+                        ? " (ex.: um assistente)."
+                        : " para o admin da imobiliária."}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1079,7 +1083,9 @@ function TenantsPage() {
               <TabsContent value="modulos" className="mt-0 space-y-0">
                 <FormSection title="Módulos">
                   <p className="text-xs text-muted-foreground -mt-1">
-                    {form.plano === "bronze"
+                    {form.plano === "solo"
+                      ? "Solo tem recorte fixo: CRM, fechamento, metas e financeiro enxuto (comissão, a receber, a pagar e fluxo de caixa)."
+                      : form.plano === "bronze"
                       ? "Bronze inclui apenas o CRM operacional (Usuários e Configurações ficam para o admin)."
                       : form.plano === "prata"
                         ? "Prata: escolha Administrativo ou Financeiro (não os dois). Analista só com Administrativo."
@@ -1094,6 +1100,7 @@ function TenantsPage() {
                         form.plano === "bronze" &&
                         (group.id === "administrativo" ||
                           group.id === "financeiro");
+                      const soloLocked = form.plano === "solo";
                       const prataFinanceLockedByAdmin =
                         form.plano === "prata" &&
                         group.id === "financeiro" &&
@@ -1114,7 +1121,8 @@ function TenantsPage() {
                               {group.label}
                             </p>
                             {group.id === "administrativo" &&
-                            form.plano !== "bronze" ? (
+                            form.plano !== "bronze" &&
+                            form.plano !== "solo" ? (
                               <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
                                 <span className="text-muted-foreground">
                                   {adminOn ? "Ativo" : "Desativado"}
@@ -1156,7 +1164,8 @@ function TenantsPage() {
                           ) : null}
                           {group.id === "administrativo" &&
                           !adminOn &&
-                          form.plano !== "bronze" ? (
+                          form.plano !== "bronze" &&
+                          form.plano !== "solo" ? (
                             <p className="text-[11px] text-muted-foreground">
                               Desativar o administrativo oculta estes módulos
                               (exceto Usuários e Configurações) e remove o perfil
@@ -1183,7 +1192,7 @@ function TenantsPage() {
                                 <label
                                   key={mod.key}
                                   className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
-                                    lockedOff
+                                    lockedOff || soloLocked
                                       ? "opacity-60 bg-muted/40"
                                       : "bg-background"
                                   }`}
@@ -1191,7 +1200,9 @@ function TenantsPage() {
                                   <input
                                     type="checkbox"
                                     checked={form.modules[mod.key] !== false}
-                                    disabled={lockedOff || bronzeLocked}
+                                    disabled={
+                                      lockedOff || bronzeLocked || soloLocked
+                                    }
                                     onChange={(e) =>
                                       setForm((prev) => {
                                         let modules = {

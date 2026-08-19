@@ -25,7 +25,7 @@ export type TenantBranding = {
   density: "comfortable" | "compact" | string;
   homePath: string;
   modules: Record<string, boolean> | null;
-  plano?: "bronze" | "prata" | "ouro";
+  plano?: "solo" | "bronze" | "prata" | "ouro";
   maxUsuarios?: number;
   usuariosExtras?: number;
   iaBotEnabled?: boolean;

@@ -311,13 +311,28 @@ export function GuiaSistemaPage({
   });
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase("pt-BR");
-    if (!q) return GUIA_GROUPS;
-    return GUIA_GROUPS.map((group) => ({
+    const byAccess = GUIA_GROUPS.map((group) => ({
       ...group,
-      topics: group.topics.filter((topic) => topicMatches(topic, q)),
+      topics: group.topics.filter((topic) => {
+        if (!topic.href || !user) return true;
+        return canAccessRoute(
+          user.role,
+          topic.href,
+          user.tenant?.modules ?? null,
+          user.tenant?.plano ?? null,
+        );
+      }),
     })).filter((group) => group.topics.length > 0);
-  }, [query]);
+
+    const q = query.trim().toLocaleLowerCase("pt-BR");
+    if (!q) return byAccess;
+    return byAccess
+      .map((group) => ({
+        ...group,
+        topics: group.topics.filter((topic) => topicMatches(topic, q)),
+      }))
+      .filter((group) => group.topics.length > 0);
+  }, [query, user]);
 
   useEffect(() => {
     if (!query.trim()) return;
