@@ -224,6 +224,7 @@ function ConstrutorasPage() {
     user?.role === "analista" ||
     user?.role === "treinee" ||
     user?.role === "corretor";
+  const canDelete = isAdmin || user?.role === "treinee";
   const canCreate = canManage;
   const canSeeViabilizadorContato = user?.role !== "corretor";
   const { catalog } = useCatalog();
@@ -643,7 +644,7 @@ function ConstrutorasPage() {
   }
 
   async function handleDelete() {
-    if (!deleteId || !isAdmin) return;
+    if (!deleteId || !canDelete) return;
     try {
       await deleteConstrutora(deleteId);
       toast.success("Construtora excluída.");
@@ -1255,7 +1256,7 @@ function ConstrutorasPage() {
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             )}
-                            {isAdmin && (
+                            {canDelete && (
                               <Button
                                 variant="ghost"
                                 size="icon"

@@ -344,15 +344,15 @@ function Clientes() {
         (canOwnCarteira && user && corretorNome === user.name
           ? user.id
           : undefined);
-    const rendaNum = parseOptionalMoneyInput(String(form.renda));
+    const rendaParsed = parseOptionalMoneyInput(String(form.renda));
+    const rendaNum =
+      rendaParsed != null ? Math.round(rendaParsed) : null;
     const emailFinal =
       email || `contato.${phoneDigits(telefone)}@sem-email.local`;
     const origemFinal = form.origem.trim() || "Não informado";
 
     try {
       if (formMode === "create") {
-        setFormOpen(false);
-        toast.success(`Cliente "${nome}" cadastrado.`);
         await addLead({
           tipo: "cliente",
           nome,
@@ -368,9 +368,9 @@ function Clientes() {
           ...(corretorId ? { corretorId } : {}),
           ...(form.createdAt ? { createdAt: form.createdAt } : {}),
         });
-      } else if (editingId) {
         setFormOpen(false);
-        toast.success("Cliente atualizado.");
+        toast.success(`Cliente "${nome}" cadastrado.`);
+      } else if (editingId) {
         await updateLead(editingId, {
           nome,
           telefone,
@@ -384,6 +384,8 @@ function Clientes() {
           ...(corretorId ? { corretorId } : {}),
           ...(form.createdAt ? { createdAt: form.createdAt } : {}),
         });
+        setFormOpen(false);
+        toast.success("Cliente atualizado.");
       }
     } catch (err) {
       toast.error(

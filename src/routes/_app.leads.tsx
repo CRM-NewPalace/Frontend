@@ -804,7 +804,9 @@ function LeadsPage() {
       return;
     }
 
-    const rendaNum = parseOptionalMoneyInput(String(form.renda));
+    const rendaParsed = parseOptionalMoneyInput(String(form.renda));
+    const rendaNum =
+      rendaParsed != null ? Math.round(rendaParsed) : null;
     const otherTags =
       formMode === "edit" && editingId
         ? (leads
@@ -855,8 +857,6 @@ function LeadsPage() {
 
     try {
       if (formMode === "edit" && editingId) {
-        setOpen(false);
-        toast.success(`Lead ${nome} atualizado.`);
         await updateLead(editingId, {
           nome,
           telefone,
@@ -874,11 +874,11 @@ function LeadsPage() {
           ...(corretorId !== undefined ? { corretorId } : {}),
           ...(form.createdAt ? { createdAt: form.createdAt } : {}),
         });
+        setOpen(false);
+        toast.success(`Lead ${nome} atualizado.`);
         return;
       }
 
-      setOpen(false);
-      toast.success(`Lead ${nome} criado com sucesso.`);
       await addLead({
         tipo: "lead",
         nome,
@@ -899,6 +899,8 @@ function LeadsPage() {
         ...(corretorId !== undefined ? { corretorId } : {}),
         ...(form.createdAt ? { createdAt: form.createdAt } : {}),
       });
+      setOpen(false);
+      toast.success(`Lead ${nome} criado com sucesso.`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Não foi possível salvar o lead.",

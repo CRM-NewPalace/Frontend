@@ -562,6 +562,7 @@ function DocumentacaoPage() {
     user?.role === "gerente" ||
     user?.role === "treinee";
   const canMutateDocs = user?.role === "admin" || user?.role === "analista";
+  const canEditDocs = canMutateDocs || user?.role === "gerente";
   const {
     leads,
     assignees,
@@ -2776,20 +2777,20 @@ function DocumentacaoPage() {
                               <Eye className="w-3.5 h-3.5 mr-2" />
                               Visualizar
                             </DropdownMenuItem>
+                            {canEditDocs && (
+                              <DropdownMenuItem onClick={() => openEdit(doc)}>
+                                <Pencil className="w-3.5 h-3.5 mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                            )}
                             {canMutateDocs && (
-                              <>
-                                <DropdownMenuItem onClick={() => openEdit(doc)}>
-                                  <Pencil className="w-3.5 h-3.5 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => setDeleteId(doc.id)}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteId(doc.id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
