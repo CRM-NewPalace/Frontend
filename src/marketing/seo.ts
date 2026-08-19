@@ -1,26 +1,57 @@
 /** Nome canônico da marca em titles e schema. */
 export const SITE_NAME = "Zone Connection";
 
-/** Imagem padrão para Open Graph / Twitter ao compartilhar o link. */
-export const DEFAULT_OG_IMAGE = "/logoZoneConnection.png";
+/**
+ * Imagem de preview ao compartilhar o link.
+ * `?v=` força recache no WhatsApp/Facebook depois de trocar a arte.
+ */
+export const DEFAULT_OG_IMAGE = "/logoZoneConnection.png?v=20260819";
 export const DEFAULT_OG_IMAGE_WIDTH = "1029";
 export const DEFAULT_OG_IMAGE_HEIGHT = "711";
 
+const APEX_HOST = "zoneconnection.com.br";
+const WWW_ORIGIN = "https://www.zoneconnection.com.br";
+
 /**
  * URL pública do site. Defina `VITE_SITE_URL` em produção
- * (ex.: https://zoneconnection.com.br).
+ * (ex.: https://www.zoneconnection.com.br).
+ *
+ * Apex (`zoneconnection.com.br`) redireciona 308 para `www` — crawlers do
+ * WhatsApp/Facebook frequentemente não seguem redirect em `og:image`.
  */
 export function getSiteUrl(): string {
   const fromEnv = (import.meta.env.VITE_SITE_URL as string | undefined)?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) return canonicalizeSiteUrl(fromEnv);
   if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin;
+    return canonicalizeSiteUrl(window.location.origin);
   }
-  return "https://zoneconnection.com.br";
+  return WWW_ORIGIN;
+}
+
+function canonicalizeSiteUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === APEX_HOST) {
+      parsed.hostname = `www.${APEX_HOST}`;
+    }
+    return parsed.origin;
+  } catch {
+    return url.replace(/\/$/, "");
+  }
 }
 
 export function absoluteUrl(path: string): string {
-  if (/^https?:\/\//i.test(path)) return path;
+  if (/^https?:\/\//i.test(path)) {
+    try {
+      const parsed = new URL(path);
+      if (parsed.hostname === APEX_HOST) {
+        parsed.hostname = `www.${APEX_HOST}`;
+      }
+      return parsed.href;
+    } catch {
+      return path;
+    }
+  }
   const base = getSiteUrl();
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
@@ -60,6 +91,7 @@ export function marketingHead({
       { property: "og:type", content: "website" },
       { property: "og:url", content: url },
       { property: "og:image", content: imageUrl },
+      { property: "og:image:secure_url", content: imageUrl },
       { property: "og:image:type", content: "image/png" },
       { property: "og:image:width", content: DEFAULT_OG_IMAGE_WIDTH },
       { property: "og:image:height", content: DEFAULT_OG_IMAGE_HEIGHT },

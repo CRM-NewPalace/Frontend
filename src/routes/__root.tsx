@@ -177,6 +177,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           },
           { property: "og:type", content: "website" },
           { property: "og:image", content: absoluteUrl(DEFAULT_OG_IMAGE) },
+          {
+            property: "og:image:secure_url",
+            content: absoluteUrl(DEFAULT_OG_IMAGE),
+          },
           { property: "og:image:type", content: "image/png" },
           { property: "og:image:width", content: DEFAULT_OG_IMAGE_WIDTH },
           { property: "og:image:height", content: DEFAULT_OG_IMAGE_HEIGHT },
