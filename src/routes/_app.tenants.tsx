@@ -51,12 +51,14 @@ import {
   duplicateTenant,
   fetchTenant,
   fetchTenants,
+  populateTenantDemoData,
   resetTenantAdminPassword,
   slugifyTenantName,
   updateMetaConnection,
   updateOzapConnection,
   updateTenant,
   updateTenantAdmin,
+  type PopulateDemoDataResult,
   type Tenant,
   type TenantAdminUser,
   type TenantDetail,
@@ -77,10 +79,12 @@ import {
 } from "@/lib/tenant-modules";
 import { formatCpfCnpj } from "@/lib/utils";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Building2,
   Check,
   Copy,
+  DatabaseZap,
   Files,
   KeyRound,
   Link2,
@@ -90,6 +94,7 @@ import {
   Plus,
   Share2,
   Shield,
+  Sparkles,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -175,6 +180,12 @@ function TenantsPage() {
   const [deletingTenant, setDeletingTenant] = useState(false);
   const [duplicateTarget, setDuplicateTarget] = useState<Tenant | null>(null);
   const [duplicatingTenant, setDuplicatingTenant] = useState(false);
+  const [demoTarget, setDemoTarget] = useState<Tenant | null>(null);
+  const [demoLimparAntes, setDemoLimparAntes] = useState(false);
+  const [populatingDemo, setPopulatingDemo] = useState(false);
+  const [demoResult, setDemoResult] = useState<PopulateDemoDataResult | null>(
+    null,
+  );
 
   const [editingAdmin, setEditingAdmin] = useState<TenantAdminUser | null>(
     null,
@@ -517,6 +528,31 @@ function TenantsPage() {
     }
   }
 
+  async function confirmPopulateDemo() {
+    if (!demoTarget) return;
+    setPopulatingDemo(true);
+    try {
+      const result = await populateTenantDemoData(demoTarget.id, {
+        limparAntes: demoLimparAntes,
+      });
+      setDemoTarget(null);
+      setDemoLimparAntes(false);
+      setDemoResult(result);
+      toast.success(
+        `Dados de demonstração gerados em "${result.tenantName}".`,
+      );
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Falha ao gerar os dados de demonstração.",
+      );
+    } finally {
+      setPopulatingDemo(false);
+    }
+  }
+
   async function handleAddMeta(e: FormEvent) {
     e.preventDefault();
     if (!detail) return;
@@ -673,7 +709,7 @@ function TenantsPage() {
                   <TableHead>Plano</TableHead>
                   <TableHead>Conexão</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[200px] text-right">Ações</TableHead>
+                  <TableHead className="w-[240px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -771,6 +807,19 @@ function TenantsPage() {
                           onClick={() => setDuplicateTarget(item)}
                         >
                           <Files className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title="Popular com dados de demonstração"
+                          disabled={populatingDemo}
+                          onClick={() => {
+                            setDemoLimparAntes(false);
+                            setDemoTarget(item);
+                          }}
+                        >
+                          <DatabaseZap className="h-4 w-4" />
                         </Button>
                         <Button
                           type="button"
@@ -1675,6 +1724,173 @@ function TenantsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(demoTarget)}
+        onOpenChange={(open) => !open && !populatingDemo && setDemoTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Popular com dados de demonstração?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Gera uma operação fictícia completa em{" "}
+              <strong>{demoTarget?.name}</strong> (
+              <code>{demoTarget?.slug}</code>): usuários (gerentes, corretores,
+              analista e trainee), equipes, funil, catálogos, construtoras,
+              empreendimentos, leads e clientes em todas as etapas, leads
+              perdidos, triagem, documentações, propostas, análises, agenda,
+              metas, notificações, treinamento e financeiro (títulos, despesas,
+              recebimentos e comissões).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+            <Checkbox
+              checked={demoLimparAntes}
+              disabled={populatingDemo}
+              onCheckedChange={(checked) =>
+                setDemoLimparAntes(checked === true)
+              }
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">
+                Limpar os dados atuais antes de gerar
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Apaga leads, imóveis, agenda, documentações, financeiro e os
+                usuários de demonstração deste cliente. O admin e os usuários
+                reais, o funil e as conexões são mantidos. Sem marcar, os dados
+                novos são apenas somados (registros já existentes são
+                reaproveitados).
+              </span>
+            </span>
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={populatingDemo}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={populatingDemo}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmPopulateDemo();
+              }}
+            >
+              {populatingDemo ? "Gerando…" : "Gerar dados"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <FormDialogShell
+        open={Boolean(demoResult)}
+        onOpenChange={(o) => !o && setDemoResult(null)}
+        icon={<Sparkles className="w-5 h-5" />}
+        title="Dados de demonstração gerados"
+        description={
+          demoResult
+            ? `${demoResult.tenantName} (${demoResult.slug}) já está com uma operação fictícia completa.`
+            : undefined
+        }
+      >
+        {demoResult && (
+          <>
+            <FormDialogBody>
+              <FormSection
+                icon={<DatabaseZap className="w-3.5 h-3.5 text-primary" />}
+                title="Registros criados"
+              >
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {(
+                    [
+                      ["Usuários", demoResult.counts.usuarios],
+                      ["Equipes", demoResult.counts.equipes],
+                      ["Catálogos", demoResult.counts.catalogItems],
+                      ["Localidades", demoResult.counts.localidades],
+                      ["Construtoras", demoResult.counts.construtoras],
+                      ["Empreendimentos", demoResult.counts.empreendimentos],
+                      ["Leads e clientes", demoResult.counts.leads],
+                      ["Triagens", demoResult.counts.triagens],
+                      ["Documentações", demoResult.counts.documentacoes],
+                      ["Propostas", demoResult.counts.propostas],
+                      ["Análises", demoResult.counts.analises],
+                      ["Agendamentos", demoResult.counts.agendamentos],
+                      ["Metas", demoResult.counts.metas],
+                      ["Notificações", demoResult.counts.notificacoes],
+                      ["Treinamento", demoResult.counts.treinamentos],
+                      ["Financeiro", demoResult.counts.financeiro],
+                    ] as [string, number][]
+                  ).map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="rounded-lg border bg-muted/30 px-3 py-2"
+                    >
+                      <div className="text-lg font-semibold tabular-nums">
+                        {value}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </FormSection>
+
+              <FormSection
+                icon={<KeyRound className="w-3.5 h-3.5 text-primary" />}
+                title="Acessos de demonstração"
+              >
+                <div className="space-y-3">
+                  <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                    Senha de todas as contas de demonstração:{" "}
+                    <code className="font-semibold">
+                      {demoResult.senhaPadrao}
+                    </code>
+                  </div>
+                  {demoResult.usuariosExtrasLiberados > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      A cota do plano foi ampliada em{" "}
+                      {demoResult.usuariosExtrasLiberados} usuário(s) extra(s)
+                      para caber a equipe de demonstração. Ajuste em Editar
+                      cliente → Plano se quiser voltar ao limite original.
+                    </p>
+                  )}
+                  {demoResult.usuariosCriados.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      As contas de demonstração já existiam e tiveram a senha
+                      redefinida para a senha acima.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {demoResult.usuariosCriados.map((u) => (
+                        <li
+                          key={u.email}
+                          className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"
+                        >
+                          <span className="min-w-0">
+                            <span className="font-medium">{u.name}</span>
+                            <code className="ml-2 break-all text-muted-foreground">
+                              {u.email}
+                            </code>
+                          </span>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {u.role}
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </FormSection>
+            </FormDialogBody>
+            <FormDialogActions>
+              <Button type="button" onClick={() => setDemoResult(null)}>
+                Fechar
+              </Button>
+            </FormDialogActions>
+          </>
+        )}
+      </FormDialogShell>
 
       <AlertDialog
         open={Boolean(deleteMeta)}

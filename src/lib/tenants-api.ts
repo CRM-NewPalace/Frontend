@@ -140,6 +140,37 @@ export type DuplicateTenantResult = TenantDetail & {
   copied: DuplicateTenantCopied;
 };
 
+export type DemoDataCounts = {
+  usuarios: number;
+  equipes: number;
+  catalogItems: number;
+  localidades: number;
+  construtoras: number;
+  empreendimentos: number;
+  leads: number;
+  triagens: number;
+  documentacoes: number;
+  propostas: number;
+  analises: number;
+  agendamentos: number;
+  metas: number;
+  notificacoes: number;
+  treinamentos: number;
+  financeiro: number;
+};
+
+export type PopulateDemoDataResult = {
+  tenantId: string;
+  tenantName: string;
+  slug: string;
+  limpou: boolean;
+  senhaPadrao: string;
+  usuariosCriados: { name: string; email: string; role: string }[];
+  usuariosExtrasLiberados: number;
+  counts: DemoDataCounts;
+  tenant: TenantDetail;
+};
+
 export type ResetTenantAdminPasswordResult = {
   user: TenantAdminUser;
   temporaryPassword: string;
@@ -232,6 +263,17 @@ export async function duplicateTenant(
   input: { name?: string; slug?: string } = {},
 ): Promise<DuplicateTenantResult> {
   return apiFetch<DuplicateTenantResult>(`/tenants/${id}/duplicate`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+/** Gera dados fictícios completos (leads, imóveis, agenda, financeiro…) no tenant. */
+export async function populateTenantDemoData(
+  id: string,
+  input: { limparAntes?: boolean } = {},
+): Promise<PopulateDemoDataResult> {
+  return apiFetch<PopulateDemoDataResult>(`/tenants/${id}/demo-data`, {
     method: "POST",
     body: input,
   });
