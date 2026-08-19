@@ -107,6 +107,9 @@ function buildOptimisticLead(
     renda: input.renda ?? null,
     tipoRenda: input.tipoRenda ?? null,
     estadoCivil: input.estadoCivil ?? null,
+    orcamentoMax: input.orcamentoMax ?? null,
+    quartosMin: input.quartosMin ?? null,
+    vagasMin: input.vagasMin ?? null,
     updatedAt: todayLabel(),
     tags: input.tags ?? [],
   };

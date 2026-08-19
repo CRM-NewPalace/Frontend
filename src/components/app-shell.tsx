@@ -539,6 +539,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       });
       return;
     }
+    if (n.tipo === "imovel_compativel") {
+      void navigate({ to: "/imoveis" });
+      return;
+    }
     if (
       n.tipo === "lead_prazo_proximo" ||
       n.tipo === "lead_prazo_ultrapassado" ||

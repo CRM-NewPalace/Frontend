@@ -44,6 +44,12 @@ export interface Lead {
   tipoRenda: string | null;
   /** Estado civil do cliente (opcional). */
   estadoCivil: string | null;
+  /** Orçamento máximo para imóvel (opcional). */
+  orcamentoMax: number | null;
+  /** Mínimo de quartos desejado (opcional). */
+  quartosMin: number | null;
+  /** Mínimo de vagas desejado (opcional). */
+  vagasMin: number | null;
   /** Data de cadastro (ISO). */
   createdAt?: string;
   updatedAt: string;

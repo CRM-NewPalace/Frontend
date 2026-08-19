@@ -201,6 +201,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { IdSearchSelect } from "@/components/id-search-select";
 
 const DOC_STATUS_CHIP = cn(STATUS_CHIP_CLASS, "justify-start text-left");
 
@@ -2978,26 +2979,21 @@ function DocumentacaoPage() {
                       </Button>
                     )}
                   </div>
-                  <Select
-                    value={form.construtoraId || "__none__"}
-                    onValueChange={(v) => {
-                      setField("construtoraId", v === "__none__" ? "" : v);
+                  <IdSearchSelect
+                    value={form.construtoraId}
+                    options={construtoras.map((c) => ({
+                      id: c.id,
+                      label: c.nome,
+                    }))}
+                    onChange={(id) => {
+                      setField("construtoraId", id);
                       setField("empreendimentoId", "");
                     }}
+                    placeholder="Selecione"
+                    searchPlaceholder="Pesquisar construtora…"
+                    emptyLabel="Nenhuma construtora cadastrada"
                     disabled={readOnly}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {construtoras.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                   {(() => {
                     const selected = construtoras.find(
                       (c) => c.id === form.construtoraId,
@@ -3031,26 +3027,19 @@ function DocumentacaoPage() {
                       </Button>
                     )}
                   </div>
-                  <Select
-                    value={form.empreendimentoId || "__none__"}
-                    onValueChange={(v) =>
-                      setField("empreendimentoId", v === "__none__" ? "" : v)
-                    }
+                  <IdSearchSelect
+                    value={form.empreendimentoId}
+                    options={filteredEmpreendimentos.map((e) => ({
+                      id: e.id,
+                      label: e.cidade ? `${e.nome} · ${e.cidade}` : e.nome,
+                      keywords: `${e.nome} ${e.cidade ?? ""}`,
+                    }))}
+                    onChange={(id) => setField("empreendimentoId", id)}
+                    placeholder="Selecione"
+                    searchPlaceholder="Pesquisar empreendimento…"
+                    emptyLabel="Nenhum empreendimento cadastrado"
                     disabled={readOnly}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {filteredEmpreendimentos.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>
-                          {e.nome}
-                          {e.cidade ? ` · ${e.cidade}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
 
                 <div className="space-y-2">

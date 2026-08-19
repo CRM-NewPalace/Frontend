@@ -31,6 +31,8 @@ export type Empreendimento = {
   observacao: string | null;
   quartos: number | null;
   banheiros: number | null;
+  vagas: number | null;
+  valorReferencia: number | null;
   areaM2: number | null;
   externalUrl: string | null;
   imagemUrl: string | null;
@@ -55,8 +57,72 @@ export type CreateEmpreendimentoInput = {
   previsaoEntrega?: string | null;
   tags?: string[];
   observacao?: string | null;
+  quartos?: number | null;
+  banheiros?: number | null;
+  vagas?: number | null;
+  valorReferencia?: number | null;
   areaM2?: number | null;
 };
+
+export type UpdateEmpreendimentoInput = {
+  nome?: string;
+  cor?: string | null;
+  construtoraId?: string | null;
+  localidadeId?: string | null;
+  cidade?: string | null;
+  endereco?: string | null;
+  tipo?: string | null;
+  status?: string | null;
+  previsaoEntrega?: string | null;
+  tags?: string[];
+  observacao?: string | null;
+  quartos?: number | null;
+  banheiros?: number | null;
+  vagas?: number | null;
+  valorReferencia?: number | null;
+  areaM2?: number | null;
+  externalUrl?: string | null;
+  ativo?: boolean;
+};
+
+export type EmpreendimentoMatchNivel = "muito_compativel" | "compativel";
+
+export type EmpreendimentoMatch = {
+  lead: {
+    id: string;
+    tipo: string;
+    nome: string;
+    telefone: string;
+    cidade: string;
+    bairro: string;
+    orcamentoMax: number | null;
+    quartosMin: number | null;
+    vagasMin: number | null;
+    tags: string[];
+    corretorId: string | null;
+    corretor: { id: string; name: string } | null;
+  };
+  score: number;
+  nivel: EmpreendimentoMatchNivel;
+  motivos: string[];
+  interessePrevio: boolean;
+};
+
+export type EmpreendimentoMatchesResult = {
+  empreendimentoId: string;
+  total: number;
+  muitoCompativeis: number;
+  comInteressePrevio: number;
+  matches: EmpreendimentoMatch[];
+};
+
+export async function fetchEmpreendimentoMatches(
+  id: string,
+): Promise<EmpreendimentoMatchesResult> {
+  return apiFetch<EmpreendimentoMatchesResult>(
+    `/empreendimentos/${id}/matches`,
+  );
+}
 
 export async function fetchEmpreendimentos(params?: {
   construtoraId?: string;
@@ -81,25 +147,6 @@ export async function createEmpreendimento(
     body: input,
   });
 }
-
-export type UpdateEmpreendimentoInput = {
-  nome?: string;
-  cor?: string | null;
-  construtoraId?: string | null;
-  localidadeId?: string | null;
-  cidade?: string | null;
-  endereco?: string | null;
-  tipo?: string | null;
-  status?: string | null;
-  previsaoEntrega?: string | null;
-  tags?: string[];
-  observacao?: string | null;
-  quartos?: number | null;
-  banheiros?: number | null;
-  areaM2?: number | null;
-  externalUrl?: string | null;
-  ativo?: boolean;
-};
 
 export async function updateEmpreendimento(
   id: string,

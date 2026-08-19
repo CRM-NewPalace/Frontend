@@ -128,6 +128,9 @@ type FormState = {
   interesse: Lead["interesse"];
   /** Renda mensal do cliente (opcional); só dígitos no input. */
   renda: string;
+  orcamentoMax: string;
+  quartosMin: string;
+  vagasMin: string;
   cidade: string;
   bairro: string;
   corretor: string;
@@ -150,6 +153,9 @@ function emptyForm(corretorDefault: string, origemDefault = ""): FormState {
     origem: origemDefault,
     interesse: "Comprar",
     renda: "",
+    orcamentoMax: "",
+    quartosMin: "",
+    vagasMin: "",
     cidade: "Recife",
     bairro: "",
     corretor: corretorDefault,
@@ -166,6 +172,10 @@ function leadToForm(lead: Lead): FormState {
     origem: lead.origem,
     interesse: lead.interesse,
     renda: lead.renda != null ? formatMoneyInput(lead.renda) : "",
+    orcamentoMax:
+      lead.orcamentoMax != null ? formatMoneyInput(lead.orcamentoMax) : "",
+    quartosMin: lead.quartosMin != null ? String(lead.quartosMin) : "",
+    vagasMin: lead.vagasMin != null ? String(lead.vagasMin) : "",
     cidade: lead.cidade,
     bairro: lead.bairro,
     corretor: lead.corretor,
@@ -347,6 +357,15 @@ function Clientes() {
     const rendaParsed = parseOptionalMoneyInput(String(form.renda));
     const rendaNum =
       rendaParsed != null ? Math.round(rendaParsed) : null;
+    const orcamentoParsed = parseOptionalMoneyInput(String(form.orcamentoMax));
+    const orcamentoMax =
+      orcamentoParsed != null ? Math.round(orcamentoParsed) : null;
+    const quartosMin = form.quartosMin.trim()
+      ? Number.parseInt(form.quartosMin, 10)
+      : null;
+    const vagasMin = form.vagasMin.trim()
+      ? Number.parseInt(form.vagasMin, 10)
+      : null;
     const emailFinal =
       email || `contato.${phoneDigits(telefone)}@sem-email.local`;
     const origemFinal = form.origem.trim() || "Não informado";
@@ -364,6 +383,11 @@ function Clientes() {
           bairro,
           prioridade: "Média",
           ...(rendaNum != null ? { renda: rendaNum } : {}),
+          ...(orcamentoMax != null ? { orcamentoMax } : {}),
+          ...(Number.isFinite(quartosMin) && quartosMin != null
+            ? { quartosMin }
+            : {}),
+          ...(Number.isFinite(vagasMin) && vagasMin != null ? { vagasMin } : {}),
           tags: form.tags,
           ...(corretorId ? { corretorId } : {}),
           ...(form.createdAt ? { createdAt: form.createdAt } : {}),
@@ -380,6 +404,9 @@ function Clientes() {
           cidade,
           bairro,
           renda: rendaNum,
+          orcamentoMax,
+          quartosMin: Number.isFinite(quartosMin) ? quartosMin : null,
+          vagasMin: Number.isFinite(vagasMin) ? vagasMin : null,
           tags: form.tags,
           ...(corretorId ? { corretorId } : {}),
           ...(form.createdAt ? { createdAt: form.createdAt } : {}),
@@ -993,6 +1020,76 @@ function Clientes() {
                     }
                     placeholder="0,00"
                     className="h-10 bg-background pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cli-orcamento"
+                  className="text-xs text-muted-foreground"
+                >
+                  Orçamento máx. <span className="font-normal">(opcional)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                    R$
+                  </span>
+                  <Input
+                    id="cli-orcamento"
+                    inputMode="numeric"
+                    value={form.orcamentoMax}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        orcamentoMax: maskMoneyInput(e.target.value),
+                      }))
+                    }
+                    placeholder="0,00"
+                    className="h-10 bg-background pl-9"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="cli-quartos-min"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Quartos mín.
+                  </Label>
+                  <Input
+                    id="cli-quartos-min"
+                    inputMode="numeric"
+                    value={form.quartosMin}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        quartosMin: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    placeholder="Ex.: 3"
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="cli-vagas-min"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Vagas mín.
+                  </Label>
+                  <Input
+                    id="cli-vagas-min"
+                    inputMode="numeric"
+                    value={form.vagasMin}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        vagasMin: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    placeholder="Ex.: 2"
+                    className="h-10 bg-background"
                   />
                 </div>
               </div>

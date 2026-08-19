@@ -29,6 +29,9 @@ export interface ApiLead {
   renda: number | null;
   tipoRenda: string | null;
   estadoCivil: string | null;
+  orcamentoMax: number | null;
+  quartosMin: number | null;
+  vagasMin: number | null;
   tags: string[];
   corretorId: string | null;
   corretor: { id: string; name: string } | null;
@@ -73,6 +76,9 @@ export type CreateLeadInput = {
   renda?: number | null;
   tipoRenda?: string | null;
   estadoCivil?: string | null;
+  orcamentoMax?: number | null;
+  quartosMin?: number | null;
+  vagasMin?: number | null;
   tags?: string[];
   /** UUID do corretor dono. null = pool da equipe. */
   corretorId?: string | null;
@@ -115,6 +121,9 @@ export function mapApiLead(api: ApiLead): Lead {
     renda: api.renda ?? null,
     tipoRenda: api.tipoRenda ?? null,
     estadoCivil: api.estadoCivil ?? null,
+    orcamentoMax: api.orcamentoMax ?? null,
+    quartosMin: api.quartosMin ?? null,
+    vagasMin: api.vagasMin ?? null,
     createdAt: api.createdAt,
     updatedAt: formatUpdatedAt(api.updatedAt),
     updatedAtIso: api.updatedAt,

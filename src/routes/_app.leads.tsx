@@ -199,6 +199,12 @@ type FormState = {
   tipoRenda: string;
   /** Estado civil do cliente (opcional). */
   estadoCivil: string;
+  /** Orçamento máximo para imóvel (opcional). */
+  orcamentoMax: string;
+  /** Mínimo de quartos desejado. */
+  quartosMin: string;
+  /** Mínimo de vagas desejado. */
+  vagasMin: string;
   /** UUID da equipe (gerente). Vazio = sem seleção. */
   equipeId: string;
   /** UUID do corretor. "__pool__" = pool da equipe. Vazio = sem seleção. */
@@ -222,6 +228,9 @@ const emptyForm = (origemDefault = ""): FormState => ({
   renda: "",
   tipoRenda: "",
   estadoCivil: "",
+  orcamentoMax: "",
+  quartosMin: "",
+  vagasMin: "",
   equipeId: "",
   corretorId: "",
   createdAt: todayInput(),
@@ -246,6 +255,10 @@ function leadToForm(lead: Lead): FormState {
     renda: lead.renda != null ? formatMoneyInput(lead.renda) : "",
     tipoRenda: lead.tipoRenda ?? "",
     estadoCivil: lead.estadoCivil ?? "",
+    orcamentoMax:
+      lead.orcamentoMax != null ? formatMoneyInput(lead.orcamentoMax) : "",
+    quartosMin: lead.quartosMin != null ? String(lead.quartosMin) : "",
+    vagasMin: lead.vagasMin != null ? String(lead.vagasMin) : "",
     equipeId: lead.equipeId ?? "",
     corretorId: lead.corretorId ?? (lead.equipeId ? "__pool__" : ""),
     createdAt: lead.createdAt?.slice(0, 10) || todayInput(),
@@ -807,6 +820,15 @@ function LeadsPage() {
     const rendaParsed = parseOptionalMoneyInput(String(form.renda));
     const rendaNum =
       rendaParsed != null ? Math.round(rendaParsed) : null;
+    const orcamentoParsed = parseOptionalMoneyInput(String(form.orcamentoMax));
+    const orcamentoMax =
+      orcamentoParsed != null ? Math.round(orcamentoParsed) : null;
+    const quartosMin = form.quartosMin.trim()
+      ? Number.parseInt(form.quartosMin, 10)
+      : null;
+    const vagasMin = form.vagasMin.trim()
+      ? Number.parseInt(form.vagasMin, 10)
+      : null;
     const otherTags =
       formMode === "edit" && editingId
         ? (leads
@@ -869,6 +891,9 @@ function LeadsPage() {
           renda: rendaNum,
           tipoRenda: form.tipoRenda.trim() || null,
           estadoCivil: form.estadoCivil.trim() || null,
+          orcamentoMax,
+          quartosMin: Number.isFinite(quartosMin) ? quartosMin : null,
+          vagasMin: Number.isFinite(vagasMin) ? vagasMin : null,
           tags,
           ...(equipeId !== undefined ? { equipeId } : {}),
           ...(corretorId !== undefined ? { corretorId } : {}),
@@ -894,6 +919,11 @@ function LeadsPage() {
         ...(form.estadoCivil.trim()
           ? { estadoCivil: form.estadoCivil.trim() }
           : {}),
+        ...(orcamentoMax != null ? { orcamentoMax } : {}),
+        ...(Number.isFinite(quartosMin) && quartosMin != null
+          ? { quartosMin }
+          : {}),
+        ...(Number.isFinite(vagasMin) && vagasMin != null ? { vagasMin } : {}),
         tags,
         ...(equipeId !== undefined ? { equipeId } : {}),
         ...(corretorId !== undefined ? { corretorId } : {}),
@@ -1484,6 +1514,67 @@ function LeadsPage() {
                     <SelectItem value="União estável">União estável</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="lead-orcamento"
+                  className="text-xs text-muted-foreground"
+                >
+                  Orçamento máx. <span className="font-normal">(opcional)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                    R$
+                  </span>
+                  <Input
+                    id="lead-orcamento"
+                    inputMode="numeric"
+                    value={form.orcamentoMax}
+                    onChange={(e) =>
+                      setField("orcamentoMax", maskMoneyInput(e.target.value))
+                    }
+                    placeholder="0,00"
+                    className="h-10 bg-background pl-9"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="lead-quartos-min"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Quartos mín.
+                  </Label>
+                  <Input
+                    id="lead-quartos-min"
+                    inputMode="numeric"
+                    value={form.quartosMin}
+                    onChange={(e) =>
+                      setField("quartosMin", e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="Ex.: 3"
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="lead-vagas-min"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Vagas mín.
+                  </Label>
+                  <Input
+                    id="lead-vagas-min"
+                    inputMode="numeric"
+                    value={form.vagasMin}
+                    onChange={(e) =>
+                      setField("vagasMin", e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="Ex.: 2"
+                    className="h-10 bg-background"
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">

@@ -58,11 +58,19 @@ import {
   empreendimentoLocalidadeNome,
   empreendimentoStatusLabel,
   empreendimentoTipoLabel,
+  fetchEmpreendimentoMatches,
   fetchEmpreendimentos,
   updateEmpreendimento,
   uploadEmpreendimentoImagem,
   type Empreendimento,
+  type EmpreendimentoMatchesResult,
 } from "@/lib/empreendimentos-api";
+import { brl } from "@/lib/crm-types";
+import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
 import { useCatalog } from "@/lib/catalog-store";
 import { nextCatalogColor, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import type { CatalogItem } from "@/lib/catalog-api";
@@ -84,6 +92,7 @@ import {
 } from "@/components/image-upload-field";
 import {
   Building2,
+  Car,
   Loader2,
   Pencil,
   Plus,
@@ -98,6 +107,7 @@ import {
   CalendarClock,
   StickyNote,
   Palette,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SOFT_BTN, SOFT_BTN_ACTIVE } from "@/lib/soft-btn";
@@ -172,6 +182,9 @@ type EmpreendimentoForm = {
   tags: string[];
   previsaoEntrega: string;
   areaM2: string;
+  quartos: string;
+  vagas: string;
+  valorReferencia: string;
   observacao: string;
 };
 
@@ -191,6 +204,9 @@ function emptyEmpreendimentoForm(): EmpreendimentoForm {
     tags: [],
     previsaoEntrega: "",
     areaM2: "",
+    quartos: "",
+    vagas: "",
+    valorReferencia: "",
     observacao: "",
   };
 }
@@ -211,6 +227,12 @@ function formFromEmpreendimento(item: Empreendimento): EmpreendimentoForm {
     tags: item.tags ?? [],
     previsaoEntrega: item.previsaoEntrega?.slice(0, 7) ?? "",
     areaM2: item.areaM2 != null ? String(item.areaM2) : "",
+    quartos: item.quartos != null ? String(item.quartos) : "",
+    vagas: item.vagas != null ? String(item.vagas) : "",
+    valorReferencia:
+      item.valorReferencia != null
+        ? formatMoneyInput(item.valorReferencia)
+        : "",
     observacao: item.observacao ?? "",
   };
 }
@@ -281,6 +303,30 @@ export function ImoveisPage({
     useState<CatalogItem | null>(null);
   const [catalogDeleting, setCatalogDeleting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [matchesOpen, setMatchesOpen] = useState(false);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [matchesTitle, setMatchesTitle] = useState("");
+  const [matchesResult, setMatchesResult] =
+    useState<EmpreendimentoMatchesResult | null>(null);
+
+  async function openMatches(item: Empreendimento) {
+    setMatchesTitle(item.nome);
+    setMatchesOpen(true);
+    setMatchesLoading(true);
+    setMatchesResult(null);
+    try {
+      setMatchesResult(await fetchEmpreendimentoMatches(item.id));
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar os matches.",
+      );
+      setMatchesOpen(false);
+    } finally {
+      setMatchesLoading(false);
+    }
+  }
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -410,6 +456,15 @@ export function ImoveisPage({
       }
 
       const areaM2 = parseAreaM2(form.areaM2);
+      const quartos = form.quartos.trim()
+        ? Number.parseInt(form.quartos, 10)
+        : null;
+      const vagas = form.vagas.trim()
+        ? Number.parseInt(form.vagas, 10)
+        : null;
+      const valorParsed = parseOptionalMoneyInput(form.valorReferencia);
+      const valorReferencia =
+        valorParsed != null ? Math.round(valorParsed) : null;
       const payload = {
         nome: form.nome.trim(),
         construtoraId,
@@ -422,6 +477,9 @@ export function ImoveisPage({
         tags: form.tags,
         observacao: form.observacao.trim() || null,
         areaM2,
+        quartos: Number.isFinite(quartos) ? quartos : null,
+        vagas: Number.isFinite(vagas) ? vagas : null,
+        valorReferencia,
       };
 
       if (editingId) {
@@ -442,6 +500,11 @@ export function ImoveisPage({
           tags: payload.tags,
           ...(payload.observacao ? { observacao: payload.observacao } : {}),
           ...(payload.areaM2 != null ? { areaM2: payload.areaM2 } : {}),
+          ...(payload.quartos != null ? { quartos: payload.quartos } : {}),
+          ...(payload.vagas != null ? { vagas: payload.vagas } : {}),
+          ...(payload.valorReferencia != null
+            ? { valorReferencia: payload.valorReferencia }
+            : {}),
         });
         try {
           for (const file of pendingFiles) {
@@ -1021,8 +1084,18 @@ export function ImoveisPage({
                   <CardTitle className="text-base leading-snug">
                     {item.nome}
                   </CardTitle>
-                  {canManage && (
-                    <div className="flex shrink-0 gap-0.5">
+                  <div className="flex shrink-0 gap-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Clientes compatíveis"
+                      onClick={() => void openMatches(item)}
+                    >
+                      <Users className="h-4 w-4" />
+                    </Button>
+                    {canManage && (
                       <Button
                         type="button"
                         variant="ghost"
@@ -1033,20 +1106,20 @@ export function ImoveisPage({
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {canDelete && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="Excluir"
-                          onClick={() => setDeleteId(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {canDelete && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Excluir"
+                        onClick={() => setDeleteId(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 {item.construtora && (
                   <p className="text-xs text-muted-foreground">
@@ -1115,10 +1188,21 @@ export function ImoveisPage({
                       {item.banheiros}
                     </span>
                   )}
+                  {item.vagas != null && (
+                    <span className="inline-flex items-center gap-1">
+                      <Car className="w-3.5 h-3.5" />
+                      {item.vagas}
+                    </span>
+                  )}
                   {item.areaM2 != null && (
                     <span className="inline-flex items-center gap-1">
                       <Ruler className="w-3.5 h-3.5" />
                       {item.areaM2} m²
+                    </span>
+                  )}
+                  {item.valorReferencia != null && (
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                      {brl(item.valorReferencia)}
                     </span>
                   )}
                 </div>
@@ -1127,6 +1211,118 @@ export function ImoveisPage({
           ))}
         </div>
       )}
+
+      <FormDialogShell
+        open={matchesOpen}
+        onOpenChange={setMatchesOpen}
+        icon={<Users className="w-5 h-5" />}
+        title={`Clientes compatíveis — ${matchesTitle}`}
+        description="Matching por localização, valor, quartos, vagas, tags e interesse prévio."
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setMatchesOpen(false)}
+            >
+              Fechar
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <FormDialogBody>
+          {matchesLoading ? (
+            <div className="flex justify-center py-10 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          ) : !matchesResult || matchesResult.total === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhum cliente compatível encontrado. Preencha valor, vagas e
+              preferências nos clientes para melhorar o matching.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="rounded-lg border px-3 py-2 text-sm">
+                  <div className="text-xs text-muted-foreground">Compatíveis</div>
+                  <div className="text-lg font-semibold">{matchesResult.total}</div>
+                </div>
+                <div className="rounded-lg border px-3 py-2 text-sm">
+                  <div className="text-xs text-muted-foreground">
+                    Muito compatíveis
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {matchesResult.muitoCompativeis}
+                  </div>
+                </div>
+                <div className="rounded-lg border px-3 py-2 text-sm">
+                  <div className="text-xs text-muted-foreground">
+                    Interesse prévio
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {matchesResult.comInteressePrevio}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {matchesResult.matches.map((match) => (
+                  <div
+                    key={match.lead.id}
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5 text-sm",
+                      match.interessePrevio && "border-primary/40 bg-primary/5",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium">{match.lead.nome}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {match.lead.cidade}
+                          {match.lead.bairro ? ` · ${match.lead.bairro}` : ""}
+                          {match.lead.corretor
+                            ? ` · ${match.lead.corretor.name}`
+                            : ""}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge
+                          variant={
+                            match.nivel === "muito_compativel"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="text-[10px]"
+                        >
+                          {match.nivel === "muito_compativel"
+                            ? "Muito compatível"
+                            : "Compatível"}{" "}
+                          · {match.score}
+                        </Badge>
+                        {match.interessePrevio ? (
+                          <Badge variant="outline" className="text-[10px]">
+                            Interesse prévio
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {match.motivos.map((motivo) => (
+                        <Badge
+                          key={motivo}
+                          variant="outline"
+                          className="text-[10px] font-normal"
+                        >
+                          {motivo.replaceAll("_", " ")}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </FormDialogBody>
+      </FormDialogShell>
 
       <FormDialogShell
         open={quickOpen}
@@ -1691,8 +1887,8 @@ export function ImoveisPage({
             <TabsContent value="previsao" className="mt-4">
           <FormSection
             icon={<CalendarClock className="h-4 w-4" />}
-            title="Previsão e metragem"
-            description="Entrega prevista e área do produto."
+            title="Previsão, metragem e matching"
+            description="Entrega, área, valor e vagas usados no matching de clientes."
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -1715,6 +1911,51 @@ export function ImoveisPage({
                   onChange={(event) => setField("areaM2", event.target.value)}
                   placeholder="Ex.: 68"
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="imovel-quartos">Quartos</Label>
+                <Input
+                  id="imovel-quartos"
+                  inputMode="numeric"
+                  value={form.quartos}
+                  onChange={(event) =>
+                    setField("quartos", event.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder="Ex.: 3"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="imovel-vagas">Vagas</Label>
+                <Input
+                  id="imovel-vagas"
+                  inputMode="numeric"
+                  value={form.vagas}
+                  onChange={(event) =>
+                    setField("vagas", event.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder="Ex.: 2"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="imovel-valor">Valor de referência</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                    R$
+                  </span>
+                  <Input
+                    id="imovel-valor"
+                    inputMode="numeric"
+                    value={form.valorReferencia}
+                    onChange={(event) =>
+                      setField(
+                        "valorReferencia",
+                        maskMoneyInput(event.target.value),
+                      )
+                    }
+                    placeholder="0,00"
+                    className="pl-9"
+                  />
+                </div>
               </div>
             </div>
           </FormSection>

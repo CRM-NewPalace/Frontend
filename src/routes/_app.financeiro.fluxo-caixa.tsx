@@ -8,9 +8,11 @@ import {
 } from "react";
 import {
   addDays,
+  endOfMonth,
   formatRangeLabel,
   getVisibleRange,
   startOfDay,
+  startOfMonth,
   toDateInput,
   type AgendaViewMode,
 } from "@/components/agenda-board";
@@ -142,13 +144,31 @@ function Page() {
   const [confirmDate, setConfirmDate] = useState(() => toDateInput(new Date()));
   const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
 
-  const visibleRange = useMemo(
+  /** Grade do calendário (inclui dias de meses vizinhos). */
+  const boardRange = useMemo(
     () => getVisibleRange(view, selectedDay),
     [view, selectedDay],
   );
 
-  const fromIso = toDateInput(visibleRange.from);
-  const toIso = toDateInput(visibleRange.to);
+  /** Período dos KPIs/gráficos/tabela: no modo mês, só o mês selecionado. */
+  const dataRange = useMemo(() => {
+    if (view === "mes") {
+      return {
+        from: startOfMonth(selectedDay),
+        to: endOfMonth(selectedDay),
+      };
+    }
+    return boardRange;
+  }, [view, selectedDay, boardRange]);
+
+  const dataFromIso = toDateInput(dataRange.from);
+  const dataToIso = toDateInput(dataRange.to);
+  const itemsFromIso = toDateInput(
+    layoutMode === "calendario" ? boardRange.from : dataRange.from,
+  );
+  const itemsToIso = toDateInput(
+    layoutMode === "calendario" ? boardRange.to : dataRange.to,
+  );
   const granularidade = viewToGranularidade(view);
 
   const load = useCallback(async () => {
@@ -156,11 +176,11 @@ function Page() {
     try {
       const [b, i] = await Promise.all([
         fetchFluxoCaixa({
-          from: fromIso,
-          to: toIso,
+          from: dataFromIso,
+          to: dataToIso,
           granularidade,
         }),
-        fetchFluxoCaixaItens({ from: fromIso, to: toIso }),
+        fetchFluxoCaixaItens({ from: itemsFromIso, to: itemsToIso }),
       ]);
       setBuckets(b);
       setItems(i);
@@ -173,7 +193,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [fromIso, toIso, granularidade]);
+  }, [dataFromIso, dataToIso, itemsFromIso, itemsToIso, granularidade]);
 
   useEffect(() => {
     void load();
@@ -222,7 +242,7 @@ function Page() {
   }
 
   function navigate(direction: -1 | 1) {
-    if (layoutMode === "tabela" || view === "dia") {
+    if (view === "dia") {
       setSelectedDay((d) => addDays(d, direction));
       return;
     }
@@ -230,10 +250,14 @@ function Page() {
       setSelectedDay((d) => addDays(d, direction * 7));
       return;
     }
-    setSelectedDay((d) => {
-      const next = new Date(d.getFullYear(), d.getMonth() + direction, 1);
-      return startOfDay(next);
-    });
+    setSelectedDay((d) =>
+      startOfDay(new Date(d.getFullYear(), d.getMonth() + direction, 1)),
+    );
+  }
+
+  function goToMonth(year: number, monthIndex: number) {
+    setSelectedDay(startOfDay(new Date(year, monthIndex, 1)));
+    setView("mes");
   }
 
   async function openDayDetail(day: Date) {
@@ -367,30 +391,27 @@ function Page() {
           <h2 className="text-base font-semibold capitalize min-w-0">
             {rangeTitle}
           </h2>
-          {layoutMode === "calendario" ? (
-            <div className="flex items-center gap-1.5">
-              <Label
-                htmlFor="fluxo-mes"
-                className="text-xs text-muted-foreground whitespace-nowrap"
-              >
-                Mês:
-              </Label>
-              <Input
-                id="fluxo-mes"
-                type="month"
-                className="h-8 w-44 rounded-md px-2.5 pe-1 [&::-webkit-calendar-picker-indicator]:ms-0 [&::-webkit-calendar-picker-indicator]:me-0"
-                value={monthInputValue(selectedDay)}
-                onChange={(event) => {
-                  const [year, month] = event.target.value
-                    .split("-")
-                    .map(Number);
-                  if (!year || !month) return;
-                  setSelectedDay(startOfDay(new Date(year, month - 1, 1)));
-                  setView("mes");
-                }}
-              />
-            </div>
-          ) : null}
+          <div className="flex items-center gap-1.5">
+            <Label
+              htmlFor="fluxo-mes"
+              className="text-xs text-muted-foreground whitespace-nowrap"
+            >
+              Filtrar mês:
+            </Label>
+            <Input
+              id="fluxo-mes"
+              type="month"
+              className="h-8 w-44 rounded-md px-2.5 pe-1 [&::-webkit-calendar-picker-indicator]:ms-0 [&::-webkit-calendar-picker-indicator]:me-0"
+              value={monthInputValue(selectedDay)}
+              onChange={(event) => {
+                const raw = event.target.value;
+                if (!raw) return;
+                const [year, month] = raw.split("-").map(Number);
+                if (!year || !month || month < 1 || month > 12) return;
+                goToMonth(year, month - 1);
+              }}
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
