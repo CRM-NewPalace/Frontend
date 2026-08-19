@@ -105,6 +105,7 @@ import {
   isStatusAnalise,
   isStatusVendido,
   matchesDocPipelineStatus,
+  status1Group,
   statusesMatch,
   type DocPipelineStatus,
 } from "@/lib/documentacao-status";
@@ -546,6 +547,29 @@ function docDateDay(doc: Documentacao, campo: DocCampoData): string | null {
 
 function formatDayBr(iso: string) {
   return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR");
+}
+
+/** Só aparece enquanto Status 1 for Em análise; some ao sair. */
+function diasEmAnaliseLabel(doc: Documentacao): string | null {
+  if (status1Group(doc.status1) !== "analise") return null;
+  const day = toDateInput(doc.dataAnalise) || toDateInput(doc.createdAt);
+  if (!day) return null;
+  const start = new Date(`${day}T12:00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const now = new Date();
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    12,
+  );
+  const days = Math.max(
+    0,
+    Math.round((today.getTime() - start.getTime()) / 86_400_000),
+  );
+  const duracao =
+    days === 0 ? "hoje" : days === 1 ? "1 dia" : `${days} dias`;
+  return `${duracao} · ${formatDayBr(day)}`;
 }
 
 function DocumentacaoPage() {
@@ -2661,10 +2685,12 @@ function DocumentacaoPage() {
                         {doc.nome}
                       </div>
                       <div className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
-                        {doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}
-                        {doc.lead.stage
-                          ? ` · ${stageLabel(doc.lead.stage)}`
-                          : ""}
+                        {diasEmAnaliseLabel(doc) ??
+                          `${doc.lead.tipo === "cliente" ? "Cliente" : "Lead"}${
+                            doc.lead.stage
+                              ? ` · ${stageLabel(doc.lead.stage)}`
+                              : ""
+                          }`}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -3100,10 +3126,11 @@ function DocumentacaoPage() {
                       setForm((prev) => ({
                         ...prev,
                         status1: v,
-                        dataAnalise:
-                          isStatusAnalise(v) && !prev.dataAnalise
-                            ? todayDateInput()
-                            : prev.dataAnalise,
+                        dataAnalise: isStatusAnalise(v)
+                          ? isStatusAnalise(prev.status1) && prev.dataAnalise
+                            ? prev.dataAnalise
+                            : todayDateInput()
+                          : prev.dataAnalise,
                       }));
                     }}
                     disabled={readOnly}
