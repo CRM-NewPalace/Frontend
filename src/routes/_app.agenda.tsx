@@ -107,6 +107,12 @@ import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
+  disconnectGoogleCalendar,
+  fetchGoogleCalendarStatus,
+  googleCalendarConnectHref,
+  type GoogleCalendarStatus,
+} from "@/lib/google-calendar-api";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -118,6 +124,7 @@ type AgendaSection = "agenda" | "solicitacoes";
 type AgendaSearch = {
   corretorId?: string;
   nome?: string;
+  google?: string;
 };
 
 export const Route = createFileRoute("/_app/agenda")({
@@ -131,9 +138,14 @@ export const Route = createFileRoute("/_app/agenda")({
       typeof search.nome === "string" && search.nome.trim()
         ? search.nome.trim()
         : undefined;
+    const google =
+      typeof search.google === "string" && search.google.trim()
+        ? search.google.trim()
+        : undefined;
     return {
       ...(corretorId ? { corretorId } : {}),
       ...(corretorId && nome ? { nome } : {}),
+      ...(google ? { google } : {}),
     };
   },
   component: AgendaPage,
@@ -240,6 +252,10 @@ function AgendaPage() {
   );
   const [filterTipo, setFilterTipo] = useState<string>("__all__");
   const [filterStatus, setFilterStatus] = useState<string>("__all__");
+  const [googleCal, setGoogleCal] = useState<GoogleCalendarStatus | null>(
+    null,
+  );
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
@@ -346,6 +362,34 @@ function AgendaPage() {
       setSection("agenda");
     }
   }, [search.corretorId]);
+
+  useEffect(() => {
+    void fetchGoogleCalendarStatus()
+      .then(setGoogleCal)
+      .catch(() => setGoogleCal(null));
+  }, []);
+
+  useEffect(() => {
+    if (!search.google) return;
+    if (search.google === "connected") {
+      toast.success("Google Agenda conectada. Novos compromissos vão para o Calendar.");
+      void fetchGoogleCalendarStatus()
+        .then(setGoogleCal)
+        .catch(() => undefined);
+    } else if (search.google === "denied") {
+      toast.error("Conexão com o Google cancelada.");
+    } else {
+      toast.error("Não foi possível conectar o Google Agenda.");
+    }
+    void navigate({
+      to: "/agenda",
+      search: {
+        ...(search.corretorId ? { corretorId: search.corretorId } : {}),
+        ...(search.nome ? { nome: search.nome } : {}),
+      },
+      replace: true,
+    });
+  }, [search.google, search.corretorId, search.nome, navigate]);
 
   function setAgendaUserFilter(userId: string) {
     setFilterCorretorId(userId);
@@ -995,10 +1039,58 @@ function AgendaPage() {
         }
         actions={
           section === "agenda" ? (
-            <Button onClick={() => openCreate()}>
-              <Plus className="w-4 h-4 mr-1" />
-              Novo
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {googleCal?.configured ? (
+                googleCal.connected ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={SOFT_BTN}
+                    disabled={googleBusy}
+                    title={googleCal.googleEmail ?? "Google Agenda"}
+                    onClick={() => {
+                      setGoogleBusy(true);
+                      void disconnectGoogleCalendar()
+                        .then(() => {
+                          setGoogleCal({
+                            configured: true,
+                            connected: false,
+                            googleEmail: null,
+                          });
+                          toast.success("Google Agenda desconectada.");
+                        })
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof ApiError
+                              ? err.message
+                              : "Não foi possível desconectar o Google.",
+                          ),
+                        )
+                        .finally(() => setGoogleBusy(false));
+                    }}
+                  >
+                    <CalendarDays className="w-4 h-4 mr-1" />
+                    {googleBusy ? "…" : "Google conectado"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={SOFT_BTN}
+                    onClick={() => {
+                      window.location.assign(googleCalendarConnectHref());
+                    }}
+                  >
+                    <CalendarDays className="w-4 h-4 mr-1" />
+                    Conectar Google
+                  </Button>
+                )
+              ) : null}
+              <Button onClick={() => openCreate()}>
+                <Plus className="w-4 h-4 mr-1" />
+                Novo
+              </Button>
+            </div>
           ) : null
         }
       />
