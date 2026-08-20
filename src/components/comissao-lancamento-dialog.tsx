@@ -54,7 +54,7 @@ import {
   type VendaElegivelComissao,
 } from "@/lib/financeiro-api";
 import { brl, formatDate } from "@/lib/financeiro-mock";
-import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
+import { formatMoneyInput, maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -81,6 +81,10 @@ export type ComissaoFormState = {
   percentualGerente: string;
   percentualCaixa: string;
   percentualSocios: string;
+  valorPremiacao: string;
+  percentualPremiacaoCorretor: string;
+  percentualPremiacaoImobiliaria: string;
+  percentualPremiacaoGerente: string;
   status: ComissaoStatus;
 };
 
@@ -100,6 +104,10 @@ const EMPTY_FORM: ComissaoFormState = {
   percentualGerente: "",
   percentualCaixa: "",
   percentualSocios: "",
+  valorPremiacao: "",
+  percentualPremiacaoCorretor: "",
+  percentualPremiacaoImobiliaria: "",
+  percentualPremiacaoGerente: "",
   status: "pendente",
 };
 
@@ -139,6 +147,19 @@ function toForm(comissao: Comissao): ComissaoFormState {
     percentualGerente: String(comissao.percentualGerente ?? ""),
     percentualCaixa: String(comissao.percentualCaixa ?? ""),
     percentualSocios: String(comissao.percentualSocios ?? ""),
+    valorPremiacao:
+      comissao.valorPremiacao && comissao.valorPremiacao > 0
+        ? formatMoneyInput(comissao.valorPremiacao)
+        : "",
+    percentualPremiacaoCorretor: String(
+      comissao.percentualPremiacaoCorretor ?? "",
+    ),
+    percentualPremiacaoImobiliaria: String(
+      comissao.percentualPremiacaoImobiliaria ?? "",
+    ),
+    percentualPremiacaoGerente: String(
+      comissao.percentualPremiacaoGerente ?? "",
+    ),
     status: comissao.status,
   };
 }
@@ -283,6 +304,23 @@ export function ComissaoLancamentoDialog({
       partners: (net * percentages.percentualSocios) / 100,
     };
   }, [percentages, previewVgv]);
+  const premiacaoValor = parseOptionalMoneyInput(form.valorPremiacao) ?? 0;
+  const premiacaoPerc = {
+    corretor: numberValue(form.percentualPremiacaoCorretor),
+    imobiliaria: numberValue(form.percentualPremiacaoImobiliaria),
+    gerente: numberValue(form.percentualPremiacaoGerente),
+  };
+  const premiacaoPreview = {
+    corretor: (premiacaoValor * premiacaoPerc.corretor) / 100,
+    imobiliaria: (premiacaoValor * premiacaoPerc.imobiliaria) / 100,
+    gerente: (premiacaoValor * premiacaoPerc.gerente) / 100,
+  };
+  const premiacaoPayload = {
+    valorPremiacao: premiacaoValor,
+    percentualPremiacaoCorretor: premiacaoPerc.corretor,
+    percentualPremiacaoImobiliaria: premiacaoPerc.imobiliaria,
+    percentualPremiacaoGerente: premiacaoPerc.gerente,
+  };
 
   function setField<K extends keyof ComissaoFormState>(
     key: K,
@@ -335,6 +373,18 @@ export function ComissaoLancamentoDialog({
       toast.error("Corretor, gerente, caixa e sócios devem somar 100%.");
       return;
     }
+    if (
+      [premiacaoPerc.corretor, premiacaoPerc.imobiliaria, premiacaoPerc.gerente].some(
+        (value) => !Number.isFinite(value) || value < 0 || value > 100,
+      )
+    ) {
+      toast.error("Os percentuais da premiação devem estar entre 0 e 100.");
+      return;
+    }
+    if (premiacaoValor < 0) {
+      toast.error("O valor da premiação não pode ser negativo.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -350,11 +400,13 @@ export function ComissaoLancamentoDialog({
           : {}),
         dataPrevistaRecebimento: form.dataPrevistaRecebimento,
         ...percentages,
+        ...premiacaoPayload,
       };
       const saved =
         mode === "edit" && editing
           ? await updateComissao(editing.id, {
               ...percentages,
+              ...premiacaoPayload,
               dataPrevistaRecebimento: form.dataPrevistaRecebimento,
               status: form.status,
             })
@@ -368,12 +420,14 @@ export function ComissaoLancamentoDialog({
                     documentacaoId: form.documentacaoId,
                     dataPrevistaRecebimento: form.dataPrevistaRecebimento,
                     ...percentages,
+                    ...premiacaoPayload,
                   })
                 ).comissao
               : await createComissao({
                   documentacaoId: form.documentacaoId,
                   dataPrevistaRecebimento: form.dataPrevistaRecebimento,
                   ...percentages,
+                  ...premiacaoPayload,
                 });
       onOpenChange(false);
       toast.success(
@@ -779,6 +833,67 @@ export function ComissaoLancamentoDialog({
             )}
           </FormSection>
 
+          <FormSection title="Premiação">
+            <p className="text-xs text-muted-foreground">
+              Valor à parte da comissão. Os percentuais abaixo incidem só sobre
+              a premiação e não entram no rateio de 100% da líquida.
+            </p>
+            <div className="max-w-xs space-y-2">
+              <Label htmlFor="comissao-premiacao">Valor total da premiação</Label>
+              <Input
+                id="comissao-premiacao"
+                inputMode="decimal"
+                value={form.valorPremiacao}
+                onChange={(event) =>
+                  setField("valorPremiacao", maskMoneyInput(event.target.value))
+                }
+                placeholder="0,00"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <PercentField
+                label="Corretor"
+                value={form.percentualPremiacaoCorretor}
+                onChange={(value) =>
+                  setField("percentualPremiacaoCorretor", value)
+                }
+                required={false}
+              />
+              <PercentField
+                label="Imobiliária"
+                value={form.percentualPremiacaoImobiliaria}
+                onChange={(value) =>
+                  setField("percentualPremiacaoImobiliaria", value)
+                }
+                required={false}
+              />
+              <PercentField
+                label="Gerente"
+                value={form.percentualPremiacaoGerente}
+                onChange={(value) =>
+                  setField("percentualPremiacaoGerente", value)
+                }
+                required={false}
+              />
+            </div>
+            {premiacaoValor > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Summary
+                  label="Corretor"
+                  value={brl(premiacaoPreview.corretor)}
+                />
+                <Summary
+                  label="Imobiliária"
+                  value={brl(premiacaoPreview.imobiliaria)}
+                />
+                <Summary
+                  label="Gerente"
+                  value={brl(premiacaoPreview.gerente)}
+                />
+              </div>
+            )}
+          </FormSection>
+
           <FormSection title="Prévia do cálculo" className="bg-muted/20">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Summary label="Comissão bruta" value={brl(preview.gross)} />
@@ -808,10 +923,12 @@ function PercentField({
   label,
   value,
   onChange,
+  required = true,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -825,7 +942,7 @@ function PercentField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className="pr-8"
-          required
+          required={required}
         />
         <Percent className="absolute right-2.5 top-2.5 size-4 text-muted-foreground" />
       </div>

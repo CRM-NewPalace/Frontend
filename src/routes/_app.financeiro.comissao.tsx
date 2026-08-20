@@ -670,6 +670,29 @@ function Page() {
                 />
               </div>
             </FormSection>
+
+            {numberValue(detail.valorPremiacao) > 0 && (
+              <FormSection title="Premiação">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <DetailField
+                    label="Valor total"
+                    value={brl(numberValue(detail.valorPremiacao))}
+                  />
+                  <DetailField
+                    label="Corretor"
+                    value={`${brl(numberValue(detail.valorPremiacaoCorretor))} (${numberValue(detail.percentualPremiacaoCorretor).toLocaleString("pt-BR")}%)`}
+                  />
+                  <DetailField
+                    label="Imobiliária"
+                    value={`${brl(numberValue(detail.valorPremiacaoImobiliaria))} (${numberValue(detail.percentualPremiacaoImobiliaria).toLocaleString("pt-BR")}%)`}
+                  />
+                  <DetailField
+                    label="Gerente"
+                    value={`${brl(numberValue(detail.valorPremiacaoGerente))} (${numberValue(detail.percentualPremiacaoGerente).toLocaleString("pt-BR")}%)`}
+                  />
+                </div>
+              </FormSection>
+            )}
           </FormDialogBody>
         )}
       </FormDialogShell>

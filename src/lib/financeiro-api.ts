@@ -97,6 +97,13 @@ export type Comissao = {
   valorCaixa?: number;
   percentualSocios?: number;
   valorSocios?: number;
+  valorPremiacao?: number;
+  percentualPremiacaoCorretor?: number;
+  valorPremiacaoCorretor?: number;
+  percentualPremiacaoImobiliaria?: number;
+  valorPremiacaoImobiliaria?: number;
+  percentualPremiacaoGerente?: number;
+  valorPremiacaoGerente?: number;
   status: ComissaoStatus;
   createdAt: string;
   updatedAt: string;
@@ -122,32 +129,45 @@ export type ComissaoPercentuais = {
   percentualSocios: number;
 };
 
-export type CreateComissaoInput = ComissaoPercentuais & {
-  documentacaoId: string;
-  dataPrevistaRecebimento: string;
-  status?: ComissaoStatus;
+export type ComissaoPremiacao = {
+  valorPremiacao?: number;
+  percentualPremiacaoCorretor?: number;
+  valorPremiacaoCorretor?: number;
+  percentualPremiacaoImobiliaria?: number;
+  valorPremiacaoImobiliaria?: number;
+  percentualPremiacaoGerente?: number;
+  valorPremiacaoGerente?: number;
 };
 
-export type CreateComissaoVendaAvulsaInput = ComissaoPercentuais & {
-  clienteNome: string;
-  vgv: number;
-  dataVenda: string;
-  corretorId: string;
-  construtoraId?: string;
-  empreendimentoId?: string;
-  dataPrevistaRecebimento: string;
-  status?: ComissaoStatus;
-};
+export type CreateComissaoInput = ComissaoPercentuais &
+  ComissaoPremiacao & {
+    documentacaoId: string;
+    dataPrevistaRecebimento: string;
+    status?: ComissaoStatus;
+  };
+
+export type CreateComissaoVendaAvulsaInput = ComissaoPercentuais &
+  ComissaoPremiacao & {
+    clienteNome: string;
+    vgv: number;
+    dataVenda: string;
+    corretorId: string;
+    construtoraId?: string;
+    empreendimentoId?: string;
+    dataPrevistaRecebimento: string;
+    status?: ComissaoStatus;
+  };
 
 export type CreateTituloComissaoResponse = {
   comissao: Comissao;
   titulos: TituloFinanceiro[];
 };
 
-export type UpdateComissaoInput = Partial<ComissaoPercentuais> & {
-  dataPrevistaRecebimento?: string;
-  status?: ComissaoStatus;
-};
+export type UpdateComissaoInput = Partial<ComissaoPercentuais> &
+  Partial<ComissaoPremiacao> & {
+    dataPrevistaRecebimento?: string;
+    status?: ComissaoStatus;
+  };
 
 export type VisaoGeralResponse = {
   kpis: {
