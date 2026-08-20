@@ -115,6 +115,7 @@ import {
   Pencil,
   Percent,
   Plus,
+  Repeat,
   Tags,
   Trash2,
 } from "lucide-react";
@@ -275,13 +276,40 @@ function buildParcelasDraft(
   quantidade: number,
   primeiroVencimento: string,
   freq: Recorrencia,
+  indeterminado = false,
 ): ParcelaDraft[] {
   const n = Math.max(2, Math.floor(quantidade));
-  return Array.from({ length: n }, (_, i) => ({
-    vencimento: addRecorrenciaIso(primeiroVencimento, freq, i),
-    valor: formatValorInput(valorParcela),
-    label: `${i + 1}/${n}`,
-  }));
+  return Array.from({ length: n }, (_, i) => {
+    const vencimento = addRecorrenciaIso(primeiroVencimento, freq, i);
+    return {
+      vencimento,
+      valor: formatValorInput(valorParcela),
+      label: indeterminado
+        ? mesParcelaLabel(vencimento)
+        : `${i + 1}/${n}`,
+    };
+  });
+}
+
+const MESES_PARCELA = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+] as const;
+
+function mesParcelaLabel(iso: string) {
+  const [year, month] = iso.slice(0, 7).split("-").map(Number);
+  if (!year || !month) return iso.slice(0, 7);
+  return `${MESES_PARCELA[month - 1]}/${String(year).slice(2)}`;
 }
 
 function emptyForm(
@@ -416,6 +444,8 @@ export function FinanceiroTitulosPanel({
   const [quickSaving, setQuickSaving] = useState(false);
   const [parcelado, setParcelado] = useState(false);
   const [recorrencia, setRecorrencia] = useState<Recorrencia>("unica");
+  const [recorrenciaIndeterminada, setRecorrenciaIndeterminada] =
+    useState(false);
   const [qtdParcelas, setQtdParcelas] = useState("2");
   const [parcelasDraft, setParcelasDraft] = useState<ParcelaDraft[]>([]);
   const [grupoParcelaSelecionada, setGrupoParcelaSelecionada] =
@@ -821,7 +851,13 @@ export function FinanceiroTitulosPanel({
       return;
     }
     setParcelasDraft(
-      buildParcelasDraft(total, qtd, primeiroVenc || todayIso(), freq),
+      buildParcelasDraft(
+        total,
+        qtd,
+        primeiroVenc || todayIso(),
+        freq,
+        recorrenciaIndeterminada && freq === "mensal",
+      ),
     );
   }
 
@@ -829,14 +865,44 @@ export function FinanceiroTitulosPanel({
     setRecorrencia(next);
     const recorrente = next !== "unica";
     setParcelado(recorrente);
+    if (next !== "mensal") setRecorrenciaIndeterminada(false);
     if (!recorrente) {
       setParcelasDraft([]);
       setQtdParcelas("1");
       return;
     }
-    const qtd = RECORRENCIA_QTD_PADRAO[next];
+    const qtd =
+      next === "mensal" && recorrenciaIndeterminada
+        ? "12"
+        : RECORRENCIA_QTD_PADRAO[next];
     setQtdParcelas(qtd);
     regenerateParcelas(form.valor, qtd, form.vencimento, next);
+    setFormTab("cobranca");
+  }
+
+  function toggleRecorrenciaIndeterminada() {
+    const next = !recorrenciaIndeterminada;
+    setRecorrenciaIndeterminada(next);
+    setParcelado(true);
+    setRecorrencia("mensal");
+    const qtd = next ? "12" : RECORRENCIA_QTD_PADRAO.mensal;
+    setQtdParcelas(qtd);
+    setParcelasDraft(
+      (() => {
+        const total = parseValor(form.valor);
+        const n = Number(qtd);
+        if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(n) || n < 2) {
+          return [];
+        }
+        return buildParcelasDraft(
+          total,
+          n,
+          form.vencimento || todayIso(),
+          "mensal",
+          next,
+        );
+      })(),
+    );
     setFormTab("cobranca");
   }
 
@@ -883,6 +949,7 @@ export function FinanceiroTitulosPanel({
     setForm(next);
     setParcelado(false);
     setRecorrencia("unica");
+    setRecorrenciaIndeterminada(false);
     setQtdParcelas(canUseContrato ? "1" : "2");
     setParcelasDraft([]);
     setGrupoParcelaSelecionada(null);
@@ -1178,9 +1245,13 @@ export function FinanceiroTitulosPanel({
           categoria: catalog.categoria,
           centro: catalog.centro,
           parcelas,
+          indeterminado:
+            recorrencia === "mensal" && recorrenciaIndeterminada,
         });
         toast.success(
-          `${parcelas.length} lançamentos criados. Eles aparecem no fluxo de caixa nas datas de vencimento.`,
+          recorrencia === "mensal" && recorrenciaIndeterminada
+            ? "Conta mensal contínua criada. Os próximos meses entram automaticamente no fluxo de caixa."
+            : `${parcelas.length} lançamentos criados. Eles aparecem no fluxo de caixa nas datas de vencimento.`,
         );
         setOpen(false);
         await load();
@@ -1585,7 +1656,11 @@ export function FinanceiroTitulosPanel({
                           : "—"}
                       </TableCell>
                       <TableCell>
-                        {summary.n} parcela{summary.n === 1 ? "" : "s"}
+                        {row.titulos.some(
+                          (titulo) => titulo.recorrenciaIndeterminada,
+                        )
+                          ? "Mensal contínuo"
+                          : `${summary.n} parcela${summary.n === 1 ? "" : "s"}`}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {brl(summary.total)}
@@ -1765,7 +1840,9 @@ export function FinanceiroTitulosPanel({
                 {comoContrato
                   ? "Contrato"
                   : parcelado && formMode === "create"
-                    ? `Recorrência ${RECORRENCIAS.find((r) => r.value === recorrencia)?.label.toLowerCase()}`
+                    ? recorrenciaIndeterminada
+                      ? "Recorrência mensal indeterminada"
+                      : `Recorrência ${RECORRENCIAS.find((r) => r.value === recorrencia)?.label.toLowerCase()}`
                     : parcelado
                       ? "Título parcelado"
                       : "Título avulso"}
@@ -1779,7 +1856,9 @@ export function FinanceiroTitulosPanel({
                     )}`
                   : form.valor
                     ? parcelado && formMode === "create"
-                      ? `Total: ${brl(
+                      ? recorrenciaIndeterminada
+                        ? "Mensal, sem data de término"
+                        : `Total: ${brl(
                           (parseValor(form.valor) || 0) *
                             (Number(qtdParcelas) || 1),
                         )}`
@@ -1888,6 +1967,7 @@ export function FinanceiroTitulosPanel({
                         if (on) {
                           setParcelado(false);
                           setRecorrencia("unica");
+                          setRecorrenciaIndeterminada(false);
                           setParcelasDraft([]);
                           setQtdParcelas("1");
                           setParcelarAdesao(false);
@@ -2335,7 +2415,33 @@ export function FinanceiroTitulosPanel({
                 {!comoContrato &&
                 formTab === "cobranca" &&
                 parcelado &&
-                formMode === "create" ? (
+                formMode === "create" &&
+                recorrencia === "mensal" ? (
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant={recorrenciaIndeterminada ? "default" : "outline"}
+                      className="w-full sm:w-auto"
+                      onClick={toggleRecorrenciaIndeterminada}
+                    >
+                      <Repeat className="w-4 h-4 mr-1.5" />
+                      {recorrenciaIndeterminada
+                        ? "Repetindo todo mês (sem prazo)"
+                        : "Repetir todo mês por tempo indeterminado"}
+                    </Button>
+                    {recorrenciaIndeterminada ? (
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        Continua todo mês até você encerrar o grupo. Lançamos os
+                        próximos 12 meses e renovamos automaticamente.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {!comoContrato &&
+                formTab === "cobranca" &&
+                parcelado &&
+                formMode === "create" &&
+                !recorrenciaIndeterminada ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <Label>Quantidade *</Label>
                     <Input

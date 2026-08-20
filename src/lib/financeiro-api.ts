@@ -263,6 +263,8 @@ export type CreateTitulosParceladoInput = {
   categoria?: string;
   centro?: string;
   parcelas: { vencimento: string; valor: number }[];
+  platformContratoId?: string;
+  indeterminado?: boolean;
 };
 
 export type UpdateTituloInput = Omit<

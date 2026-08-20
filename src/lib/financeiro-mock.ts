@@ -113,6 +113,7 @@ export interface TituloFinanceiro {
   status: StatusTitulo;
   parcela: string;
   grupoParcelasId?: string | null;
+  recorrenciaIndeterminada?: boolean;
   platformContratoId?: string | null;
   comissaoId?: string | null;
   comissaoPapel?: string | null;
