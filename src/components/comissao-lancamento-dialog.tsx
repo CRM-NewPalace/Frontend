@@ -6,6 +6,7 @@ import {
   FormDialogShell,
   FormSection,
 } from "@/components/form-dialog";
+import { IdSearchSelect } from "@/components/id-search-select";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -30,9 +31,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { fetchConstrutoras, type Construtora } from "@/lib/construtoras-api";
+import {
+  fetchDocumentacaoCorretores,
+  type DocumentacaoCorretor,
+} from "@/lib/documentacao-api";
+import {
+  fetchEmpreendimentos,
+  type Empreendimento,
+} from "@/lib/empreendimentos-api";
 import {
   createComissao,
+  createComissaoComVendaAvulsa,
   createTituloComissao,
+  createTituloComissaoAvulsa,
   fetchVendasElegiveisComissao,
   fetchVendasElegiveisTituloComissao,
   updateComissao,
@@ -42,6 +54,7 @@ import {
   type VendaElegivelComissao,
 } from "@/lib/financeiro-api";
 import { brl, formatDate } from "@/lib/financeiro-mock";
+import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -50,8 +63,17 @@ import {
   Percent,
 } from "lucide-react";
 
+export type OrigemVendaComissao = "existente" | "avulsa";
+
 export type ComissaoFormState = {
+  origemVenda: OrigemVendaComissao;
   documentacaoId: string;
+  clienteNome: string;
+  vgv: string;
+  dataVenda: string;
+  corretorId: string;
+  construtoraId: string;
+  empreendimentoId: string;
   dataPrevistaRecebimento: string;
   percentualImobiliaria: string;
   percentualTributos: string;
@@ -63,7 +85,14 @@ export type ComissaoFormState = {
 };
 
 const EMPTY_FORM: ComissaoFormState = {
+  origemVenda: "existente",
   documentacaoId: "",
+  clienteNome: "",
+  vgv: "",
+  dataVenda: "",
+  corretorId: "",
+  construtoraId: "",
+  empreendimentoId: "",
   dataPrevistaRecebimento: "",
   percentualImobiliaria: "",
   percentualTributos: "",
@@ -98,6 +127,7 @@ export function numberValue(value: string | number | undefined) {
 
 function toForm(comissao: Comissao): ComissaoFormState {
   return {
+    ...EMPTY_FORM,
     documentacaoId: comissao.documentacaoId,
     dataPrevistaRecebimento: (comissao.dataPrevistaRecebimento ?? "").slice(
       0,
@@ -111,6 +141,12 @@ function toForm(comissao: Comissao): ComissaoFormState {
     percentualSocios: String(comissao.percentualSocios ?? ""),
     status: comissao.status,
   };
+}
+
+function corretorLabel(user: DocumentacaoCorretor) {
+  if (user.role === "gerente") return `${user.name} · Gerente`;
+  if (user.role === "treinee") return `${user.name} · Treinee`;
+  return user.name;
 }
 
 export function ComissaoLancamentoDialog({
@@ -137,6 +173,12 @@ export function ComissaoLancamentoDialog({
   const [loadingSales, setLoadingSales] = useState(false);
   const [salePickerOpen, setSalePickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [corretores, setCorretores] = useState<DocumentacaoCorretor[]>([]);
+  const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
+  const [empreendimentos, setEmpreendimentos] = useState<Empreendimento[]>([]);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(false);
+
+  const isAvulsa = mode === "create" && form.origemVenda === "avulsa";
 
   const loadEligibleSales = useCallback(async () => {
     setLoadingSales(true);
@@ -157,6 +199,29 @@ export function ComissaoLancamentoDialog({
     }
   }, [via]);
 
+  const loadCatalogs = useCallback(async () => {
+    setLoadingCatalogs(true);
+    try {
+      const [nextCorretores, nextConstrutoras, nextEmpreendimentos] =
+        await Promise.all([
+          fetchDocumentacaoCorretores(),
+          fetchConstrutoras(),
+          fetchEmpreendimentos({ ativo: true }),
+        ]);
+      setCorretores(nextCorretores);
+      setConstrutoras(nextConstrutoras);
+      setEmpreendimentos(nextEmpreendimentos);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível carregar corretor e empreendimentos.",
+      );
+    } finally {
+      setLoadingCatalogs(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) {
       setSalePickerOpen(false);
@@ -168,7 +233,8 @@ export function ComissaoLancamentoDialog({
     }
     setForm(EMPTY_FORM);
     void loadEligibleSales();
-  }, [open, mode, editing, loadEligibleSales]);
+    void loadCatalogs();
+  }, [open, mode, editing, loadEligibleSales, loadCatalogs]);
 
   const selectedSale = useMemo(
     () =>
@@ -176,6 +242,15 @@ export function ComissaoLancamentoDialog({
     [eligibleSales, form.documentacaoId],
   );
   const saleSummary = selectedSale ?? editing ?? null;
+  const avulsoVgv = parseOptionalMoneyInput(form.vgv) ?? 0;
+  const previewVgv = isAvulsa ? avulsoVgv : numberValue(saleSummary?.vgv);
+  const filteredEmpreendimentos = useMemo(() => {
+    if (!form.construtoraId) return empreendimentos;
+    return empreendimentos.filter(
+      (item) =>
+        !item.construtoraId || item.construtoraId === form.construtoraId,
+    );
+  }, [empreendimentos, form.construtoraId]);
 
   const percentages = useMemo(
     () => ({
@@ -194,7 +269,7 @@ export function ComissaoLancamentoDialog({
     percentages.percentualCaixa +
     percentages.percentualSocios;
   const preview = useMemo(() => {
-    const vgv = numberValue(saleSummary?.vgv);
+    const vgv = previewVgv;
     const gross = (vgv * percentages.percentualImobiliaria) / 100;
     const taxes = (gross * percentages.percentualTributos) / 100;
     const net = gross - taxes;
@@ -207,7 +282,7 @@ export function ComissaoLancamentoDialog({
       cash: (net * percentages.percentualCaixa) / 100,
       partners: (net * percentages.percentualSocios) / 100,
     };
-  }, [percentages, saleSummary]);
+  }, [percentages, previewVgv]);
 
   function setField<K extends keyof ComissaoFormState>(
     key: K,
@@ -218,9 +293,27 @@ export function ComissaoLancamentoDialog({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (mode === "create" && !form.documentacaoId) {
+    if (mode === "create" && !isAvulsa && !form.documentacaoId) {
       toast.error("Selecione uma venda elegível.");
       return;
+    }
+    if (isAvulsa) {
+      if (form.clienteNome.trim().length < 2) {
+        toast.error("Informe o nome do cliente.");
+        return;
+      }
+      if (!form.dataVenda) {
+        toast.error("Informe a data da venda.");
+        return;
+      }
+      if (!avulsoVgv || avulsoVgv <= 0) {
+        toast.error("Informe o valor da venda.");
+        return;
+      }
+      if (!form.corretorId) {
+        toast.error("Selecione o corretor.");
+        return;
+      }
     }
     if (percentages.percentualImobiliaria <= 0) {
       toast.error("Informe o percentual da imobiliária.");
@@ -246,6 +339,18 @@ export function ComissaoLancamentoDialog({
     setSaving(true);
     try {
       const created = mode === "create";
+      const avulsaPayload = {
+        clienteNome: form.clienteNome.trim(),
+        vgv: Math.round(avulsoVgv),
+        dataVenda: form.dataVenda,
+        corretorId: form.corretorId,
+        ...(form.construtoraId ? { construtoraId: form.construtoraId } : {}),
+        ...(form.empreendimentoId
+          ? { empreendimentoId: form.empreendimentoId }
+          : {}),
+        dataPrevistaRecebimento: form.dataPrevistaRecebimento,
+        ...percentages,
+      };
       const saved =
         mode === "edit" && editing
           ? await updateComissao(editing.id, {
@@ -253,21 +358,31 @@ export function ComissaoLancamentoDialog({
               dataPrevistaRecebimento: form.dataPrevistaRecebimento,
               status: form.status,
             })
-          : via === "titulo"
-            ? (
-                await createTituloComissao({
+          : isAvulsa
+            ? via === "titulo"
+              ? (await createTituloComissaoAvulsa(avulsaPayload)).comissao
+              : await createComissaoComVendaAvulsa(avulsaPayload)
+            : via === "titulo"
+              ? (
+                  await createTituloComissao({
+                    documentacaoId: form.documentacaoId,
+                    dataPrevistaRecebimento: form.dataPrevistaRecebimento,
+                    ...percentages,
+                  })
+                ).comissao
+              : await createComissao({
                   documentacaoId: form.documentacaoId,
                   dataPrevistaRecebimento: form.dataPrevistaRecebimento,
                   ...percentages,
-                })
-              ).comissao
-            : await createComissao({
-                documentacaoId: form.documentacaoId,
-                dataPrevistaRecebimento: form.dataPrevistaRecebimento,
-                ...percentages,
-              });
+                });
       onOpenChange(false);
-      toast.success(created ? createSuccessMessage : "Comissão atualizada.");
+      toast.success(
+        created
+          ? isAvulsa
+            ? "Comissão lançada — a venda já aparece em Vendas e Documentação."
+            : createSuccessMessage
+          : "Comissão atualizada.",
+      );
       onSaved?.(saved, { created });
     } catch (err) {
       toast.error(
@@ -286,7 +401,11 @@ export function ComissaoLancamentoDialog({
       onOpenChange={onOpenChange}
       icon={<Percent className="size-5" />}
       title={mode === "create" ? "Lançar comissão" : "Editar comissão"}
-      description="Defina a data prevista de recebimento e os percentuais antes de salvar."
+      description={
+        mode === "create"
+          ? "Use uma venda já cadastrada ou lance um cliente que ainda não está no sistema."
+          : "Defina a data prevista de recebimento e os percentuais antes de salvar."
+      }
       className="max-w-3xl"
       footer={
         <FormDialogActions
@@ -314,7 +433,27 @@ export function ComissaoLancamentoDialog({
       >
         <FormDialogBody>
           {mode === "create" && (
-            <FormSection title="Venda elegível">
+            <FormSection title="Origem da venda">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant={
+                    form.origemVenda === "existente" ? "default" : "outline"
+                  }
+                  onClick={() => setField("origemVenda", "existente")}
+                >
+                  Venda existente
+                </Button>
+                <Button
+                  type="button"
+                  variant={form.origemVenda === "avulsa" ? "default" : "outline"}
+                  onClick={() => setField("origemVenda", "avulsa")}
+                >
+                  Cliente não cadastrado
+                </Button>
+              </div>
+
+              {form.origemVenda === "existente" ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label>Venda</Label>
@@ -407,10 +546,120 @@ export function ComissaoLancamentoDialog({
                   </PopoverContent>
                 </Popover>
               </div>
+              ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  Cria o cliente, a venda em Documentação/Vendas e a comissão
+                  juntos.
+                  {loadingCatalogs ? " Carregando cadastros…" : ""}
+                </p>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="comissao-cliente-nome">Nome do cliente</Label>
+                  <Input
+                    id="comissao-cliente-nome"
+                    value={form.clienteNome}
+                    onChange={(event) =>
+                      setField("clienteNome", event.target.value)
+                    }
+                    required={isAvulsa}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comissao-vgv">Valor da venda (VGV)</Label>
+                  <Input
+                    id="comissao-vgv"
+                    inputMode="decimal"
+                    value={form.vgv}
+                    onChange={(event) =>
+                      setField("vgv", maskMoneyInput(event.target.value))
+                    }
+                    placeholder="0,00"
+                    required={isAvulsa}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comissao-data-venda">Data da venda</Label>
+                  <Input
+                    id="comissao-data-venda"
+                    type="date"
+                    value={form.dataVenda}
+                    onChange={(event) =>
+                      setField("dataVenda", event.target.value)
+                    }
+                    required={isAvulsa}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Corretor</Label>
+                  <IdSearchSelect
+                    value={form.corretorId}
+                    options={corretores.map((item) => ({
+                      id: item.id,
+                      label: corretorLabel(item),
+                    }))}
+                    onChange={(id) => setField("corretorId", id)}
+                    placeholder="Selecione o corretor"
+                    searchPlaceholder="Pesquisar corretor…"
+                    emptyLabel="Nenhum corretor cadastrado"
+                    allowNone={false}
+                    disabled={loadingCatalogs}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Construtora</Label>
+                  <IdSearchSelect
+                    value={form.construtoraId}
+                    options={construtoras.map((item) => ({
+                      id: item.id,
+                      label: item.nome,
+                    }))}
+                    onChange={(id) => {
+                      setForm((current) => ({
+                        ...current,
+                        construtoraId: id,
+                        empreendimentoId: "",
+                      }));
+                    }}
+                    placeholder="Opcional"
+                    searchPlaceholder="Pesquisar construtora…"
+                    emptyLabel="Nenhuma construtora cadastrada"
+                    disabled={loadingCatalogs}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Empreendimento</Label>
+                  <IdSearchSelect
+                    value={form.empreendimentoId}
+                    options={filteredEmpreendimentos.map((item) => ({
+                      id: item.id,
+                      label: item.nome,
+                      keywords: item.cidade ?? "",
+                    }))}
+                    onChange={(id) => {
+                      const selected = empreendimentos.find(
+                        (item) => item.id === id,
+                      );
+                      setForm((current) => ({
+                        ...current,
+                        empreendimentoId: id,
+                        construtoraId:
+                          current.construtoraId ||
+                          selected?.construtoraId ||
+                          "",
+                      }));
+                    }}
+                    placeholder="Opcional"
+                    searchPlaceholder="Pesquisar empreendimento…"
+                    emptyLabel="Nenhum empreendimento cadastrado"
+                    disabled={loadingCatalogs}
+                  />
+                </div>
+              </div>
+              )}
             </FormSection>
           )}
 
-          {saleSummary && (
+          {!isAvulsa && saleSummary && (
             <FormSection title="Resumo da venda">
               <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 <Summary

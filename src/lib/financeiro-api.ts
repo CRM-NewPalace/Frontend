@@ -128,6 +128,17 @@ export type CreateComissaoInput = ComissaoPercentuais & {
   status?: ComissaoStatus;
 };
 
+export type CreateComissaoVendaAvulsaInput = ComissaoPercentuais & {
+  clienteNome: string;
+  vgv: number;
+  dataVenda: string;
+  corretorId: string;
+  construtoraId?: string;
+  empreendimentoId?: string;
+  dataPrevistaRecebimento: string;
+  status?: ComissaoStatus;
+};
+
 export type CreateTituloComissaoResponse = {
   comissao: Comissao;
   titulos: TituloFinanceiro[];
@@ -395,6 +406,27 @@ export async function createTituloComissao(
 ): Promise<CreateTituloComissaoResponse> {
   return apiFetch<CreateTituloComissaoResponse>(
     "/financeiro/titulos/comissao",
+    {
+      method: "POST",
+      body: input,
+    },
+  );
+}
+
+export async function createComissaoComVendaAvulsa(
+  input: CreateComissaoVendaAvulsaInput,
+): Promise<Comissao> {
+  return apiFetch<Comissao>("/financeiro/comissoes/com-venda-avulsa", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function createTituloComissaoAvulsa(
+  input: CreateComissaoVendaAvulsaInput,
+): Promise<CreateTituloComissaoResponse> {
+  return apiFetch<CreateTituloComissaoResponse>(
+    "/financeiro/titulos/comissao-avulsa",
     {
       method: "POST",
       body: input,
