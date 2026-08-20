@@ -683,12 +683,20 @@ function Page() {
                     value={`${brl(numberValue(detail.valorPremiacaoCorretor))} (${numberValue(detail.percentualPremiacaoCorretor).toLocaleString("pt-BR")}%)`}
                   />
                   <DetailField
+                    label="Imposto"
+                    value={`${brl(numberValue(detail.valorPremiacaoImposto))} (${numberValue(detail.percentualPremiacaoImposto).toLocaleString("pt-BR")}%)`}
+                  />
+                  <DetailField
                     label="Imobiliária"
                     value={`${brl(numberValue(detail.valorPremiacaoImobiliaria))} (${numberValue(detail.percentualPremiacaoImobiliaria).toLocaleString("pt-BR")}%)`}
                   />
                   <DetailField
                     label="Gerente"
                     value={`${brl(numberValue(detail.valorPremiacaoGerente))} (${numberValue(detail.percentualPremiacaoGerente).toLocaleString("pt-BR")}%)`}
+                  />
+                  <DetailField
+                    label="Valor restante"
+                    value={brl(numberValue(detail.valorPremiacaoRestante))}
                   />
                 </div>
               </FormSection>

@@ -100,10 +100,13 @@ export type Comissao = {
   valorPremiacao?: number;
   percentualPremiacaoCorretor?: number;
   valorPremiacaoCorretor?: number;
+  percentualPremiacaoImposto?: number;
+  valorPremiacaoImposto?: number;
   percentualPremiacaoImobiliaria?: number;
   valorPremiacaoImobiliaria?: number;
   percentualPremiacaoGerente?: number;
   valorPremiacaoGerente?: number;
+  valorPremiacaoRestante?: number;
   status: ComissaoStatus;
   createdAt: string;
   updatedAt: string;
@@ -133,10 +136,13 @@ export type ComissaoPremiacao = {
   valorPremiacao?: number;
   percentualPremiacaoCorretor?: number;
   valorPremiacaoCorretor?: number;
+  percentualPremiacaoImposto?: number;
+  valorPremiacaoImposto?: number;
   percentualPremiacaoImobiliaria?: number;
   valorPremiacaoImobiliaria?: number;
   percentualPremiacaoGerente?: number;
   valorPremiacaoGerente?: number;
+  valorPremiacaoRestante?: number;
 };
 
 export type CreateComissaoInput = ComissaoPercentuais &

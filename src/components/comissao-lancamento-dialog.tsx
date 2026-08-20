@@ -83,6 +83,7 @@ export type ComissaoFormState = {
   percentualSocios: string;
   valorPremiacao: string;
   percentualPremiacaoCorretor: string;
+  percentualPremiacaoImposto: string;
   percentualPremiacaoImobiliaria: string;
   percentualPremiacaoGerente: string;
   status: ComissaoStatus;
@@ -106,6 +107,7 @@ const EMPTY_FORM: ComissaoFormState = {
   percentualSocios: "",
   valorPremiacao: "",
   percentualPremiacaoCorretor: "",
+  percentualPremiacaoImposto: "",
   percentualPremiacaoImobiliaria: "",
   percentualPremiacaoGerente: "",
   status: "pendente",
@@ -133,6 +135,31 @@ export function numberValue(value: string | number | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function calculatePremiacaoCascata(input: {
+  valor: number;
+  percentualCorretor: number;
+  percentualImposto: number;
+  percentualImobiliaria: number;
+  percentualGerente: number;
+}) {
+  let restante = roundMoney(Math.max(0, input.valor));
+  const corretor = roundMoney(restante * (input.percentualCorretor / 100));
+  restante = roundMoney(restante - corretor);
+  const imposto = roundMoney(restante * (input.percentualImposto / 100));
+  restante = roundMoney(restante - imposto);
+  const imobiliaria = roundMoney(
+    restante * (input.percentualImobiliaria / 100),
+  );
+  restante = roundMoney(restante - imobiliaria);
+  const gerente = roundMoney(restante * (input.percentualGerente / 100));
+  restante = roundMoney(restante - gerente);
+  return { corretor, imposto, imobiliaria, gerente, restante };
+}
+
 function toForm(comissao: Comissao): ComissaoFormState {
   return {
     ...EMPTY_FORM,
@@ -153,6 +180,9 @@ function toForm(comissao: Comissao): ComissaoFormState {
         : "",
     percentualPremiacaoCorretor: String(
       comissao.percentualPremiacaoCorretor ?? "",
+    ),
+    percentualPremiacaoImposto: String(
+      comissao.percentualPremiacaoImposto ?? "",
     ),
     percentualPremiacaoImobiliaria: String(
       comissao.percentualPremiacaoImobiliaria ?? "",
@@ -307,17 +337,21 @@ export function ComissaoLancamentoDialog({
   const premiacaoValor = parseOptionalMoneyInput(form.valorPremiacao) ?? 0;
   const premiacaoPerc = {
     corretor: numberValue(form.percentualPremiacaoCorretor),
+    imposto: numberValue(form.percentualPremiacaoImposto),
     imobiliaria: numberValue(form.percentualPremiacaoImobiliaria),
     gerente: numberValue(form.percentualPremiacaoGerente),
   };
-  const premiacaoPreview = {
-    corretor: (premiacaoValor * premiacaoPerc.corretor) / 100,
-    imobiliaria: (premiacaoValor * premiacaoPerc.imobiliaria) / 100,
-    gerente: (premiacaoValor * premiacaoPerc.gerente) / 100,
-  };
+  const premiacaoPreview = calculatePremiacaoCascata({
+    valor: premiacaoValor,
+    percentualCorretor: premiacaoPerc.corretor,
+    percentualImposto: premiacaoPerc.imposto,
+    percentualImobiliaria: premiacaoPerc.imobiliaria,
+    percentualGerente: premiacaoPerc.gerente,
+  });
   const premiacaoPayload = {
     valorPremiacao: premiacaoValor,
     percentualPremiacaoCorretor: premiacaoPerc.corretor,
+    percentualPremiacaoImposto: premiacaoPerc.imposto,
     percentualPremiacaoImobiliaria: premiacaoPerc.imobiliaria,
     percentualPremiacaoGerente: premiacaoPerc.gerente,
   };
@@ -374,9 +408,12 @@ export function ComissaoLancamentoDialog({
       return;
     }
     if (
-      [premiacaoPerc.corretor, premiacaoPerc.imobiliaria, premiacaoPerc.gerente].some(
-        (value) => !Number.isFinite(value) || value < 0 || value > 100,
-      )
+      [
+        premiacaoPerc.corretor,
+        premiacaoPerc.imposto,
+        premiacaoPerc.imobiliaria,
+        premiacaoPerc.gerente,
+      ].some((value) => !Number.isFinite(value) || value < 0 || value > 100)
     ) {
       toast.error("Os percentuais da premiação devem estar entre 0 e 100.");
       return;
@@ -835,8 +872,9 @@ export function ComissaoLancamentoDialog({
 
           <FormSection title="Premiação">
             <p className="text-xs text-muted-foreground">
-              Valor à parte da comissão. Os percentuais abaixo incidem só sobre
-              a premiação e não entram no rateio de 100% da líquida.
+              Valor à parte da comissão. Cada percentual incide sobre o saldo
+              da etapa anterior (corretor → imposto → imobiliária → gerente) e
+              não entra no rateio de 100% da líquida.
             </p>
             <div className="max-w-xs space-y-2">
               <Label htmlFor="comissao-premiacao">Valor total da premiação</Label>
@@ -850,12 +888,20 @@ export function ComissaoLancamentoDialog({
                 placeholder="0,00"
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <PercentField
                 label="Corretor"
                 value={form.percentualPremiacaoCorretor}
                 onChange={(value) =>
                   setField("percentualPremiacaoCorretor", value)
+                }
+                required={false}
+              />
+              <PercentField
+                label="Imposto (%)"
+                value={form.percentualPremiacaoImposto}
+                onChange={(value) =>
+                  setField("percentualPremiacaoImposto", value)
                 }
                 required={false}
               />
@@ -883,12 +929,21 @@ export function ComissaoLancamentoDialog({
                   value={brl(premiacaoPreview.corretor)}
                 />
                 <Summary
+                  label="Imposto"
+                  value={brl(premiacaoPreview.imposto)}
+                />
+                <Summary
                   label="Imobiliária"
                   value={brl(premiacaoPreview.imobiliaria)}
                 />
                 <Summary
                   label="Gerente"
                   value={brl(premiacaoPreview.gerente)}
+                />
+                <Summary
+                  label="Valor restante"
+                  value={brl(premiacaoPreview.restante)}
+                  emphasized
                 />
               </div>
             )}

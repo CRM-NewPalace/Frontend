@@ -974,7 +974,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Lançar comissão",
             detail:
-              "Pode partir de uma venda já cadastrada ou de um cliente ainda sem ficha: nome, valor, data da venda, corretor e, se quiser, construtora/empreendimento. Nesse caso a venda entra em Vendas e em Documentação. Informe também % da imobiliária, tributos, split da líquida e data prevista de recebimento. Os quatro pedaços da líquida precisam somar 100%. A premiação é um valor à parte, com percentuais próprios (corretor, imobiliária, gerente) que não entram nesse rateio. As fatias entram na hora em Contas a receber e a pagar, mesmo pendentes.",
+              "Pode partir de uma venda já cadastrada ou de um cliente ainda sem ficha: nome, valor, data da venda, corretor e, se quiser, construtora/empreendimento. Nesse caso a venda entra em Vendas e em Documentação. Informe também % da imobiliária, tributos, split da líquida e data prevista de recebimento. Os quatro pedaços da líquida precisam somar 100%. A premiação é um valor à parte: corretor, imposto, imobiliária e gerente, cada um sobre o saldo da etapa anterior — não entram no rateio da líquida. As fatias entram na hora em Contas a receber e a pagar, mesmo pendentes.",
           },
           {
             title: "Avançar o status",
