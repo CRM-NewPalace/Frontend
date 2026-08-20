@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { CheckCircle2, Clock3, Eye, Loader2, Pencil, Percent, Plus, Trash2 } from "lucide-react";
+import { Banknote, CheckCircle2, Clock3, Eye, Loader2, Pencil, Percent, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
