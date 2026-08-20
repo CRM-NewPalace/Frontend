@@ -954,7 +954,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/financeiro/despesas",
         who: "Admin. Tela de conferência das saídas classificadas.",
         summary:
-          "Saídas por tipo/centro — alimenta os gráficos da visão geral. Conferência, sem substituir o lançamento na movimentação.",
+          "Títulos a pagar do mês, inclusive comissão (corretor, gerente, tributos e premiação). Os totais e os gráficos da visão geral passam a contar essas fatias em aberto.",
         actions: [
           {
             title: "Revisar despesas",

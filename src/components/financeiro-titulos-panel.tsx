@@ -89,7 +89,6 @@ import {
   brl,
   COMISSAO_PAPEL_LABEL,
   formatDate,
-  matchesPeriodoFiltro,
   statusBadgeClass,
   statusLabel,
   tituloVisivelNoPeriodo,
@@ -702,24 +701,18 @@ export function FinanceiroTitulosPanel({
   }, [items, search, periodo, status, categoriaFiltro, tipo]);
 
   const kpis = useMemo(() => {
-    const now = new Date();
-    const aberto = items
-      .filter(
-        (r) => r.status === "aberto" && tituloVisivelNoPeriodo(r, "mes", now),
-      )
-      .reduce((s, r) => s + r.valor, 0);
-    const atrasado = items
+    const valor = (r: TituloFinanceiro) => Number(r.valor) || 0;
+    const aberto = rows
+      .filter((r) => r.status === "aberto")
+      .reduce((s, r) => s + valor(r), 0);
+    const atrasado = rows
       .filter((r) => r.status === "atrasado")
-      .reduce((s, r) => s + r.valor, 0);
-    const pago = items
-      .filter(
-        (r) =>
-          r.status === "pago" &&
-          matchesPeriodoFiltro(r.dataPagamento || r.vencimento, "mes", now),
-      )
-      .reduce((s, r) => s + r.valor, 0);
+      .reduce((s, r) => s + valor(r), 0);
+    const pago = rows
+      .filter((r) => r.status === "pago")
+      .reduce((s, r) => s + valor(r), 0);
     return { aberto, atrasado, pago };
-  }, [items]);
+  }, [rows]);
 
   const displayRows = useMemo(
     () => buildDisplayRows(rows, vistaParcelas),
@@ -2492,8 +2485,9 @@ export function FinanceiroTitulosPanel({
                     </Button>
                     {recorrenciaIndeterminada ? (
                       <p className="mt-1.5 text-xs text-muted-foreground">
-                        Continua todo mês até você encerrar o grupo. Lançamos os
-                        próximos 12 meses e renovamos automaticamente.
+                        Continua todo mês até você encerrar o grupo, sem data
+                        de término. As parcelas seguintes entram
+                        automaticamente.
                       </p>
                     ) : null}
                   </div>
@@ -3126,6 +3120,12 @@ export function FinanceiroTitulosPanel({
                   Total {brl(total)} · Pago {brl(totalPago)} · Em aberto{" "}
                   {brl(total - totalPago)}
                 </p>
+                {grupoTitulos.some((t) => t.recorrenciaIndeterminada) ? (
+                  <p className="text-xs text-muted-foreground">
+                    Recorrência sem data de término. Novas parcelas entram
+                    automaticamente à frente.
+                  </p>
+                ) : null}
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">Em aberto</h4>
                   {abertas.length === 0 ? (
