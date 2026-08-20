@@ -2268,9 +2268,9 @@ function DocumentacaoPage() {
                 <PopoverContent
                   align="end"
                   collisionPadding={16}
-                  className="flex w-[min(92vw,34rem)] max-h-[min(70vh,calc(100dvh-5rem))] flex-col overflow-hidden p-0"
+                  className="w-[min(92vw,34rem)] max-h-[min(var(--radix-popover-content-available-height),calc(100dvh-1rem))] overflow-y-auto overscroll-contain p-0"
                 >
-                  <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-popover px-4 py-3">
                     <div>
                       <p className="text-sm font-medium">Filtros avançados</p>
                       <p className="text-xs text-muted-foreground">
@@ -2299,7 +2299,7 @@ function DocumentacaoPage() {
                     ) : null}
                   </div>
 
-                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 scrollbar-gutter-stable scrollbar-thin">
+                  <div className="space-y-5 p-4">
                     <div className="space-y-2.5">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         Situação
