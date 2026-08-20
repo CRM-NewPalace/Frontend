@@ -656,7 +656,7 @@ function AgendaPage() {
       escopo: item.escopo,
       status: item.status,
       alvoTipo:
-        item.alvoTipo && item.alvoTipo !== "nenhum" ? item.alvoTipo : "todos",
+        item.alvoTipo && item.alvoTipo !== "nenhum" ? item.alvoTipo : "nenhum",
       alvoEquipeId: item.alvoEquipeId ?? "",
       alvoGerenteId: item.alvoGerenteId ?? "",
       alvoCorretorId: "",
@@ -689,7 +689,8 @@ function AgendaPage() {
       user?.role === "admin" &&
       form.tipo !== "bloqueio" &&
       !atribuidoParaId &&
-      form.alvoTipo !== "corretor";
+      form.alvoTipo !== "corretor" &&
+      form.alvoTipo !== "nenhum";
     const leadId =
       isAdminEvent || isPersonalPlatformAgenda || isBloqueio || atribuidoParaId
         ? null
@@ -795,9 +796,7 @@ function AgendaPage() {
       ...(showAdminAlvo
         ? {
             alvoTipo:
-              form.alvoTipo === "nenhum" || form.alvoTipo === "corretor"
-                ? "todos"
-                : form.alvoTipo,
+              form.alvoTipo === "corretor" ? "nenhum" : form.alvoTipo,
             alvoEquipeId:
               form.alvoTipo === "equipe" ? form.alvoEquipeId || null : null,
             alvoGerenteId:
@@ -1620,7 +1619,9 @@ function AgendaPage() {
                           alvoCorretorId:
                             alvo === "corretor" ? prev.alvoCorretorId : "",
                           atribuidoParaId:
-                            alvo === "corretor" ? "" : prev.atribuidoParaId,
+                            alvo === "corretor" || alvo === "nenhum"
+                              ? ""
+                              : prev.atribuidoParaId,
                         }));
                       }}
                     >
@@ -1628,6 +1629,9 @@ function AgendaPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="nenhum">
+                          {AGENDAMENTO_ALVO_LABEL.nenhum}
+                        </SelectItem>
                         <SelectItem value="todos">
                           {AGENDAMENTO_ALVO_LABEL.todos}
                         </SelectItem>
@@ -1644,7 +1648,9 @@ function AgendaPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground">
-                      {form.alvoTipo === "gerente"
+                      {form.alvoTipo === "nenhum"
+                        ? "Só você vê este compromisso na sua agenda."
+                        : form.alvoTipo === "gerente"
                         ? "Somente o gerente escolhido verá este evento (corretores não)."
                         : form.alvoTipo === "gerentes"
                           ? "Todos os gerentes verão este evento (corretores não)."
@@ -1732,9 +1738,12 @@ function AgendaPage() {
                   ) : null}
                 </div>
               </FormSection>
-            ) : !isPlatformAdmin &&
-              form.tipo !== "bloqueio" &&
-              !form.atribuidoParaId ? (
+            ) : null}
+
+            {!isPlatformAdmin &&
+            form.tipo !== "bloqueio" &&
+            !form.atribuidoParaId &&
+            (!isAdmin || form.alvoTipo === "nenhum") ? (
               <FormSection
                 title="Contato (opcional)"
                 icon={<User className="w-4 h-4 text-primary" />}
@@ -1908,7 +1917,8 @@ function AgendaPage() {
 
               {(isAdmin || isGerente) &&
               form.tipo !== "bloqueio" &&
-              form.alvoTipo !== "corretor" ? (
+              form.alvoTipo !== "corretor" &&
+              form.alvoTipo !== "nenhum" ? (
                 <div className="space-y-2">
                   <Label>
                     {isAdmin ? "Atribuir a" : "Atribuir ao corretor"}

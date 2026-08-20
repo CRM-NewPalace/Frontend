@@ -71,7 +71,7 @@ export const AGENDAMENTO_ESCOPO_LABEL: Record<AgendamentoEscopo, string> = {
 };
 
 export const AGENDAMENTO_ALVO_LABEL: Record<AgendamentoAlvo, string> = {
-  nenhum: "—",
+  nenhum: "Só eu (tarefa pessoal)",
   todos: "Todas as equipes",
   equipe: "Uma equipe",
   gerente: "Um gerente",
