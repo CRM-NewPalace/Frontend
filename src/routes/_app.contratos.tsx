@@ -220,7 +220,11 @@ function PreviewMark({
 }
 
 function Fill({ children }: { children: ReactNode }) {
-  return <strong className="font-bold text-black">{children}</strong>;
+  return (
+    <strong className="font-bold" style={{ color: "#000" }}>
+      {children}
+    </strong>
+  );
 }
 
 function formatLongDatePt(iso: string) {

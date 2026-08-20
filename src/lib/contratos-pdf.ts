@@ -232,9 +232,8 @@ function writeTitle(
 
 function writeCenteredRich(
   doc: jsPDF,
-  parts: Array<string | { b: string } | { accent: string }>,
+  parts: Array<string | { b: string }>,
   startY: number,
-  color: Rgb,
 ) {
   const pageW = doc.internal.pageSize.getWidth();
   const maxW = pageW - 132;
@@ -242,23 +241,19 @@ function writeCenteredRich(
   const tokens: Array<{
     text: string;
     bold: boolean;
-    accent: boolean;
     width: number;
   }> = [];
 
   for (const part of parts) {
-    const bold = typeof part !== "string" && "b" in part;
-    const accent = typeof part !== "string" && "accent" in part;
-    const content =
-      typeof part === "string" ? part : bold ? part.b : part.accent;
-    for (const word of String(content ?? "").split(/(\s+)/)) {
+    const bold = typeof part !== "string";
+    const content = typeof part === "string" ? part : String(part.b ?? "");
+    for (const word of content.split(/(\s+)/)) {
       if (!word) continue;
       doc.setFont("helvetica", bold ? "bold" : "normal");
       doc.setFontSize(11);
       tokens.push({
         text: word,
         bold,
-        accent,
         width: doc.getTextWidth(word),
       });
     }
@@ -272,9 +267,11 @@ function writeCenteredRich(
     let x = (pageW - lineW) / 2;
     for (const token of line) {
       doc.setFont("helvetica", token.bold ? "bold" : "normal");
-      doc.setTextColor(
-        ...(token.accent ? color : token.bold ? FILL_BLACK : BODY_COLOR),
-      );
+      if (token.bold) {
+        doc.setTextColor(0);
+      } else {
+        doc.setTextColor(...BODY_COLOR);
+      }
       doc.text(token.text, x, y);
       x += token.width;
     }
@@ -1041,7 +1038,6 @@ async function pdfCartaCancelamento(
       ", VENHO POR MEIO DESTA INFORMAR QUE SOLICITO O CANCELAMENTO DA AVALIAÇÃO HABITACIONAL, REALIZADA EM MEU NOME EM UMA CONSTRUTORA PARA DAR CONTINUIDADE EM OUTRA CONSTRUTORA.",
     ],
     y,
-    color,
   );
 
   y += 18;
