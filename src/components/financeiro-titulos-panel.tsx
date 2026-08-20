@@ -389,11 +389,14 @@ export function FinanceiroTitulosPanel({
   title,
   description,
   readOnly = false,
+  ocultarComissao = false,
 }: {
   tipo: "receber" | "pagar";
   title: string;
   description: string;
   readOnly?: boolean;
+  /** Despesas: comissões não entram na lista nem nos totais. */
+  ocultarComissao?: boolean;
 }) {
   const navigate = useNavigate();
   const [items, setItems] = useState<TituloFinanceiro[]>([]);
@@ -507,12 +510,14 @@ export function FinanceiroTitulosPanel({
 
   const load = useCallback(async () => {
     try {
+      const origemConsulta =
+        origemFiltro !== "todos"
+          ? origemFiltro
+          : ocultarComissao
+            ? "sem_comissao"
+            : undefined;
       const [titulos, pars, tipos, tenantList] = await Promise.all([
-        fetchTitulos(
-          tipo,
-          undefined,
-          origemFiltro !== "todos" ? origemFiltro : undefined,
-        ),
+        fetchTitulos(tipo, undefined, origemConsulta),
         fetchParceiros(),
         isPlatformAdmin
           ? Promise.resolve([] as DespesaTipo[])
@@ -534,7 +539,14 @@ export function FinanceiroTitulosPanel({
           : "Não foi possível carregar os títulos.",
       );
     }
-  }, [tipo, origemFiltro, canUseContrato, isPlatformAdmin, isAssinaturaPlataforma]);
+  }, [
+    tipo,
+    origemFiltro,
+    ocultarComissao,
+    canUseContrato,
+    isPlatformAdmin,
+    isAssinaturaPlataforma,
+  ]);
 
   useEffect(() => {
     void load();
@@ -684,6 +696,7 @@ export function FinanceiroTitulosPanel({
     const q = search.trim().toLowerCase();
     const now = new Date();
     return items.filter((t) => {
+      if (ocultarComissao && t.comissaoId) return false;
       if (status !== "todos" && t.status !== status) return false;
       if (categoriaFiltro !== "todos") {
         const label =
@@ -698,7 +711,7 @@ export function FinanceiroTitulosPanel({
         (t.categoria ?? "").toLowerCase().includes(q)
       );
     });
-  }, [items, search, periodo, status, categoriaFiltro, tipo]);
+  }, [items, search, periodo, status, categoriaFiltro, tipo, ocultarComissao]);
 
   const kpis = useMemo(() => {
     const valor = (r: TituloFinanceiro) => Number(r.valor) || 0;
@@ -1522,7 +1535,9 @@ export function FinanceiroTitulosPanel({
                   ...(canUseContrato
                     ? [{ value: "contrato" as const, label: "Contratos" }]
                     : []),
-                  { value: "comissao", label: "Comissão" },
+                  ...(!ocultarComissao
+                    ? [{ value: "comissao" as const, label: "Comissão" }]
+                    : []),
                 ] as const
               ).map((option) => (
                 <Button

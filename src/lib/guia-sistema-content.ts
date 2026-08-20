@@ -954,7 +954,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/financeiro/despesas",
         who: "Admin. Tela de conferência das saídas classificadas.",
         summary:
-          "Títulos a pagar do mês, inclusive comissão (corretor, gerente, tributos e premiação). Os totais e os gráficos da visão geral passam a contar essas fatias em aberto.",
+          "Obrigações com fornecedores e centros de custo. Comissões não entram aqui — use Comissão para lançar e Contas a pagar para baixar as fatias.",
         actions: [
           {
             title: "Revisar despesas",
