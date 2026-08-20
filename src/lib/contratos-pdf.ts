@@ -58,6 +58,12 @@ type LoadedLogo = {
 
 type Rgb = [number, number, number];
 
+const TITLE_BLACK: Rgb = [20, 20, 20];
+/** Corpo do modelo (texto fixo). */
+const BODY_COLOR: Rgb = [30, 30, 30];
+/** Dados preenchidos pelo usuário. */
+const FILL_BLACK: Rgb = [0, 0, 0];
+
 function parseHexColor(value?: string | null): Rgb | null {
   const hex = value?.trim().replace(/^#/, "");
   if (!hex || !/^[\da-f]{6}$/i.test(hex)) return null;
@@ -266,7 +272,9 @@ function writeCenteredRich(
     let x = (pageW - lineW) / 2;
     for (const token of line) {
       doc.setFont("helvetica", token.bold ? "bold" : "normal");
-      doc.setTextColor(...(token.accent ? color : [30, 30, 30]));
+      doc.setTextColor(
+        ...(token.accent ? color : token.bold ? FILL_BLACK : BODY_COLOR),
+      );
       doc.text(token.text, x, y);
       x += token.width;
     }
@@ -355,17 +363,15 @@ function writeRich(
   let x = margin;
 
   doc.setFontSize(fontSize);
-  doc.setTextColor(30, 30, 30);
+  doc.setTextColor(...BODY_COLOR);
 
   const tokens: Array<{ text: string; bold: boolean }> = [];
   for (const part of parts) {
-    if (typeof part === "string") {
-      for (const word of part.split(/(\s+)/)) {
-        if (!word) continue;
-        tokens.push({ text: word, bold: false });
-      }
-    } else {
-      tokens.push({ text: String(part.b ?? ""), bold: true });
+    const bold = typeof part !== "string";
+    const content = typeof part === "string" ? part : String(part.b ?? "");
+    for (const word of content.split(/(\s+)/)) {
+      if (!word) continue;
+      tokens.push({ text: word, bold });
     }
   }
 
@@ -373,6 +379,7 @@ function writeRich(
     const text = String(token.text ?? "");
     if (!text) continue;
     doc.setFont("helvetica", token.bold ? "bold" : "normal");
+    doc.setTextColor(...(token.bold ? FILL_BLACK : BODY_COLOR));
     const w = doc.getTextWidth(text);
     if (x + w > margin + maxW && !/^\s+$/.test(text)) {
       y += lineH;
@@ -401,7 +408,7 @@ function writeJustifiedRich(
 ) {
   const { fontSize, lineH, x: left, maxW } = opts;
   doc.setFontSize(fontSize);
-  doc.setTextColor(30, 30, 30);
+  doc.setTextColor(...BODY_COLOR);
 
   const words: Array<{ text: string; bold: boolean; width: number }> = [];
   for (const part of parts) {
@@ -458,6 +465,7 @@ function writeJustifiedRich(
     let x = left;
     for (const word of line) {
       doc.setFont("helvetica", word.bold ? "bold" : "normal");
+      doc.setTextColor(...(word.bold ? FILL_BLACK : BODY_COLOR));
       doc.text(word.text, x, y);
       x += word.width + gapW;
     }
@@ -472,7 +480,7 @@ function writeParagraph(doc: jsPDF, y: number, text: string, bold = false) {
   const margin = 48;
   doc.setFont("helvetica", bold ? "bold" : "normal");
   doc.setFontSize(10);
-  doc.setTextColor(30, 30, 30);
+  doc.setTextColor(...BODY_COLOR);
   const lines = doc.splitTextToSize(String(text ?? ""), pageW - margin * 2);
   for (const line of lines) {
     y = ensureSpace(doc, y, 14);
@@ -506,12 +514,14 @@ function writeSignature(
   if (name) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
+    doc.setTextColor(...FILL_BLACK);
     doc.text(String(name), margin, y);
     y += 11;
   }
   if (extra) {
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
+    doc.setTextColor(...FILL_BLACK);
     doc.text(String(extra), margin, y);
     y += 11;
   }
@@ -533,12 +543,13 @@ function writeCenteredSignature(
   doc.setDrawColor(...color);
   doc.setLineWidth(0.7);
   doc.line(x, y, x + lineW, y);
-  doc.setTextColor(30, 30, 30);
+  doc.setTextColor(...BODY_COLOR);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.text(label, pageW / 2, y + 13, { align: "center" });
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
+  doc.setTextColor(...FILL_BLACK);
   doc.text(name, pageW / 2, y + 26, { align: "center" });
   return y + 48;
 }
@@ -613,6 +624,7 @@ function drawReciboCopy(
   doc.roundedRect(valorX, valorY, valorW, valorH, 6, 6);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
+  doc.setTextColor(...FILL_BLACK);
   doc.text(moneyLabel(v(values, "valor")), valorX + valorW / 2, valorY + 18, {
     align: "center",
   });
@@ -653,7 +665,7 @@ function drawReciboCopy(
   y = Math.min(y + 22, sigTop - 18);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.setTextColor(20, 20, 20);
+  doc.setTextColor(...FILL_BLACK);
   doc.text(
     `${v(values, "cidade")}, ${formatLongDatePt(values.data ?? "")}`,
     box.x + box.w - pad,
@@ -669,7 +681,7 @@ function drawReciboCopy(
   doc.line(lineX, lineY, lineX + lineW, lineY);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.setTextColor(20, 20, 20);
+  doc.setTextColor(...FILL_BLACK);
   doc.text(v(values, "empresaNome").toUpperCase(), pageW / 2, lineY + 13, {
     align: "center",
   });
@@ -753,8 +765,6 @@ function yesNoValue(values: Values, key: string): "sim" | "nao" | "" {
   return "";
 }
 
-const TITLE_BLACK: Rgb = [20, 20, 20];
-
 function writeSectionTitle(doc: jsPDF, y: number, title: string, color: Rgb) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 48;
@@ -784,9 +794,9 @@ function writeField(
   doc.setTextColor(...color);
   doc.text(labelText, margin, y);
   const labelW = doc.getTextWidth(labelText);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.setTextColor(30, 30, 30);
+  doc.setTextColor(...FILL_BLACK);
   const lines = doc.splitTextToSize(value, pageW - margin * 2 - labelW);
   doc.text(String(lines[0] ?? ""), margin + labelW, y);
   y += 11;
@@ -955,9 +965,9 @@ async function pdfChecklistRenda(values: Values, logoUrl?: string | null) {
   );
 
   y = writeSectionTitle(doc, y, "Observações", color);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.setTextColor(30, 30, 30);
+  doc.setTextColor(...FILL_BLACK);
   const notes = values.observacoes?.trim() || "—";
   const noteLines = doc.splitTextToSize(notes, doc.internal.pageSize.getWidth() - 96);
   for (const line of noteLines.slice(0, 3)) {
@@ -965,8 +975,9 @@ async function pdfChecklistRenda(values: Values, logoUrl?: string | null) {
     y += 12;
   }
   y += 8;
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
+  doc.setTextColor(...FILL_BLACK);
   doc.text(
     `${dash(v(values, "cidade"))}, ${formatDateBr(values.data ?? "")}`,
     doc.internal.pageSize.getWidth() / 2,
@@ -987,6 +998,7 @@ async function pdfChecklistRenda(values: Values, logoUrl?: string | null) {
   });
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
+  doc.setTextColor(...FILL_BLACK);
   doc.text(v(values, "nome"), doc.internal.pageSize.getWidth() / 2, y + 24, {
     align: "center",
   });
@@ -1021,7 +1033,7 @@ async function pdfCartaCancelamento(
     doc,
     [
       "EU, ",
-      { accent: v(values, "nome").toUpperCase() },
+      { b: v(values, "nome").toUpperCase() },
       ", PORTADOR DO RG: ",
       { b: v(values, "rg") },
       " SDS/PE E CPF: ",
@@ -1035,9 +1047,9 @@ async function pdfCartaCancelamento(
   y += 18;
   drawOrnament(doc, y, color);
   y += 40;
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.setTextColor(30, 30, 30);
+  doc.setTextColor(...FILL_BLACK);
   doc.text(
     `${v(values, "cidade").toUpperCase()}, ${formatCartaDate(values)}`,
     pageW / 2,
@@ -1089,12 +1101,14 @@ async function pdfParentescoSem(
     y,
   );
 
-  y = writeParagraph(
+  y = writeRich(
     doc,
-    y,
-    "Declaro ainda que não possuo nenhum tipo de rendimento, seja renda formal ou informal exceto os benefícios temporários de natureza indenizatória, assistencial ou previdenciária, como auxílio-doença, auxílio-acidente, seguro-desemprego, benefício de prestação continuada (BPC) e benefício do Programa Bolsa Família, ou outros que vierem a substituí-los de acordo com a Lei 14.620 de 13/07/2023 e dependo financeiramente do " +
-      v(values, "nomeProponente") +
+    [
+      "Declaro ainda que não possuo nenhum tipo de rendimento, seja renda formal ou informal exceto os benefícios temporários de natureza indenizatória, assistencial ou previdenciária, como auxílio-doença, auxílio-acidente, seguro-desemprego, benefício de prestação continuada (BPC) e benefício do Programa Bolsa Família, ou outros que vierem a substituí-los de acordo com a Lei 14.620 de 13/07/2023 e dependo financeiramente do ",
+      { b: v(values, "nomeProponente") },
       ", proponente acima qualificado.",
+    ],
+    y,
   );
 
   y = writeParagraph(
@@ -1115,7 +1129,7 @@ async function pdfParentescoSem(
     "Responsabilizo-me pela exatidão e veracidade das informações declaradas e estou ciente de que, se falsas as declarações, ficarei sujeito às penas da lei, ficando, ainda, obrigado(a) a devolver os valores indevidamente sacados da conta vinculada do FGTS e/ou descontos concedidos pelo FGTS nos termos da Resolução do Conselho Curador do FGTS 702/12, suas alterações e aditamentos, acrescidos de correção monetária e juros sem prejuízo do vencimento antecipado da dívida decorrente do crédito concedido, com a consequente cobrança administrativa/judicial.",
   );
 
-  y = writeParagraph(doc, y, `Data: ${formatDateBr(values.data)}`);
+  y = writeRich(doc, ["Data: ", { b: formatDateBr(values.data) }], y);
   y = writeCenteredSignature(
     doc,
     y,
@@ -1168,12 +1182,14 @@ async function pdfParentescoCom(
     y,
   );
 
-  y = writeParagraph(
+  y = writeRich(
     doc,
-    y,
-    "Declaro ainda que não possuo nenhum tipo de rendimento, seja renda formal ou informal exceto os benefícios temporários de natureza indenizatória, assistencial ou previdenciária, como auxílio-doença, auxílio-acidente, seguro-desemprego, benefício de prestação continuada (BPC) e benefício do Programa Bolsa Família, ou outros que vierem a substituí-los de acordo com a Lei 14.620 de 13/07/2023 e dependo financeiramente do " +
-      v(values, "nomeProponente") +
+    [
+      "Declaro ainda que não possuo nenhum tipo de rendimento, seja renda formal ou informal exceto os benefícios temporários de natureza indenizatória, assistencial ou previdenciária, como auxílio-doença, auxílio-acidente, seguro-desemprego, benefício de prestação continuada (BPC) e benefício do Programa Bolsa Família, ou outros que vierem a substituí-los de acordo com a Lei 14.620 de 13/07/2023 e dependo financeiramente do ",
+      { b: v(values, "nomeProponente") },
       ", proponente acima qualificado. Declaro ainda que não participo como dependente de nenhum outro contrato de financiamento habitacional e não possuo financiamento ativo no SFH.",
+    ],
+    y,
   );
 
   y = writeRich(
@@ -1198,7 +1214,7 @@ async function pdfParentescoCom(
     "Responsabilizo-me pela exatidão e veracidade das informações declaradas e estou ciente de que, se falsas as declarações, ficarei sujeito às penas da lei, ficando, ainda, obrigado(a) a devolver os valores indevidamente sacados da conta vinculada do FGTS e/ou descontos concedidos pelo FGTS nos termos da Resolução do Conselho Curador do FGTS 702/12, suas alterações e aditamentos, acrescidos de correção monetária e juros sem prejuízo do vencimento antecipado da dívida decorrente do crédito concedido, com a consequente cobrança administrativa/judicial.",
   );
 
-  y = writeParagraph(doc, y, `Data: ${formatDateBr(values.data)}`);
+  y = writeRich(doc, ["Data: ", { b: formatDateBr(values.data) }], y);
   y = writeCenteredSignature(
     doc,
     y,
@@ -1247,35 +1263,50 @@ async function pdfIntermediacao(values: Values, logoUrl?: string | null) {
 
   y = writeParagraph(doc, y, "CLÁUSULA 1ª – DAS PARTES", true);
   y = writeParagraph(doc, y, "Denominado de CONTRATANTE(s):", true);
-  y = writeParagraph(doc, y, `Nome: ${v(values, "contratanteNome")}`);
-  y = writeParagraph(
+  y = writeRich(doc, ["Nome: ", { b: v(values, "contratanteNome") }], y);
+  y = writeRich(
     doc,
+    [
+      "CPF: ",
+      { b: v(values, "contratanteCpf") },
+      "    RG: ",
+      { b: v(values, "contratanteRg") },
+    ],
     y,
-    `CPF: ${v(values, "contratanteCpf")}    RG: ${v(values, "contratanteRg")}`,
   );
-  y = writeParagraph(doc, y, `Tel.: ${v(values, "contratanteTel")}`);
-  y = writeParagraph(doc, y, `E-mail: ${v(values, "contratanteEmail")}`);
-  y = writeParagraph(
+  y = writeRich(doc, ["Tel.: ", { b: v(values, "contratanteTel") }], y);
+  y = writeRich(doc, ["E-mail: ", { b: v(values, "contratanteEmail") }], y);
+  y = writeRich(
     doc,
+    [
+      "Endereço: ",
+      { b: v(values, "contratanteEndereco") },
+      "    CEP: ",
+      { b: v(values, "contratanteCep") },
+    ],
     y,
-    `Endereço: ${v(values, "contratanteEndereco")}    CEP: ${v(values, "contratanteCep")}`,
   );
 
   y = writeParagraph(doc, y, "Denominado PROPRIETÁRIO:", true);
-  y = writeParagraph(doc, y, `Nome: ${v(values, "proprietarioNome")}`);
-  y = writeParagraph(doc, y, `CNPJ/CPF: ${v(values, "proprietarioCnpj")}`);
-  y = writeParagraph(doc, y, `Endereço: ${v(values, "proprietarioEndereco")}`);
-  y = writeParagraph(doc, y, `Tel.: ${v(values, "proprietarioTel")}`);
+  y = writeRich(doc, ["Nome: ", { b: v(values, "proprietarioNome") }], y);
+  y = writeRich(doc, ["CNPJ/CPF: ", { b: v(values, "proprietarioCnpj") }], y);
+  y = writeRich(doc, ["Endereço: ", { b: v(values, "proprietarioEndereco") }], y);
+  y = writeRich(doc, ["Tel.: ", { b: v(values, "proprietarioTel") }], y);
 
   y = writeParagraph(doc, y, "Denominado CONTRATADA:", true);
-  y = writeParagraph(doc, y, `Nome: ${v(values, "contratadaNome")}`);
-  y = writeParagraph(
+  y = writeRich(doc, ["Nome: ", { b: v(values, "contratadaNome") }], y);
+  y = writeRich(
     doc,
+    [
+      "CNPJ: ",
+      { b: v(values, "contratadaCnpj") },
+      "    CRECI: ",
+      { b: v(values, "contratadaCreci") },
+    ],
     y,
-    `CNPJ: ${v(values, "contratadaCnpj")}    CRECI: ${v(values, "contratadaCreci")}`,
   );
-  y = writeParagraph(doc, y, `Endereço: ${v(values, "contratadaEndereco")}`);
-  y = writeParagraph(doc, y, `E-mail: ${v(values, "contratadaEmail")}`);
+  y = writeRich(doc, ["Endereço: ", { b: v(values, "contratadaEndereco") }], y);
+  y = writeRich(doc, ["E-mail: ", { b: v(values, "contratadaEmail") }], y);
 
   y = writeParagraph(doc, y, "CLÁUSULA 2ª – OBJETO DO CONTRATO", true);
   y = writeParagraph(
@@ -1283,20 +1314,24 @@ async function pdfIntermediacao(values: Values, logoUrl?: string | null) {
     y,
     "O presente contrato tem por finalidade a contratação dos serviços profissionais de corretagem da CONTRATADA pelo CONTRATANTE, nos moldes do artigo 726 do Código Civil, e será considerado concluído, quando da assinatura do contrato de promessa de compra e venda entre o CONTRATANTE e o PROPRIETÁRIO do imóvel comercializado.",
   );
-  y = writeParagraph(doc, y, `Construtora: ${v(values, "construtora")}`);
-  y = writeParagraph(doc, y, `Empreendimento: ${v(values, "empreendimento")}`);
-  y = writeParagraph(doc, y, `Unidade: ${v(values, "unidade")}`);
-  y = writeParagraph(doc, y, `Andar: ${v(values, "andar")}`);
-  y = writeParagraph(
+  y = writeRich(doc, ["Construtora: ", { b: v(values, "construtora") }], y);
+  y = writeRich(doc, ["Empreendimento: ", { b: v(values, "empreendimento") }], y);
+  y = writeRich(doc, ["Unidade: ", { b: v(values, "unidade") }], y);
+  y = writeRich(doc, ["Andar: ", { b: v(values, "andar") }], y);
+  y = writeRich(
     doc,
+    ["Descrição do Imóvel: ", { b: v(values, "descricaoImovel") }],
     y,
-    `Descrição do Imóvel: ${v(values, "descricaoImovel")}`,
   );
-  y = writeParagraph(doc, y, `Preço do Imóvel: R$ ${v(values, "precoImovel")}`);
-  y = writeParagraph(
+  y = writeRich(
     doc,
+    ["Preço do Imóvel: R$ ", { b: v(values, "precoImovel") }],
     y,
-    `Valor da intermediação: R$ ${v(values, "valorIntermediacao")}`,
+  );
+  y = writeRich(
+    doc,
+    ["Valor da intermediação: R$ ", { b: v(values, "valorIntermediacao") }],
+    y,
   );
 
   y = writeParagraph(
@@ -1305,20 +1340,38 @@ async function pdfIntermediacao(values: Values, logoUrl?: string | null) {
     "CLÁUSULA 3ª – HONORÁRIOS DE CORRETAGEM – DO PAGAMENTO",
     true,
   );
-  y = writeParagraph(
+  y = writeRich(
     doc,
+    [
+      "3.1 Para pagamento dos serviços de intermediação, o CONTRATANTE pagará à CONTRATADA, a título de honorários de corretagem, o valor de R$ ",
+      { b: v(values, "valorIntermediacao") },
+      " (",
+      { b: v(values, "valorIntermediacaoExtenso") },
+      ").",
+    ],
     y,
-    `3.1 Para pagamento dos serviços de intermediação, o CONTRATANTE pagará à CONTRATADA, a título de honorários de corretagem, o valor de R$ ${v(values, "valorIntermediacao")} (${v(values, "valorIntermediacaoExtenso")}).`,
   );
   y = writeParagraph(
     doc,
     y,
     "3.2 O pagamento dos honorários à CONTRATADA ocorrerá no momento em que o CONTRATANTE assinar o contrato de compra e venda com o PROPRIETÁRIO do imóvel em questão.",
   );
-  y = writeParagraph(
+  y = writeRich(
     doc,
+    [
+      "3.3 O pagamento do CONTRATANTE à CONTRATADA será através de transferência bancária: Banco: ",
+      { b: v(values, "banco") },
+      " - Agência: ",
+      { b: v(values, "agencia") },
+      " - Conta: ",
+      { b: v(values, "conta") },
+      " - PIX: ",
+      { b: v(values, "pix") },
+      " Representante Legal: ",
+      { b: v(values, "representanteLegal") },
+      ".",
+    ],
     y,
-    `3.3 O pagamento do CONTRATANTE à CONTRATADA será através de transferência bancária: Banco: ${v(values, "banco")} - Agência: ${v(values, "agencia")} - Conta: ${v(values, "conta")} - PIX: ${v(values, "pix")} Representante Legal: ${v(values, "representanteLegal")}.`,
   );
   y = writeParagraph(
     doc,
@@ -1379,10 +1432,14 @@ async function pdfIntermediacao(values: Values, logoUrl?: string | null) {
     "E para maior de todo o conteúdo aqui exposto, assinam o presente contrato em 03 (três) vias.",
   );
 
-  y = writeParagraph(
+  y = writeRich(
     doc,
+    [
+      { b: v(values, "cidade") },
+      ", ",
+      { b: formatDateBr(values.data) },
+    ],
     y,
-    `${v(values, "cidade")}, ${formatDateBr(values.data)}`,
   );
 
   y = writeSignature(

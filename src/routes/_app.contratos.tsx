@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import {
   FormDialogActions,
@@ -213,6 +219,10 @@ function PreviewMark({
   );
 }
 
+function Fill({ children }: { children: ReactNode }) {
+  return <strong className="font-bold text-black">{children}</strong>;
+}
+
 function formatLongDatePt(iso: string) {
   if (!iso) return "____ de ________ de ________";
   const [year, month, day] = iso.slice(0, 10).split("-");
@@ -261,15 +271,15 @@ function ReciboPreviewCard({
         <h3 className="text-center text-[15px] font-bold leading-tight">
           Recibo de Pagamento
         </h3>
-        <div className="absolute right-0 top-5 shrink-0 rounded-md border border-foreground/80 px-2.5 py-1 text-xs font-bold">
+        <div className="absolute right-0 top-5 shrink-0 rounded-md border border-foreground/80 px-2.5 py-1 text-xs font-bold text-black">
           {moneyPreview(values.valor ?? "")}
         </div>
       </div>
       <p className="text-justify leading-relaxed">
-        Recebi(emos) de <strong>{value("pagadorNome")}</strong> - CPF{" "}
-        <strong>{value("pagadorCpf")}</strong>, a importância de{" "}
-        <strong>{value("valorExtenso")}</strong>, referente à{" "}
-        <strong>{value("referente")}</strong>.
+        Recebi(emos) de <Fill>{value("pagadorNome")}</Fill> - CPF{" "}
+        <Fill>{value("pagadorCpf")}</Fill>, a importância de{" "}
+        <Fill>{value("valorExtenso")}</Fill>, referente à{" "}
+        <Fill>{value("referente")}</Fill>.
       </p>
       <p className="mt-3 text-justify leading-relaxed">
         Para maior clareza, firmo(amos) o presente recibo, que comprova o
@@ -277,15 +287,19 @@ function ReciboPreviewCard({
         <strong>quitação plena, geral e irrevogável</strong> pela quantia
         recebida.
       </p>
-      <p className="mt-5 text-right font-semibold">
-        {value("cidade")},{" "}
-        {values.data?.trim()
-          ? formatLongDatePt(values.data)
-          : "____ de ________ de ________"}
+      <p className="mt-5 text-right">
+        <Fill>
+          {value("cidade")},{" "}
+          {values.data?.trim()
+            ? formatLongDatePt(values.data)
+            : "____ de ________ de ________"}
+        </Fill>
       </p>
       <div className="mt-8 space-y-0.5 text-center text-[10px]">
         <div className="mx-auto w-40 border-t border-foreground/70" />
-        <div className="pt-1.5 font-bold uppercase">{value("empresaNome")}</div>
+        <div className="pt-1.5 font-bold uppercase text-black">
+          {value("empresaNome")}
+        </div>
         {values.empresaTelefone?.trim() ? (
           <div>{values.empresaTelefone.trim()}</div>
         ) : null}
@@ -316,25 +330,27 @@ function ContratoPreview({
     template.id === "carta-cancelamento" ? (
       <>
         <p>
-          Eu, <strong>{value("nome")}</strong>, portador do RG{" "}
-          <strong>{value("rg")}</strong> e CPF <strong>{value("cpf")}</strong>,
-          venho por meio desta informar que solicito o cancelamento da avaliação
+          Eu, <Fill>{value("nome")}</Fill>, portador do RG{" "}
+          <Fill>{value("rg")}</Fill> e CPF <Fill>{value("cpf")}</Fill>, venho
+          por meio desta informar que solicito o cancelamento da avaliação
           habitacional realizada em meu nome em uma construtora para dar
           continuidade em outra construtora.
         </p>
         <p>
-          {value("cidade")}, {date}
+          <Fill>
+            {value("cidade")}, {date}
+          </Fill>
         </p>
       </>
     ) : template.id === "parentesco-sem-conjuge" ? (
       <>
         <p>
-          Eu, <strong>{value("nomeParente")}</strong>, CPF{" "}
-          <strong>{value("cpfParente")}</strong>, estado civil{" "}
-          <strong>{value("estadoCivil")}</strong>, declaro que sou{" "}
-          <strong>{value("grauParentesco")}</strong> do proponente{" "}
-          <strong>{value("nomeProponente")}</strong>, CPF{" "}
-          <strong>{value("cpfProponente")}</strong>, com quem resido no mesmo
+          Eu, <Fill>{value("nomeParente")}</Fill>, CPF{" "}
+          <Fill>{value("cpfParente")}</Fill>, estado civil{" "}
+          <Fill>{value("estadoCivil")}</Fill>, declaro que sou{" "}
+          <Fill>{value("grauParentesco")}</Fill> do proponente{" "}
+          <Fill>{value("nomeProponente")}</Fill>, CPF{" "}
+          <Fill>{value("cpfProponente")}</Fill>, com quem resido no mesmo
           endereço há pelo menos 6 (seis) meses.
         </p>
         <p>
@@ -342,41 +358,45 @@ function ContratoPreview({
           formal ou informal, e que não participo como dependente de outro
           financiamento habitacional.
         </p>
-        <p>Data: {date}</p>
+        <p>
+          Data: <Fill>{date}</Fill>
+        </p>
       </>
     ) : template.id === "parentesco-com-conjuge" ? (
       <>
         <p>
-          Eu, <strong>{value("nomeParente")}</strong>, CPF{" "}
-          <strong>{value("cpfParente")}</strong>, declaro que sou{" "}
-          <strong>{value("grauParentesco")}</strong> do proponente{" "}
-          <strong>{value("nomeProponente")}</strong>, CPF{" "}
-          <strong>{value("cpfProponente")}</strong>, com quem resido no endereço{" "}
-          <strong>{value("endereco")}</strong>.
+          Eu, <Fill>{value("nomeParente")}</Fill>, CPF{" "}
+          <Fill>{value("cpfParente")}</Fill>, declaro que sou{" "}
+          <Fill>{value("grauParentesco")}</Fill> do proponente{" "}
+          <Fill>{value("nomeProponente")}</Fill>, CPF{" "}
+          <Fill>{value("cpfProponente")}</Fill>, com quem resido no endereço{" "}
+          <Fill>{value("endereco")}</Fill>.
         </p>
         <p>
-          Eu, <strong>{value("nomeConjuge")}</strong>, declaro que também não
+          Eu, <Fill>{value("nomeConjuge")}</Fill>, declaro que também não
           possuo nenhum tipo de rendimento, seja renda formal ou informal.
         </p>
-        <p>Data: {date}</p>
+        <p>
+          Data: <Fill>{date}</Fill>
+        </p>
       </>
     ) : template.id === "checklist-renda-informal" ? (
       <div className="space-y-3 text-left not-italic">
         <PreviewSection title="Dados do cliente" color="#111111" />
         <p>
-          Nome: <strong>{value("nome")}</strong>
+          Nome: <Fill>{value("nome")}</Fill>
         </p>
         <p>
-          CPF: <strong>{value("cpf")}</strong>
+          CPF: <Fill>{value("cpf")}</Fill>
         </p>
         <p>
-          Renda solicitada: <strong>{value("rendaSolicitada")}</strong>
+          Renda solicitada: <Fill>{value("rendaSolicitada")}</Fill>
         </p>
         <p>
-          Profissão: <strong>{value("profissao")}</strong>
+          Profissão: <Fill>{value("profissao")}</Fill>
         </p>
         <p>
-          Renda nos extratos: <strong>{value("rendaParcialExtratos")}</strong>
+          Renda nos extratos: <Fill>{value("rendaParcialExtratos")}</Fill>
         </p>
         <div className="flex flex-wrap gap-4">
           <PreviewMark
@@ -391,7 +411,7 @@ function ContratoPreview({
           />
         </div>
         <p>
-          Valor Bolsa Família: <strong>{value("bolsaFamiliaValor")}</strong>
+          Valor Bolsa Família: <Fill>{value("bolsaFamiliaValor")}</Fill>
         </p>
         <PreviewSection title="Renda mista" color="#111111" />
         <div className="flex flex-wrap gap-4">
@@ -407,10 +427,10 @@ function ContratoPreview({
           />
         </div>
         <p>
-          Empresa: <strong>{value("empresa")}</strong>
+          Empresa: <Fill>{value("empresa")}</Fill>
         </p>
         <p>
-          Salário: <strong>{value("salarioContracheque")}</strong>
+          Salário: <Fill>{value("salarioContracheque")}</Fill>
         </p>
         <PreviewSection title="Documentação anexada" color="#111111" />
         <PreviewMark
@@ -440,10 +460,12 @@ function ContratoPreview({
         />
         <PreviewSection title="Observações" color="#111111" />
         <p className="whitespace-pre-wrap min-h-10">
-          {values.observacoes?.trim() || "—"}
+          <Fill>{values.observacoes?.trim() || "—"}</Fill>
         </p>
         <p>
-          {value("cidade")}, {date}
+          <Fill>
+            {value("cidade")}, {date}
+          </Fill>
         </p>
       </div>
     ) : template.id === "recibo-pagamento" ? (
@@ -457,15 +479,15 @@ function ContratoPreview({
     ) : (
       <>
         <p>
-          Contratante: <strong>{value("contratanteNome")}</strong>, CPF{" "}
-          <strong>{value("contratanteCpf")}</strong>.
+          Contratante: <Fill>{value("contratanteNome")}</Fill>, CPF{" "}
+          <Fill>{value("contratanteCpf")}</Fill>.
         </p>
         <p>
-          Proprietário: <strong>{value("proprietarioNome")}</strong>.
+          Proprietário: <Fill>{value("proprietarioNome")}</Fill>.
         </p>
         <p>
-          Imóvel: <strong>{value("empreendimento")}</strong>, unidade{" "}
-          <strong>{value("unidade")}</strong>.
+          Imóvel: <Fill>{value("empreendimento")}</Fill>, unidade{" "}
+          <Fill>{value("unidade")}</Fill>.
         </p>
       </>
     );
