@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
+import { ComissaoLancamentoDialog } from "@/components/comissao-lancamento-dialog";
 import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
@@ -457,6 +458,10 @@ export function FinanceiroTitulosPanel({
     isPlatformAdmin || getSession()?.role === "admin";
   const isAssinaturaPlataforma = isPlatformAdmin && tipo === "receber";
   const [comoContrato, setComoContrato] = useState(false);
+  const canLancarComissao =
+    tipo === "receber" &&
+    (getSession()?.role === "admin" || getSession()?.role === "super_admin");
+  const [comissaoDialogOpen, setComissaoDialogOpen] = useState(false);
   const [parcelarAdesao, setParcelarAdesao] = useState(false);
   const [qtdParcelasAdesao, setQtdParcelasAdesao] = useState("2");
   const [contratoForm, setContratoForm] = useState<ContratoFormState>(() =>
@@ -941,6 +946,10 @@ export function FinanceiroTitulosPanel({
   }
 
   function openCreate() {
+    if (canLancarComissao && origemFiltro === "comissao") {
+      setComissaoDialogOpen(true);
+      return;
+    }
     setFormMode("create");
     setEditingId(null);
     setEditingGrupoId(null);
@@ -1445,10 +1454,22 @@ export function FinanceiroTitulosPanel({
         description={description}
         actions={
           readOnly ? undefined : (
-            <Button onClick={openCreate}>
-              <Plus className="w-4 h-4 mr-1" />
-              Novo título
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {canLancarComissao ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setComissaoDialogOpen(true)}
+                >
+                  <Percent className="w-4 h-4 mr-1" />
+                  Lançar comissão
+                </Button>
+              ) : null}
+              <Button onClick={openCreate}>
+                <Plus className="w-4 h-4 mr-1" />
+                Novo título
+              </Button>
+            </div>
           )
         }
       />
@@ -1791,6 +1812,17 @@ export function FinanceiroTitulosPanel({
         </Table>
       </div>
 
+      <ComissaoLancamentoDialog
+        open={comissaoDialogOpen}
+        onOpenChange={setComissaoDialogOpen}
+        mode="create"
+        via="titulo"
+        createSuccessMessage="Comissão lançada — também aparece em Comissões."
+        onSaved={() => {
+          void load();
+        }}
+      />
+
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
@@ -1997,6 +2029,35 @@ export function FinanceiroTitulosPanel({
                           : tipo === "receber"
                             ? "Gera adesão + mensalidades vinculadas ao cliente."
                             : "Adesão opcional e mensalidades do fornecedor. Para conta fixa simples (aluguel, condomínio), use recorrência abaixo."}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+                {canLancarComissao &&
+                formMode === "create" &&
+                formTab === "dados" ? (
+                  <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                    <Checkbox
+                      id="titulo-comissao"
+                      className="mt-0.5"
+                      checked={false}
+                      onCheckedChange={(checked) => {
+                        if (checked === true) {
+                          setOpen(false);
+                          setComissaoDialogOpen(true);
+                        }
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <Label
+                        htmlFor="titulo-comissao"
+                        className="cursor-pointer"
+                      >
+                        Comissão
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Abre o mesmo cadastro de Comissões: venda, percentuais
+                        e prévia do cálculo.
                       </p>
                     </div>
                   </div>

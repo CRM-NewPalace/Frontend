@@ -893,7 +893,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/financeiro/fluxo-caixa",
         who: "Admin do financeiro.",
         summary:
-          "Projeção por vencimento: o que entra, o que sai e o saldo no dia/semana/mês. Comissões pendentes entram pela data prevista, no valor bruto. Dá para baixar título direto do quadro.",
+          "Projeção por vencimento: o que entra, o que sai e o saldo no dia/semana/mês. Comissão pendente entra como previsão pelos títulos; ao baixar (aqui, em contas a receber ou na comissão), vira realizado. Dá para baixar título direto do quadro.",
         actions: [
           {
             title: "Navegar o período",
@@ -903,7 +903,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Baixar título no quadro",
             detail:
-              "Marca como recebido/pago e gera o movimento. Evita lançar duas vezes. Comissão prevista não baixa aqui — abra a comissão e marque como paga.",
+              "Marca como recebido/pago e gera o movimento. Evita lançar duas vezes. Comissão pendente aparece como título previsto — confirme aqui, em Contas a receber ou marcando a comissão como paga.",
           },
         ],
         formulas: [
@@ -924,12 +924,12 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Criar título",
             detail:
-              "Parceiro, valor, vencimento, categoria/centro. Acompanhe atrasados pelo filtro de período.",
+              "Parceiro, valor, vencimento, categoria. Para comissão, use Lançar comissão — abre o mesmo cadastro da tela de Comissões.",
           },
           {
             title: "Baixar (receber)",
             detail:
-              "Informa data/valor recebido. O título some do aberto e aparece na movimentação. Comissão paga gera aqui as fatias de caixa e sócios, identificadas e com atalho para a comissão.",
+              "Informa data/valor recebido. O título some do aberto e aparece na movimentação e no fluxo como realizado. Comissão lançada já gera aqui as fatias de caixa e sócios (abertas se pendente, baixadas se paga), identificadas e com atalho para a comissão.",
           },
         ],
       },
@@ -944,7 +944,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Criar e baixar",
             detail:
-              "Fornecedor, valor, vencimento. Baixa = pago e vira movimento de saída. Comissão paga gera aqui corretor, gerente e tributos (só se o valor for maior que zero), com selo Comissão e atalho para a origem.",
+              "Fornecedor, valor, vencimento. Baixa = pago e vira movimento de saída. Comissão lançada já gera aqui corretor, gerente e tributos (só se o valor for maior que zero), com selo Comissão e atalho para a origem.",
           },
         ],
       },
@@ -969,17 +969,17 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/financeiro/comissao",
         who: "Admin vê o consolidado. Gerente a da equipe. Corretor/treinee a fatia deles. Não exige o caixa inteiro no plano.",
         summary:
-          "Rateio sobre o VGV da venda: bruta da imobiliária, tributos, líquida e split (corretor, gerente, caixa, sócios). Informe a data prevista de recebimento — o fluxo de caixa projeta a bruta nessa data. Status: pendente → liberada → paga.",
+          "Rateio sobre o VGV da venda: bruta da imobiliária, tributos, líquida e split (corretor, gerente, caixa, sócios). Ao lançar, as fatias já aparecem em Contas a receber (caixa/sócios) e a pagar. Se estiver pendente, o fluxo de caixa projeta o recebimento na data prevista. Status: pendente → liberada → paga.",
         actions: [
           {
             title: "Lançar comissão",
             detail:
-              "VGV + % da imobiliária + % de tributos + split da líquida + data prevista de recebimento. Os quatro pedaços da líquida precisam somar 100%. Enquanto não estiver paga, o fluxo mostra só a comissão bruta (sem tributos e sem split).",
+              "VGV + % da imobiliária + % de tributos + split da líquida + data prevista de recebimento. Os quatro pedaços da líquida precisam somar 100%. As fatias entram na hora em Contas a receber e a pagar, mesmo pendentes.",
           },
           {
             title: "Avançar o status",
             detail:
-              "Pendente, liberada, paga. Ao marcar como paga: a previsão bruta some do fluxo e as fatias entram — caixa da imobiliária e sócios em Contas a receber; corretor, gerente e tributos (se > R$ 0) em Contas a pagar. Cada título fica identificado como Comissão e abre a comissão de origem.",
+              "Pendente, liberada, paga. Enquanto pendente, as fatias de caixa e sócios ficam em aberto no fluxo (previsão). Ao marcar como paga aqui ou baixar em Contas a receber, os títulos são baixados e o fluxo registra como realizado. Cada título fica identificado como Comissão e abre a comissão de origem.",
           },
           {
             title: "Conferir o recorte",

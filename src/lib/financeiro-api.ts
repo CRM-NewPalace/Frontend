@@ -125,6 +125,12 @@ export type ComissaoPercentuais = {
 export type CreateComissaoInput = ComissaoPercentuais & {
   documentacaoId: string;
   dataPrevistaRecebimento: string;
+  status?: ComissaoStatus;
+};
+
+export type CreateTituloComissaoResponse = {
+  comissao: Comissao;
+  titulos: TituloFinanceiro[];
 };
 
 export type UpdateComissaoInput = Partial<ComissaoPercentuais> & {
@@ -367,6 +373,14 @@ export async function fetchVendasElegiveisComissao(): Promise<
   );
 }
 
+export async function fetchVendasElegiveisTituloComissao(): Promise<
+  VendaElegivelComissao[]
+> {
+  return apiFetch<VendaElegivelComissao[]>(
+    "/financeiro/titulos/vendas-elegiveis",
+  );
+}
+
 export async function createComissao(
   input: CreateComissaoInput,
 ): Promise<Comissao> {
@@ -374,6 +388,18 @@ export async function createComissao(
     method: "POST",
     body: input,
   });
+}
+
+export async function createTituloComissao(
+  input: CreateComissaoInput,
+): Promise<CreateTituloComissaoResponse> {
+  return apiFetch<CreateTituloComissaoResponse>(
+    "/financeiro/titulos/comissao",
+    {
+      method: "POST",
+      body: input,
+    },
+  );
 }
 
 export async function updateComissao(
