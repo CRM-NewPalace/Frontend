@@ -1639,14 +1639,14 @@ function AgendaPage() {
                       {form.alvoTipo === "nenhum"
                         ? "Só você vê este compromisso na sua agenda."
                         : form.alvoTipo === "gerente"
-                        ? "Somente o gerente escolhido verá este evento (corretores não)."
+                        ? "Somente o gerente escolhido verá este evento (corretores não). Se ele conectou o Google Agenda, a cópia também vai para lá."
                         : form.alvoTipo === "gerentes"
-                          ? "Todos os gerentes verão este evento (corretores não)."
+                          ? "Todos os gerentes verão este evento (corretores não). Quem conectou o Google Agenda recebe uma cópia."
                           : form.alvoTipo === "equipe"
-                            ? "Gerente e corretores da equipe escolhida verão este evento."
+                            ? "Gerente e corretores da equipe escolhida verão este evento. Quem conectou o Google Agenda recebe uma cópia."
                             : form.alvoTipo === "corretor"
                               ? "O compromisso aparece na agenda do corretor escolhido e ele recebe notificação."
-                              : "Todos os usuários verão este evento na agenda."}
+                              : "Todos os usuários verão este evento na agenda. Quem conectou o Google Agenda recebe uma cópia."}
                     </p>
                   </div>
 
