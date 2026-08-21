@@ -88,3 +88,82 @@ export function useImoveisVista() {
 
   return [vista, setVista] as const;
 }
+
+export const IMOVEIS_CAMPOS = [
+  { id: "tipo", label: "Tipo" },
+  { id: "status", label: "Status" },
+  { id: "tags", label: "Tags" },
+  { id: "construtora", label: "Construtora" },
+  { id: "localidade", label: "Localidade" },
+  { id: "endereco", label: "Endereço" },
+  { id: "previsao", label: "Previsão" },
+  { id: "quartos", label: "Quartos" },
+  { id: "banheiros", label: "Banheiros" },
+  { id: "vagas", label: "Vagas" },
+  { id: "metragem", label: "Metragem" },
+  { id: "valor", label: "A partir de" },
+] as const;
+
+export type ImoveisCampo = (typeof IMOVEIS_CAMPOS)[number]["id"];
+
+const CAMPOS_KEY_PREFIX = "imoveis.camposOcultos";
+
+function camposStorageKey() {
+  const session = getSession();
+  const tenantId = session?.tenant?.id ?? session?.tenantId ?? "default";
+  const userId = session?.id ?? "anon";
+  return `${CAMPOS_KEY_PREFIX}.${tenantId}.${userId}`;
+}
+
+function isImoveisCampo(value: unknown): value is ImoveisCampo {
+  return IMOVEIS_CAMPOS.some((campo) => campo.id === value);
+}
+
+export function getImoveisCamposOcultos(): Set<ImoveisCampo> {
+  try {
+    const raw = localStorage.getItem(camposStorageKey());
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter(isImoveisCampo));
+  } catch {
+    return new Set();
+  }
+}
+
+export function setImoveisCampoVisivel(
+  campo: ImoveisCampo,
+  visivel: boolean,
+): void {
+  const next = getImoveisCamposOcultos();
+  if (visivel) next.delete(campo);
+  else next.add(campo);
+  localStorage.setItem(camposStorageKey(), JSON.stringify([...next]));
+  window.dispatchEvent(new Event(IMOVEIS_NAV_EVENT));
+}
+
+export function useImoveisCamposVisiveis() {
+  const [ocultos, setOcultos] = useState<Set<ImoveisCampo>>(new Set());
+
+  useEffect(() => {
+    const sync = () => setOcultos(getImoveisCamposOcultos());
+    sync();
+    window.addEventListener(IMOVEIS_NAV_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(IMOVEIS_NAV_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  function show(campo: ImoveisCampo) {
+    return !ocultos.has(campo);
+  }
+
+  function toggle(campo: ImoveisCampo) {
+    setImoveisCampoVisivel(campo, ocultos.has(campo));
+    setOcultos(getImoveisCamposOcultos());
+  }
+
+  return { show, toggle };
+}

@@ -100,7 +100,7 @@ import {
   type PdfOrdemImoveis,
 } from "@/lib/imoveis-pdf";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useImoveisVista } from "@/lib/imoveis-nav-prefs";
+import { useImoveisCamposVisiveis, useImoveisVista } from "@/lib/imoveis-nav-prefs";
 import {
   assertImageFile,
   ImageUploadField,
@@ -300,6 +300,7 @@ export function ImoveisPage({
   const [rendaAte, setRendaAte] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
   const [vista, setVista] = useImoveisVista();
+  const { show: showCampo } = useImoveisCamposVisiveis();
   const [catalogoLocalidades, setCatalogoLocalidades] = useState<Localidade[]>(
     [],
   );
@@ -1248,13 +1249,27 @@ export function ImoveisPage({
             <TableHeader>
               <TableRow>
                 <TableHead>Empreendimento</TableHead>
-                <TableHead>Construtora</TableHead>
-                <TableHead>Localidade</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Previsão</TableHead>
-                <TableHead>Quartos</TableHead>
-                <TableHead>Metragem</TableHead>
-                <TableHead>A partir de</TableHead>
+                {showCampo("construtora") ? (
+                  <TableHead>Construtora</TableHead>
+                ) : null}
+                {showCampo("localidade") ? (
+                  <TableHead>Localidade</TableHead>
+                ) : null}
+                {showCampo("tipo") ||
+                showCampo("status") ||
+                showCampo("tags") ? (
+                  <TableHead>
+                    {showCampo("tipo") || showCampo("status")
+                      ? "Status"
+                      : "Tags"}
+                  </TableHead>
+                ) : null}
+                {showCampo("previsao") ? <TableHead>Previsão</TableHead> : null}
+                {showCampo("quartos") ? <TableHead>Quartos</TableHead> : null}
+                {showCampo("metragem") ? <TableHead>Metragem</TableHead> : null}
+                {showCampo("valor") ? (
+                  <TableHead>A partir de</TableHead>
+                ) : null}
                 <TableHead className="w-28 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -1263,73 +1278,91 @@ export function ImoveisPage({
                 <TableRow key={item.id}>
                   <TableCell>
                     <p className="font-bold leading-snug">{item.nome}</p>
-                    {item.endereco ? (
+                    {showCampo("endereco") && item.endereco ? (
                       <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">
                         {item.endereco}
                       </p>
                     ) : null}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {item.construtora?.nome ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {empreendimentoLocalidadeNome(item) || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {item.tipo ? (
-                        <Badge
-                          className={cn(
-                            STATUS_CHIP_CLASS,
-                            colorByLabel("empreendimento_tipo", item.tipo),
-                          )}
-                        >
-                          {empreendimentoTipoLabel(item.tipo)}
-                        </Badge>
-                      ) : null}
-                      {item.status ? (
-                        <Badge
-                          className={cn(
-                            STATUS_CHIP_CLASS,
-                            colorByLabel(
-                              "empreendimento_status",
-                              item.status,
-                            ),
-                          )}
-                        >
-                          {empreendimentoStatusLabel(item.status)}
-                        </Badge>
-                      ) : null}
-                      {(item.tags ?? []).map((tag) => (
-                        <Badge
-                          key={tag}
-                          className={cn(
-                            STATUS_CHIP_CLASS,
-                            colorByLabel("empreendimento_tag", tag),
-                          )}
-                          title={tag}
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {item.previsaoEntrega
-                      ? formatPrevisao(item.previsaoEntrega)
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {item.quartos != null ? item.quartos : "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {item.areaM2 != null ? `${item.areaM2} m²` : "—"}
-                  </TableCell>
-                  <TableCell className="font-semibold tabular-nums">
-                    {item.valorReferencia != null
-                      ? brl(item.valorReferencia)
-                      : "—"}
-                  </TableCell>
+                  {showCampo("construtora") ? (
+                    <TableCell className="text-sm">
+                      {item.construtora?.nome ?? "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("localidade") ? (
+                    <TableCell className="text-sm">
+                      {empreendimentoLocalidadeNome(item) || "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("tipo") ||
+                  showCampo("status") ||
+                  showCampo("tags") ? (
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {showCampo("tipo") && item.tipo ? (
+                          <Badge
+                            className={cn(
+                              STATUS_CHIP_CLASS,
+                              colorByLabel("empreendimento_tipo", item.tipo),
+                            )}
+                          >
+                            {empreendimentoTipoLabel(item.tipo)}
+                          </Badge>
+                        ) : null}
+                        {showCampo("status") && item.status ? (
+                          <Badge
+                            className={cn(
+                              STATUS_CHIP_CLASS,
+                              colorByLabel(
+                                "empreendimento_status",
+                                item.status,
+                              ),
+                            )}
+                          >
+                            {empreendimentoStatusLabel(item.status)}
+                          </Badge>
+                        ) : null}
+                        {showCampo("tags")
+                          ? (item.tags ?? []).map((tag) => (
+                              <Badge
+                                key={tag}
+                                className={cn(
+                                  STATUS_CHIP_CLASS,
+                                  colorByLabel("empreendimento_tag", tag),
+                                )}
+                                title={tag}
+                              >
+                                {tag}
+                              </Badge>
+                            ))
+                          : null}
+                      </div>
+                    </TableCell>
+                  ) : null}
+                  {showCampo("previsao") ? (
+                    <TableCell>
+                      {item.previsaoEntrega
+                        ? formatPrevisao(item.previsaoEntrega)
+                        : "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("quartos") ? (
+                    <TableCell className="tabular-nums">
+                      {item.quartos != null ? item.quartos : "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("metragem") ? (
+                    <TableCell className="tabular-nums">
+                      {item.areaM2 != null ? `${item.areaM2} m²` : "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("valor") ? (
+                    <TableCell className="font-semibold tabular-nums">
+                      {item.valorReferencia != null
+                        ? brl(item.valorReferencia)
+                        : "—"}
+                    </TableCell>
+                  ) : null}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-0.5">
                       <Button
@@ -1411,7 +1444,8 @@ export function ImoveisPage({
                   );
                 })()}
                 <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/60 to-transparent" />
-                {empreendimentoLocalidadeNome(item) ? (
+                {showCampo("localidade") &&
+                empreendimentoLocalidadeNome(item) ? (
                   <Badge className="absolute bottom-3 right-3 border-white/20 bg-black/45 text-white hover:bg-black/55">
                     {empreendimentoLocalidadeNome(item)}
                   </Badge>
@@ -1459,86 +1493,92 @@ export function ImoveisPage({
                     )}
                   </div>
                 </div>
-                {item.construtora && (
+                {showCampo("construtora") && item.construtora ? (
                   <p className="text-xs text-muted-foreground">
                     {item.construtora.nome}
                   </p>
-                )}
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-3">
-                {item.endereco && (
+                {showCampo("endereco") && item.endereco ? (
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {item.endereco}
                   </p>
-                )}
-                <div className="flex flex-wrap gap-1.5">
-                  {item.tipo ? (
-                    <Badge
-                      className={cn(
-                        STATUS_CHIP_CLASS,
-                        colorByLabel("empreendimento_tipo", item.tipo),
-                      )}
-                      title={empreendimentoTipoLabel(item.tipo)}
-                    >
-                      {empreendimentoTipoLabel(item.tipo)}
-                    </Badge>
-                  ) : null}
-                  {item.status ? (
-                    <Badge
-                      className={cn(
-                        STATUS_CHIP_CLASS,
-                        colorByLabel("empreendimento_status", item.status),
-                      )}
-                      title={empreendimentoStatusLabel(item.status)}
-                    >
-                      {empreendimentoStatusLabel(item.status)}
-                    </Badge>
-                  ) : null}
-                  {(item.tags ?? []).map((tag) => (
-                    <Badge
-                      key={tag}
-                      className={cn(
-                        STATUS_CHIP_CLASS,
-                        colorByLabel("empreendimento_tag", tag),
-                      )}
-                      title={tag}
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
+                ) : null}
+                {showCampo("tipo") ||
+                showCampo("status") ||
+                showCampo("tags") ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {showCampo("tipo") && item.tipo ? (
+                      <Badge
+                        className={cn(
+                          STATUS_CHIP_CLASS,
+                          colorByLabel("empreendimento_tipo", item.tipo),
+                        )}
+                        title={empreendimentoTipoLabel(item.tipo)}
+                      >
+                        {empreendimentoTipoLabel(item.tipo)}
+                      </Badge>
+                    ) : null}
+                    {showCampo("status") && item.status ? (
+                      <Badge
+                        className={cn(
+                          STATUS_CHIP_CLASS,
+                          colorByLabel("empreendimento_status", item.status),
+                        )}
+                        title={empreendimentoStatusLabel(item.status)}
+                      >
+                        {empreendimentoStatusLabel(item.status)}
+                      </Badge>
+                    ) : null}
+                    {showCampo("tags")
+                      ? (item.tags ?? []).map((tag) => (
+                          <Badge
+                            key={tag}
+                            className={cn(
+                              STATUS_CHIP_CLASS,
+                              colorByLabel("empreendimento_tag", tag),
+                            )}
+                            title={tag}
+                          >
+                            {tag}
+                          </Badge>
+                        ))
+                      : null}
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                  {item.previsaoEntrega ? (
+                  {showCampo("previsao") && item.previsaoEntrega ? (
                     <span className="inline-flex items-center gap-1">
                       <CalendarClock className="w-3.5 h-3.5" />
                       {formatPrevisao(item.previsaoEntrega)}
                     </span>
                   ) : null}
-                  {item.quartos != null && (
+                  {showCampo("quartos") && item.quartos != null && (
                     <span className="inline-flex items-center gap-1">
                       <BedDouble className="w-3.5 h-3.5" />
                       {item.quartos}
                     </span>
                   )}
-                  {item.banheiros != null && (
+                  {showCampo("banheiros") && item.banheiros != null && (
                     <span className="inline-flex items-center gap-1">
                       <Bath className="w-3.5 h-3.5" />
                       {item.banheiros}
                     </span>
                   )}
-                  {item.vagas != null && (
+                  {showCampo("vagas") && item.vagas != null && (
                     <span className="inline-flex items-center gap-1">
                       <Car className="w-3.5 h-3.5" />
                       {item.vagas}
                     </span>
                   )}
-                  {item.areaM2 != null && (
+                  {showCampo("metragem") && item.areaM2 != null && (
                     <span className="inline-flex items-center gap-1">
                       <Ruler className="w-3.5 h-3.5" />
                       {item.areaM2} m²
                     </span>
                   )}
-                  {item.valorReferencia != null && (
+                  {showCampo("valor") && item.valorReferencia != null && (
                     <span className="inline-flex items-center gap-1 font-medium text-foreground">
                       A partir de {brl(item.valorReferencia)}
                     </span>

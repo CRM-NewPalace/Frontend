@@ -43,8 +43,10 @@ import { canAccessRoute } from "@/lib/permissions";
 import {
   getHideImoveisFromSidebar,
   getImoveisVista,
+  IMOVEIS_CAMPOS,
   setHideImoveisFromSidebar,
   setImoveisVista,
+  useImoveisCamposVisiveis,
   type ImoveisVista,
 } from "@/lib/imoveis-nav-prefs";
 import {
@@ -53,7 +55,7 @@ import {
   type MetasVista,
 } from "@/lib/metas-nav-prefs";
 import { ImoveisPage } from "@/routes/_app.imoveis";
-import { LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfigFunisPanel } from "@/components/config-funis-panel";
@@ -267,6 +269,7 @@ function Config() {
   const [imoveisVista, setImoveisVistaState] = useState<ImoveisVista>(() =>
     getImoveisVista(),
   );
+  const imoveisCampos = useImoveisCamposVisiveis();
   const [metasVista, setMetasVistaState] = useState<MetasVista>(() =>
     getMetasVista(),
   );
@@ -653,6 +656,57 @@ function Config() {
                     <LayoutList className="mr-1.5 h-4 w-4" />
                     Tabela
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Campos visíveis</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Clique para exibir ou ocultar informações na lista de imóveis
+                  (cards e tabela).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {IMOVEIS_CAMPOS.map((campo) => {
+                    const visivel = imoveisCampos.show(campo.id);
+                    return (
+                      <Button
+                        key={campo.id}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-9 rounded-lg border px-3",
+                          visivel
+                            ? "bg-background shadow-sm"
+                            : "text-muted-foreground",
+                        )}
+                        aria-pressed={visivel}
+                        title={
+                          visivel
+                            ? `Ocultar ${campo.label.toLocaleLowerCase("pt-BR")}`
+                            : `Exibir ${campo.label.toLocaleLowerCase("pt-BR")}`
+                        }
+                        onClick={() => {
+                          imoveisCampos.toggle(campo.id);
+                          toast.success(
+                            visivel
+                              ? `${campo.label} oculto na lista.`
+                              : `${campo.label} visível na lista.`,
+                          );
+                        }}
+                      >
+                        {visivel ? (
+                          <Eye className="mr-1.5 h-3.5 w-3.5" />
+                        ) : (
+                          <EyeOff className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        {campo.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
