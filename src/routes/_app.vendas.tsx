@@ -92,6 +92,20 @@ function dateDay(value: string | null | undefined) {
   return value?.slice(0, 10) ?? "";
 }
 
+function toDateInput(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function currentMonthRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { dataDe: toDateInput(start), dataAte: toDateInput(end) };
+}
+
 function dateBr(value: string | null | undefined) {
   if (!value) return "—";
   const [year, month, day] = value.slice(0, 10).split("-");
@@ -158,8 +172,7 @@ function VendasPage() {
     gerenteId: "__all__",
     corretorId: "__all__",
     origem: "__all__",
-    dataDe: "",
-    dataAte: "",
+    ...currentMonthRange(),
   };
   const [draft, setDraft] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
@@ -468,7 +481,7 @@ function VendasPage() {
     <div>
       <PageHeader
         title="Vendas"
-        description="Todos os processos finalizados com venda e seus responsáveis."
+        description="Vendas do mês atual — ajuste o período nos filtros se quiser ver outro intervalo."
       />
 
       <section className="grid gap-3 grid-cols-2 xl:grid-cols-3">
