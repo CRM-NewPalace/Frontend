@@ -53,6 +53,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfigFunisPanel } from "@/components/config-funis-panel";
 import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
+import { ConfigCreciPanel } from "@/components/config-creci-panel";
+import { userCanInformarCreci } from "@/lib/users-api";
 import { CorPicker } from "@/components/cor-picker";
 import {
   CONSTRUTORA_CORES_PRESET,
@@ -223,9 +225,12 @@ function Config() {
   const user = getSession();
   const isAnalista = user?.role === "analista";
   const isTreinee = user?.role === "treinee";
-  const showOpsTabs = !isAnalista && !isTreinee;
-  const showDocumentacao = !isTreinee;
-  const showMotivos = !isTreinee;
+  const isCorretor = user?.role === "corretor";
+  const showCreci = Boolean(user && userCanInformarCreci(user));
+  const showOpsTabs = !isAnalista && !isTreinee && !isCorretor;
+  const showDocumentacao = !isTreinee && !isCorretor;
+  const showMotivos = !isTreinee && !isCorretor;
+  const showCatalogTabs = !isCorretor;
   const showImoveis = Boolean(
     user &&
       canAccessRoute(
@@ -385,11 +390,13 @@ function Config() {
       <PageHeader
         title="Configurações"
         description={
-          isTreinee
-            ? "Gerencie origens, tags, CCAs e catálogos de imóveis."
-            : isAnalista
-              ? "Gerencie documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
-              : "Personalize imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
+          isCorretor
+            ? "Informe o número do seu CRECI."
+            : isTreinee
+              ? "Gerencie origens, tags, CCAs e catálogos de imóveis."
+              : isAnalista
+                ? "Gerencie documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
+                : "Personalize imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
         }
       />
 
@@ -401,10 +408,19 @@ function Config() {
 
       <Tabs
         defaultValue={
-          isTreinee ? "origens" : isAnalista ? "documentacao" : "empresa"
+          isCorretor
+            ? "creci"
+            : isTreinee
+              ? "origens"
+              : isAnalista
+                ? "documentacao"
+                : "empresa"
         }
       >
         <TabsList className="flex h-auto flex-wrap gap-1">
+          {showCreci ? (
+            <TabsTrigger value="creci">Meu CRECI</TabsTrigger>
+          ) : null}
           {showOpsTabs ? (
             <>
               <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
@@ -417,16 +433,28 @@ function Config() {
           {showOpsTabs ? (
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           ) : null}
-          {showImoveis ? (
+          {showImoveis && showCatalogTabs ? (
             <TabsTrigger value="imoveis">Imóveis</TabsTrigger>
           ) : null}
-          <TabsTrigger value="origens">Origens</TabsTrigger>
+          {showCatalogTabs ? (
+            <TabsTrigger value="origens">Origens</TabsTrigger>
+          ) : null}
           {showMotivos ? (
             <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
           ) : null}
-          <TabsTrigger value="tags">Tags</TabsTrigger>
-          <TabsTrigger value="cca">CCA</TabsTrigger>
+          {showCatalogTabs ? (
+            <>
+              <TabsTrigger value="tags">Tags</TabsTrigger>
+              <TabsTrigger value="cca">CCA</TabsTrigger>
+            </>
+          ) : null}
         </TabsList>
+
+        {showCreci ? (
+          <TabsContent value="creci">
+            <ConfigCreciPanel />
+          </TabsContent>
+        ) : null}
 
         {showOpsTabs ? (
           <>
@@ -505,7 +533,7 @@ function Config() {
           </>
         ) : null}
 
-        {showImoveis ? (
+        {showImoveis && showCatalogTabs ? (
           <TabsContent value="imoveis" className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Tipos, status e tags usados no cadastro de empreendimentos. Admin,
@@ -705,14 +733,15 @@ function Config() {
         </TabsContent>
         ) : null}
 
-        {(
-          [
-            "origens",
-            ...(showMotivos ? (["motivos"] as const) : []),
-            "tags",
-            "cca",
-          ] as ListKind[]
-        ).map((kind) => (
+        {showCatalogTabs
+          ? (
+              [
+                "origens",
+                ...(showMotivos ? (["motivos"] as const) : []),
+                "tags",
+                "cca",
+              ] as ListKind[]
+            ).map((kind) => (
           <TabsContent key={kind} value={kind}>
             <Card>
               <CardHeader className="flex-row justify-between items-center">
@@ -762,7 +791,8 @@ function Config() {
               </CardContent>
             </Card>
           </TabsContent>
-        ))}
+        ))
+        : null}
       </Tabs>
 
       <Dialog open={listOpen} onOpenChange={setListOpen}>

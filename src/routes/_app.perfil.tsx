@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { changePassword, getSession, type AuthUser } from "@/lib/auth";
+import { userCanInformarCreci } from "@/lib/users-api";
+import { ConfigCreciPanel } from "@/components/config-creci-panel";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import {
   ASIDE_COLORS,
@@ -287,6 +289,11 @@ function Perfil() {
             <div className="text-xs text-muted-foreground">
               {user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
             </div>
+            {user?.creci?.trim() ? (
+              <div className="mt-1 text-xs font-medium text-primary">
+                CRECI {user.creci.trim()}
+              </div>
+            ) : null}
             <Button variant="outline" size="sm" className="mt-4">
               Alterar foto
             </Button>
@@ -375,6 +382,11 @@ function Perfil() {
             </div>
           </CardContent>
         </Card>
+        {user && userCanInformarCreci(user) ? (
+          <div className="lg:col-span-3">
+            <ConfigCreciPanel onSaved={setUser} />
+          </div>
+        ) : null}
         <Card className="lg:col-span-3">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
             <CardTitle className="text-base">Aparência</CardTitle>

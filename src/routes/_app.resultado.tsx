@@ -70,6 +70,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FlowTrack } from "@/components/flow-bar";
 import { origemBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { phoneDigits } from "@/lib/phone";
 import { displayEmail } from "@/lib/email";
@@ -604,12 +605,11 @@ function AnalisePage() {
                               <div className="table-person-name truncate">
                                 {row.nome}
                               </div>
-                              <div className="h-1.5 max-w-56 overflow-hidden rounded-full bg-muted">
-                                <div
-                                  className="h-full rounded-full bg-primary"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
+                              <FlowTrack
+                                percent={pct}
+                                tone="primary"
+                                className="h-2 max-w-56"
+                              />
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-right font-semibold tabular-nums">

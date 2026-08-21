@@ -5,6 +5,7 @@ import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { FlowTrack, FLOW_BAR_GRADIENTS } from "@/components/flow-bar";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -569,8 +570,8 @@ function PodioVendas({
       step: "h-24 sm:h-28",
       avatar:
         "border-slate-200 bg-linear-to-br from-slate-100 to-slate-300 text-slate-800 ring-slate-300/40 dark:from-slate-400 dark:to-slate-600",
-      stepBg:
-        "bg-linear-to-b from-slate-200 to-slate-400 text-slate-800 rounded-tl-2xl",
+      stepClass: "text-slate-800 rounded-tl-2xl",
+      flow: FLOW_BAR_GRADIENTS.slate,
     },
     {
       row: items[0],
@@ -578,8 +579,8 @@ function PodioVendas({
       step: "h-36 sm:h-44",
       avatar:
         "border-amber-200 bg-linear-to-br from-amber-300 to-amber-500 text-amber-950 ring-amber-300/50 shadow-lg shadow-amber-500/20",
-      stepBg:
-        "bg-linear-to-b from-amber-300 to-amber-500 text-amber-950 rounded-t-2xl shadow-md z-[1]",
+      stepClass: "text-amber-950 rounded-t-2xl shadow-md z-[1]",
+      flow: FLOW_BAR_GRADIENTS.amber,
     },
     {
       row: items[2],
@@ -587,8 +588,8 @@ function PodioVendas({
       step: "h-20 sm:h-24",
       avatar:
         "border-orange-200 bg-linear-to-br from-orange-300 to-orange-500 text-orange-950 ring-orange-300/40",
-      stepBg:
-        "bg-linear-to-b from-orange-300 to-orange-500 text-orange-950 rounded-tr-2xl",
+      stepClass: "text-orange-950 rounded-tr-2xl",
+      flow: FLOW_BAR_GRADIENTS.orange,
     },
   ].filter((s) => Boolean(s.row));
 
@@ -617,7 +618,7 @@ function PodioVendas({
 
         <div className="relative mx-auto mt-7 max-w-lg">
           <div className="flex items-end justify-center gap-0">
-            {slots.map(({ row, place, step, avatar, stepBg }) => {
+            {slots.map(({ row, place, step, avatar, stepClass, flow }) => {
               if (!row) return null;
 
               return (
@@ -668,18 +669,19 @@ function PodioVendas({
 
                   <div
                     className={cn(
-                      "flex w-full flex-col items-center justify-start gap-1 border border-b-0 border-black/5 pt-3",
+                      "funil-bar-flow relative flex w-full flex-col items-center justify-start gap-1 overflow-hidden border border-b-0 border-black/5 pt-3",
                       step,
-                      stepBg,
+                      stepClass,
                     )}
+                    style={{ backgroundImage: flow }}
                   >
-                    <span className="text-base font-black tracking-tight sm:text-lg">
+                    <span className="relative z-10 text-base font-black tracking-tight sm:text-lg">
                       #{place}
                     </span>
                     {place === 1 ? (
-                      <Trophy className="h-4 w-4 opacity-80" />
+                      <Trophy className="relative z-10 h-4 w-4 opacity-80" />
                     ) : (
-                      <Medal className="h-3.5 w-3.5 opacity-70" />
+                      <Medal className="relative z-10 h-3.5 w-3.5 opacity-70" />
                     )}
                   </div>
                 </button>
@@ -772,18 +774,19 @@ function RankingList({
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        place === 1 && "bg-amber-500",
-                        place === 2 && "bg-slate-400",
-                        place === 3 && "bg-orange-500",
-                        !topThree && "bg-primary/70",
-                      )}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  <FlowTrack
+                    percent={pct}
+                    tone={
+                      place === 1
+                        ? "amber"
+                        : place === 2
+                          ? "slate"
+                          : place === 3
+                            ? "orange"
+                            : "primary"
+                    }
+                    className="h-2.5 flex-1"
+                  />
                   <span className="shrink-0 text-[11px] text-muted-foreground">
                     {row.vendas.valor} {row.vendas.valor === 1 ? "venda" : "vendas"}
                   </span>
@@ -871,18 +874,19 @@ function ConstrutorasRanking({
                     </span>
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={cn(
-                          "h-full rounded-full",
-                          place === 1 && "bg-amber-500",
-                          place === 2 && "bg-slate-400",
-                          place === 3 && "bg-orange-500",
-                          !topThree && "bg-primary/70",
-                        )}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                    <FlowTrack
+                      percent={pct}
+                      tone={
+                        place === 1
+                          ? "amber"
+                          : place === 2
+                            ? "slate"
+                            : place === 3
+                              ? "orange"
+                              : "primary"
+                      }
+                      className="h-2.5 flex-1"
+                    />
                     <span className="shrink-0 text-[11px] text-muted-foreground">
                       {item.vendas} {item.vendas === 1 ? "venda" : "vendas"}
                     </span>

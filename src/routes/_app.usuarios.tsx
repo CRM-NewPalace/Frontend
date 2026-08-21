@@ -47,6 +47,7 @@ import {
   DetailField,
 } from "@/components/form-dialog";
 import { CorPicker } from "@/components/cor-picker";
+import { FlowTrack } from "@/components/flow-bar";
 import {
   Plus,
   MoreHorizontal,
@@ -307,30 +308,25 @@ function CreciRatioBar({
   label,
   count,
   total,
-  colorClass,
+  tone,
   onClick,
 }: {
   label: string;
   count: number;
   total: number;
-  colorClass: string;
+  tone: "emerald" | "orange";
   onClick: () => void;
 }) {
   const pct = total > 0 ? (count / total) * 100 : 0;
   return (
     <button type="button" onClick={onClick} className="w-full text-left">
-      <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-        <span className="font-medium">{label}</span>
-        <span className="text-muted-foreground tabular-nums">
+      <div className="mb-1.5 flex items-center justify-between gap-2 text-sm">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-semibold tabular-nums">
           {count} de {total} ({Math.round(pct)}%)
         </span>
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn("h-full rounded-full transition-[width]", colorClass)}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <FlowTrack percent={pct} tone={tone} />
     </button>
   );
 }
@@ -848,14 +844,14 @@ function Usuarios() {
             label="Com CRECI"
             count={adminStats.comCreci}
             total={adminStats.corretores}
-            colorClass="bg-emerald-500"
+            tone="emerald"
             onClick={() => filterCorretoresCreci("com")}
           />
           <CreciRatioBar
             label="Sem CRECI"
             count={adminStats.semCreci}
             total={adminStats.corretores}
-            colorClass="bg-orange-400"
+            tone="orange"
             onClick={() => filterCorretoresCreci("sem")}
           />
         </Card>

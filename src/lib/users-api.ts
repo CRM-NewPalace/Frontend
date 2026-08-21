@@ -70,6 +70,26 @@ export function normalizeCreciStatus(
   return creci?.trim() ? "creci_recebido" : "nao_iniciado";
 }
 
+/** Quem pode informar o próprio CRECI (corretor/gerente ou processo já iniciado). */
+export function userCanInformarCreci(user: {
+  role?: string | null;
+  creci?: string | null;
+  creciStatus?: CreciProcessoStatus | string | null;
+}) {
+  if (!user.role || user.role === "super_admin") return false;
+  if (
+    user.role === "corretor" ||
+    user.role === "treinee" ||
+    user.role === "gerente" ||
+    user.role === "admin"
+  ) {
+    return true;
+  }
+  if (user.creci?.trim()) return true;
+  const status = normalizeCreciStatus(user.creciStatus, user.creci);
+  return status !== "nao_iniciado";
+}
+
 export type ApiUser = {
   id: string;
   name: string;

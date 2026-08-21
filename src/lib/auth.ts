@@ -40,6 +40,8 @@ export interface AuthUser {
   status: UserStatus;
   phone?: string | null;
   cargo?: string | null;
+  creci?: string | null;
+  creciStatus?: string | null;
   avatar?: string | null;
   lastLoginAt?: string | null;
   tenant?: TenantBranding | null;
@@ -202,6 +204,22 @@ export async function ensureSession(options?: {
     writeValidatedAt(0);
     return null;
   }
+}
+
+export async function updateMe(input: {
+  creci?: string | null;
+  corAside?: string | null;
+  corPrincipal?: string | null;
+  corModulo?: string | null;
+}): Promise<AuthUser> {
+  const user = await apiFetch<AuthUser>("/auth/me", {
+    method: "PATCH",
+    body: input,
+  });
+  sessionCache.setUser(user);
+  lastValidatedAt = Date.now();
+  writeValidatedAt(lastValidatedAt);
+  return user;
 }
 
 export async function changePassword(

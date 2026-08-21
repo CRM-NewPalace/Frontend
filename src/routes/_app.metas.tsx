@@ -3,23 +3,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
-  type ReactNode,
 } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,6 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+  FormSection,
+} from "@/components/form-dialog";
+import {
+  MetasGestorBoard,
+  MetasPorOrigem,
+  MetasResumo,
+  MetaTipoPicker,
+} from "@/components/metas-board";
 import { getSession } from "@/lib/auth";
 import { isCorretorLike } from "@/lib/permissions";
 import { ApiError } from "@/lib/api";
@@ -56,27 +56,29 @@ import {
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
 import { cn } from "@/lib/utils";
+import { SOFT_BTN } from "@/lib/soft-btn";
 import {
-  BarChart3,
-  Building2,
   CalendarDays,
-  FileText,
-  Pencil,
+  Loader2,
   Plus,
   Target,
-  Trash2,
-  Trophy,
-  Users,
   UserRound,
-  Wallet,
+  Users,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/metas")({
   head: () => ({ meta: [{ title: "Metas — Zone Connection" }] }),
   component: Page,
 });
+
+type MetasTab =
+  | "todas"
+  | "imobiliaria"
+  | "gerente"
+  | "corretor"
+  | "atribuidas"
+  | "pessoais";
 
 function Page() {
   const user = getSession();
@@ -98,6 +100,9 @@ function Page() {
     periodo: "mensal" as MetaPeriodo,
     valor: "",
   });
+  const [tab, setTab] = useState<MetasTab>("todas");
+  const [filterTipo, setFilterTipo] = useState("__all__");
+  const [filterPeriodo, setFilterPeriodo] = useState("__all__");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -213,39 +218,91 @@ function Page() {
     );
   }, [equipes, usuarios]);
 
-  const metasImobiliaria = useMemo(
-    () => metas.filter((meta) => meta.escopo === "imobiliaria"),
-    [metas],
-  );
+  const isGestor = isAdmin || isGerente;
 
-  const metasGerentes = useMemo(
-    () => metas.filter((meta) => meta.escopo === "gerente"),
-    [metas],
-  );
+  const filteredMetas = useMemo(() => {
+    return metas.filter((meta) => {
+      if (filterTipo !== "__all__" && meta.tipo !== filterTipo) return false;
+      if (filterPeriodo !== "__all__" && meta.periodo !== filterPeriodo) {
+        return false;
+      }
+      if (!isGestor) {
+        if (tab === "atribuidas") return meta.origem !== "pessoal";
+        if (tab === "pessoais") return meta.origem === "pessoal";
+        return true;
+      }
+      if (tab === "imobiliaria") return meta.escopo === "imobiliaria";
+      if (tab === "gerente") return meta.escopo === "gerente";
+      if (tab === "corretor") return meta.escopo === "corretor";
+      return true;
+    });
+  }, [filterPeriodo, filterTipo, isGestor, metas, tab]);
 
-  const gruposCorretores = useMemo(() => {
-    if (!isAdmin && !isGerente) return [];
+  const filteredImobiliaria = useMemo(
+    () => filteredMetas.filter((meta) => meta.escopo === "imobiliaria"),
+    [filteredMetas],
+  );
+  const filteredGerentes = useMemo(
+    () => filteredMetas.filter((meta) => meta.escopo === "gerente"),
+    [filteredMetas],
+  );
+  const filteredGruposGerentes = useMemo(() => {
+    const byId = new Map<string, Meta[]>();
+    for (const meta of filteredGerentes) {
+      const key = meta.gerenteId ?? "sem-gerente";
+      const list = byId.get(key) ?? [];
+      list.push(meta);
+      byId.set(key, list);
+    }
+    if (tab === "gerente" && byId.size === 0) {
+      return gerentes.map((gerente) => ({
+        id: gerente.id,
+        name: gerente.name,
+        subtitle: gerente.equipeNome,
+        metas: [] as Meta[],
+      }));
+    }
+    return [...byId.entries()].map(([id, metasDoGerente]) => {
+      const fromMeta = metasDoGerente[0]?.gerente;
+      const fromEquipe = gerentes.find((g) => g.id === id);
+      return {
+        id,
+        name: fromMeta?.name ?? fromEquipe?.name ?? "Gerente",
+        subtitle:
+          fromMeta?.equipeGerenciada?.name ?? fromEquipe?.equipeNome ?? null,
+        metas: metasDoGerente,
+      };
+    });
+  }, [filteredGerentes, gerentes, tab]);
+  const filteredGruposCorretores = useMemo(() => {
+    if (!isGestor) return [];
     const metasPorCorretor = new Map<string, Meta[]>();
-    metas
+    filteredMetas
       .filter((meta) => meta.escopo === "corretor" && meta.corretorId)
       .forEach((meta) => {
         const itens = metasPorCorretor.get(meta.corretorId!) ?? [];
         itens.push(meta);
         metasPorCorretor.set(meta.corretorId!, itens);
       });
-    return corretores.map((corretor) => {
-      const metasDoCorretor = metasPorCorretor.get(corretor.id) ?? [];
-      return {
-        corretor: metasDoCorretor[0]?.corretor ?? {
-          id: corretor.id,
-          name: corretor.name,
-          equipeId: null,
-          equipe: { id: "equipe", name: corretor.equipeNome },
-        },
-        metas: metasDoCorretor,
-      };
-    });
-  }, [corretores, isAdmin, isGerente, metas]);
+    return corretores
+      .map((corretor) => {
+        const metasDoCorretor = metasPorCorretor.get(corretor.id) ?? [];
+        if (tab !== "corretor" && metasDoCorretor.length === 0) return null;
+        return {
+          corretor: metasDoCorretor[0]?.corretor ?? {
+            id: corretor.id,
+            name: corretor.name,
+            equipeId: null,
+            equipe: { id: "equipe", name: corretor.equipeNome },
+          },
+          metas: metasDoCorretor,
+        };
+      })
+      .filter(Boolean) as Array<{
+      corretor: NonNullable<Meta["corretor"]>;
+      metas: Meta[];
+    }>;
+  }, [corretores, filteredMetas, isGestor, tab]);
 
   function openCreate() {
     setEditing(null);
@@ -375,6 +432,31 @@ function Page() {
     return meta.origem === "pessoal" && meta.escopo === "corretor";
   };
 
+  const gestorTabs: Array<{ id: MetasTab; label: string }> = [
+    { id: "todas", label: "Todas" },
+    ...(isAdmin ? [{ id: "imobiliaria" as const, label: "Imobiliária" }] : []),
+    { id: "gerente", label: "Gerentes" },
+    { id: "corretor", label: "Corretores" },
+  ];
+  const corretorTabs: Array<{ id: MetasTab; label: string }> = [
+    { id: "todas", label: "Todas" },
+    { id: "atribuidas", label: "Atribuídas" },
+    { id: "pessoais", label: "Pessoais" },
+  ];
+  const tabs = isGestor ? gestorTabs : corretorTabs;
+  const showImobiliaria =
+    isGestor &&
+    (tab === "imobiliaria" ||
+      (tab === "todas" && filteredImobiliaria.length > 0));
+  const showGerentes =
+    isGestor &&
+    (tab === "gerente" ||
+      (tab === "todas" && filteredGruposGerentes.length > 0));
+  const showCorretores =
+    isGestor &&
+    (tab === "corretor" ||
+      (tab === "todas" && filteredGruposCorretores.length > 0));
+
   return (
     <div>
       <PageHeader
@@ -388,7 +470,10 @@ function Page() {
         }
         actions={
           canCreate ? (
-            <Button onClick={openCreate}>
+            <Button
+              className="rounded-full shadow-md shadow-primary/20"
+              onClick={openCreate}
+            >
               <Plus className="w-4 h-4 mr-1" />
               {isAdmin
                 ? "Nova meta"
@@ -399,188 +484,221 @@ function Page() {
           ) : undefined
         }
       />
+
+      <div className="mb-4 inline-flex rounded-full border bg-muted/40 p-1">
+        {tabs.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setTab(item.id)}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+              tab === item.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
           Carregando metas...
         </div>
-      ) : !isAdmin && !isGerente ? (
-        <div className="space-y-4">
-          <MetasResumo metas={metas.filter((m) => m.escopo === "corretor")} />
-          <MetasPorOrigem
-            metas={metas.filter((m) => m.escopo === "corretor")}
-            canEdit={canEditMeta}
-            onEdit={openEdit}
-            onRemove={remove}
-          />
-        </div>
       ) : (
-        <div className="space-y-4">
-          <MetasResumo metas={metas} />
-          <p className="text-xs font-medium text-muted-foreground">
-            Role para o lado para ver imobiliária, equipes e corretores.
-          </p>
-          <BoardScroll>
-            {(isAdmin || metasImobiliaria.length > 0) && (
-              <BoardColumn
-                heading={
-                  <SectionHeading
-                    icon={Building2}
-                    title="Imobiliária"
-                    count={metasImobiliaria.length}
-                  />
-                }
-              >
-                {metasImobiliaria.length > 0 ? (
-                  <MetaList
-                    metas={metasImobiliaria}
-                    canEdit={canEditMeta}
-                    onEdit={openEdit}
-                    onRemove={remove}
-                  />
-                ) : (
-                  <EmptyColumn text="Nenhuma meta da imobiliária neste período." />
-                )}
-              </BoardColumn>
-            )}
-
-            {(isAdmin || metasGerentes.length > 0) &&
-              (metasGerentes.length > 0
-                ? Object.entries(
-                    metasGerentes.reduce<Record<string, Meta[]>>(
-                      (acc, meta) => {
-                        const key = meta.gerenteId ?? "sem-gerente";
-                        acc[key] = [...(acc[key] ?? []), meta];
-                        return acc;
-                      },
-                      {},
-                    ),
-                  ).map(([gerenteId, metasDoGerente]) => {
-                    const fromMeta = metasDoGerente[0]?.gerente;
-                    const fromEquipe = gerentes.find((g) => g.id === gerenteId);
-                    const nome =
-                      fromMeta?.name ?? fromEquipe?.name ?? "Gerente";
-                    const equipeNome =
-                      fromMeta?.equipeGerenciada?.name ??
-                      fromEquipe?.equipeNome ??
-                      null;
-                    return (
-                      <BoardColumn
-                        key={gerenteId}
-                        heading={
-                          <PersonHeading name={nome} subtitle={equipeNome} />
-                        }
-                      >
-                        <MetaList
-                          metas={metasDoGerente}
-                          canEdit={canEditMeta}
-                          onEdit={openEdit}
-                          onRemove={remove}
-                        />
-                      </BoardColumn>
-                    );
-                  })
-                : (
-                    <BoardColumn
-                      heading={
-                        <SectionHeading
-                          icon={UserRound}
-                          title="Gerentes / equipes"
-                          count={0}
-                        />
-                      }
-                    >
-                      <EmptyColumn text="Nenhuma meta de gerente neste período." />
-                    </BoardColumn>
+        <>
+          <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+            <MetasResumo metas={filteredMetas} />
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={filterTipo} onValueChange={setFilterTipo}>
+                <SelectTrigger className="h-9 w-[10.5rem] rounded-full">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os tipos</SelectItem>
+                  {META_TIPOS.map((tipo) => (
+                    <SelectItem key={tipo} value={tipo}>
+                      {META_TIPO_LABEL[tipo]}
+                    </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterPeriodo} onValueChange={setFilterPeriodo}>
+                <SelectTrigger className="h-9 w-[10.5rem] rounded-full">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os períodos</SelectItem>
+                  {META_PERIODOS.map((periodo) => (
+                    <SelectItem key={periodo} value={periodo}>
+                      {META_PERIODO_LABEL[periodo]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-            {gruposCorretores.length === 0 ? (
-              <BoardColumn
-                heading={
-                  <SectionHeading icon={Users} title="Corretores" count={0} />
-                }
-              >
-                <EmptyState admin={isAdmin} />
-              </BoardColumn>
-            ) : (
-              gruposCorretores.map(({ corretor, metas: metasDoCorretor }) => (
-                <BoardColumn
-                  key={corretor.id}
-                  heading={
-                    <PersonHeading
-                      name={corretor.name}
-                      subtitle={corretor.equipe?.name ?? "Sem equipe"}
-                    />
-                  }
-                >
-                  {metasDoCorretor.length > 0 ? (
-                    <MetaList
-                      metas={metasDoCorretor}
-                      canEdit={canEditMeta}
-                      onEdit={openEdit}
-                      onRemove={remove}
-                    />
-                  ) : (
-                    <EmptyColumn text="Nenhuma meta neste período." />
-                  )}
-                </BoardColumn>
-              ))
-            )}
-          </BoardScroll>
-        </div>
+          {!isGestor ? (
+            <MetasPorOrigem
+              metas={filteredMetas.filter((meta) => meta.escopo === "corretor")}
+              canEdit={canEditMeta}
+              onEdit={openEdit}
+              onRemove={remove}
+            />
+          ) : (
+            <MetasGestorBoard
+              isAdmin={isAdmin}
+              filteredMetas={filteredMetas}
+              filteredImobiliaria={filteredImobiliaria}
+              filteredGruposGerentes={filteredGruposGerentes}
+              filteredGruposCorretores={filteredGruposCorretores}
+              showImobiliaria={showImobiliaria}
+              showGerentes={showGerentes}
+              showCorretores={showCorretores}
+              canEdit={canEditMeta}
+              onEdit={openEdit}
+              onRemove={remove}
+            />
+          )}
+        </>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editing
-                ? "Editar meta"
-                : isAdmin
-                  ? "Nova meta administrativa"
-                  : isGerente
-                    ? "Definir meta para a equipe"
-                    : "Criar minha meta"}
-            </DialogTitle>
-            <DialogDescription>
-              Metas diárias, semanais e mensais são acompanhadas separadamente.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={submit} className="space-y-4">
-            {isAdmin && !editing && (
-              <div className="space-y-2">
-                <Label>Alvo da meta</Label>
-                <Select
-                  value={form.escopo}
-                  onValueChange={(escopo: MetaEscopo) =>
-                    setForm((atual) => ({
-                      ...atual,
-                      escopo,
-                      corretorId: "",
-                      gerenteId: "",
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="imobiliaria">
-                      {META_ESCOPO_LABEL.imobiliaria}
-                    </SelectItem>
-                    <SelectItem value="gerente">
-                      {META_ESCOPO_LABEL.gerente}
-                    </SelectItem>
-                    <SelectItem value="corretor">
-                      {META_ESCOPO_LABEL.corretor}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {((isGerente && !editing) ||
-              (isAdmin && !editing && form.escopo === "corretor")) && (
-              <div className="space-y-2">
-                <Label>Corretor</Label>
+      <FormDialogShell
+        open={open}
+        onOpenChange={setOpen}
+        icon={<Target className="w-5 h-5" />}
+        title={editing ? "Editar meta" : "Nova meta"}
+        description={
+          editing
+            ? "Ajuste o valor. Tipo, período e responsável não mudam depois de criada."
+            : isAdmin
+              ? "Defina o responsável, o tipo e o período da meta."
+              : isGerente
+                ? "A meta será atribuída ao corretor selecionado."
+                : "Defina uma meta pessoal para acompanhar o período."
+        }
+        footer={
+          <FormDialogActions>
+            <Button
+              type="button"
+              variant="outline"
+              className={SOFT_BTN}
+              onClick={() => setOpen(false)}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" form="metas-form" disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  Salvando…
+                </>
+              ) : (
+                "Salvar meta"
+              )}
+            </Button>
+          </FormDialogActions>
+        }
+      >
+        <form
+          id="metas-form"
+          onSubmit={submit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <FormDialogBody>
+            {isAdmin && !editing ? (
+              <FormSection
+                title="Responsável"
+                icon={<Users className="w-4 h-4 text-primary" />}
+              >
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Escopo</Label>
+                    <Select
+                      value={form.escopo}
+                      onValueChange={(escopo: MetaEscopo) =>
+                        setForm((atual) => ({
+                          ...atual,
+                          escopo,
+                          corretorId: "",
+                          gerenteId: "",
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="imobiliaria">
+                          {META_ESCOPO_LABEL.imobiliaria}
+                        </SelectItem>
+                        <SelectItem value="gerente">
+                          {META_ESCOPO_LABEL.gerente}
+                        </SelectItem>
+                        <SelectItem value="corretor">
+                          {META_ESCOPO_LABEL.corretor}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.escopo === "gerente" ? (
+                    <div className="space-y-2">
+                      <Label>Gerente</Label>
+                      <Select
+                        value={form.gerenteId || undefined}
+                        onValueChange={(gerenteId) =>
+                          setForm((atual) => ({ ...atual, gerenteId }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {gerentes.map((gerente) => (
+                            <SelectItem key={gerente.id} value={gerente.id}>
+                              {gerente.name} · {gerente.equipeNome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+                  {form.escopo === "corretor" ? (
+                    <div className="space-y-2">
+                      <Label>Corretor</Label>
+                      <Select
+                        value={form.corretorId || undefined}
+                        onValueChange={(corretorId) =>
+                          setForm((atual) => ({ ...atual, corretorId }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {corretores.map((corretor) => (
+                            <SelectItem key={corretor.id} value={corretor.id}>
+                              {corretor.name} · {corretor.equipeNome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+                </div>
+              </FormSection>
+            ) : null}
+
+            {isGerente && !editing ? (
+              <FormSection
+                title="Corretor"
+                icon={<UserRound className="w-4 h-4 text-primary" />}
+              >
                 <Select
                   value={form.corretorId || undefined}
                   onValueChange={(corretorId) =>
@@ -588,100 +706,62 @@ function Page() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um corretor" />
+                    <SelectValue placeholder="Selecione o corretor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {corretores.length === 0 ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground">
-                        Nenhum corretor cadastrado.
-                      </div>
-                    ) : (
-                      corretores.map((corretor) => (
-                        <SelectItem key={corretor.id} value={corretor.id}>
-                          {corretor.name} — {corretor.equipeNome}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {isAdmin && !editing && form.escopo === "gerente" && (
-              <div className="space-y-2">
-                <Label>Gerente</Label>
-                <Select
-                  value={form.gerenteId || undefined}
-                  onValueChange={(gerenteId) =>
-                    setForm((atual) => ({ ...atual, gerenteId }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um gerente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {gerentes.length === 0 ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground">
-                        Nenhum gerente cadastrado.
-                      </div>
-                    ) : (
-                      gerentes.map((gerente) => (
-                        <SelectItem key={gerente.id} value={gerente.id}>
-                          {gerente.name} — {gerente.equipeNome}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Indicador</Label>
-                <Select
-                  value={form.tipo}
-                  disabled={Boolean(editing)}
-                  onValueChange={(tipo: MetaTipo) =>
-                    setForm((atual) => ({ ...atual, tipo }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {META_TIPOS.map((tipo) => (
-                      <SelectItem key={tipo} value={tipo}>
-                        {META_TIPO_LABEL[tipo]}
+                    {corretores.map((corretor) => (
+                      <SelectItem key={corretor.id} value={corretor.id}>
+                        {corretor.name} · {corretor.equipeNome}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </FormSection>
+            ) : null}
+
+            <FormSection
+              title="Tipo e período"
+              icon={<CalendarDays className="w-4 h-4 text-primary" />}
+            >
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <MetaTipoPicker
+                    value={form.tipo}
+                    disabled={Boolean(editing)}
+                    onChange={(tipo) =>
+                      setForm((atual) => ({ ...atual, tipo }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Período</Label>
+                  <Select
+                    value={form.periodo}
+                    disabled={Boolean(editing)}
+                    onValueChange={(periodo: MetaPeriodo) =>
+                      setForm((atual) => ({ ...atual, periodo }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {META_PERIODOS.map((periodo) => (
+                        <SelectItem key={periodo} value={periodo}>
+                          {META_PERIODO_LABEL[periodo]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Período</Label>
-                <Select
-                  value={form.periodo}
-                  disabled={Boolean(editing)}
-                  onValueChange={(periodo: MetaPeriodo) =>
-                    setForm((atual) => ({ ...atual, periodo }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {META_PERIODOS.map((periodo) => (
-                      <SelectItem key={periodo} value={periodo}>
-                        {META_PERIODO_LABEL[periodo]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>
-                {form.tipo === "vgv" ? "Valor em R$" : "Quantidade"}
-              </Label>
+            </FormSection>
+
+            <FormSection
+              title={form.tipo === "vgv" ? "Valor em R$" : "Quantidade"}
+              icon={<Target className="w-4 h-4 text-primary" />}
+            >
               <Input
                 inputMode="numeric"
                 value={form.valor}
@@ -696,517 +776,10 @@ function Page() {
                 }
                 placeholder={form.tipo === "vgv" ? "0,00" : "Ex.: 5"}
               />
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={saving}>
-                {saving ? "Salvando..." : "Salvar meta"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </FormSection>
+          </FormDialogBody>
+        </form>
+      </FormDialogShell>
     </div>
   );
-}
-
-function MetasPorOrigem({
-  metas,
-  canEdit,
-  onEdit,
-  onRemove,
-}: {
-  metas: Meta[];
-  canEdit: (meta: Meta) => boolean;
-  onEdit: (meta: Meta) => void;
-  onRemove: (meta: Meta) => void;
-}) {
-  const metasGerencia = metas.filter(
-    (meta) => meta.origem === "gerente" || meta.origem === "admin",
-  );
-  const metasPessoais = metas.filter((meta) => meta.origem === "pessoal");
-
-  if (metas.length === 0) return <EmptyState />;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">
-        Role para o lado para ver as metas atribuídas e as pessoais.
-      </p>
-      <BoardScroll>
-        <BoardColumn
-          heading={
-            <div>
-              <h3 className="text-sm font-bold">Metas atribuídas</h3>
-              <p className="text-xs text-muted-foreground">
-                Gerência ou administração
-              </p>
-            </div>
-          }
-        >
-          {metasGerencia.length > 0 ? (
-            <MetaList
-              metas={metasGerencia}
-              canEdit={canEdit}
-              onEdit={onEdit}
-              onRemove={onRemove}
-            />
-          ) : (
-            <EmptyColumn text="Nenhuma meta atribuída neste período." />
-          )}
-        </BoardColumn>
-        <BoardColumn
-          heading={
-            <div>
-              <h3 className="text-sm font-bold">Metas pessoais</h3>
-              <p className="text-xs text-muted-foreground">
-                Definidas pelo próprio corretor
-              </p>
-            </div>
-          }
-        >
-          {metasPessoais.length > 0 ? (
-            <MetaList
-              metas={metasPessoais}
-              canEdit={canEdit}
-              onEdit={onEdit}
-              onRemove={onRemove}
-            />
-          ) : (
-            <EmptyColumn text="Nenhuma meta pessoal neste período." />
-          )}
-        </BoardColumn>
-      </BoardScroll>
-    </div>
-  );
-}
-
-function MetaList({
-  metas,
-  canEdit,
-  onEdit,
-  onRemove,
-}: {
-  metas: Meta[];
-  canEdit: (meta: Meta) => boolean;
-  onEdit: (meta: Meta) => void;
-  onRemove: (meta: Meta) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      {metas.map((meta) => (
-        <MetaCard
-          key={meta.id}
-          meta={meta}
-          editavel={canEdit(meta)}
-          onEdit={onEdit}
-          onRemove={onRemove}
-        />
-      ))}
-    </div>
-  );
-}
-
-function MetaCard({
-  meta,
-  editavel,
-  onEdit,
-  onRemove,
-}: {
-  meta: Meta;
-  editavel: boolean;
-  onEdit: (meta: Meta) => void;
-  onRemove: (meta: Meta) => void;
-}) {
-  const visual = getMetaVisual(meta.tipo);
-  const Icon = visual.icon;
-  const concluida = meta.percentual >= 100;
-  const tone = progressTone(meta.percentual);
-  const barra = Math.min(100, Math.max(0, meta.percentual));
-  const restante = Math.max(0, meta.valor - meta.atual);
-  const superou = meta.atual > meta.valor;
-  const origemLabel =
-    meta.origem === "admin"
-      ? "Administração"
-      : meta.origem === "gerente"
-        ? "Gerência"
-        : "Pessoal";
-
-  return (
-    <Card
-      className={cn(
-        "group relative overflow-hidden border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
-        tone.card,
-      )}
-    >
-      <div className={cn("absolute inset-x-0 top-0 h-1.5", tone.bar)} />
-      <CardHeader className="pb-3 pt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className={cn("rounded-xl p-2.5", visual.iconBg)}>
-              <Icon className={cn("h-5 w-5", visual.iconColor)} />
-            </div>
-            <div className="min-w-0">
-              <CardTitle className="text-base font-bold">
-                {META_TIPO_LABEL[meta.tipo]}
-              </CardTitle>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border/70">
-                  <CalendarDays className="h-3 w-3" />
-                  {META_PERIODO_LABEL[meta.periodo]}
-                </span>
-                {meta.escopo !== "corretor" ? (
-                  <span className="rounded-full bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border/70">
-                    {META_ESCOPO_LABEL[meta.escopo]}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </div>
-          <div className="shrink-0 text-right">
-            <p
-              className={cn(
-                "text-3xl font-black tabular-nums leading-none tracking-tight",
-                tone.pct,
-              )}
-            >
-              {meta.percentual}%
-            </p>
-            <Badge
-              className={cn("mt-1.5 border-transparent text-[10px]", tone.badge)}
-              variant="secondary"
-            >
-              {origemLabel}
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 pb-4">
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="rounded-xl bg-background/70 px-3 py-2.5 ring-1 ring-border/60">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Realizado
-            </p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums leading-snug">
-              {formatValor(meta.atual, meta.tipo)}
-            </p>
-          </div>
-          <div className="rounded-xl bg-background/70 px-3 py-2.5 ring-1 ring-border/60">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Meta
-            </p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums leading-snug">
-              {formatValor(meta.valor, meta.tipo)}
-            </p>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 font-semibold",
-                concluida
-                  ? "text-emerald-700 dark:text-emerald-400"
-                  : "text-muted-foreground",
-              )}
-            >
-              {concluida ? <Trophy className="h-3.5 w-3.5" /> : null}
-              {concluida
-                ? superou
-                  ? `Superou em ${formatValor(meta.atual - meta.valor, meta.tipo)}`
-                  : "Meta atingida"
-                : `Faltam ${formatValor(restante, meta.tipo)}`}
-            </span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-            <div
-              className={cn("h-full rounded-full transition-all", tone.bar)}
-              style={{ width: `${barra}%` }}
-            />
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-2 border-t pt-3">
-          <p className="truncate text-xs text-muted-foreground">
-            {meta.origem === "pessoal"
-              ? "Definida por você"
-              : `Definida por ${meta.criador.name}`}
-          </p>
-          {editavel && (
-            <div className="flex shrink-0 gap-1 opacity-70 transition-opacity group-hover:opacity-100">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => onEdit(meta)}
-                aria-label="Editar meta"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-destructive hover:text-destructive"
-                onClick={() => onRemove(meta)}
-                aria-label="Excluir meta"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function BoardScroll({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const onWheel = (event: WheelEvent) => {
-      if (event.ctrlKey) return;
-      if (el.scrollWidth <= el.clientWidth) return;
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-      event.preventDefault();
-      el.scrollLeft += event.deltaY;
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3"
-    >
-      {children}
-    </div>
-  );
-}
-
-function BoardColumn({
-  heading,
-  children,
-}: {
-  heading: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex w-[min(22rem,calc(100vw-4.5rem))] shrink-0 snap-start flex-col gap-3">
-      {heading}
-      {children}
-    </section>
-  );
-}
-
-function EmptyColumn({ text }: { text: string }) {
-  return (
-    <p className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-      {text}
-    </p>
-  );
-}
-
-function MetasResumo({ metas }: { metas: Meta[] }) {
-  if (metas.length === 0) return null;
-  const concluidas = metas.filter((meta) => meta.percentual >= 100).length;
-  const media = Math.round(
-    metas.reduce((soma, meta) => soma + meta.percentual, 0) / metas.length,
-  );
-  return (
-    <div className="grid grid-cols-3 gap-3">
-      <ResumoChip label="Metas ativas" value={String(metas.length)} />
-      <ResumoChip
-        label="Atingidas"
-        value={String(concluidas)}
-        hint={`${metas.length - concluidas} em andamento`}
-        tone="emerald"
-      />
-      <ResumoChip
-        label="Progresso médio"
-        value={`${media}%`}
-        tone={media >= 100 ? "emerald" : media < 40 ? "amber" : "blue"}
-      />
-    </div>
-  );
-}
-
-function ResumoChip({
-  label,
-  value,
-  hint,
-  tone = "blue",
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "blue" | "emerald" | "amber";
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border px-4 py-3",
-        tone === "emerald" &&
-          "border-emerald-200/80 bg-emerald-50/70 dark:border-emerald-500/25 dark:bg-emerald-500/10",
-        tone === "amber" &&
-          "border-amber-200/80 bg-amber-50/70 dark:border-amber-500/25 dark:bg-amber-500/10",
-        tone === "blue" && "border-border/70 bg-card",
-      )}
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-1 text-2xl font-black tabular-nums tracking-tight",
-          tone === "emerald" && "text-emerald-700 dark:text-emerald-400",
-          tone === "amber" && "text-amber-700 dark:text-amber-400",
-        )}
-      >
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function SectionHeading({
-  icon: Icon,
-  title,
-  count,
-}: {
-  icon: LucideIcon;
-  title: string;
-  count?: number;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-        <Icon className="h-4 w-4 text-primary" />
-      </div>
-      <h2 className="font-bold tracking-tight">{title}</h2>
-      {count != null ? (
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
-          {count}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function PersonHeading({
-  name,
-  subtitle,
-}: {
-  name: string;
-  subtitle?: string | null;
-}) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-        {iniciais(name)}
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-bold leading-tight">{name}</p>
-        {subtitle ? (
-          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function iniciais(nome: string) {
-  return nome
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-function progressTone(percentual: number) {
-  if (percentual >= 100) {
-    return {
-      bar: "bg-emerald-500",
-      pct: "text-emerald-700 dark:text-emerald-400",
-      card: "border-emerald-200/80 bg-linear-to-br from-emerald-50/90 via-card to-card dark:from-emerald-500/10 dark:border-emerald-500/30",
-      badge: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
-    };
-  }
-  if (percentual >= 70) {
-    return {
-      bar: "bg-[var(--kpi-seq-2,#079ED4)]",
-      pct: "text-[var(--kpi-seq-2,#079ED4)]",
-      card: "border-sky-200/70 bg-linear-to-br from-sky-50/80 via-card to-card dark:from-sky-500/10 dark:border-sky-500/25",
-      badge: "bg-sky-500/15 text-sky-800 dark:text-sky-300",
-    };
-  }
-  if (percentual >= 40) {
-    return {
-      bar: "bg-[var(--kpi-seq-3,#0689BD)]",
-      pct: "text-foreground",
-      card: "border-border/70 bg-linear-to-br from-card via-card to-muted/30",
-      badge: "bg-muted text-muted-foreground",
-    };
-  }
-  return {
-    bar: "bg-amber-500",
-    pct: "text-amber-700 dark:text-amber-400",
-    card: "border-amber-200/80 bg-linear-to-br from-amber-50/80 via-card to-card dark:from-amber-500/10 dark:border-amber-500/25",
-    badge: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-  };
-}
-
-function getMetaVisual(tipo: MetaTipo) {
-  if (tipo === "documentacoes") {
-    return {
-      icon: FileText,
-      iconBg:
-        "bg-[color-mix(in_srgb,var(--kpi-seq-1,#5BC4E8)_15%,transparent)]",
-      iconColor: "text-[var(--kpi-seq-1,#5BC4E8)]",
-    };
-  }
-  if (tipo === "vgv") {
-    return {
-      icon: Wallet,
-      iconBg:
-        "bg-[color-mix(in_srgb,var(--kpi-seq-2,#079ED4)_15%,transparent)]",
-      iconColor: "text-[var(--kpi-seq-2,#079ED4)]",
-    };
-  }
-  return {
-    icon: Target,
-    iconBg:
-      "bg-[color-mix(in_srgb,var(--kpi-seq-3,#0689BD)_15%,transparent)]",
-    iconColor: "text-[var(--kpi-seq-3,#0689BD)]",
-  };
-}
-
-function EmptyState({ admin = false }: { admin?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-dashed py-12 text-center">
-      <BarChart3 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-      <p className="font-semibold">Nenhuma meta ativa</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {admin
-          ? "Crie metas da imobiliária, por gerente ou por corretor."
-          : "Defina uma meta para começar o acompanhamento."}
-      </p>
-    </div>
-  );
-}
-
-function formatValor(valor: number, tipo: MetaTipo) {
-  return tipo === "vgv"
-    ? valor.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-    : valor.toLocaleString("pt-BR");
 }

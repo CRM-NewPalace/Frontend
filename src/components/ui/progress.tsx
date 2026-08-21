@@ -18,11 +18,11 @@ const Progress = React.forwardRef<
     {...props}
   >
     <ProgressPrimitive.Indicator
-      className="h-full w-full flex-1 transition-all"
+      className="funil-bar-flow h-full w-full flex-1 transition-all"
       style={{
         transform: `translateX(-${100 - (value || 0)}%)`,
         backgroundImage:
-          "linear-gradient(90deg, var(--btn-gradient-from, #0e6f8a) 0%, var(--btn-gradient-to, #079ed4) 100%)",
+          "linear-gradient(90deg, var(--btn-gradient-from, #0e6f8a) 0%, var(--btn-gradient-to, #079ed4) 30%, #5bc4e8 50%, var(--btn-gradient-to, #079ed4) 70%, var(--btn-gradient-from, #0e6f8a) 100%)",
       }}
     />
   </ProgressPrimitive.Root>

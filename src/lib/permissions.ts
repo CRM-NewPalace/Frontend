@@ -143,9 +143,10 @@ const GERENTE_BRONZE_ROUTES: readonly string[] = [
   "/construtoras",
   "/documentacao",
   "/contratos",
-  "/financeiro/comissao",
-  "/perfil",
-];
+    "/financeiro/comissao",
+    "/configuracoes",
+    "/perfil",
+  ];
 
 export function getAllowedRoutes(role: Role): readonly string[] {
   return ROLE_ROUTES[role];
