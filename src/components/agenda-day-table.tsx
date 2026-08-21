@@ -1,20 +1,18 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  AGENDAMENTO_ORIGEM_DOT,
-  AGENDAMENTO_ORIGEM_LABEL,
   AGENDAMENTO_STATUS_LABEL,
+  AGENDAMENTO_TIPO_ACCENT,
   AGENDAMENTO_TIPO_CARD,
   AGENDAMENTO_TIPO_SOFT,
+  AGENDAMENTO_TIPO_WELL,
   AGENDAMENTO_VISUAL_LABEL,
   getAgendamentoCardTitle,
-  getAgendamentoOrigem,
   getAgendamentoVisual,
   isAgendamentoAniversario,
   isAgendamentoBloqueio,
   type Agendamento,
   type AgendamentoStatus,
-  type AgendamentoTipo,
 } from "@/lib/agenda-api";
 import type { Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -24,19 +22,18 @@ import {
   Cake,
   CalendarDays,
   Check,
-  CheckSquare,
   Clock,
   Loader2,
   MapPin,
   Pencil,
-  Phone,
   Plus,
   User,
   Users,
   X,
   type LucideIcon,
 } from "lucide-react";
-import { sameDay } from "@/components/agenda-board";
+import { addDays, sameDay, startOfWeek, toDateInput } from "@/components/agenda-board";
+import { AGENDAMENTO_TIPO_ICON } from "@/components/agenda-tipo-option";
 import { toast } from "sonner";
 
 /** Horários da tabela: 07:00 até 00:00. */
@@ -45,23 +42,14 @@ const DAY_HOURS = [
 ] as const;
 
 const STATUS_BADGE: Record<AgendamentoStatus, string> = {
-  agendado: `${STATUS_CHIP_CLASS} bg-sky-500/15 text-sky-800 dark:text-sky-200`,
+  agendado: `${STATUS_CHIP_CLASS} bg-primary/12 text-primary`,
   concluido: `${STATUS_CHIP_CLASS} bg-emerald-500/15 text-emerald-800 dark:text-emerald-200`,
   cancelado: `${STATUS_CHIP_CLASS} bg-red-500/15 text-red-800 dark:text-red-200`,
 };
 
-const TIPO_ICON: Record<AgendamentoTipo, LucideIcon> = {
-  visita: MapPin,
-  ligacao: Phone,
-  reuniao: Users,
-  tarefa: CheckSquare,
-  outro: CalendarDays,
-  bloqueio: Ban,
-};
-
 function eventIcon(item: Agendamento): LucideIcon {
   if (isAgendamentoAniversario(item)) return Cake;
-  return TIPO_ICON[item.tipo] ?? CalendarDays;
+  return AGENDAMENTO_TIPO_ICON[item.tipo] ?? CalendarDays;
 }
 
 function formatTime(d: Date) {
@@ -152,6 +140,16 @@ function formatHourLabel(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+}
+
 type Props = {
   day: Date;
   items: Agendamento[];
@@ -162,6 +160,7 @@ type Props = {
   currentUserId?: string;
   completingId?: string | null;
   cancelingId?: string | null;
+  onSelectDay?: (day: Date) => void;
   onCreateAt: (day: Date, hour?: number) => void;
   onEdit: (item: Agendamento) => void;
   onComplete: (item: Agendamento) => void;
@@ -226,55 +225,93 @@ export function AgendaDayTable({
   currentUserId,
   completingId,
   cancelingId,
+  onSelectDay,
   onCreateAt,
   onEdit,
   onComplete,
   onCancel,
 }: Props) {
   const slots = buildDaySlots(day, items);
-  const activeCount = items.filter(
+  const dayItems = items.filter(
     (i) => sameDay(new Date(i.startsAt), day) && i.status !== "cancelado",
-  ).length;
+  );
+  const activeCount = dayItems.length;
   const now = new Date();
   const isToday = sameDay(day, now);
   const currentHour = now.getHours();
-  const weekdayShort = day.toLocaleDateString("pt-BR", { weekday: "short" });
+
+  const nextItem = isToday
+    ? dayItems
+        .filter(
+          (i) =>
+            i.status === "agendado" && new Date(i.startsAt).getTime() >= now.getTime(),
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+        )[0]
+    : undefined;
+
+  const occupiedByHour = new Map<number, Agendamento>();
+  for (const item of dayItems) {
+    const hour = new Date(item.startsAt).getHours();
+    if (!occupiedByHour.has(hour)) occupiedByHour.set(hour, item);
+  }
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card max-sm:-mx-3 max-sm:rounded-none max-sm:border-x-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-gradient-to-r from-primary/10 via-primary/4 to-transparent px-4 py-4 sm:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={cn(
-              "flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-2xl shadow-sm",
-              isToday
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-foreground",
-            )}
-          >
-            <span className="text-[10px] font-semibold uppercase leading-none tracking-wide opacity-80">
-              {weekdayShort.replace(".", "")}
-            </span>
-            <span className="mt-0.5 text-lg font-bold leading-none">
-              {day.getDate()}
-            </span>
-          </div>
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold capitalize sm:text-base">
-              {day.toLocaleDateString("pt-BR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {activeCount === 0
-                ? "Dia livre — toque em um horário para agendar"
-                : `${activeCount} compromisso${activeCount > 1 ? "s" : ""} neste dia`}
-            </p>
+    <div className="overflow-hidden rounded-3xl border bg-card shadow-sm max-sm:-mx-3 max-sm:rounded-none max-sm:border-x-0">
+      {onSelectDay ? (
+        <WeekStrip day={day} items={items} onSelectDay={onSelectDay} />
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-gradient-to-r from-primary/10 to-transparent px-4 py-4 sm:px-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+            {isToday ? "Hoje" : day.toLocaleDateString("pt-BR", { weekday: "long" })}
+          </p>
+          <h3 className="mt-0.5 truncate text-lg font-semibold capitalize tracking-tight sm:text-xl">
+            {day.toLocaleDateString("pt-BR", {
+              day: "numeric",
+              month: "long",
+            })}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {activeCount === 0
+              ? "Dia livre — toque em um horário para agendar"
+              : `${activeCount} compromisso${activeCount > 1 ? "s" : ""} neste dia`}
+            {nextItem
+              ? ` · próximo às ${formatTime(new Date(nextItem.startsAt))}`
+              : ""}
+          </p>
+          <div className="mt-2.5 flex items-center gap-px" aria-hidden>
+            {DAY_HOURS.map((hour) => {
+              const item = occupiedByHour.get(hour);
+              const visual = item ? getAgendamentoVisual(item) : null;
+              return (
+                <span
+                  key={hour}
+                  title={
+                    item
+                      ? `${formatHourLabel(hour)} · ${getAgendamentoCardTitle(item)}`
+                      : formatHourLabel(hour)
+                  }
+                  className={cn(
+                    "h-1.5 flex-1 first:rounded-l-full last:rounded-r-full",
+                    visual
+                      ? AGENDAMENTO_TIPO_ACCENT[visual]
+                      : "bg-muted",
+                    isToday && hour === currentHour && "ring-1 ring-primary ring-offset-1",
+                  )}
+                />
+              );
+            })}
           </div>
         </div>
-        <Button size="sm" className="rounded-full" onClick={() => onCreateAt(day)}>
+        <Button
+          size="sm"
+          className="rounded-full shadow-md shadow-primary/20"
+          onClick={() => onCreateAt(day)}
+        >
           <Plus className="mr-1 h-4 w-4" />
           Agendar
         </Button>
@@ -286,7 +323,7 @@ export function AgendaDayTable({
           Carregando horários…
         </div>
       ) : (
-        <div className="relative py-2">
+        <div className="relative py-1.5">
           {slots.map((slot, index) => {
             const isNow = isToday && slot.hour === currentHour;
             const isLast = index === slots.length - 1;
@@ -298,15 +335,16 @@ export function AgendaDayTable({
                   key={`empty-${slot.hour}`}
                   className={cn(
                     "group grid grid-cols-[4.25rem_1fr] sm:grid-cols-[5rem_1fr]",
-                    isNow && "bg-primary/5",
+                    isNow && "bg-primary/6",
                   )}
                 >
                   <TimeRail
                     hour={slot.hour}
                     isNow={isNow}
                     isLast={isLast}
+                    compact
                   />
-                  <div className="min-w-0 py-1 pr-3 sm:pr-4">
+                  <div className="min-w-0 py-0.5 pr-3 sm:pr-4">
                     {bloqueio ? (
                       <button
                         type="button"
@@ -319,7 +357,7 @@ export function AgendaDayTable({
                             });
                           }
                         }}
-                        className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-400/50 bg-slate-500/8 px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-slate-500/15"
+                        className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-400/50 bg-slate-500/8 px-3 py-1.5 text-left text-xs text-muted-foreground transition hover:bg-slate-500/15"
                       >
                         <Ban className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">
@@ -331,10 +369,30 @@ export function AgendaDayTable({
                       <button
                         type="button"
                         onClick={() => onCreateAt(day, slot.hour)}
-                        className="flex w-full items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-left text-sm text-muted-foreground/70 transition hover:border-dashed hover:border-primary/35 hover:bg-primary/8 hover:text-foreground"
+                        className={cn(
+                          "flex h-8 w-full items-center gap-2 rounded-xl px-1 text-left transition",
+                          isNow
+                            ? "bg-primary/8 hover:bg-primary/14"
+                            : "hover:bg-primary/8",
+                        )}
                       >
-                        <Plus className="h-3.5 w-3.5 shrink-0 opacity-0 transition group-hover:opacity-100" />
-                        <span>Horário livre</span>
+                        <span className="h-px flex-1 bg-border/70 transition group-hover:bg-transparent" />
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[11px] font-medium",
+                            isNow
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-primary/25 text-muted-foreground group-hover:border-primary/40 group-hover:bg-primary/10 group-hover:text-primary sm:border-transparent sm:text-muted-foreground/0 sm:group-hover:border-primary/35 sm:group-hover:text-primary",
+                          )}
+                        >
+                          <Plus className="h-3 w-3" />
+                          <span className={cn(!isNow && "sm:hidden sm:group-hover:inline")}>
+                            {isNow
+                              ? `Agora · agendar ${formatHourLabel(slot.hour)}`
+                              : `Agendar ${formatHourLabel(slot.hour)}`}
+                          </span>
+                        </span>
+                        <span className="h-px flex-1 bg-border/70 transition group-hover:bg-transparent" />
                       </button>
                     )}
                   </div>
@@ -345,7 +403,6 @@ export function AgendaDayTable({
             const { item } = slot;
             const cancelled = item.status === "cancelado";
             const canMutate = canMutateItem(item, currentUserRole);
-            const origem = getAgendamentoOrigem(item);
             const visual = getAgendamentoVisual(item);
             const Icon = eventIcon(item);
             const alvo = alvoBadgeLabel(item);
@@ -361,122 +418,96 @@ export function AgendaDayTable({
                 className={cn(
                   "grid grid-cols-[4.25rem_1fr] sm:grid-cols-[5rem_1fr]",
                   cancelled && "opacity-60",
-                  isNow && "bg-primary/5",
+                  isNow && "bg-primary/6",
                 )}
               >
                 <TimeRail
                   hour={slot.hour}
                   isNow={isNow}
                   isLast={isLast}
-                  originClass={AGENDAMENTO_ORIGEM_DOT[origem]}
-                  originLabel={AGENDAMENTO_ORIGEM_LABEL[origem]}
                 />
-                <div className="min-w-0 py-1.5 pr-3 sm:pr-4">
+                <div className="min-w-0 py-1 pr-3 sm:pr-4">
                   <article
                     className={cn(
-                      "rounded-2xl border border-l-[3px] p-3 shadow-sm transition hover:shadow-md",
+                      "relative overflow-hidden rounded-xl border border-l-[3px] shadow-sm transition hover:shadow-md",
                       AGENDAMENTO_TIPO_CARD[visual],
+                      item.status === "concluido" && "opacity-90",
                     )}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-2.5 px-2.5 py-2">
                       <div
                         className={cn(
-                          "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                          AGENDAMENTO_TIPO_SOFT[visual],
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                          AGENDAMENTO_TIPO_WELL[visual],
                         )}
                         title={AGENDAMENTO_VISUAL_LABEL[visual]}
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-3.5 w-3.5" />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            {canMutate ? (
-                              <button
-                                type="button"
-                                onClick={() => onEdit(item)}
-                                className="text-left text-sm font-semibold leading-snug hover:underline"
-                              >
-                                {getAgendamentoCardTitle(item)}
-                              </button>
-                            ) : (
-                              <p className="text-sm font-semibold leading-snug">
-                                {getAgendamentoCardTitle(item)}
-                              </p>
-                            )}
-                            <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {formatTimeRange(item)}
+                        <div className="flex items-center gap-2">
+                          {canMutate ? (
+                            <button
+                              type="button"
+                              onClick={() => onEdit(item)}
+                              className="min-w-0 truncate text-left text-sm font-semibold leading-tight hover:underline"
+                            >
+                              {getAgendamentoCardTitle(item)}
+                            </button>
+                          ) : (
+                            <p className="min-w-0 truncate text-sm font-semibold leading-tight">
+                              {getAgendamentoCardTitle(item)}
                             </p>
-                          </div>
+                          )}
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
+                            <Clock className="h-3 w-3 text-primary" />
+                            {formatTimeRange(item)}
+                          </span>
                           <Badge
                             variant="secondary"
-                            className={STATUS_BADGE[item.status]}
+                            className={cn("ml-auto h-5 shrink-0 px-1.5 text-[10px]", STATUS_BADGE[item.status])}
                             title={AGENDAMENTO_STATUS_LABEL[item.status]}
                           >
                             {AGENDAMENTO_STATUS_LABEL[item.status]}
                           </Badge>
                         </div>
 
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <Badge
-                            variant="outline"
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                          <span
                             className={cn(
-                              "text-[10px]",
+                              "rounded-md border px-1.5 py-px font-medium",
                               AGENDAMENTO_TIPO_SOFT[visual],
                             )}
                           >
                             {AGENDAMENTO_VISUAL_LABEL[visual]}
-                          </Badge>
+                          </span>
                           {alvo ? (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] border-sky-400/40 text-sky-800 dark:text-sky-200"
-                            >
-                              {alvo}
-                            </Badge>
+                            <span>{alvo}</span>
                           ) : isAgendamentoBloqueio(item) ? (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] border-slate-400/50"
-                            >
-                              Bloqueado · {item.autor.name}
-                            </Badge>
+                            <span>Bloqueado · {item.autor.name}</span>
                           ) : item.atribuidoParaId ? (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] border-violet-400/40 text-violet-800 dark:text-violet-200"
-                            >
-                              De {item.autor.name}
-                            </Badge>
+                            <span>
+                              {item.atribuidoPara
+                                ? `Para ${item.atribuidoPara.name}`
+                                : `De ${item.autor.name}`}
+                            </span>
                           ) : item.escopo === "pessoal" ? (
-                            <Badge variant="outline" className="text-[10px]">
-                              Pessoal
-                            </Badge>
+                            <span>Pessoal</span>
                           ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] border-amber-400/40 text-amber-800 dark:text-amber-200"
-                            >
-                              Com gerente
-                            </Badge>
+                            <span>Com gerente</span>
                           )}
                           {item.solicitacaoStatus === "pendente" ? (
-                            <Badge
-                              className={`${STATUS_CHIP_CLASS} bg-amber-500 hover:bg-amber-500`}
-                              title="Aguardando"
-                            >
+                            <span className="font-medium text-primary">
                               Aguardando
-                            </Badge>
+                            </span>
                           ) : null}
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           {item.lead ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <User className="h-3.5 w-3.5" />
-                              <span className="text-foreground/90">
+                            <span className="inline-flex items-center gap-1">
+                              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-[8px] font-bold text-primary">
+                                {initials(item.lead.nome)}
+                              </span>
+                              <span className="text-foreground/80">
                                 {item.lead.nome}
                               </span>
                               {item.lead.telefone ? (
@@ -485,40 +516,41 @@ export function AgendaDayTable({
                             </span>
                           ) : null}
                           {showCorretor && corretorName ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <Users className="h-3.5 w-3.5" />
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="h-3 w-3" />
                               {corretorName}
                             </span>
                           ) : null}
                           {item.local ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <MapPin className="h-3.5 w-3.5" />
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
                               {item.local}
+                            </span>
+                          ) : null}
+                          {!item.lead &&
+                          !item.local &&
+                          !showCorretor &&
+                          !item.atribuidoParaId ? (
+                            <span className="inline-flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {item.autor.name}
                             </span>
                           ) : null}
                         </div>
 
                         {isAgendamentoBloqueio(item) && item.titulo ? (
-                          <p className="mt-1.5 text-xs text-muted-foreground">
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                             {item.titulo}
                           </p>
                         ) : null}
-                        {item.atribuidoParaId ? (
-                          <p className="mt-1.5 text-xs text-muted-foreground">
-                            {item.atribuidoPara
-                              ? `Para ${item.atribuidoPara.name} · `
-                              : ""}
-                            Passada por {item.autor.name}
-                          </p>
-                        ) : null}
                         {item.observacoes ? (
-                          <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                             {item.observacoes}
                           </p>
                         ) : null}
                       </div>
 
-                      <div className="flex shrink-0 flex-col gap-0.5">
+                      <div className="flex shrink-0 items-center gap-0.5">
                         {canCompleteItem(
                           item,
                           currentUserRole,
@@ -527,7 +559,7 @@ export function AgendaDayTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800 dark:text-emerald-300"
+                            className="h-7 w-7 text-emerald-700 hover:bg-emerald-500/15 hover:text-emerald-800 dark:text-emerald-300"
                             onClick={() => onComplete(item)}
                             disabled={
                               completingId === item.id ||
@@ -537,9 +569,9 @@ export function AgendaDayTable({
                             title="Concluir"
                           >
                             {completingId === item.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
-                              <Check className="h-4 w-4" />
+                              <Check className="h-3.5 w-3.5" />
                             )}
                           </Button>
                         ) : null}
@@ -547,7 +579,7 @@ export function AgendaDayTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-300"
+                            className="h-7 w-7 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-300"
                             onClick={() => onCancel(item)}
                             disabled={
                               completingId === item.id ||
@@ -557,9 +589,9 @@ export function AgendaDayTable({
                             title="Cancelar"
                           >
                             {cancelingId === item.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
-                              <X className="h-4 w-4" />
+                              <X className="h-3.5 w-3.5" />
                             )}
                           </Button>
                         ) : null}
@@ -567,12 +599,12 @@ export function AgendaDayTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={() => onEdit(item)}
                             aria-label="Editar"
                             title="Editar"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                         ) : null}
                       </div>
@@ -588,37 +620,87 @@ export function AgendaDayTable({
   );
 }
 
+function WeekStrip({
+  day,
+  items,
+  onSelectDay,
+}: {
+  day: Date;
+  items: Agendamento[];
+  onSelectDay: (day: Date) => void;
+}) {
+  const today = new Date();
+  const weekStart = startOfWeek(day);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  return (
+    <div className="grid grid-cols-7 gap-1 border-b bg-gradient-to-b from-primary/8 to-transparent p-2 sm:p-2.5">
+      {days.map((d) => {
+        const selected = sameDay(d, day);
+        const isToday = sameDay(d, today);
+        const hasEvents = items.some(
+          (item) =>
+            sameDay(new Date(item.startsAt), d) && item.status !== "cancelado",
+        );
+        return (
+          <button
+            key={toDateInput(d)}
+            type="button"
+            onClick={() => onSelectDay(d)}
+            className={cn(
+              "flex flex-col items-center rounded-2xl px-1 py-2 transition",
+              selected
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                : isToday
+                  ? "bg-primary/10 text-foreground ring-1 ring-primary/30 hover:bg-primary/15"
+                  : hasEvents
+                    ? "text-foreground hover:bg-muted/80"
+                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+            )}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+              {d
+                .toLocaleDateString("pt-BR", { weekday: "short" })
+                .replace(".", "")}
+            </span>
+            <span
+              className={cn(
+                "mt-0.5 text-base leading-none sm:text-lg",
+                selected || hasEvents ? "font-bold" : "font-semibold",
+              )}
+            >
+              {d.getDate()}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function TimeRail({
   hour,
   isNow,
   isLast,
-  originClass,
-  originLabel,
+  compact,
 }: {
   hour: number;
   isNow: boolean;
   isLast: boolean;
-  originClass?: string;
-  originLabel?: string;
+  compact?: boolean;
 }) {
   return (
-    <div className="relative flex flex-col items-end pr-4 pt-3">
-      {!isLast ? (
-        <span className="absolute bottom-0 right-[15px] top-0 w-px bg-border" />
-      ) : (
-        <span className="absolute right-[15px] top-0 h-5 w-px bg-border" />
+    <div
+      className={cn(
+        "relative flex flex-col items-end pr-3.5",
+        compact ? "pt-2" : "pt-3",
       )}
-      <span
-        className={cn(
-          "absolute right-[11px] top-[18px] z-[1] size-2.5 rounded-full border-2 bg-card",
-          isNow
-            ? "border-primary bg-primary"
-            : originClass
-              ? `border-transparent ${originClass}`
-              : "border-muted-foreground/30",
-        )}
-        title={originLabel}
-      />
+    >
+      {!isLast ? (
+        <span className="absolute bottom-0 right-[7px] top-0 w-px bg-border/80" />
+      ) : (
+        <span className="absolute right-[7px] top-0 h-5 w-px bg-border/80" />
+      )}
       <span
         className={cn(
           "text-xs font-medium tabular-nums text-muted-foreground",

@@ -38,11 +38,12 @@ import {
 import {
   AgendaBoard,
   addDays,
-  endOfDay,
+  endOfWeek,
   formatRangeLabel,
   getVisibleRange,
   startOfDay,
   startOfMonth,
+  startOfWeek,
   toDateInput,
   type AgendaViewMode,
 } from "@/components/agenda-board";
@@ -57,8 +58,6 @@ import { fetchUsers } from "@/lib/users-api";
 import {
   AGENDAMENTO_ALVO_LABEL,
   AGENDAMENTO_ESCOPO_LABEL,
-  AGENDAMENTO_ORIGEM_DOT,
-  AGENDAMENTO_ORIGEM_LABEL,
   AGENDAMENTO_RECURRENCE_FREQ,
   AGENDAMENTO_RECURRENCE_LABEL,
   AGENDAMENTO_STATUS,
@@ -66,6 +65,7 @@ import {
   AGENDAMENTO_TIPOS,
   AGENDAMENTO_TIPO_DOT,
   AGENDAMENTO_TIPO_LABEL,
+  AGENDAMENTO_TIPO_SOFT,
   AGENDAMENTO_VISUAL_LABEL,
   WEEKDAY_OPTIONS,
   aprovarAgendamento,
@@ -84,7 +84,7 @@ import {
   type AgendamentoTipo,
   type CreateAgendamentoInput,
 } from "@/lib/agenda-api";
-import { AgendamentoTipoOption } from "@/components/agenda-tipo-option";
+import { AgendamentoTipoOption, AgendamentoTipoPicker } from "@/components/agenda-tipo-option";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   CalendarDays,
@@ -92,6 +92,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Filter,
   Inbox,
   LayoutList,
@@ -212,6 +213,21 @@ function combineLocalIso(date: string, time: string): string {
   return new Date(y, m - 1, d, hh, mm, 0, 0).toISOString();
 }
 
+function formatAgendaPreview(date: string, timeStart: string, timeEnd: string) {
+  if (!date || !timeStart) return "";
+  const [y, m, d] = date.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  if (Number.isNaN(dt.getTime())) return "";
+  const dateLabel = dt.toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  return timeEnd
+    ? `${dateLabel} · ${timeStart} – ${timeEnd}`
+    : `${dateLabel} · ${timeStart}`;
+}
+
 const VIEW_OPTIONS: { id: AgendaViewMode; label: string }[] = [
   { id: "dia", label: "Dia" },
   { id: "semana", label: "Semana" },
@@ -271,8 +287,8 @@ function AgendaPage() {
   const visibleRange = useMemo(() => {
     if (layoutMode === "tabela") {
       return {
-        from: startOfDay(selectedDay),
-        to: endOfDay(selectedDay),
+        from: startOfWeek(selectedDay),
+        to: endOfWeek(selectedDay),
       };
     }
     return getVisibleRange(view, selectedDay);
@@ -848,7 +864,9 @@ function AgendaPage() {
         } else {
           toast.success(
             user?.role === "admin"
-              ? form.alvoTipo === "gerente"
+              ? form.alvoTipo === "nenhum"
+                ? "Tarefa pessoal agendada."
+                : form.alvoTipo === "gerente"
                 ? "Evento agendado para o gerente."
                 : form.alvoTipo === "gerentes"
                   ? "Evento agendado para todos os gerentes."
@@ -1033,8 +1051,8 @@ function AgendaPage() {
             : viewedAgendaName
               ? `Visualizando a agenda de ${viewedAgendaName}.`
               : isManager
-                ? "Tabela do dia com os compromissos da equipe — alterne para o calendário completo quando quiser."
-                : "Tabela do dia com seus compromissos — alterne para o calendário completo quando quiser."
+                ? "Compromissos da equipe no dia — toque num horário livre para agendar."
+                : "Seus compromissos do dia — toque num horário livre para agendar."
         }
         actions={
           section === "agenda" ? (
@@ -1044,7 +1062,7 @@ function AgendaPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className={SOFT_BTN}
+                    className="rounded-full border-emerald-400/50 bg-emerald-500/10 text-emerald-800 shadow-none hover:bg-emerald-500/15 dark:text-emerald-200"
                     disabled={googleBusy}
                     title={googleCal.googleEmail ?? "Google Agenda"}
                     onClick={() => {
@@ -1068,7 +1086,7 @@ function AgendaPage() {
                         .finally(() => setGoogleBusy(false));
                     }}
                   >
-                    <CalendarDays className="w-4 h-4 mr-1" />
+                    <span className="mr-1.5 size-1.5 rounded-full bg-emerald-500" />
                     {googleBusy ? "…" : "Google conectado"}
                   </Button>
                 ) : (
@@ -1085,7 +1103,7 @@ function AgendaPage() {
                   </Button>
                 )
               ) : null}
-              <Button onClick={() => openCreate()}>
+              <Button className="rounded-full shadow-md shadow-primary/20" onClick={() => openCreate()}>
                 <Plus className="w-4 h-4 mr-1" />
                 Novo
               </Button>
@@ -1095,7 +1113,7 @@ function AgendaPage() {
       />
 
       {viewedAgendaName && section === "agenda" ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-900">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-teal-300/50 bg-teal-500/10 px-4 py-2.5 text-sm text-teal-900 dark:text-teal-100">
           <span>
             Agenda de <strong>{viewedAgendaName}</strong>
           </span>
@@ -1111,12 +1129,12 @@ function AgendaPage() {
         </div>
       ) : null}
 
-      <div className="mb-4 inline-flex rounded-lg border p-0.5 bg-muted/40">
+      <div className="mb-4 inline-flex rounded-full border bg-muted/40 p-1">
         <button
           type="button"
           onClick={() => setSection("agenda")}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
             section === "agenda"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -1130,7 +1148,7 @@ function AgendaPage() {
             type="button"
             onClick={() => setSection("solicitacoes")}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
               section === "solicitacoes"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
@@ -1228,21 +1246,21 @@ function AgendaPage() {
         </div>
       ) : (
         <>
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className={SOFT_BTN}
+                className="rounded-full"
                 onClick={goToday}
               >
                 Hoje
               </Button>
-              <div className="flex items-center">
+              <div className="inline-flex items-center rounded-full border bg-muted/40 p-0.5">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-full"
                   onClick={() => shiftAgenda(-1)}
                   aria-label="Anterior"
                 >
@@ -1251,7 +1269,7 @@ function AgendaPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-full"
                   onClick={() => shiftAgenda(1)}
                   aria-label="Próximo"
                 >
@@ -1267,7 +1285,7 @@ function AgendaPage() {
               <Button
                 variant={layoutMode === "calendario" ? "default" : "outline"}
                 size="sm"
-                className={layoutMode === "calendario" ? undefined : SOFT_BTN}
+                className="rounded-full"
                 onClick={() =>
                   setLayoutMode((m) =>
                     m === "tabela" ? "calendario" : "tabela",
@@ -1288,14 +1306,14 @@ function AgendaPage() {
               </Button>
 
               {layoutMode === "calendario" ? (
-                <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
+                <div className="inline-flex rounded-full border p-0.5 bg-muted/40">
                   {VIEW_OPTIONS.map((opt) => (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => setView(opt.id)}
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                        "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
                         view === opt.id
                           ? "bg-background text-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground",
@@ -1313,8 +1331,8 @@ function AgendaPage() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      SOFT_BTN,
-                      activeFiltersCount > 0 && "border-primary/40",
+                      "rounded-full",
+                      activeFiltersCount > 0 && "border-primary/40 bg-primary/8",
                     )}
                   >
                     <Filter className="w-4 h-4 mr-1.5" />
@@ -1445,52 +1463,21 @@ function AgendaPage() {
             </div>
           </div>
 
-          <div className="mb-3 space-y-1.5 text-xs text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-              <span className="font-medium text-foreground/80">
-                Tipo de atividade:
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+            {([...AGENDAMENTO_TIPOS, "aniversario"] as const).map((visual) => (
+              <span
+                key={visual}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium",
+                  AGENDAMENTO_TIPO_SOFT[visual],
+                )}
+              >
+                <span
+                  className={cn("size-2 rounded-full", AGENDAMENTO_TIPO_DOT[visual])}
+                />
+                {AGENDAMENTO_VISUAL_LABEL[visual]}
               </span>
-              {([...AGENDAMENTO_TIPOS, "aniversario"] as const).map(
-                (visual) => (
-                  <span
-                    key={visual}
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    <span
-                      className={cn(
-                        "size-2.5 rounded-full",
-                        AGENDAMENTO_TIPO_DOT[visual],
-                      )}
-                    />
-                    {AGENDAMENTO_VISUAL_LABEL[visual]}
-                  </span>
-                ),
-              )}
-            </div>
-            {layoutMode === "tabela" ? (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                <span className="font-medium text-foreground/80">
-                  Quem criou:
-                </span>
-                {(["admin", "gerente", "corretor"] as const).map((origem) => (
-                  <span
-                    key={origem}
-                    className="inline-flex items-center gap-1.5"
-                  >
-                    <span
-                      className={cn(
-                        "size-2.5 rounded-full",
-                        AGENDAMENTO_ORIGEM_DOT[origem],
-                      )}
-                    />
-                    {AGENDAMENTO_ORIGEM_LABEL[origem]}
-                  </span>
-                ))}
-                <span className="text-muted-foreground/70">
-                  (bolinha na linha do horário)
-                </span>
-              </div>
-            ) : null}
+            ))}
           </div>
 
           {layoutMode === "tabela" ? (
@@ -1503,6 +1490,7 @@ function AgendaPage() {
               currentUserId={user?.id}
               completingId={completingId}
               cancelingId={cancelingId}
+              onSelectDay={handleSelectDay}
               onCreateAt={openCreate}
               onEdit={openEdit}
               onComplete={(item) => void handleComplete(item)}
@@ -1805,6 +1793,27 @@ function AgendaPage() {
               title="Detalhes"
               icon={<CalendarDays className="w-4 h-4 text-primary" />}
             >
+              {form.date && form.timeStart ? (
+                <div
+                  className={cn(
+                    "flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5 text-sm",
+                    AGENDAMENTO_TIPO_SOFT[form.tipo],
+                  )}
+                >
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span className="font-semibold capitalize">
+                    {formatAgendaPreview(
+                      form.date,
+                      form.timeStart,
+                      form.timeEnd,
+                    )}
+                  </span>
+                  <span className="ml-auto text-xs font-medium opacity-80">
+                    {AGENDAMENTO_TIPO_LABEL[form.tipo]}
+                  </span>
+                </div>
+              ) : null}
+
               <div className="space-y-2">
                 <Label htmlFor="titulo">Título</Label>
                 <Input
@@ -1820,100 +1829,81 @@ function AgendaPage() {
                 />
               </div>
 
-              <div
-                className={cn(
-                  "grid gap-4",
-                  isAdmin || isPlatformAdmin || form.tipo === "bloqueio"
-                    ? ""
-                    : "sm:grid-cols-2",
-                )}
-              >
+              <div className="space-y-2">
+                <Label>Tipo de compromisso</Label>
+                <AgendamentoTipoPicker
+                  value={form.tipo}
+                  options={tiposDisponiveis}
+                  disabled={formMode === "edit"}
+                  onChange={(tipo) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      tipo,
+                      atribuidoParaId:
+                        tipo === "bloqueio" ? "" : prev.atribuidoParaId,
+                      escopo:
+                        isAdmin ||
+                        isPlatformAdmin ||
+                        tipo === "bloqueio" ||
+                        prev.atribuidoParaId
+                          ? "pessoal"
+                          : tipo === "visita" || tipo === "reuniao"
+                            ? "com_gerente"
+                            : prev.escopo === "com_gerente" &&
+                                (tipo === "tarefa" || tipo === "ligacao")
+                              ? "pessoal"
+                              : prev.escopo,
+                      timeEnd:
+                        tipo === "bloqueio" && !prev.timeEnd
+                          ? prev.timeStart
+                            ? (() => {
+                                const [hh, mm] = prev.timeStart
+                                  .split(":")
+                                  .map(Number);
+                                const next = (hh + 1) % 24;
+                                return `${String(next).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                              })()
+                            : "15:00"
+                          : prev.timeEnd,
+                    }));
+                  }}
+                />
+              </div>
+
+              {!isAdmin &&
+              !isPlatformAdmin &&
+              form.tipo !== "bloqueio" &&
+              !form.atribuidoParaId ? (
                 <div className="space-y-2">
-                  <Label>Tipo</Label>
+                  <Label>Participação</Label>
                   <Select
-                    value={form.tipo}
-                    onValueChange={(v) => {
-                      const tipo = v as AgendamentoTipo;
-                      setForm((prev) => ({
-                        ...prev,
-                        tipo,
-                        atribuidoParaId:
-                          tipo === "bloqueio" ? "" : prev.atribuidoParaId,
-                        escopo:
-                          isAdmin ||
-                          isPlatformAdmin ||
-                          tipo === "bloqueio" ||
-                          prev.atribuidoParaId
-                            ? "pessoal"
-                            : tipo === "visita" || tipo === "reuniao"
-                              ? "com_gerente"
-                              : prev.escopo === "com_gerente" &&
-                                  (tipo === "tarefa" || tipo === "ligacao")
-                                ? "pessoal"
-                                : prev.escopo,
-                        timeEnd:
-                          tipo === "bloqueio" && !prev.timeEnd
-                            ? prev.timeStart
-                              ? (() => {
-                                  const [hh, mm] = prev.timeStart
-                                    .split(":")
-                                    .map(Number);
-                                  const next = (hh + 1) % 24;
-                                  return `${String(next).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                                })()
-                              : "15:00"
-                            : prev.timeEnd,
-                      }));
-                    }}
+                    value={form.escopo}
+                    onValueChange={(v) =>
+                      setField("escopo", v as AgendamentoEscopo)
+                    }
                     disabled={formMode === "edit"}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {tiposDisponiveis.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          <AgendamentoTipoOption tipo={t} />
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="pessoal">
+                        {AGENDAMENTO_ESCOPO_LABEL.pessoal}
+                      </SelectItem>
+                      <SelectItem value="com_gerente">
+                        {AGENDAMENTO_ESCOPO_LABEL.com_gerente}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {form.escopo === "com_gerente"
+                      ? isCorretorLike(user?.role)
+                        ? "Será enviada solicitação ao gerente para aprovar."
+                        : "Compromisso com participação do gerente."
+                      : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
+                  </p>
                 </div>
-                {!isAdmin &&
-                !isPlatformAdmin &&
-                form.tipo !== "bloqueio" &&
-                !form.atribuidoParaId ? (
-                  <div className="space-y-2">
-                    <Label>Participação</Label>
-                    <Select
-                      value={form.escopo}
-                      onValueChange={(v) =>
-                        setField("escopo", v as AgendamentoEscopo)
-                      }
-                      disabled={formMode === "edit"}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pessoal">
-                          {AGENDAMENTO_ESCOPO_LABEL.pessoal}
-                        </SelectItem>
-                        <SelectItem value="com_gerente">
-                          {AGENDAMENTO_ESCOPO_LABEL.com_gerente}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      {form.escopo === "com_gerente"
-                        ? isCorretorLike(user?.role)
-                          ? "Será enviada solicitação ao gerente para aprovar."
-                          : "Compromisso com participação do gerente."
-                        : "Tarefa só sua — sem aprovação (ex.: ligar para o cliente)."}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
+              ) : null}
 
               {(isAdmin || isGerente) &&
               form.tipo !== "bloqueio" &&

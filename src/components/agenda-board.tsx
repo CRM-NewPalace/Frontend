@@ -5,6 +5,7 @@ import {
   AGENDAMENTO_STATUS_LABEL,
   AGENDAMENTO_TIPO_BLOCK,
   AGENDAMENTO_TIPO_CARD,
+  AGENDAMENTO_TIPO_WELL,
   AGENDAMENTO_VISUAL_LABEL,
   getAgendamentoCardSubtitle,
   getAgendamentoCardTitle,
@@ -13,21 +14,11 @@ import {
   isAgendamentoAniversario,
   isAgendamentoBloqueio,
   type Agendamento,
-  type AgendamentoTipo,
 } from "@/lib/agenda-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Ban,
-  Cake,
-  CalendarDays,
-  CheckSquare,
-  MapPin,
-  Phone,
-  Plus,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { Cake, CalendarDays, Plus, type LucideIcon } from "lucide-react";
+import { AGENDAMENTO_TIPO_ICON } from "@/components/agenda-tipo-option";
 
 export type AgendaViewMode = "dia" | "semana" | "mes";
 
@@ -37,18 +28,9 @@ const PX_PER_HOUR_WEEK = 56;
 const PX_PER_HOUR_DAY = 76;
 const DEFAULT_DURATION_MIN = 60;
 
-const TIPO_ICON: Record<AgendamentoTipo, LucideIcon> = {
-  visita: MapPin,
-  ligacao: Phone,
-  reuniao: Users,
-  tarefa: CheckSquare,
-  outro: CalendarDays,
-  bloqueio: Ban,
-};
-
 function eventIcon(item: Agendamento): LucideIcon {
   if (isAgendamentoAniversario(item)) return Cake;
-  return TIPO_ICON[item.tipo] ?? CalendarDays;
+  return AGENDAMENTO_TIPO_ICON[item.tipo] ?? CalendarDays;
 }
 
 export function startOfDay(d: Date) {
@@ -276,7 +258,7 @@ function TimeGridBoard({
     pxPerHour;
 
   return (
-    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-2xl border bg-card">
+    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-3xl border bg-card shadow-sm">
       {loading ? (
         <div className="absolute inset-0 z-20 bg-background/50 flex items-center justify-center text-sm text-muted-foreground">
           Carregando…
@@ -289,24 +271,31 @@ function TimeGridBoard({
           gridTemplateColumns: `${isDayView ? 72 : 56}px repeat(${days.length}, minmax(9rem, 1fr))`,
         }}
       >
-        <div className="sticky top-0 z-10 border-b bg-card" />
+        <div className="sticky top-0 z-10 border-b bg-gradient-to-b from-primary/8 to-card" />
         {days.map((day) => {
           const isToday = sameDay(day, today);
           return (
             <div
               key={toDateInput(day)}
               className={cn(
-                "sticky top-0 z-10 border-b border-l bg-card px-2 py-2 text-center",
-                isToday && "bg-primary/5",
+                "sticky top-0 z-10 border-b border-l bg-gradient-to-b to-card px-2 py-2.5 text-center",
+                isToday ? "from-primary/18" : "from-primary/8",
               )}
             >
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              <div
+                className={cn(
+                  "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
+                  isToday && "text-primary",
+                )}
+              >
                 {day.toLocaleDateString("pt-BR", { weekday: "short" })}
               </div>
               <div
                 className={cn(
-                  "mx-auto mt-0.5 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
-                  isToday && "bg-primary text-primary-foreground",
+                  "mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+                  isToday
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
+                    : "hover:bg-muted",
                 )}
               >
                 {day.getDate()}
@@ -346,8 +335,8 @@ function TimeGridBoard({
                   key={h}
                   type="button"
                   className={cn(
-                    "group/slot absolute inset-x-0 border-t border-border/60 transition-colors hover:bg-primary/6",
-                    h % 2 === 0 && "bg-muted/15",
+                    "group/slot absolute inset-x-0 border-t border-border/50 transition-colors hover:bg-primary/8",
+                    h % 2 === 0 && "bg-muted/20",
                   )}
                   style={{
                     top: (h - HOUR_START) * pxPerHour,
@@ -381,11 +370,17 @@ function TimeGridBoard({
                   }}
                 >
                   {isDayView ? (
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground opacity-0 transition group-hover/slot:opacity-70">
-                      <Plus className="mr-1 h-3.5 w-3.5" />
-                      Agendar
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-primary opacity-0 transition group-hover/slot:opacity-100">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-primary/40 bg-primary/10 px-2 py-0.5">
+                        <Plus className="h-3.5 w-3.5" />
+                        Agendar
+                      </span>
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-primary opacity-0 transition group-hover/slot:opacity-70">
+                      <Plus className="h-3.5 w-3.5" />
+                    </span>
+                  )}
                 </button>
               ))}
 
@@ -452,7 +447,12 @@ function TimeGridBoard({
                     {isDayView ? (
                       <div className="flex items-start gap-2">
                         {cardHeight > 48 ? (
-                          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background/50">
+                          <span
+                            className={cn(
+                              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm",
+                              AGENDAMENTO_TIPO_WELL[visual],
+                            )}
+                          >
                             <Icon className="h-3.5 w-3.5" />
                           </span>
                         ) : null}
@@ -536,7 +536,7 @@ function MonthBoard({
   }, [items]);
 
   return (
-    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-2xl border bg-card">
+    <div className="relative overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] rounded-3xl border bg-card shadow-sm">
       {loading ? (
         <div className="absolute inset-0 z-20 bg-background/50 flex items-center justify-center text-sm text-muted-foreground">
           Carregando…
@@ -544,7 +544,7 @@ function MonthBoard({
       ) : null}
 
       <div className="min-w-200">
-        <div className="grid grid-cols-7 border-b bg-muted/30">
+        <div className="grid grid-cols-7 border-b bg-gradient-to-b from-primary/8 to-muted/20">
           {weekdays.map((w) => (
             <div
               key={w}
@@ -580,7 +580,7 @@ function MonthBoard({
                     className={cn(
                       "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-muted",
                       isToday &&
-                        "bg-primary text-primary-foreground hover:bg-primary",
+                        "bg-primary text-primary-foreground shadow-sm shadow-primary/30 hover:bg-primary",
                     )}
                   >
                     {day.getDate()}
@@ -603,7 +603,7 @@ function MonthBoard({
                       type="button"
                       onClick={() => onEdit(item)}
                       className={cn(
-                        "truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-tight border",
+                        "truncate rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium leading-tight border shadow-sm",
                         AGENDAMENTO_TIPO_BLOCK[getAgendamentoVisual(item)],
                         item.status === "cancelado" && "opacity-50 grayscale",
                       )}
