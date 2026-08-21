@@ -114,6 +114,7 @@ export function FinanceKpiCard({
   valueLabel,
   search,
   detail,
+  blurValue = false,
 }: {
   label: string;
   value: number;
@@ -134,6 +135,8 @@ export function FinanceKpiCard({
   /** Substitui o valor formatado (ex.: "1h 20min"). */
   valueLabel?: string;
   detail?: string;
+  /** Borra o valor para privacidade (olhar por cima). */
+  blurValue?: boolean;
 }) {
   const t = TONE[tone];
   const display =
@@ -165,7 +168,7 @@ export function FinanceKpiCard({
         active && "border-primary/50 ring-2 ring-primary/25 shadow-md",
         className,
       )}
-      title={display}
+      title={blurValue ? undefined : display}
     >
       {showBar ? (
         <div
@@ -197,6 +200,7 @@ export function FinanceKpiCard({
             className={cn(
               "font-bold tracking-tight tabular-nums mt-0.5 text-foreground break-all sm:wrap-break-word",
               valueSize,
+              blurValue && "select-none blur-[8px]",
             )}
           >
             {display}
@@ -211,13 +215,18 @@ export function FinanceKpiCard({
               value={evolucaoPct}
               previous={valorMesAnterior}
               invert={invertEvolucao}
-              className="mt-1"
+              className={cn("mt-1", blurValue && "select-none blur-[8px]")}
             />
           ) : compact ? null : (
             <span className="mt-1 block h-4.5" aria-hidden />
           )}
           {detail ? (
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            <p
+              className={cn(
+                "mt-1 text-[11px] leading-snug text-muted-foreground",
+                blurValue && "select-none blur-[8px]",
+              )}
+            >
               {detail}
             </p>
           ) : null}

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/chart";
 import { ApiError } from "@/lib/api";
 import { fetchVisaoGeral } from "@/lib/financeiro-api";
+import { useHideFinanceiroValues } from "@/lib/financeiro-prefs";
 import {
   brl,
   formatDate,
@@ -22,12 +23,15 @@ import {
   type MesResumo,
   type PeriodoFiltro,
 } from "@/lib/financeiro-mock";
+import { SOFT_BTN, SOFT_BTN_ACTIVE } from "@/lib/soft-btn";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   ArrowDownRight,
   ArrowUpRight,
   Banknote,
+  Eye,
+  EyeOff,
   Loader2,
   Plus,
   TrendingUp,
@@ -87,8 +91,11 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
   );
 }
 
+const MONEY_BLUR = "select-none blur-[8px]";
+
 function Page() {
   const navigate = useNavigate();
+  const [hideValues, setHideValues] = useHideFinanceiroValues();
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState(EMPTY_KPIS);
@@ -192,18 +199,35 @@ function Page() {
         title="Visao geral"
         description="Resumo financeiro — KPIs, evolução e atalhos"
         actions={
-          <Button
-            type="button"
-            onClick={() =>
-              void navigate({
-                to: "/financeiro/movimentacao",
-                search: { novo: true },
-              })
-            }
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Novo lançamento
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(hideValues ? SOFT_BTN_ACTIVE : SOFT_BTN)}
+              aria-pressed={hideValues}
+              title={hideValues ? "Mostrar valores" : "Ocultar valores"}
+              onClick={() => setHideValues(!hideValues)}
+            >
+              {hideValues ? (
+                <EyeOff className="w-4 h-4 mr-1" />
+              ) : (
+                <Eye className="w-4 h-4 mr-1" />
+              )}
+              {hideValues ? "Mostrar valores" : "Ocultar valores"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() =>
+                void navigate({
+                  to: "/financeiro/movimentacao",
+                  search: { novo: true },
+                })
+              }
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Novo lançamento
+            </Button>
+          </div>
         }
       />
 
@@ -227,6 +251,7 @@ function Page() {
           value={Math.round(k.saldoAtual * (periodo === "mes" ? 1 : 1.05))}
           icon={Wallet}
           tone="blue-1"
+          blurValue={hideValues}
         />
         <FinanceKpiCard
           label="Receitas"
@@ -234,6 +259,7 @@ function Page() {
           icon={ArrowUpRight}
           tone="blue-2"
           evolucaoPct={k.evolucaoReceitas}
+          blurValue={hideValues}
         />
         <FinanceKpiCard
           label="Despesas"
@@ -244,6 +270,7 @@ function Page() {
           invertEvolucao
           href="/financeiro/despesas"
           detail={despesasDetail || undefined}
+          blurValue={hideValues}
         />
         <FinanceKpiCard
           label="Resultado"
@@ -251,6 +278,7 @@ function Page() {
           icon={TrendingUp}
           tone="blue-4"
           evolucaoPct={k.evolucaoResultado}
+          blurValue={hideValues}
         />
         <FinanceKpiCard
           label="A receber neste mês"
@@ -258,6 +286,7 @@ function Page() {
           icon={Banknote}
           tone="blue-5"
           href="/financeiro/contas-a-receber"
+          blurValue={hideValues}
         />
         <FinanceKpiCard
           label="A pagar neste mês"
@@ -265,6 +294,7 @@ function Page() {
           icon={ArrowDownRight}
           tone="blue-6"
           href="/financeiro/contas-a-pagar"
+          blurValue={hideValues}
         />
       </section>
 
@@ -300,13 +330,19 @@ function Page() {
                       tickLine={false}
                       axisLine={false}
                       width={48}
-                      tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+                      tickFormatter={(v) =>
+                        hideValues
+                          ? "•••"
+                          : `${(Number(v) / 1000).toFixed(0)}k`
+                      }
                       tick={{ fontSize: 11 }}
                     />
                     <ChartTooltip
                       content={
                         <ChartTooltipContent
-                          formatter={(value) => brl(Number(value))}
+                          formatter={(value) =>
+                            hideValues ? "••••" : brl(Number(value))
+                          }
                         />
                       }
                     />
@@ -367,7 +403,9 @@ function Page() {
                     <ChartTooltip
                       content={
                         <ChartTooltipContent
-                          formatter={(value) => brl(Number(value))}
+                          formatter={(value) =>
+                            hideValues ? "••••" : brl(Number(value))
+                          }
                         />
                       }
                     />
@@ -386,7 +424,12 @@ function Page() {
                 {pieData.slice(0, 4).map((item) => (
                   <li key={item.name} className="flex justify-between gap-2">
                     <span className="truncate">{item.name}</span>
-                    <span className="shrink-0 tabular-nums text-foreground">
+                    <span
+                      className={cn(
+                        "shrink-0 tabular-nums text-foreground",
+                        hideValues && MONEY_BLUR,
+                      )}
+                    >
                       {brl(item.value)}
                     </span>
                   </li>
@@ -410,6 +453,7 @@ function Page() {
           tone="fixa"
           total={k.despesasFixaMes ?? 0}
           fator={fator}
+          hideValues={hideValues}
         />
         <DespesaPipelineColumn
           title="Variáveis"
@@ -418,6 +462,7 @@ function Page() {
           tone="variavel"
           total={k.despesasVariavelMes ?? 0}
           fator={fator}
+          hideValues={hideValues}
         />
         {pipeline.outros.length > 0 ? (
           <DespesaPipelineColumn
@@ -427,6 +472,7 @@ function Page() {
             tone="outros"
             total={k.despesasOutrosMes ?? 0}
             fator={fator}
+            hideValues={hideValues}
           />
         ) : null}
       </div>
@@ -441,6 +487,7 @@ function DespesaPipelineColumn({
   tone,
   total,
   fator,
+  hideValues = false,
 }: {
   title: string;
   emptyText: string;
@@ -448,6 +495,7 @@ function DespesaPipelineColumn({
   tone: "fixa" | "variavel" | "outros";
   total: number;
   fator: number;
+  hideValues?: boolean;
 }) {
   const accent =
     tone === "fixa"
@@ -476,7 +524,12 @@ function DespesaPipelineColumn({
             {items.length} lançamento{items.length === 1 ? "" : "s"}
           </p>
         </div>
-        <p className="text-sm font-semibold tabular-nums">
+        <p
+          className={cn(
+            "text-sm font-semibold tabular-nums",
+            hideValues && MONEY_BLUR,
+          )}
+        >
           {brl(Math.round(total * fator))}
         </p>
       </div>
@@ -498,7 +551,12 @@ function DespesaPipelineColumn({
                 <p className="min-w-0 truncate text-sm font-medium">
                   {item.descricao}
                 </p>
-                <p className="shrink-0 text-sm font-semibold tabular-nums">
+                <p
+                  className={cn(
+                    "shrink-0 text-sm font-semibold tabular-nums",
+                    hideValues && MONEY_BLUR,
+                  )}
+                >
                   {brl(item.valor)}
                 </p>
               </div>
