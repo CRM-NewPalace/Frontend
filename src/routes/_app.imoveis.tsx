@@ -1300,6 +1300,18 @@ export function ImoveisPage({
                           {empreendimentoStatusLabel(item.status)}
                         </Badge>
                       ) : null}
+                      {(item.tags ?? []).map((tag) => (
+                        <Badge
+                          key={tag}
+                          className={cn(
+                            STATUS_CHIP_CLASS,
+                            colorByLabel("empreendimento_tag", tag),
+                          )}
+                          title={tag}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   </TableCell>
                   <TableCell>
