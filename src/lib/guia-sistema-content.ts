@@ -240,6 +240,11 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           "Compromissos pessoais e de equipe: visita, ligação, tarefa. O sino avisa o que está perto (hoje, 2 h, 1 h).",
         actions: [
           {
+            title: "Google Agenda",
+            detail:
+              "A conexão fica em Configurações → Conexões. Eventos do CRM (incluindo os de todas as equipes) vão para o Calendar de quem conectou.",
+          },
+          {
             title: "Criar compromisso",
             detail:
               "Título, tipo, data/hora, local, notas. Pode vincular a um lead/cliente. Tarefa pessoal pode existir sem contato.",
@@ -792,8 +797,13 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/configuracoes",
         who: "Admin (e papéis com a rota). Define o que o resto do CRM usa.",
         summary:
-          "Identidade da imobiliária, funis, origens, tags, motivos, CCAs, status de documentação, tipos de empreendimento e preferências de menu/financeiro.",
+          "Identidade da imobiliária, conexões (Google Agenda), funis, origens, tags, motivos, CCAs, status de documentação, tipos de empreendimento e preferências de menu/financeiro.",
         actions: [
+          {
+            title: "Conexões",
+            detail:
+              "Cada usuário conecta o próprio Google Agenda. Compromissos do CRM são enviados ao Calendar; dá para trocar de conta ou desconectar.",
+          },
           {
             title: "Empresa",
             detail:
