@@ -97,6 +97,8 @@ export interface MovimentoFinanceiro {
   valor: number;
   status: StatusTitulo;
   formaPagamento: string;
+  tituloId?: string | null;
+  natureza?: NaturezaDespesa | null;
 }
 
 export interface TituloFinanceiro {
@@ -117,6 +119,7 @@ export interface TituloFinanceiro {
   platformContratoId?: string | null;
   comissaoId?: string | null;
   comissaoPapel?: string | null;
+  natureza?: NaturezaDespesa | null;
   formaPagamento?: string;
 }
 
@@ -194,6 +197,14 @@ export interface MesResumo {
 }
 
 export type NaturezaDespesa = "fixa" | "fixa_variavel" | "variavel";
+
+export function despesaNaturezaLabel(
+  natureza?: NaturezaDespesa | null,
+): string | null {
+  if (natureza === "fixa") return "Fixa";
+  if (natureza === "variavel" || natureza === "fixa_variavel") return "Variável";
+  return null;
+}
 
 export interface CentroDespesaResumo {
   centro: string;

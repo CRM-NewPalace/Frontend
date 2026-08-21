@@ -79,7 +79,7 @@ import {
   VISTA_PARCELAS_EVENT,
   type VistaParcelas,
 } from "@/lib/financeiro-prefs";
-import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -88,11 +88,13 @@ import {
 import {
   brl,
   COMISSAO_PAPEL_LABEL,
+  despesaNaturezaLabel,
   formatDate,
   statusBadgeClass,
   statusLabel,
   tituloVisivelNoPeriodo,
   type DespesaTipo,
+  type NaturezaDespesa,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
   type StatusTitulo,
@@ -165,6 +167,7 @@ type FormState = {
   valor: string;
   status: StatusTitulo;
   parcela: string;
+  natureza: NaturezaDespesa;
 };
 
 type ContratoFormState = {
@@ -326,6 +329,7 @@ function emptyForm(
     valor: "",
     status: "aberto",
     parcela: "",
+    natureza: "variavel",
   };
 }
 
@@ -665,7 +669,7 @@ export function FinanceiroTitulosPanel({
               })
             : await createDespesaTipo({
                 nome,
-                natureza: "variavel",
+                natureza: form.natureza === "fixa" ? "fixa" : "variavel",
                 ativo: true,
               });
         setCatalogTipos((prev) =>
@@ -997,6 +1001,7 @@ export function FinanceiroTitulosPanel({
       valor: formatValorInput(t.valor),
       status: t.status,
       parcela: t.parcela || "",
+      natureza: t.natureza === "fixa" ? "fixa" : "variavel",
     });
     setOpen(true);
   }
@@ -1047,6 +1052,7 @@ export function FinanceiroTitulosPanel({
       valor: formatValorInput(rows.reduce((s, t) => s + t.valor, 0)),
       status: "aberto",
       parcela: "",
+      natureza: base.natureza === "fixa" ? "fixa" : "variavel",
     });
     setParcelasDraft(
       rows.map((t) => ({
@@ -1262,6 +1268,7 @@ export function FinanceiroTitulosPanel({
           parcelas,
           indeterminado:
             recorrencia === "mensal" && recorrenciaIndeterminada,
+          ...(tipo === "pagar" ? { natureza: form.natureza } : {}),
         });
         toast.success(
           recorrencia === "mensal" && recorrenciaIndeterminada
@@ -1314,6 +1321,7 @@ export function FinanceiroTitulosPanel({
           parceiroId: form.parceiroId === NONE ? null : form.parceiroId,
           categoria: catalog.categoria,
           centro: catalog.centro,
+          ...(tipo === "pagar" ? { natureza: form.natureza } : {}),
           parcelas,
         });
         toast.success(`${result.updated} parcela(s) atualizada(s).`);
@@ -1350,6 +1358,7 @@ export function FinanceiroTitulosPanel({
           formMode === "edit" && !parcelado
             ? ""
             : form.parcela.trim() || undefined,
+        ...(tipo === "pagar" ? { natureza: form.natureza } : {}),
       };
       if (formMode === "create") {
         await createTitulo(payload);
@@ -1601,6 +1610,14 @@ export function FinanceiroTitulosPanel({
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="truncate">{t.descricao}</span>
                           <ComissaoOrigemBadge titulo={t} />
+                          {tipo === "pagar" && despesaNaturezaLabel(t.natureza) ? (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 text-[10px]"
+                            >
+                              {despesaNaturezaLabel(t.natureza)}
+                            </Badge>
+                          ) : null}
                           {t.platformContratoId ? (
                             <Badge
                               variant="outline"
@@ -2098,6 +2115,47 @@ export function FinanceiroTitulosPanel({
                           ? "Um único lançamento. Para aluguel, condomínio ou assinatura no período, escolha a frequência — valor e vencimentos ficam em Pagamento."
                           : "Um único lançamento. Para repetir no período, escolha a frequência — valor e vencimentos ficam em Cobrança."
                         : "Gera um lançamento por vencimento no fluxo de caixa. Informe valor, 1º vencimento e quantidade na aba seguinte."}
+                    </p>
+                  </div>
+                ) : null}
+                {tipo === "pagar" &&
+                (formTab === "dados" || formMode === "edit-grupo") ? (
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label>Tipo de despesa *</Label>
+                    <div className="inline-flex h-9 rounded-lg border bg-muted/40 p-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-4",
+                          form.natureza === "fixa" && "bg-background shadow-sm",
+                        )}
+                        onClick={() =>
+                          setForm((f) => ({ ...f, natureza: "fixa" }))
+                        }
+                      >
+                        Fixa
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-4",
+                          form.natureza === "variavel" &&
+                            "bg-background shadow-sm",
+                        )}
+                        onClick={() =>
+                          setForm((f) => ({ ...f, natureza: "variavel" }))
+                        }
+                      >
+                        Variável
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Fixa: aluguel, folha, assinatura. Variável: marketing,
+                      comissão, compra avulsa.
                     </p>
                   </div>
                 ) : null}
@@ -2723,9 +2781,24 @@ export function FinanceiroTitulosPanel({
                     <CategoriaSearchSelect
                       value={form.categoria}
                       options={categorias}
-                      onChange={(v) =>
-                        setForm((f) => ({ ...f, ...catalogFields(v) }))
-                      }
+                      onChange={(v) => {
+                        const match = catalogTipos.find(
+                          (item) =>
+                            item.nome.toLowerCase() === v.trim().toLowerCase(),
+                        );
+                        setForm((f) => ({
+                          ...f,
+                          ...catalogFields(v),
+                          ...(tipo === "pagar" && match
+                            ? {
+                                natureza:
+                                  match.natureza === "fixa"
+                                    ? "fixa"
+                                    : "variavel",
+                              }
+                            : {}),
+                        }));
+                      }}
                       placeholder={
                         tipo === "receber"
                           ? "Buscar categoria…"

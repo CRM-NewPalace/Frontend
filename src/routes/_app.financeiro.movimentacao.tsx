@@ -53,7 +53,7 @@ import {
   fetchRecebimentoTipos,
   updateMovimento,
 } from "@/lib/financeiro-api";
-import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   formatMoneyInput,
@@ -68,6 +68,7 @@ import {
   statusLabel,
   type DespesaTipo,
   type MovimentoFinanceiro,
+  type NaturezaDespesa,
   type ParceiroFinanceiro,
   type PeriodoFiltro,
   type StatusTitulo,
@@ -132,6 +133,7 @@ type FormState = {
   valor: string;
   status: StatusTitulo;
   formaPagamento: string;
+  natureza: NaturezaDespesa;
 };
 
 function todayIso() {
@@ -152,6 +154,7 @@ function emptyForm(defaultCategoria = ""): FormState {
     valor: "",
     status: "pago",
     formaPagamento: FORMAS_PAGAMENTO[0],
+    natureza: "variavel",
   };
 }
 
@@ -169,6 +172,7 @@ function toForm(m: MovimentoFinanceiro, defaultCategoria = ""): FormState {
     valor: formatMoneyInput(m.valor),
     status: m.status,
     formaPagamento: m.formaPagamento || FORMAS_PAGAMENTO[0],
+    natureza: m.natureza === "fixa" ? "fixa" : "variavel",
   };
 }
 
@@ -348,7 +352,7 @@ function Page() {
               })
             : await createDespesaTipo({
                 nome,
-                natureza: "variavel",
+                natureza: form.natureza === "fixa" ? "fixa" : "variavel",
                 ativo: true,
               });
         if (form.tipo === "entrada") {
@@ -481,6 +485,7 @@ function Page() {
       valor,
       status: form.status,
       formaPagamento: form.formaPagamento.trim() || undefined,
+      ...(form.tipo === "saida" ? { natureza: form.natureza } : {}),
     };
 
     setSaving(true);
@@ -737,6 +742,38 @@ function Page() {
                     </SelectContent>
                   </Select>
                 </div>
+                {form.tipo === "saida" ? (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Tipo de despesa *</Label>
+                    <div className="inline-flex h-9 rounded-lg border bg-muted/40 p-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-4",
+                          form.natureza === "fixa" && "bg-background shadow-sm",
+                        )}
+                        onClick={() => setField("natureza", "fixa")}
+                      >
+                        Fixa
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-4",
+                          form.natureza === "variavel" &&
+                            "bg-background shadow-sm",
+                        )}
+                        onClick={() => setField("natureza", "variavel")}
+                      >
+                        Variável
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="mov-desc">Descrição *</Label>
                   <Input

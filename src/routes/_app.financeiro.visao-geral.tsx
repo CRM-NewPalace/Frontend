@@ -51,19 +51,19 @@ const barConfig = {
   despesas: { label: "Despesas", color: "hsl(0 72% 51%)" },
 } satisfies ChartConfig;
 
-const pieColors = [
-  "hsl(173 80% 36%)",
-  "hsl(199 89% 48%)",
-  "hsl(262 83% 58%)",
-  "hsl(32 95% 44%)",
-  "hsl(330 81% 60%)",
-  "hsl(215 20% 55%)",
-];
+const naturezaConfig = {
+  fixa: { label: "Fixa", color: "hsl(199 89% 40%)" },
+  variavel: { label: "Variável", color: "hsl(0 72% 51%)" },
+  outros: { label: "Sem classificação", color: "hsl(215 20% 55%)" },
+} satisfies ChartConfig;
 
 const EMPTY_KPIS = {
   saldoAtual: 0,
   receitasMes: 0,
   despesasMes: 0,
+  despesasFixaMes: 0,
+  despesasVariavelMes: 0,
+  despesasOutrosMes: 0,
   aReceber: 0,
   aPagar: 0,
   resultadoMes: 0,
@@ -136,6 +136,41 @@ function Page() {
     [centros, fator],
   );
 
+  const naturezaData = useMemo(() => {
+    const rows = [
+      {
+        name: "Fixa",
+        key: "fixa" as const,
+        value: Math.round((k.despesasFixaMes ?? 0) * fator),
+      },
+      {
+        name: "Variável",
+        key: "variavel" as const,
+        value: Math.round((k.despesasVariavelMes ?? 0) * fator),
+      },
+      {
+        name: "Sem classificação",
+        key: "outros" as const,
+        value: Math.round((k.despesasOutrosMes ?? 0) * fator),
+      },
+    ];
+    return rows.filter((row) => row.value > 0);
+  }, [fator, k.despesasFixaMes, k.despesasOutrosMes, k.despesasVariavelMes]);
+
+  const despesasDetail = [
+    (k.despesasFixaMes ?? 0) > 0
+      ? `Fixa ${brl(Math.round((k.despesasFixaMes ?? 0) * fator))}`
+      : null,
+    (k.despesasVariavelMes ?? 0) > 0
+      ? `Variável ${brl(Math.round((k.despesasVariavelMes ?? 0) * fator))}`
+      : null,
+    (k.despesasOutrosMes ?? 0) > 0
+      ? `Sem class. ${brl(Math.round((k.despesasOutrosMes ?? 0) * fator))}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div>
       <PageHeader
@@ -193,6 +228,7 @@ function Page() {
           evolucaoPct={k.evolucaoDespesas}
           invertEvolucao
           href="/financeiro/despesas"
+          detail={despesasDetail || undefined}
         />
         <FinanceKpiCard
           label="Resultado"
@@ -279,30 +315,33 @@ function Page() {
 
         <Card className="min-w-0 overflow-hidden lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Despesas por centro</CardTitle>
+            <CardTitle className="text-base">Despesas por tipo</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0">
-            {pieData.length === 0 ? (
+            {naturezaData.length === 0 ? (
               <div className="flex h-70 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                <p>Sem despesas por centro neste mês.</p>
+                <p>Sem despesas classificadas neste mês.</p>
               </div>
             ) : (
               <ResponsiveChartShell>
                 <ChartContainer
-                  config={{ value: { label: "Valor", color: pieColors[0] } }}
+                  config={naturezaConfig}
                   className="aspect-auto! mx-auto h-70 w-full min-w-80"
                 >
                   <PieChart>
                     <Pie
-                      data={pieData}
+                      data={naturezaData}
                       dataKey="value"
                       nameKey="name"
                       innerRadius={50}
                       outerRadius={84}
                       paddingAngle={2}
                     >
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={pieColors[i % pieColors.length]} />
+                      {naturezaData.map((row) => (
+                        <Cell
+                          key={row.key}
+                          fill={`var(--color-${row.key})`}
+                        />
                       ))}
                     </Pie>
                     <ChartTooltip
@@ -322,6 +361,18 @@ function Page() {
                 </ChartContainer>
               </ResponsiveChartShell>
             )}
+            {pieData.length > 0 ? (
+              <ul className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
+                {pieData.slice(0, 4).map((item) => (
+                  <li key={item.name} className="flex justify-between gap-2">
+                    <span className="truncate">{item.name}</span>
+                    <span className="shrink-0 tabular-nums text-foreground">
+                      {brl(item.value)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </CardContent>
         </Card>
       </div>

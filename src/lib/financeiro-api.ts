@@ -180,6 +180,9 @@ export type VisaoGeralResponse = {
     saldoAtual: number;
     receitasMes: number;
     despesasMes: number;
+    despesasFixaMes?: number;
+    despesasVariavelMes?: number;
+    despesasOutrosMes?: number;
     aReceber: number;
     aPagar: number;
     resultadoMes: number;
@@ -235,6 +238,7 @@ export type CreateMovimentoInput = {
   valor: number;
   status?: "aberto" | "pago" | "atrasado" | "cancelado";
   formaPagamento?: string;
+  natureza?: NaturezaDespesa;
 };
 
 export type UpdateMovimentoInput = Omit<
@@ -296,6 +300,7 @@ export type CreateTituloInput = {
   valor: number;
   status?: "aberto" | "pago" | "atrasado" | "cancelado";
   parcela?: string;
+  natureza?: NaturezaDespesa;
 };
 
 export type CreateTitulosParceladoInput = {
@@ -308,6 +313,7 @@ export type CreateTitulosParceladoInput = {
   parcelas: { vencimento: string; valor: number }[];
   platformContratoId?: string;
   indeterminado?: boolean;
+  natureza?: NaturezaDespesa;
 };
 
 export type UpdateTituloInput = Omit<
@@ -352,6 +358,7 @@ export type UpdateTitulosGrupoInput = {
   parceiroNome?: string | null;
   categoria?: string;
   centro?: string;
+  natureza?: NaturezaDespesa;
   parcelas?: {
     id: string;
     vencimento?: string;

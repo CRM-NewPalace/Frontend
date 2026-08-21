@@ -113,6 +113,7 @@ export function FinanceKpiCard({
   showBar = true,
   valueLabel,
   search,
+  detail,
 }: {
   label: string;
   value: number;
@@ -132,6 +133,7 @@ export function FinanceKpiCard({
   showBar?: boolean;
   /** Substitui o valor formatado (ex.: "1h 20min"). */
   valueLabel?: string;
+  detail?: string;
 }) {
   const t = TONE[tone];
   const display =
@@ -214,6 +216,11 @@ export function FinanceKpiCard({
           ) : compact ? null : (
             <span className="mt-1 block h-4.5" aria-hidden />
           )}
+          {detail ? (
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              {detail}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
