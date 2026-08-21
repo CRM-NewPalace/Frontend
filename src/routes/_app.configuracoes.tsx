@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,7 @@ import { canAccessRoute } from "@/lib/permissions";
 import {
   getHideImoveisFromSidebar,
   getImoveisVista,
+  IMOVEIS_CAMPO_GRUPOS,
   IMOVEIS_CAMPOS,
   setHideImoveisFromSidebar,
   setImoveisVista,
@@ -55,12 +56,13 @@ import {
   type MetasVista,
 } from "@/lib/metas-nav-prefs";
 import { ImoveisPage } from "@/routes/_app.imoveis";
-import { Eye, EyeOff, LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
+import { LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfigFunisPanel } from "@/components/config-funis-panel";
 import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
 import { ConfigCreciPanel } from "@/components/config-creci-panel";
+import { ConfigConexoesPanel } from "@/components/config-conexoes-panel";
 import { userCanInformarCreci } from "@/lib/users-api";
 import { CorPicker } from "@/components/cor-picker";
 import {
@@ -70,6 +72,13 @@ import {
 
 export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Zone Connection" }] }),
+  validateSearch: (search: Record<string, unknown>): { google?: string } => {
+    const google =
+      typeof search.google === "string" && search.google.trim()
+        ? search.google.trim()
+        : undefined;
+    return google ? { google } : {};
+  },
   component: Config,
 });
 
@@ -228,7 +237,80 @@ function CatalogItemBadge({ item }: { item: CatalogItem }) {
   );
 }
 
+function CatalogKindCard({
+  title,
+  loading,
+  items,
+  onAdd,
+  onEdit,
+  onRemove,
+}: {
+  title: string;
+  loading: boolean;
+  items: CatalogItem[];
+  onAdd: () => void;
+  onEdit: (item: CatalogItem) => void;
+  onRemove: (item: CatalogItem) => void;
+}) {
+  return (
+    <Card className="min-w-0">
+      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 pb-3">
+        <CardTitle className="text-sm">{title}</CardTitle>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 shrink-0"
+          onClick={onAdd}
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Adicionar
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-1 pt-0">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : items.length === 0 ? (
+          <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
+            Nenhum item cadastrado.
+          </p>
+        ) : (
+          <div className="divide-y rounded-lg border">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted/40"
+              >
+                <CatalogItemBadge item={item} />
+                <div className="ml-auto flex shrink-0 items-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => onEdit(item)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive"
+                    onClick={() => onRemove(item)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function Config() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/configuracoes" });
   const user = getSession();
   const isAnalista = user?.role === "analista";
   const isTreinee = user?.role === "treinee";
@@ -259,6 +341,18 @@ function Config() {
   const { catalog, loading, error, addItem, updateItem, removeItem } =
     useCatalog();
 
+  const defaultTab = search.google
+    ? "conexoes"
+    : isCorretor
+      ? showCreci
+        ? "creci"
+        : "conexoes"
+      : isTreinee
+        ? "listas"
+        : isAnalista
+          ? "documentacao"
+          : "empresa";
+  const [tab, setTab] = useState(defaultTab);
   const [saving, setSaving] = useState(false);
   const [vistaParcelas, setVistaParcelasState] = useState<VistaParcelas>(() =>
     getVistaParcelas(),
@@ -383,6 +477,21 @@ function Config() {
     }
   }
 
+  useEffect(() => {
+    if (!search.google) return;
+    setTab("conexoes");
+    if (search.google === "connected") {
+      toast.success(
+        "Google Agenda conectada. Novos compromissos vão para o Calendar.",
+      );
+    } else if (search.google === "denied") {
+      toast.error("Conexão com o Google cancelada.");
+    } else {
+      toast.error("Não foi possível conectar o Google Agenda.");
+    }
+    void navigate({ to: "/configuracoes", search: {}, replace: true });
+  }, [search.google, navigate]);
+
   async function handleRemoveItem(item: CatalogItem) {
     try {
       await removeItem(item.id);
@@ -411,12 +520,12 @@ function Config() {
         title="Configurações"
         description={
           isCorretor
-            ? "Informe o número do seu CRECI."
+            ? "Informe o CRECI e conecte o Google Agenda."
             : isTreinee
-              ? "Gerencie origens, tags, CCAs e catálogos de imóveis."
+              ? "Gerencie conexões, origens, tags, CCAs e catálogos de imóveis."
               : isAnalista
-                ? "Gerencie documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
-                : "Personalize imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
+                ? "Gerencie conexões, documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
+                : "Personalize conexões, imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
         }
       />
 
@@ -426,21 +535,12 @@ function Config() {
         </div>
       )}
 
-      <Tabs
-        defaultValue={
-          isCorretor
-            ? "creci"
-            : isTreinee
-              ? "origens"
-              : isAnalista
-                ? "documentacao"
-                : "empresa"
-        }
-      >
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex h-auto flex-wrap gap-1">
           {showCreci ? (
             <TabsTrigger value="creci">Meu CRECI</TabsTrigger>
           ) : null}
+          <TabsTrigger value="conexoes">Conexões</TabsTrigger>
           {showOpsTabs ? (
             <>
               <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
@@ -458,16 +558,7 @@ function Config() {
           ) : null}
           {showMetas ? <TabsTrigger value="metas">Metas</TabsTrigger> : null}
           {showCatalogTabs ? (
-            <TabsTrigger value="origens">Origens</TabsTrigger>
-          ) : null}
-          {showMotivos ? (
-            <TabsTrigger value="motivos">Motivos de perda</TabsTrigger>
-          ) : null}
-          {showCatalogTabs ? (
-            <>
-              <TabsTrigger value="tags">Tags</TabsTrigger>
-              <TabsTrigger value="cca">CCA</TabsTrigger>
-            </>
+            <TabsTrigger value="listas">Listas</TabsTrigger>
           ) : null}
         </TabsList>
 
@@ -476,6 +567,10 @@ function Config() {
             <ConfigCreciPanel />
           </TabsContent>
         ) : null}
+
+        <TabsContent value="conexoes">
+          <ConfigConexoesPanel />
+        </TabsContent>
 
         {showOpsTabs ? (
           <>
@@ -555,193 +650,165 @@ function Config() {
         ) : null}
 
         {showImoveis && showCatalogTabs ? (
-          <TabsContent value="imoveis" className="space-y-4">
+          <TabsContent value="imoveis" className="space-y-6">
             <p className="text-sm text-muted-foreground">
-              Tipos, status e tags usados no cadastro de empreendimentos. Admin,
-              gerente, analista e treinee podem criar, editar e excluir.
+              Catálogo do cadastro, aparência da lista e empreendimentos.
+              Admin, gerente, analista e treinee podem criar, editar e excluir
+              tipos, status e tags.
             </p>
-            {(["empTipos", "empStatus", "empTags"] as ListKind[]).map(
-              (kind) => (
-                <Card key={kind}>
-                  <CardHeader className="flex-row justify-between items-center">
-                    <CardTitle className="text-base">
-                      {LIST_META[kind].title}
-                    </CardTitle>
-                    <Button size="sm" onClick={() => openAddList(kind)}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Adicionar
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {loading && (
-                      <p className="text-sm text-muted-foreground">
-                        Carregando…
-                      </p>
-                    )}
-                    {!loading && listItemsByKind[kind].length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Nenhum item cadastrado.
-                      </p>
-                    )}
-                    {listItemsByKind[kind].map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40"
-                      >
-                        <CatalogItemBadge item={item} />
-                        <div className="ml-auto flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEditItem(item)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => void handleRemoveItem(item)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              ),
-            )}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Visualização padrão</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Define como a lista de imóveis abre: em cards ou em tabela.
+
+            <section className="space-y-3">
+              <div>
+                <h2 className="text-sm font-semibold">Catálogo</h2>
+                <p className="text-xs text-muted-foreground">
+                  Opções usadas no formulário de imóveis.
                 </p>
-                <div className="inline-flex rounded-lg border bg-muted/40 p-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-9 px-4",
-                      imoveisVista === "cards" && "bg-background shadow-sm",
-                    )}
-                    onClick={() => {
-                      setImoveisVistaState("cards");
-                      setImoveisVista("cards");
-                      toast.success("Imóveis abrem em cards.");
-                    }}
-                  >
-                    <LayoutGrid className="mr-1.5 h-4 w-4" />
-                    Cards
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-9 px-4",
-                      imoveisVista === "tabela" && "bg-background shadow-sm",
-                    )}
-                    onClick={() => {
-                      setImoveisVistaState("tabela");
-                      setImoveisVista("tabela");
-                      toast.success("Imóveis abrem em tabela.");
-                    }}
-                  >
-                    <LayoutList className="mr-1.5 h-4 w-4" />
-                    Tabela
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {(
+                  [
+                    ["empTipos", "Tipos"],
+                    ["empStatus", "Status"],
+                    ["empTags", "Tags"],
+                  ] as const
+                ).map(([kind, title]) => (
+                  <CatalogKindCard
+                    key={kind}
+                    title={title}
+                    loading={loading}
+                    items={listItemsByKind[kind]}
+                    onAdd={() => openAddList(kind)}
+                    onEdit={openEditItem}
+                    onRemove={(item) => void handleRemoveItem(item)}
+                  />
+                ))}
+              </div>
+            </section>
+
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Campos visíveis</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Lista de imóveis</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Clique para exibir ou ocultar informações na lista de imóveis
-                  (cards e tabela).
+                  Vista padrão, campos na lista e visibilidade no menu.
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {IMOVEIS_CAMPOS.map((campo) => {
-                    const visivel = imoveisCampos.show(campo.id);
-                    return (
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border p-3">
+                    <p className="mb-2 text-sm font-medium">
+                      Visualização padrão
+                    </p>
+                    <div className="inline-flex rounded-lg border bg-muted/40 p-1">
                       <Button
-                        key={campo.id}
                         type="button"
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "h-9 rounded-lg border px-3",
-                          visivel
-                            ? "bg-background shadow-sm"
-                            : "text-muted-foreground",
+                          "h-8 px-3",
+                          imoveisVista === "cards" && "bg-background shadow-sm",
                         )}
-                        aria-pressed={visivel}
-                        title={
-                          visivel
-                            ? `Ocultar ${campo.label.toLocaleLowerCase("pt-BR")}`
-                            : `Exibir ${campo.label.toLocaleLowerCase("pt-BR")}`
-                        }
                         onClick={() => {
-                          imoveisCampos.toggle(campo.id);
-                          toast.success(
-                            visivel
-                              ? `${campo.label} oculto na lista.`
-                              : `${campo.label} visível na lista.`,
-                          );
+                          setImoveisVistaState("cards");
+                          setImoveisVista("cards");
+                          toast.success("Imóveis abrem em cards.");
                         }}
                       >
-                        {visivel ? (
-                          <Eye className="mr-1.5 h-3.5 w-3.5" />
-                        ) : (
-                          <EyeOff className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        {campo.label}
+                        <LayoutGrid className="mr-1.5 h-4 w-4" />
+                        Cards
                       </Button>
-                    );
-                  })}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-3",
+                          imoveisVista === "tabela" &&
+                            "bg-background shadow-sm",
+                        )}
+                        onClick={() => {
+                          setImoveisVistaState("tabela");
+                          setImoveisVista("tabela");
+                          toast.success("Imóveis abrem em tabela.");
+                        }}
+                      >
+                        <LayoutList className="mr-1.5 h-4 w-4" />
+                        Tabela
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl border p-3">
+                    <div>
+                      <p className="text-sm font-medium">Ocultar do menu</p>
+                      <p className="text-xs text-muted-foreground">
+                        Some do menu e fica só nesta aba.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={hideImoveisFromSidebar}
+                      onCheckedChange={(checked) => {
+                        setHideImoveisFromSidebarState(checked);
+                        setHideImoveisFromSidebar(checked);
+                        toast.success(
+                          checked
+                            ? "Imóveis oculto do menu. Use esta aba para cadastrar."
+                            : "Imóveis voltou a aparecer no menu e em Configurações.",
+                        );
+                      }}
+                      aria-label="Ocultar Imóveis do menu lateral"
+                    />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Menu lateral</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2">
                   <div>
-                    <p className="text-sm font-medium">
-                      Ocultar Imóveis do menu
-                    </p>
+                    <p className="text-sm font-medium">Campos visíveis</p>
                     <p className="text-xs text-muted-foreground">
-                      Ligado: some do menu e fica só nesta aba. Desligado:
-                      aparece no menu e em Configurações.
+                      O que aparece nos cards e na tabela.
                     </p>
                   </div>
-                  <Switch
-                    checked={hideImoveisFromSidebar}
-                    onCheckedChange={(checked) => {
-                      setHideImoveisFromSidebarState(checked);
-                      setHideImoveisFromSidebar(checked);
-                      toast.success(
-                        checked
-                          ? "Imóveis oculto do menu. Use esta aba para cadastrar."
-                          : "Imóveis voltou a aparecer no menu e em Configurações.",
-                      );
-                    }}
-                    aria-label="Ocultar Imóveis do menu lateral"
-                  />
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {IMOVEIS_CAMPO_GRUPOS.map((grupo) => (
+                      <div
+                        key={grupo.id}
+                        className="rounded-xl border bg-muted/20 p-3"
+                      >
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {grupo.label}
+                        </p>
+                        <div className="space-y-2">
+                          {IMOVEIS_CAMPOS.filter(
+                            (campo) => campo.grupo === grupo.id,
+                          ).map((campo) => {
+                            const visivel = imoveisCampos.show(campo.id);
+                            const switchId = `imovel-campo-${campo.id}`;
+                            return (
+                              <label
+                                key={campo.id}
+                                htmlFor={switchId}
+                                className="flex cursor-pointer items-center justify-between gap-3"
+                              >
+                                <span className="text-sm">{campo.label}</span>
+                                <Switch
+                                  id={switchId}
+                                  checked={visivel}
+                                  onCheckedChange={(checked) =>
+                                    imoveisCampos.setVisible(campo.id, checked)
+                                  }
+                                  aria-label={`Exibir ${campo.label.toLocaleLowerCase("pt-BR")}`}
+                                />
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
-            <ImoveisPage embedded />
+
+            <section className="space-y-3 border-t pt-6">
+              <ImoveisPage embedded />
+            </section>
           </TabsContent>
         ) : null}
 
@@ -797,125 +864,89 @@ function Config() {
         ) : null}
 
         {showDocumentacao ? (
-        <TabsContent value="documentacao" className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Opções usadas no formulário rápido do analista e na tela
-            Documentação. Crie fontes e status para seleção rápida.
-          </p>
-          {(["docFontes", "docStatus1", "docStatus2"] as ListKind[]).map(
-            (kind) => (
-              <Card key={kind}>
-                <CardHeader className="flex-row justify-between items-center">
-                  <CardTitle className="text-base">
-                    {LIST_META[kind].title}
-                  </CardTitle>
-                  <Button size="sm" onClick={() => openAddList(kind)}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Adicionar
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {loading && (
-                    <p className="text-sm text-muted-foreground">Carregando…</p>
-                  )}
-                  {!loading && listItemsByKind[kind].length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      Nenhum item cadastrado.
-                    </p>
-                  )}
-                  {listItemsByKind[kind].map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40"
-                    >
-                      <CatalogItemBadge item={item} />
-                      <div className="ml-auto flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEditItem(item)}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => handleRemoveItem(item)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ),
-          )}
-        </TabsContent>
+          <TabsContent value="documentacao" className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              Opções usadas no formulário rápido do analista e na tela
+              Documentação. Crie fontes e status para seleção rápida.
+            </p>
+
+            <section className="space-y-3">
+              <div>
+                <h2 className="text-sm font-semibold">Catálogo</h2>
+                <p className="text-xs text-muted-foreground">
+                  Fontes e status para seleção rápida.
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {(
+                  [
+                    ["docFontes", "Fontes"],
+                    ["docStatus1", "Status 1"],
+                    ["docStatus2", "Status 2"],
+                  ] as const
+                ).map(([kind, title]) => (
+                  <CatalogKindCard
+                    key={kind}
+                    title={title}
+                    loading={loading}
+                    items={listItemsByKind[kind]}
+                    onAdd={() => openAddList(kind)}
+                    onEdit={openEditItem}
+                    onRemove={(item) => void handleRemoveItem(item)}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Status 1 é da análise; Status 2 é do comercial.
+              </p>
+            </section>
+          </TabsContent>
         ) : null}
 
-        {showCatalogTabs
-          ? (
-              [
-                "origens",
-                ...(showMotivos ? (["motivos"] as const) : []),
-                "tags",
-                "cca",
-              ] as ListKind[]
-            ).map((kind) => (
-          <TabsContent key={kind} value={kind}>
-            <Card>
-              <CardHeader className="flex-row justify-between items-center">
-                <CardTitle className="text-base">
-                  {LIST_META[kind].title}
-                </CardTitle>
-                <Button size="sm" onClick={() => openAddList(kind)}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Adicionar
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {loading && (
-                  <p className="text-sm text-muted-foreground">Carregando…</p>
+        {showCatalogTabs ? (
+          <TabsContent value="listas" className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              Origens, tags, CCAs
+              {showMotivos ? " e motivos de perda" : ""} usados no cadastro de
+              leads.
+            </p>
+            <section className="space-y-3">
+              <div>
+                <h2 className="text-sm font-semibold">Catálogo</h2>
+                <p className="text-xs text-muted-foreground">
+                  Opções do formulário de leads.
+                </p>
+              </div>
+              <div
+                className={cn(
+                  "grid gap-4 md:grid-cols-2",
+                  showMotivos ? "xl:grid-cols-4" : "xl:grid-cols-3",
                 )}
-                {!loading && listItemsByKind[kind].length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum item cadastrado.
-                  </p>
-                )}
-                {listItemsByKind[kind].map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40"
-                  >
-                    <CatalogItemBadge item={item} />
-                    <div className="ml-auto flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEditItem(item)}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => handleRemoveItem(item)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
+              >
+                {(
+                  [
+                    ["origens", "Origens"],
+                    ...(showMotivos
+                      ? ([["motivos", "Motivos"]] as const)
+                      : []),
+                    ["tags", "Tags"],
+                    ["cca", "CCA"],
+                  ] as const
+                ).map(([kind, title]) => (
+                  <CatalogKindCard
+                    key={kind}
+                    title={title}
+                    loading={loading}
+                    items={listItemsByKind[kind]}
+                    onAdd={() => openAddList(kind)}
+                    onEdit={openEditItem}
+                    onRemove={(item) => void handleRemoveItem(item)}
+                  />
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </TabsContent>
-        ))
-        : null}
+        ) : null}
       </Tabs>
 
       <Dialog open={listOpen} onOpenChange={setListOpen}>

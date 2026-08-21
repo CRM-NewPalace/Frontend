@@ -89,19 +89,27 @@ export function useImoveisVista() {
   return [vista, setVista] as const;
 }
 
+export const IMOVEIS_CAMPO_GRUPOS = [
+  { id: "cadastro", label: "Cadastro" },
+  { id: "local", label: "Local" },
+  { id: "ficha", label: "Ficha" },
+] as const;
+
+export type ImoveisCampoGrupo = (typeof IMOVEIS_CAMPO_GRUPOS)[number]["id"];
+
 export const IMOVEIS_CAMPOS = [
-  { id: "tipo", label: "Tipo" },
-  { id: "status", label: "Status" },
-  { id: "tags", label: "Tags" },
-  { id: "construtora", label: "Construtora" },
-  { id: "localidade", label: "Localidade" },
-  { id: "endereco", label: "Endereço" },
-  { id: "previsao", label: "Previsão" },
-  { id: "quartos", label: "Quartos" },
-  { id: "banheiros", label: "Banheiros" },
-  { id: "vagas", label: "Vagas" },
-  { id: "metragem", label: "Metragem" },
-  { id: "valor", label: "A partir de" },
+  { id: "tipo", label: "Tipo", grupo: "cadastro" },
+  { id: "status", label: "Status", grupo: "cadastro" },
+  { id: "tags", label: "Tags", grupo: "cadastro" },
+  { id: "construtora", label: "Construtora", grupo: "local" },
+  { id: "localidade", label: "Localidade", grupo: "local" },
+  { id: "endereco", label: "Endereço", grupo: "local" },
+  { id: "previsao", label: "Previsão", grupo: "ficha" },
+  { id: "quartos", label: "Quartos", grupo: "ficha" },
+  { id: "banheiros", label: "Banheiros", grupo: "ficha" },
+  { id: "vagas", label: "Vagas", grupo: "ficha" },
+  { id: "metragem", label: "Metragem", grupo: "ficha" },
+  { id: "valor", label: "A partir de", grupo: "ficha" },
 ] as const;
 
 export type ImoveisCampo = (typeof IMOVEIS_CAMPOS)[number]["id"];
@@ -165,5 +173,10 @@ export function useImoveisCamposVisiveis() {
     setOcultos(getImoveisCamposOcultos());
   }
 
-  return { show, toggle };
+  function setVisible(campo: ImoveisCampo, visivel: boolean) {
+    setImoveisCampoVisivel(campo, visivel);
+    setOcultos(getImoveisCamposOcultos());
+  }
+
+  return { show, toggle, setVisible };
 }
