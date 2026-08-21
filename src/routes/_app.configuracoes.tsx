@@ -42,10 +42,13 @@ import { getSession } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import {
   getHideImoveisFromSidebar,
+  getImoveisVista,
   setHideImoveisFromSidebar,
+  setImoveisVista,
+  type ImoveisVista,
 } from "@/lib/imoveis-nav-prefs";
 import { ImoveisPage } from "@/routes/_app.imoveis";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfigFunisPanel } from "@/components/config-funis-panel";
@@ -241,6 +244,9 @@ function Config() {
   );
   const [hideImoveisFromSidebar, setHideImoveisFromSidebarState] = useState(
     () => getHideImoveisFromSidebar(),
+  );
+  const [imoveisVista, setImoveisVistaState] = useState<ImoveisVista>(() =>
+    getImoveisVista(),
   );
 
   const [listOpen, setListOpen] = useState(false);
@@ -558,6 +564,52 @@ function Config() {
                 </Card>
               ),
             )}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Visualização padrão</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Define como a lista de imóveis abre: em cards ou em tabela.
+                </p>
+                <div className="inline-flex rounded-lg border bg-muted/40 p-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-9 px-4",
+                      imoveisVista === "cards" && "bg-background shadow-sm",
+                    )}
+                    onClick={() => {
+                      setImoveisVistaState("cards");
+                      setImoveisVista("cards");
+                      toast.success("Imóveis abrem em cards.");
+                    }}
+                  >
+                    <LayoutGrid className="mr-1.5 h-4 w-4" />
+                    Cards
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-9 px-4",
+                      imoveisVista === "tabela" && "bg-background shadow-sm",
+                    )}
+                    onClick={() => {
+                      setImoveisVistaState("tabela");
+                      setImoveisVista("tabela");
+                      toast.success("Imóveis abrem em tabela.");
+                    }}
+                  >
+                    <LayoutList className="mr-1.5 h-4 w-4" />
+                    Tabela
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Menu lateral</CardTitle>

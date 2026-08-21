@@ -100,11 +100,7 @@ import {
   type PdfOrdemImoveis,
 } from "@/lib/imoveis-pdf";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  getImoveisVista,
-  setImoveisVista,
-  type ImoveisVista,
-} from "@/lib/imoveis-nav-prefs";
+import { useImoveisVista } from "@/lib/imoveis-nav-prefs";
 import {
   assertImageFile,
   ImageUploadField,
@@ -303,7 +299,7 @@ export function ImoveisPage({
   const [construtoraId, setConstrutoraId] = useState("");
   const [rendaAte, setRendaAte] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
-  const [vista, setVista] = useState<ImoveisVista>(() => getImoveisVista());
+  const [vista, setVista] = useImoveisVista();
   const [catalogoLocalidades, setCatalogoLocalidades] = useState<Localidade[]>(
     [],
   );
@@ -1077,10 +1073,7 @@ export function ImoveisPage({
                   vista === "cards" && "bg-background shadow-sm",
                 )}
                 title="Ver cards"
-                onClick={() => {
-                  setVista("cards");
-                  setImoveisVista("cards");
-                }}
+                onClick={() => setVista("cards")}
               >
                 <LayoutGrid className="h-4 w-4" />
                 <span className="ml-1.5">Cards</span>
@@ -1094,10 +1087,7 @@ export function ImoveisPage({
                   vista === "tabela" && "bg-background shadow-sm",
                 )}
                 title="Ver tabela"
-                onClick={() => {
-                  setVista("tabela");
-                  setImoveisVista("tabela");
-                }}
+                onClick={() => setVista("tabela")}
               >
                 <LayoutList className="h-4 w-4" />
                 <span className="ml-1.5">Tabela</span>

@@ -64,4 +64,27 @@ export function getImoveisVista(): ImoveisVista {
 
 export function setImoveisVista(vista: ImoveisVista): void {
   localStorage.setItem(vistaStorageKey(), vista);
+  window.dispatchEvent(new Event(IMOVEIS_NAV_EVENT));
+}
+
+export function useImoveisVista() {
+  const [vista, setVistaState] = useState<ImoveisVista>(() => getImoveisVista());
+
+  useEffect(() => {
+    const sync = () => setVistaState(getImoveisVista());
+    sync();
+    window.addEventListener(IMOVEIS_NAV_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(IMOVEIS_NAV_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  function setVista(next: ImoveisVista) {
+    setImoveisVista(next);
+    setVistaState(next);
+  }
+
+  return [vista, setVista] as const;
 }
