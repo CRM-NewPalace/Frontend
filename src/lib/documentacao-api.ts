@@ -113,10 +113,12 @@ export type UpdateDocumentacaoInput = Partial<
 export async function fetchDocumentacoes(
   corretorId?: string,
   sort?: string,
+  incluirComissoes?: boolean,
 ): Promise<Documentacao[]> {
   const qs = new URLSearchParams();
   if (corretorId) qs.set("corretorId", corretorId);
   if (sort) qs.set("sort", sort);
+  if (incluirComissoes) qs.set("incluirComissoes", "true");
   const query = qs.toString();
   return apiFetch<Documentacao[]>(`/documentacao${query ? `?${query}` : ""}`);
 }

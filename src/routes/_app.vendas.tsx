@@ -186,7 +186,7 @@ function VendasPage() {
     }
     let active = true;
     setLoading(true);
-    Promise.all([fetchDocumentacoes(), fetchEquipes()])
+    Promise.all([fetchDocumentacoes(undefined, undefined, true), fetchEquipes()])
       .then(([documentacoes, equipesData]) => {
         if (!active) return;
         setDocs(documentacoes.filter((doc) => isStatusVendido(doc.status2)));
