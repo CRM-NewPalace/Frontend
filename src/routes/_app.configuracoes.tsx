@@ -47,6 +47,11 @@ import {
   setImoveisVista,
   type ImoveisVista,
 } from "@/lib/imoveis-nav-prefs";
+import {
+  getMetasVista,
+  setMetasVista,
+  type MetasVista,
+} from "@/lib/metas-nav-prefs";
 import { ImoveisPage } from "@/routes/_app.imoveis";
 import { LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -240,6 +245,15 @@ function Config() {
         user.tenant?.plano ?? null,
       ),
   );
+  const showMetas = Boolean(
+    user &&
+      canAccessRoute(
+        user.role,
+        "/metas",
+        user.tenant?.modules ?? null,
+        user.tenant?.plano ?? null,
+      ),
+  );
   const { catalog, loading, error, addItem, updateItem, removeItem } =
     useCatalog();
 
@@ -252,6 +266,9 @@ function Config() {
   );
   const [imoveisVista, setImoveisVistaState] = useState<ImoveisVista>(() =>
     getImoveisVista(),
+  );
+  const [metasVista, setMetasVistaState] = useState<MetasVista>(() =>
+    getMetasVista(),
   );
 
   const [listOpen, setListOpen] = useState(false);
@@ -436,6 +453,7 @@ function Config() {
           {showImoveis && showCatalogTabs ? (
             <TabsTrigger value="imoveis">Imóveis</TabsTrigger>
           ) : null}
+          {showMetas ? <TabsTrigger value="metas">Metas</TabsTrigger> : null}
           {showCatalogTabs ? (
             <TabsTrigger value="origens">Origens</TabsTrigger>
           ) : null}
@@ -670,6 +688,57 @@ function Config() {
               </CardContent>
             </Card>
             <ImoveisPage embedded />
+          </TabsContent>
+        ) : null}
+
+        {showMetas ? (
+          <TabsContent value="metas" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Visualização padrão</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Define como a lista de metas abre: em cards ou em tabela.
+                </p>
+                <div className="inline-flex rounded-lg border bg-muted/40 p-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-9 px-4",
+                      metasVista === "cards" && "bg-background shadow-sm",
+                    )}
+                    onClick={() => {
+                      setMetasVistaState("cards");
+                      setMetasVista("cards");
+                      toast.success("Metas abrem em cards.");
+                    }}
+                  >
+                    <LayoutGrid className="mr-1.5 h-4 w-4" />
+                    Cards
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-9 px-4",
+                      metasVista === "tabela" && "bg-background shadow-sm",
+                    )}
+                    onClick={() => {
+                      setMetasVistaState("tabela");
+                      setMetasVista("tabela");
+                      toast.success("Metas abrem em tabela.");
+                    }}
+                  >
+                    <LayoutList className="mr-1.5 h-4 w-4" />
+                    Tabela
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         ) : null}
 

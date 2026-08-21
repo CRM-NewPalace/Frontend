@@ -2,6 +2,14 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   META_ESCOPO_LABEL,
   META_PERIODO_LABEL,
   META_TIPOS,
@@ -9,6 +17,7 @@ import {
   type Meta,
   type MetaTipo,
 } from "@/lib/metas-api";
+import type { MetasVista } from "@/lib/metas-nav-prefs";
 import { cn } from "@/lib/utils";
 import { FlowTrack, type FlowBarTone } from "@/components/flow-bar";
 import {
@@ -45,6 +54,7 @@ type MetaActions = {
 
 export function MetasGestorBoard({
   isAdmin,
+  vista = "cards",
   filteredMetas,
   filteredImobiliaria,
   filteredGruposGerentes,
@@ -57,6 +67,7 @@ export function MetasGestorBoard({
   onRemove,
 }: {
   isAdmin: boolean;
+  vista?: MetasVista;
   filteredMetas: Meta[];
   filteredImobiliaria: Meta[];
   filteredGruposGerentes: MetaGrupoGerente[];
@@ -65,6 +76,12 @@ export function MetasGestorBoard({
   showGerentes: boolean;
   showCorretores: boolean;
 } & MetaActions) {
+  const empty =
+    filteredMetas.length === 0 &&
+    !showImobiliaria &&
+    !showGerentes &&
+    filteredGruposCorretores.length === 0;
+
   return (
     <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b bg-gradient-to-r from-primary/10 via-background to-background px-4 py-3">
@@ -77,13 +94,19 @@ export function MetasGestorBoard({
         </div>
       </div>
 
-      {filteredMetas.length === 0 &&
-      !showImobiliaria &&
-      !showGerentes &&
-      filteredGruposCorretores.length === 0 ? (
+      {empty ? (
         <div className="p-4">
           <EmptyState admin={isAdmin} />
         </div>
+      ) : vista === "tabela" ? (
+        <MetasTable
+          metas={filteredMetas}
+          showResponsavel
+          emptyText="Nenhuma meta neste recorte."
+          canEdit={canEdit}
+          onEdit={onEdit}
+          onRemove={onRemove}
+        />
       ) : (
         <>
           {showImobiliaria ? (
@@ -196,11 +219,13 @@ export function MetasGestorBoard({
 
 export function MetasPorOrigem({
   metas,
+  vista = "cards",
   canEdit,
   onEdit,
   onRemove,
 }: {
   metas: Meta[];
+  vista?: MetasVista;
 } & MetaActions) {
   const metasGerencia = metas.filter(
     (meta) => meta.origem === "gerente" || meta.origem === "admin",
@@ -208,6 +233,20 @@ export function MetasPorOrigem({
   const metasPessoais = metas.filter((meta) => meta.origem === "pessoal");
 
   if (metas.length === 0) return <EmptyState />;
+
+  if (vista === "tabela") {
+    return (
+      <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+        <MetasTable
+          metas={metas}
+          emptyText="Nenhuma meta neste recorte."
+          canEdit={canEdit}
+          onEdit={onEdit}
+          onRemove={onRemove}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
@@ -278,6 +317,145 @@ function MetaList({
   );
 }
 
+function MetasTable({
+  metas,
+  showResponsavel = false,
+  emptyText,
+  canEdit,
+  onEdit,
+  onRemove,
+}: {
+  metas: Meta[];
+  showResponsavel?: boolean;
+  emptyText: string;
+} & MetaActions) {
+  if (metas.length === 0) {
+    return (
+      <div className="p-4">
+        <EmptyColumn text={emptyText} />
+      </div>
+    );
+  }
+
+  return (
+    <Table className="[&_th]:px-4 [&_td]:px-4">
+      <TableHeader>
+        <TableRow>
+          {showResponsavel ? <TableHead>Responsável</TableHead> : null}
+          <TableHead>Tipo</TableHead>
+          <TableHead>Período</TableHead>
+          <TableHead>Progresso</TableHead>
+          <TableHead>Realizado / meta</TableHead>
+          <TableHead>Origem</TableHead>
+          <TableHead className="w-28 text-right">Ações</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {metas.map((meta) => {
+          const editavel = canEdit(meta);
+          const tone = progressTone(meta.percentual);
+          const barra = Math.min(100, Math.max(0, meta.percentual));
+          const responsavel = metaResponsavel(meta);
+          return (
+            <TableRow key={meta.id}>
+              {showResponsavel ? (
+                <TableCell>
+                  <div className="flex min-w-40 items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#053647] text-[11px] font-bold text-white">
+                      {iniciais(responsavel.name)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold leading-tight">
+                        {responsavel.name}
+                      </p>
+                      {responsavel.subtitle ? (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {responsavel.subtitle}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </TableCell>
+              ) : null}
+              <TableCell className="font-medium">
+                {META_TIPO_LABEL[meta.tipo]}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {META_PERIODO_LABEL[meta.periodo]}
+              </TableCell>
+              <TableCell className="min-w-40">
+                <div className="flex items-center gap-2">
+                  <FlowTrack
+                    percent={barra}
+                    tone={tone.bar}
+                    className="h-2 min-w-24 flex-1"
+                  />
+                  <span
+                    className={cn(
+                      "w-10 shrink-0 text-right text-sm font-semibold tabular-nums",
+                      tone.pct,
+                    )}
+                  >
+                    {meta.percentual}%
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell className="tabular-nums">
+                <p className="font-medium">
+                  {formatValor(meta.atual, meta.tipo)} /{" "}
+                  {formatValor(meta.valor, meta.tipo)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {metaStatusText(meta)}
+                </p>
+              </TableCell>
+              <TableCell>
+                <Badge
+                  className="h-5 border-transparent px-1.5 text-[10px]"
+                  variant="secondary"
+                >
+                  {origemLabel(meta.origem)}
+                </Badge>
+                <p className="mt-1 max-w-40 truncate text-xs text-muted-foreground">
+                  {meta.origem === "pessoal"
+                    ? "Definida por você"
+                    : `Definida por ${meta.criador.name}`}
+                </p>
+              </TableCell>
+              <TableCell className="text-right">
+                {editavel ? (
+                  <div className="flex justify-end gap-0.5">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => onEdit(meta)}
+                      title="Editar"
+                      aria-label="Editar meta"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => onRemove(meta)}
+                      title="Excluir"
+                      aria-label="Excluir meta"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : null}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+}
+
 function MetaCard({
   meta,
   editavel,
@@ -295,12 +473,7 @@ function MetaCard({
   const barra = Math.min(100, Math.max(0, meta.percentual));
   const restante = Math.max(0, meta.valor - meta.atual);
   const superou = meta.atual > meta.valor;
-  const origemLabel =
-    meta.origem === "admin"
-      ? "Administração"
-      : meta.origem === "gerente"
-        ? "Gerência"
-        : "Pessoal";
+  const origem = origemLabel(meta.origem);
 
   return (
     <article
@@ -365,7 +538,7 @@ function MetaCard({
               className="h-5 border-transparent px-1.5 text-[10px]"
               variant="secondary"
             >
-              {origemLabel}
+              {origem}
             </Badge>
           </div>
           <FlowTrack
@@ -553,6 +726,38 @@ function iniciais(nome: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function origemLabel(origem: Meta["origem"]) {
+  if (origem === "admin") return "Administração";
+  if (origem === "gerente") return "Gerência";
+  return "Pessoal";
+}
+
+function metaResponsavel(meta: Meta) {
+  if (meta.escopo === "imobiliaria") {
+    return { name: "Imobiliária", subtitle: META_ESCOPO_LABEL.imobiliaria };
+  }
+  if (meta.escopo === "gerente") {
+    return {
+      name: meta.gerente?.name ?? "Gerente",
+      subtitle: meta.gerente?.equipeGerenciada?.name ?? "Sem equipe",
+    };
+  }
+  return {
+    name: meta.corretor?.name ?? "Corretor",
+    subtitle: meta.corretor?.equipe?.name ?? "Sem equipe",
+  };
+}
+
+function metaStatusText(meta: Meta) {
+  const restante = Math.max(0, meta.valor - meta.atual);
+  if (meta.percentual >= 100) {
+    return meta.atual > meta.valor
+      ? `Superou em ${formatValor(meta.atual - meta.valor, meta.tipo)}`
+      : "Meta atingida";
+  }
+  return `Faltam ${formatValor(restante, meta.tipo)}`;
 }
 
 function progressTone(percentual: number): {

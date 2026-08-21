@@ -57,8 +57,11 @@ import {
 } from "@/lib/money-input";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
+import { useMetasVista } from "@/lib/metas-nav-prefs";
 import {
   CalendarDays,
+  LayoutGrid,
+  LayoutList,
   Loader2,
   Plus,
   Target,
@@ -103,6 +106,7 @@ function Page() {
   const [tab, setTab] = useState<MetasTab>("todas");
   const [filterTipo, setFilterTipo] = useState("__all__");
   const [filterPeriodo, setFilterPeriodo] = useState("__all__");
+  const [vista, setVista] = useMetasVista();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -513,6 +517,36 @@ function Page() {
           <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
             <MetasResumo metas={filteredMetas} />
             <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex h-9 rounded-lg border bg-muted/40 p-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-3",
+                    vista === "cards" && "bg-background shadow-sm",
+                  )}
+                  title="Ver cards"
+                  onClick={() => setVista("cards")}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="ml-1.5">Cards</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-3",
+                    vista === "tabela" && "bg-background shadow-sm",
+                  )}
+                  title="Ver tabela"
+                  onClick={() => setVista("tabela")}
+                >
+                  <LayoutList className="h-4 w-4" />
+                  <span className="ml-1.5">Tabela</span>
+                </Button>
+              </div>
               <Select value={filterTipo} onValueChange={setFilterTipo}>
                 <SelectTrigger className="h-9 w-[10.5rem] rounded-full">
                   <SelectValue placeholder="Tipo" />
@@ -545,6 +579,7 @@ function Page() {
           {!isGestor ? (
             <MetasPorOrigem
               metas={filteredMetas.filter((meta) => meta.escopo === "corretor")}
+              vista={vista}
               canEdit={canEditMeta}
               onEdit={openEdit}
               onRemove={remove}
@@ -552,6 +587,7 @@ function Page() {
           ) : (
             <MetasGestorBoard
               isAdmin={isAdmin}
+              vista={vista}
               filteredMetas={filteredMetas}
               filteredImobiliaria={filteredImobiliaria}
               filteredGruposGerentes={filteredGruposGerentes}
