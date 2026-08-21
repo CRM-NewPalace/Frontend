@@ -194,7 +194,19 @@ export interface MesResumo {
   mes: string;
   receitas: number;
   despesas: number;
+  variaveis?: number;
+  fixas?: number;
 }
+
+export type DespesaPipelineItem = {
+  id: string;
+  descricao: string;
+  valor: number;
+  data: string;
+  centro: string;
+  parceiro: string;
+  status: StatusTitulo;
+};
 
 export type NaturezaDespesa = "fixa" | "fixa_variavel" | "variavel";
 

@@ -14,6 +14,7 @@ import type {
   TipoMovimento,
   TipoParceiro,
   TituloFinanceiro,
+  DespesaPipelineItem,
 } from "@/lib/financeiro-mock";
 
 export type CreateParceiroInput = {
@@ -192,6 +193,11 @@ export type VisaoGeralResponse = {
   };
   mesesResumo: MesResumo[];
   centros: CentroDespesaResumo[];
+  despesasPipeline?: {
+    fixas: DespesaPipelineItem[];
+    variaveis: DespesaPipelineItem[];
+    outros: DespesaPipelineItem[];
+  };
 };
 
 export async function fetchParceiros(): Promise<ParceiroFinanceiro[]> {

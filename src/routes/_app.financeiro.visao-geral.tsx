@@ -14,10 +14,16 @@ import { ApiError } from "@/lib/api";
 import { fetchVisaoGeral } from "@/lib/financeiro-api";
 import {
   brl,
+  formatDate,
+  statusBadgeClass,
+  statusLabel,
   type CentroDespesaResumo,
+  type DespesaPipelineItem,
   type MesResumo,
   type PeriodoFiltro,
 } from "@/lib/financeiro-mock";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -49,6 +55,7 @@ export const Route = createFileRoute("/_app/financeiro/visao-geral")({
 const barConfig = {
   receitas: { label: "Receitas", color: "hsl(160 84% 39%)" },
   despesas: { label: "Despesas", color: "hsl(0 72% 51%)" },
+  variaveis: { label: "Variáveis", color: "hsl(45 93% 47%)" },
 } satisfies ChartConfig;
 
 const naturezaConfig = {
@@ -87,6 +94,11 @@ function Page() {
   const [kpis, setKpis] = useState(EMPTY_KPIS);
   const [mesesResumo, setMesesResumo] = useState<MesResumo[]>([]);
   const [centros, setCentros] = useState<CentroDespesaResumo[]>([]);
+  const [pipeline, setPipeline] = useState<{
+    fixas: DespesaPipelineItem[];
+    variaveis: DespesaPipelineItem[];
+    outros: DespesaPipelineItem[];
+  }>({ fixas: [], variaveis: [], outros: [] });
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +110,9 @@ function Page() {
         setKpis(data.kpis);
         setMesesResumo(data.mesesResumo);
         setCentros(data.centros);
+        setPipeline(
+          data.despesasPipeline ?? { fixas: [], variaveis: [], outros: [] },
+        );
       } catch (err) {
         if (!cancelled) {
           toast.error(
@@ -306,6 +321,11 @@ function Page() {
                       fill="var(--color-despesas)"
                       radius={[4, 4, 0, 0]}
                     />
+                    <Bar
+                      dataKey="variaveis"
+                      fill="var(--color-variaveis)"
+                      radius={[4, 4, 0, 0]}
+                    />
                   </BarChart>
                 </ChartContainer>
               </ResponsiveChartShell>
@@ -375,6 +395,130 @@ function Page() {
             ) : null}
           </CardContent>
         </Card>
+      </div>
+
+      <div
+        className={cn(
+          "mt-4 grid gap-4",
+          pipeline.outros.length > 0 ? "lg:grid-cols-3" : "lg:grid-cols-2",
+        )}
+      >
+        <DespesaPipelineColumn
+          title="Fixas"
+          emptyText="Nenhuma despesa fixa neste mês."
+          items={pipeline.fixas}
+          tone="fixa"
+          total={k.despesasFixaMes ?? 0}
+          fator={fator}
+        />
+        <DespesaPipelineColumn
+          title="Variáveis"
+          emptyText="Nenhuma despesa variável neste mês."
+          items={pipeline.variaveis}
+          tone="variavel"
+          total={k.despesasVariavelMes ?? 0}
+          fator={fator}
+        />
+        {pipeline.outros.length > 0 ? (
+          <DespesaPipelineColumn
+            title="Sem classificação"
+            emptyText="Todas as despesas deste mês estão classificadas."
+            items={pipeline.outros}
+            tone="outros"
+            total={k.despesasOutrosMes ?? 0}
+            fator={fator}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function DespesaPipelineColumn({
+  title,
+  emptyText,
+  items,
+  tone,
+  total,
+  fator,
+}: {
+  title: string;
+  emptyText: string;
+  items: DespesaPipelineItem[];
+  tone: "fixa" | "variavel" | "outros";
+  total: number;
+  fator: number;
+}) {
+  const accent =
+    tone === "fixa"
+      ? "border-l-[#079ed4]"
+      : tone === "variavel"
+        ? "border-l-amber-400"
+        : "border-l-muted-foreground/40";
+  const head =
+    tone === "fixa"
+      ? "from-[#079ed4]/15"
+      : tone === "variavel"
+        ? "from-amber-400/20"
+        : "from-muted/80";
+
+  return (
+    <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+      <div
+        className={cn(
+          "flex items-center justify-between gap-3 border-b bg-gradient-to-r via-background to-background px-4 py-3",
+          head,
+        )}
+      >
+        <div>
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="text-xs text-muted-foreground">
+            {items.length} lançamento{items.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <p className="text-sm font-semibold tabular-nums">
+          {brl(Math.round(total * fator))}
+        </p>
+      </div>
+      <div className="max-h-96 space-y-2 overflow-y-auto p-3">
+        {items.length === 0 ? (
+          <p className="rounded-xl border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
+            {emptyText}
+          </p>
+        ) : (
+          items.map((item) => (
+            <article
+              key={item.id}
+              className={cn(
+                "rounded-xl border border-l-[3px] bg-background px-3 py-2 shadow-sm",
+                accent,
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 truncate text-sm font-medium">
+                  {item.descricao}
+                </p>
+                <p className="shrink-0 text-sm font-semibold tabular-nums">
+                  {brl(item.valor)}
+                </p>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                <span>{formatDate(item.data)}</span>
+                {item.centro ? <span>{item.centro}</span> : null}
+                {item.parceiro ? <span>{item.parceiro}</span> : null}
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "h-5 px-1.5 text-[10px]",
+                    statusBadgeClass(item.status),
+                  )}
+                >
+                  {statusLabel(item.status)}
+                </Badge>
+              </div>
+            </article>
+          ))
+        )}
       </div>
     </div>
   );
