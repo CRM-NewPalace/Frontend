@@ -281,7 +281,7 @@ export function ImoveisPage({
   const canManage =
     isAdmin || user?.role === "gerente" || isAnalista || isTreinee;
   const canCreate = canManage;
-  const canDelete = isAdmin || isAnalista;
+  const canDelete = isAdmin || isAnalista || isTreinee;
   const canCreateCatalog = canManage;
   const { catalog, addItem, updateItem, removeItem, colorByLabel } =
     useCatalog();
