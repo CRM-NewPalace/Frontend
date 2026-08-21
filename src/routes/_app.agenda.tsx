@@ -90,6 +90,7 @@ import {
   CalendarDays,
   CalendarRange,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -99,7 +100,9 @@ import {
   Loader2,
   Network,
   Plus,
+  RefreshCw,
   Trash2,
+  Unplug,
   User,
   X,
 } from "lucide-react";
@@ -118,6 +121,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type LayoutMode = "tabela" | "calendario";
 type AgendaSection = "agenda" | "solicitacoes";
@@ -383,6 +394,33 @@ function AgendaPage() {
     void fetchGoogleCalendarStatus()
       .then(setGoogleCal)
       .catch(() => setGoogleCal(null));
+  }, []);
+
+  const handleGoogleDisconnect = useCallback(async (thenConnect = false) => {
+    setGoogleBusy(true);
+    try {
+      await disconnectGoogleCalendar();
+      setGoogleCal({
+        configured: true,
+        connected: false,
+        googleEmail: null,
+      });
+      if (thenConnect) {
+        window.location.assign(googleCalendarConnectHref());
+        return;
+      }
+      toast.success(
+        "Google Agenda desconectada. Os eventos já criados no Google permanecem lá.",
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível desconectar o Google.",
+      );
+    } finally {
+      setGoogleBusy(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -1059,36 +1097,51 @@ function AgendaPage() {
             <div className="flex flex-wrap items-center gap-2">
               {googleCal?.configured ? (
                 googleCal.connected ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-full border-emerald-400/50 bg-emerald-500/10 text-emerald-800 shadow-none hover:bg-emerald-500/15 dark:text-emerald-200"
-                    disabled={googleBusy}
-                    title={googleCal.googleEmail ?? "Google Agenda"}
-                    onClick={() => {
-                      setGoogleBusy(true);
-                      void disconnectGoogleCalendar()
-                        .then(() => {
-                          setGoogleCal({
-                            configured: true,
-                            connected: false,
-                            googleEmail: null,
-                          });
-                          toast.success("Google Agenda desconectada.");
-                        })
-                        .catch((err) =>
-                          toast.error(
-                            err instanceof ApiError
-                              ? err.message
-                              : "Não foi possível desconectar o Google.",
-                          ),
-                        )
-                        .finally(() => setGoogleBusy(false));
-                    }}
-                  >
-                    <span className="mr-1.5 size-1.5 rounded-full bg-emerald-500" />
-                    {googleBusy ? "…" : "Google conectado"}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="max-w-[220px] rounded-full border-emerald-400/50 bg-emerald-500/10 text-emerald-800 shadow-none hover:bg-emerald-500/15 dark:text-emerald-200"
+                        disabled={googleBusy}
+                        title={googleCal.googleEmail ?? "Google Agenda"}
+                      >
+                        <span className="mr-1.5 size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                        <span className="truncate">
+                          {googleBusy
+                            ? "…"
+                            : googleCal.googleEmail ?? "Google conectado"}
+                        </span>
+                        <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-70" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel className="font-normal">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Conectado como
+                        </p>
+                        <p className="truncate text-sm">
+                          {googleCal.googleEmail ?? "Google Agenda"}
+                        </p>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        disabled={googleBusy}
+                        onSelect={() => void handleGoogleDisconnect(true)}
+                      >
+                        <RefreshCw />
+                        Trocar conta
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={googleBusy}
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => void handleGoogleDisconnect(false)}
+                      >
+                        <Unplug />
+                        Desconectar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 ) : (
                   <Button
                     type="button"
