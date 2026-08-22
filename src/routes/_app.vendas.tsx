@@ -24,7 +24,7 @@ import {
 import { SemConexao } from "@/components/sem-conexao";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,7 +66,13 @@ import {
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
+import {
+  FILTER_BAR_SURFACE,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
 
 export const Route = createFileRoute("/_app/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Zone Connection" }] }),
@@ -508,18 +514,18 @@ function VendasPage() {
         />
       </section>
 
-      <Card className="mt-5 rounded-lg">
-        <CardContent className="space-y-3 pt-5">
+      <div className={cn("mt-5", FILTER_BAR_SURFACE)}>
+        <div className="space-y-3">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
             <div className="relative min-w-0">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className={FILTER_SEARCH_ICON} />
               <Input
                 value={draft.search}
                 onChange={(event) =>
                   setDraft((prev) => ({ ...prev, search: event.target.value }))
                 }
                 placeholder="Buscar cliente, empreendimento ou responsável..."
-                className="rounded-sm pl-9"
+                className={cn("rounded-sm pl-9", FILTER_CONTROL)}
               />
             </div>
             <Select
@@ -532,7 +538,7 @@ function VendasPage() {
                 }))
               }
             >
-              <SelectTrigger className="rounded-sm">
+              <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
                 <SelectValue placeholder="Todas as equipes" />
               </SelectTrigger>
               <SelectContent>
@@ -550,7 +556,7 @@ function VendasPage() {
                 setDraft((prev) => ({ ...prev, gerenteId: value }))
               }
             >
-              <SelectTrigger className="rounded-sm">
+              <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
                 <SelectValue placeholder="Todos os gerentes" />
               </SelectTrigger>
               <SelectContent>
@@ -571,7 +577,7 @@ function VendasPage() {
                 setDraft((prev) => ({ ...prev, corretorId: value }))
               }
             >
-              <SelectTrigger className="rounded-sm">
+              <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
                 <SelectValue placeholder="Todos os corretores" />
               </SelectTrigger>
               <SelectContent>
@@ -589,7 +595,7 @@ function VendasPage() {
                 setDraft((prev) => ({ ...prev, origem: value }))
               }
             >
-              <SelectTrigger className="rounded-sm">
+              <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
                 <SelectValue placeholder="Todas as origens" />
               </SelectTrigger>
               <SelectContent>
@@ -604,7 +610,7 @@ function VendasPage() {
 
             <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap">
               <div className="relative min-w-0 flex-1">
-                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <CalendarDays className={FILTER_SEARCH_ICON} />
                 <Input
                   type="date"
                   value={draft.dataDe}
@@ -614,14 +620,14 @@ function VendasPage() {
                       dataDe: event.target.value,
                     }))
                   }
-                  className="rounded-sm pl-9"
+                  className={cn("rounded-sm pl-9", FILTER_CONTROL)}
                   aria-label="Data inicial"
                   title="Data inicial"
                 />
               </div>
               <span className="shrink-0 text-sm text-muted-foreground">até</span>
               <div className="relative min-w-0 flex-1">
-                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <CalendarDays className={FILTER_SEARCH_ICON} />
                 <Input
                   type="date"
                   value={draft.dataAte}
@@ -631,7 +637,7 @@ function VendasPage() {
                       dataAte: event.target.value,
                     }))
                   }
-                  className="rounded-sm pl-9"
+                  className={cn("rounded-sm pl-9", FILTER_CONTROL)}
                   aria-label="Data final"
                   title="Data final"
                 />
@@ -658,8 +664,8 @@ function VendasPage() {
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Card className="mt-4 overflow-hidden rounded-2xl">
         {loading ? (

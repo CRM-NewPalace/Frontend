@@ -139,6 +139,12 @@ import {
 } from "@/lib/money-input";
 import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import {
+  FILTER_BAR_SHELL,
+  FILTER_CLEAR_BTN,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
+import {
   Check,
   CheckCircle2,
   ChevronsUpDown,
@@ -1272,22 +1278,26 @@ function Page() {
         />
       </section>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center mb-4">
-        <div className="relative flex-1 min-w-50 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className={FILTER_BAR_SHELL}>
+        <div className="relative min-w-50 max-w-sm flex-1">
+          <Search className={FILTER_SEARCH_ICON} />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar código, cliente, empreendimento…"
-            className="pl-9"
+            className={cn("pl-9", FILTER_CONTROL)}
           />
         </div>
-        <TableSortSelect value={sort} onChange={setSort} />
+        <TableSortSelect
+          value={sort}
+          onChange={setSort}
+          className={FILTER_CONTROL}
+        />
         <Select
           value={status}
           onValueChange={(v) => setStatus(v as PropostaStatus | "todos")}
         >
-          <SelectTrigger className="w-full sm:w-42.5">
+          <SelectTrigger className={cn("w-full sm:w-42.5", FILTER_CONTROL)}>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -1300,7 +1310,7 @@ function Page() {
         </Select>
         {isManager && (
           <Select value={corretorId} onValueChange={setCorretorId}>
-            <SelectTrigger className="w-full sm:w-45">
+            <SelectTrigger className={cn("w-full sm:w-45", FILTER_CONTROL)}>
               <SelectValue placeholder="Corretor" />
             </SelectTrigger>
             <SelectContent>
@@ -1315,7 +1325,7 @@ function Page() {
         )}
         {isManager && !isGerente && (
           <Select value={equipeId} onValueChange={setEquipeId}>
-            <SelectTrigger className="w-full sm:w-42.5">
+            <SelectTrigger className={cn("w-full sm:w-42.5", FILTER_CONTROL)}>
               <SelectValue placeholder="Equipe" />
             </SelectTrigger>
             <SelectContent>
@@ -1333,6 +1343,7 @@ function Page() {
             type="button"
             variant="ghost"
             size="sm"
+            className={FILTER_CLEAR_BTN}
             onClick={() => {
               setSearch("");
               setStatus("todos");

@@ -184,6 +184,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
 import {
+  FILTER_BAR_STACK,
+  FILTER_CLEAR_BTN,
+  FILTER_CONTROL,
+  FILTER_LABEL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
+import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
   isHexColor,
@@ -2118,40 +2125,43 @@ function DocumentacaoPage() {
         }
       />
 
-      <div className="mb-4 space-y-3">
-        <div className="rounded-xl border border-border/60 bg-card/40 p-3 space-y-3">
+      <div className={FILTER_BAR_STACK}>
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
             <div className="relative flex-1 min-w-50 lg:max-w-sm">
-              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+              <Label className={FILTER_LABEL}>
                 Busca
               </Label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className={FILTER_SEARCH_ICON} />
                 <Input
                   value={filterSearch}
                   onChange={(e) => setFilterSearch(e.target.value)}
                   placeholder="Nome, construtora, status…"
-                  className="pl-9"
+                  className={cn("pl-9", FILTER_CONTROL)}
                 />
               </div>
             </div>
 
             <div>
-              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+              <Label className={FILTER_LABEL}>
                 Ordenar
               </Label>
-              <TableSortSelect value={sort} onChange={setSort} />
+              <TableSortSelect
+                value={sort}
+                onChange={setSort}
+                className={FILTER_CONTROL}
+              />
             </div>
 
             <div className="w-full sm:w-37.5">
-              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+              <Label className={FILTER_LABEL}>
                 Data por
               </Label>
               <Select
                 value={filterCampoData}
                 onValueChange={(v) => setFilterCampoData(v as DocCampoData)}
               >
-                <SelectTrigger>
+                <SelectTrigger className={FILTER_CONTROL}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -2165,7 +2175,7 @@ function DocumentacaoPage() {
             </div>
 
             <div className="w-full sm:w-42.5">
-              <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+              <Label className={FILTER_LABEL}>
                 Período
               </Label>
               <Select
@@ -2184,7 +2194,7 @@ function DocumentacaoPage() {
                   }
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger className={FILTER_CONTROL}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -2199,14 +2209,14 @@ function DocumentacaoPage() {
 
             {isRecortePeriodo(filterPeriodo) ? (
               <div className="w-full sm:w-56">
-                <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                <Label className={FILTER_LABEL}>
                   {PERIODO_RECORTE_LABEL[filterPeriodo] ?? "Recorte"}
                 </Label>
                 <Select
                   value={snapYearMonth(filterMes, filterPeriodo)}
                   onValueChange={setFilterMes}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={FILTER_CONTROL}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
@@ -2223,23 +2233,25 @@ function DocumentacaoPage() {
             {filterPeriodo === "custom" ? (
               <>
                 <div className="w-full sm:w-37.5">
-                  <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                  <Label className={FILTER_LABEL}>
                     De
                   </Label>
                   <Input
                     type="date"
                     value={filterDataDe}
                     onChange={(e) => setFilterDataDe(e.target.value)}
+                    className={FILTER_CONTROL}
                   />
                 </div>
                 <div className="w-full sm:w-37.5">
-                  <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                  <Label className={FILTER_LABEL}>
                     Até
                   </Label>
                   <Input
                     type="date"
                     value={filterDataAte}
                     onChange={(e) => setFilterDataAte(e.target.value)}
+                    className={FILTER_CONTROL}
                   />
                 </div>
               </>
@@ -2504,6 +2516,7 @@ function DocumentacaoPage() {
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className={FILTER_CLEAR_BTN}
                   onClick={clearAllFilters}
                 >
                   <X className="h-4 w-4 mr-1" />
@@ -2512,7 +2525,6 @@ function DocumentacaoPage() {
               ) : null}
             </div>
           </div>
-        </div>
 
         {activeFilterChips.length > 0 ? (
           <div className="flex flex-wrap gap-2">

@@ -118,6 +118,11 @@ import {
 } from "@/lib/phone";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  FILTER_BAR_SHELL,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 
@@ -857,22 +862,25 @@ function Usuarios() {
         </Card>
       ) : null}
 
-      <Card className="mb-4">
-        <div className="p-3 flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-220px">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, e-mail, telefone ou CRECI..."
-              className="pl-9 h-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <TableSortSelect value={sort} onChange={setSort} />
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-44 h-9">
-              <SelectValue />
-            </SelectTrigger>
+      <div className={FILTER_BAR_SHELL}>
+        <div className="relative min-w-0 flex-1">
+          <Search className={FILTER_SEARCH_ICON} />
+          <Input
+            placeholder="Buscar por nome, e-mail, telefone ou CRECI..."
+            className={cn("pl-9 h-9", FILTER_CONTROL)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <TableSortSelect
+          value={sort}
+          onChange={setSort}
+          className={FILTER_CONTROL}
+        />
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className={cn("w-44 h-9", FILTER_CONTROL)}>
+            <SelectValue />
+          </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os perfis</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
@@ -886,28 +894,27 @@ function Usuarios() {
               <SelectItem value="corretor">Corretor</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue />
-            </SelectTrigger>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className={cn("w-36 h-9", FILTER_CONTROL)}>
+            <SelectValue />
+          </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos status</SelectItem>
               <SelectItem value="ativo">Ativo</SelectItem>
               <SelectItem value="inativo">Inativo</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={creciFilter} onValueChange={setCreciFilter}>
-            <SelectTrigger className="w-40 h-9">
-              <SelectValue />
-            </SelectTrigger>
+        <Select value={creciFilter} onValueChange={setCreciFilter}>
+          <SelectTrigger className={cn("w-40 h-9", FILTER_CONTROL)}>
+            <SelectValue />
+          </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">CRECI: todos</SelectItem>
               <SelectItem value="com">Com CRECI</SelectItem>
               <SelectItem value="sem">Sem CRECI</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </Card>
+      </div>
 
       <Card className="min-w-0 overflow-hidden">
         <Table

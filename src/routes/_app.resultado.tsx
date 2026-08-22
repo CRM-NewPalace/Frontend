@@ -70,6 +70,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FILTER_CONTROL, FILTER_SEARCH_ICON } from "@/lib/filter-bar";
 import { FlowTrack } from "@/components/flow-bar";
 import { origemBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { phoneDigits } from "@/lib/phone";
@@ -535,7 +536,7 @@ function AnalisePage() {
                 </p>
               </div>
               <div className="relative w-full sm:max-w-64">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Search className={FILTER_SEARCH_ICON} />
                 <Input
                   value={corretorSearch}
                   onChange={(e) => {
@@ -543,7 +544,7 @@ function AnalisePage() {
                     setCorretorPage(1);
                   }}
                   placeholder="Buscar corretor…"
-                  className="h-9 pl-8"
+                  className={cn("h-9 pl-9", FILTER_CONTROL)}
                 />
               </div>
             </div>

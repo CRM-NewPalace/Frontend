@@ -59,6 +59,7 @@ import {
   type FluxoItem,
 } from "@/lib/financeiro-mock";
 import { cn } from "@/lib/utils";
+import { FILTER_BAR_SURFACE } from "@/lib/filter-bar";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -363,7 +364,12 @@ function Page() {
         description="Entradas e saídas realizadas e previstas. Comissão pendente entra pela data prevista, no valor bruto."
       />
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className={cn(
+          "mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between",
+          FILTER_BAR_SURFACE,
+        )}
+      >
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToday}>
             Hoje

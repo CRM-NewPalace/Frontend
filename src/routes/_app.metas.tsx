@@ -57,6 +57,13 @@ import {
 } from "@/lib/money-input";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
+import {
+  FILTER_BAR_SURFACE,
+  FILTER_CONTROL,
+  FILTER_VISTA_BTN,
+  FILTER_VISTA_BTN_ACTIVE,
+  FILTER_VISTA_WRAP,
+} from "@/lib/filter-bar";
 import { useMetasVista } from "@/lib/metas-nav-prefs";
 import {
   CalendarDays,
@@ -514,17 +521,22 @@ function Page() {
         </div>
       ) : (
         <>
-          <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+          <div
+            className={cn(
+              "mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between",
+              FILTER_BAR_SURFACE,
+            )}
+          >
             <MetasResumo metas={filteredMetas} />
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex h-9 rounded-lg border bg-muted/40 p-0.5">
+              <div className={FILTER_VISTA_WRAP}>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-8 px-3",
-                    vista === "cards" && "bg-background shadow-sm",
+                    FILTER_VISTA_BTN,
+                    vista === "cards" && FILTER_VISTA_BTN_ACTIVE,
                   )}
                   title="Ver cards"
                   onClick={() => setVista("cards")}
@@ -537,8 +549,8 @@ function Page() {
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-8 px-3",
-                    vista === "tabela" && "bg-background shadow-sm",
+                    FILTER_VISTA_BTN,
+                    vista === "tabela" && FILTER_VISTA_BTN_ACTIVE,
                   )}
                   title="Ver tabela"
                   onClick={() => setVista("tabela")}
@@ -548,7 +560,7 @@ function Page() {
                 </Button>
               </div>
               <Select value={filterTipo} onValueChange={setFilterTipo}>
-                <SelectTrigger className="h-9 w-[10.5rem] rounded-full">
+                <SelectTrigger className={cn("h-9 w-[10.5rem]", FILTER_CONTROL)}>
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -561,7 +573,7 @@ function Page() {
                 </SelectContent>
               </Select>
               <Select value={filterPeriodo} onValueChange={setFilterPeriodo}>
-                <SelectTrigger className="h-9 w-[10.5rem] rounded-full">
+                <SelectTrigger className={cn("h-9 w-[10.5rem]", FILTER_CONTROL)}>
                   <SelectValue placeholder="Período" />
                 </SelectTrigger>
                 <SelectContent>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -131,6 +131,13 @@ import {
 import { LeadDetalheDialog } from "@/components/lead-detalhe-dialog";
 import { ApiError } from "@/lib/api";
 import { SOFT_BTN } from "@/lib/soft-btn";
+import {
+  FILTER_BAR_SURFACE,
+  FILTER_CLEAR_BTN,
+  FILTER_CONTROL,
+  FILTER_LABEL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
 import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 import {
   formatMoneyInput,
@@ -2036,20 +2043,24 @@ function LeadsPage() {
         )}
       </div>
 
-      <Card className="mb-4">
-        <CardContent className="p-3 flex flex-wrap gap-2 items-center">
+      <div className={cn("mb-4", FILTER_BAR_SURFACE)}>
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-55">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+            <Search className={FILTER_SEARCH_ICON} />
             <Input
               placeholder="Buscar por nome, email, telefone..."
-              className="h-9 rounded-md pl-9"
+              className={cn("h-9 rounded-md pl-9", FILTER_CONTROL)}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <TableSortSelect value={sort} onChange={setSort} />
+          <TableSortSelect
+            value={sort}
+            onChange={setSort}
+            className={FILTER_CONTROL}
+          />
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-44 h-9">
+            <SelectTrigger className={cn("w-44 h-9", FILTER_CONTROL)}>
               <SelectValue placeholder="Etapa" />
             </SelectTrigger>
             <SelectContent>
@@ -2063,7 +2074,7 @@ function LeadsPage() {
           </Select>
           {canFilterEquipe && (
             <Select value={equipeFilter} onValueChange={setEquipeFilter}>
-              <SelectTrigger className="w-44 h-9">
+              <SelectTrigger className={cn("w-44 h-9", FILTER_CONTROL)}>
                 <SelectValue placeholder="Equipe" />
               </SelectTrigger>
               <SelectContent>
@@ -2080,7 +2091,7 @@ function LeadsPage() {
           )}
           {!isCorretor && (
             <Select value={corretorFilter} onValueChange={setCorretorFilter}>
-              <SelectTrigger className="w-44 h-9">
+              <SelectTrigger className={cn("w-44 h-9", FILTER_CONTROL)}>
                 <SelectValue placeholder="Corretor" />
               </SelectTrigger>
               <SelectContent>
@@ -2139,7 +2150,12 @@ function LeadsPage() {
             distribuicaoFilter !== "all" ||
             paradosFilter ||
             extraFiltersActive) && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={FILTER_CLEAR_BTN}
+              onClick={clearFilters}
+            >
               <X className="w-4 h-4 mr-1" />
               Limpar
             </Button>
@@ -2147,14 +2163,12 @@ function LeadsPage() {
           {showExtraFilters && (
             <div className="flex flex-wrap gap-2 w-full pt-2 border-t border-border/60 mt-1">
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">
-                  Prioridade
-                </Label>
+                <Label className={FILTER_LABEL}>Prioridade</Label>
                 <Select
                   value={prioridadeFilter}
                   onValueChange={setPrioridadeFilter}
                 >
-                  <SelectTrigger className="h-9 w-40">
+                  <SelectTrigger className={cn("h-9 w-40", FILTER_CONTROL)}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2166,14 +2180,12 @@ function LeadsPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">
-                  Tipo de renda
-                </Label>
+                <Label className={FILTER_LABEL}>Tipo de renda</Label>
                 <Select
                   value={tipoRendaFilter}
                   onValueChange={setTipoRendaFilter}
                 >
-                  <SelectTrigger className="h-9 w-44">
+                  <SelectTrigger className={cn("h-9 w-44", FILTER_CONTROL)}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2187,11 +2199,9 @@ function LeadsPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">
-                  Origem
-                </Label>
+                <Label className={FILTER_LABEL}>Origem</Label>
                 <Select value={origemFilter} onValueChange={setOrigemFilter}>
-                  <SelectTrigger className="h-9 w-44">
+                  <SelectTrigger className={cn("h-9 w-44", FILTER_CONTROL)}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2206,8 +2216,8 @@ function LeadsPage() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {!isCorretor && (
         <div className="mb-4 flex flex-wrap items-center gap-2">

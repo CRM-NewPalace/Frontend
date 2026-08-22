@@ -39,6 +39,12 @@ import {
 } from "@/lib/dashboard-api";
 import { cn } from "@/lib/utils";
 import {
+  FILTER_BAR_SHELL,
+  FILTER_CLEAR_BTN,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
+import {
   FileText,
   Goal,
   Loader2,
@@ -348,9 +354,9 @@ function Page() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center mb-4">
-        <div className="relative flex-1 min-w-50 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className={FILTER_BAR_SHELL}>
+        <div className="relative min-w-50 max-w-sm flex-1">
+          <Search className={FILTER_SEARCH_ICON} />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -359,12 +365,12 @@ function Page() {
                 ? "Buscar corretor…"
                 : "Buscar corretor, equipe, gerente…"
             }
-            className="pl-9"
+            className={cn("pl-9", FILTER_CONTROL)}
           />
         </div>
         {!isGerente && (
           <Select value={equipe} onValueChange={setEquipe}>
-            <SelectTrigger className="w-full sm:w-45">
+            <SelectTrigger className={cn("w-full sm:w-45", FILTER_CONTROL)}>
               <SelectValue placeholder="Equipe" />
             </SelectTrigger>
             <SelectContent>
@@ -378,7 +384,7 @@ function Page() {
           </Select>
         )}
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-          <SelectTrigger className="w-full sm:w-45">
+          <SelectTrigger className={cn("w-full sm:w-45", FILTER_CONTROL)}>
             <SelectValue placeholder="Ordenar" />
           </SelectTrigger>
           <SelectContent>
@@ -394,6 +400,7 @@ function Page() {
             type="button"
             variant="ghost"
             size="sm"
+            className={FILTER_CLEAR_BTN}
             onClick={() => {
               setSearch("");
               setEquipe("__all__");

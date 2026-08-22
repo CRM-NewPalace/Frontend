@@ -48,6 +48,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  FILTER_BAR_SURFACE,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
 
 export const Route = createFileRoute("/_app/treinamento")({
   head: () => ({ meta: [{ title: "Treinamento — Zone Connection" }] }),
@@ -272,14 +277,16 @@ function TreinamentoPage() {
         }
       />
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar seção ou link…"
-          className="pl-9"
-        />
+      <div className={cn("mb-4 max-w-sm", FILTER_BAR_SURFACE)}>
+        <div className="relative">
+          <Search className={FILTER_SEARCH_ICON} />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar seção ou link…"
+            className={cn("pl-9", FILTER_CONTROL)}
+          />
+        </div>
       </div>
 
       {loading ? (

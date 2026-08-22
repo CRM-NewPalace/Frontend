@@ -24,6 +24,11 @@ import { fetchCorretoresMonitoramento } from "@/lib/leads-api";
 import { resumoAtrasos } from "@/lib/lead-monitoramento";
 import type { CorretorMonitoramento } from "@/lib/lead-monitoramento";
 import { canViewRankingVendas } from "@/lib/permissions";
+import {
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/atrasos")({
   head: () => ({ meta: [{ title: "Atrasos — Zone Connection" }] }),
@@ -107,10 +112,10 @@ function Page() {
         actions={
           <div className="flex items-end gap-2">
             <div className="relative max-w-xs min-w-50 flex-1">
-              <Search className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
+              <Search className={FILTER_SEARCH_ICON} />
               <Input
                 placeholder="Buscar corretor ou lead..."
-                className="h-9 bg-background pl-9"
+                className={cn("h-9 bg-background pl-9", FILTER_CONTROL)}
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
               />

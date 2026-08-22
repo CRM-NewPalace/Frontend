@@ -85,6 +85,7 @@ import {
   Building,
   Building2,
   Plus,
+  Search,
   Loader2,
   Pencil,
   Trash2,
@@ -101,6 +102,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  FILTER_BAR_SURFACE,
+  FILTER_CONTROL,
+  FILTER_LABEL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   formatPhone,
@@ -956,27 +963,36 @@ function ConstrutorasPage() {
         }
       />
 
-      <div className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={cn(
+          "mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3",
+          FILTER_BAR_SURFACE,
+        )}
+      >
         <div>
-          <Label htmlFor="buscar-construtora" className="mb-1.5 block text-xs">
+          <Label htmlFor="buscar-construtora" className={FILTER_LABEL}>
             Buscar
           </Label>
-          <Input
-            id="buscar-construtora"
-            placeholder="Nome da construtora…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="relative">
+            <Search className={FILTER_SEARCH_ICON} />
+            <Input
+              id="buscar-construtora"
+              placeholder="Nome da construtora…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={cn("pl-9", FILTER_CONTROL)}
+            />
+          </div>
         </div>
         <div>
-          <Label className="mb-1.5 block text-xs">Localidade</Label>
+          <Label className={FILTER_LABEL}>Localidade</Label>
           <Select
             value={driveFilterLocalidadeId || "__all__"}
             onValueChange={(value) =>
               setDriveFilterLocalidadeId(value === "__all__" ? "" : value)
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className={FILTER_CONTROL}>
               <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
@@ -995,8 +1011,12 @@ function ConstrutorasPage() {
           ) : null}
         </div>
         <div>
-          <Label className="mb-1.5 block text-xs">Ordenar</Label>
-          <TableSortSelect value={sort} onChange={setSort} className="w-full" />
+          <Label className={FILTER_LABEL}>Ordenar</Label>
+          <TableSortSelect
+            value={sort}
+            onChange={setSort}
+            className={cn("w-full", FILTER_CONTROL)}
+          />
         </div>
       </div>
 

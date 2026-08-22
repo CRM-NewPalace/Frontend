@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -125,11 +131,22 @@ import {
   FileText,
   StickyNote,
   Palette,
+  Search,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SOFT_BTN, SOFT_BTN_ACTIVE } from "@/lib/soft-btn";
 import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
+import {
+  FILTER_BAR_STACK,
+  FILTER_CLEAR_BTN,
+  FILTER_CONTROL,
+  FILTER_LABEL,
+  FILTER_SEARCH_ICON,
+  FILTER_VISTA_BTN,
+  FILTER_VISTA_BTN_ACTIVE,
+  FILTER_VISTA_WRAP,
+} from "@/lib/filter-bar";
 
 export const Route = createFileRoute("/_app/imoveis")({
   head: () => ({ meta: [{ title: "Imóveis — Zone Connection" }] }),
@@ -139,6 +156,29 @@ export const Route = createFileRoute("/_app/imoveis")({
 const IMOVEIS_GRADIENT_BTN =
   "border-0 bg-transparent text-white shadow-sm hover:bg-transparent hover:brightness-110";
 const IMOVEIS_GRADIENT_STYLE = BRAND_GRADIENT_STYLE;
+const IMOVEIS_TABLE_CHIP =
+  "h-5 w-auto max-w-[8.5rem] min-w-0 shrink rounded-full border-transparent px-2 py-0 text-[10px] font-medium leading-5 shadow-none";
+const CLEAR_TH_BG = { backgroundColor: "transparent" } as const;
+
+function ImoveisTableHead({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <TableHead
+      style={CLEAR_TH_BG}
+      className={cn(
+        "h-11 bg-transparent text-[11px] font-semibold uppercase tracking-wider text-white/90",
+        className,
+      )}
+    >
+      {children}
+    </TableHead>
+  );
+}
 
 type EmpCatalogType =
   | "empreendimento_tipo"
@@ -1049,29 +1089,33 @@ export function ImoveisPage({
         />
       )}
 
-      <div className="mb-4 space-y-3 rounded-lg border bg-card p-4">
+      <div className={FILTER_BAR_STACK}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
-            <Label htmlFor="buscar-imovel" className="mb-1.5 block text-xs">
+            <Label htmlFor="buscar-imovel" className={FILTER_LABEL}>
               Buscar
             </Label>
-            <Input
-              id="buscar-imovel"
-              placeholder="Nome ou endereço…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="relative">
+              <Search className={FILTER_SEARCH_ICON} />
+              <Input
+                id="buscar-imovel"
+                placeholder="Nome ou endereço…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={cn("pl-9", FILTER_CONTROL)}
+              />
+            </div>
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs">Exibir</Label>
-            <div className="inline-flex h-9 rounded-lg border bg-muted/40 p-0.5">
+            <Label className={FILTER_LABEL}>Exibir</Label>
+            <div className={FILTER_VISTA_WRAP}>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-8 px-3",
-                  vista === "cards" && "bg-background shadow-sm",
+                  FILTER_VISTA_BTN,
+                  vista === "cards" && FILTER_VISTA_BTN_ACTIVE,
                 )}
                 title="Ver cards"
                 onClick={() => setVista("cards")}
@@ -1084,8 +1128,8 @@ export function ImoveisPage({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-8 px-3",
-                  vista === "tabela" && "bg-background shadow-sm",
+                  FILTER_VISTA_BTN,
+                  vista === "tabela" && FILTER_VISTA_BTN_ACTIVE,
                 )}
                 title="Ver tabela"
                 onClick={() => setVista("tabela")}
@@ -1098,18 +1142,22 @@ export function ImoveisPage({
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <div>
-            <Label className="mb-1.5 block text-xs">Ordenar</Label>
-            <TableSortSelect value={sort} onChange={setSort} className="w-full" />
+            <Label className={FILTER_LABEL}>Ordenar</Label>
+            <TableSortSelect
+              value={sort}
+              onChange={setSort}
+              className={cn("w-full", FILTER_CONTROL)}
+            />
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs">Localidade</Label>
+            <Label className={FILTER_LABEL}>Localidade</Label>
             <Select
               value={localidade || "__all__"}
               onValueChange={(value) =>
                 setLocalidade(value === "__all__" ? "" : value)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className={FILTER_CONTROL}>
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
@@ -1123,14 +1171,16 @@ export function ImoveisPage({
             </Select>
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs">Quartos</Label>
+            <Label className={FILTER_LABEL}>
+              Quartos
+            </Label>
             <Select
               value={quartos || "__all__"}
               onValueChange={(value) =>
                 setQuartos(value === "__all__" ? "" : value)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className={FILTER_CONTROL}>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
@@ -1144,14 +1194,16 @@ export function ImoveisPage({
             </Select>
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs">Construtora</Label>
+            <Label className={FILTER_LABEL}>
+              Construtora
+            </Label>
             <Select
               value={construtoraId || "__all__"}
               onValueChange={(value) =>
                 setConstrutoraId(value === "__all__" ? "" : value)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className={FILTER_CONTROL}>
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
@@ -1165,11 +1217,14 @@ export function ImoveisPage({
             </Select>
           </div>
           <div>
-            <Label htmlFor="filtro-renda-ate" className="mb-1.5 block text-xs">
+            <Label
+              htmlFor="filtro-renda-ate"
+              className={FILTER_LABEL}
+            >
               Renda até
             </Label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-primary/70">
                 R$
               </span>
               <Input
@@ -1180,12 +1235,14 @@ export function ImoveisPage({
                   setRendaAte(maskMoneyInput(event.target.value))
                 }
                 placeholder="Ex.: 1.800,00"
-                className="pl-9"
+                className={cn("pl-9", FILTER_CONTROL)}
               />
             </div>
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs">Destaque</Label>
+            <Label className={FILTER_LABEL}>
+              Destaque
+            </Label>
             <div className="flex h-9 items-center gap-2">
               <Button
                 type="button"
@@ -1202,7 +1259,7 @@ export function ImoveisPage({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-9 px-3"
+                  className={cn("h-9 px-3", FILTER_CLEAR_BTN)}
                   onClick={clearFilters}
                 >
                   Limpar
@@ -1244,164 +1301,204 @@ export function ImoveisPage({
           </CardContent>
         </Card>
       ) : vista === "tabela" ? (
-        <Card className="overflow-hidden">
-          <Table className="[&_th]:px-4 [&_td]:px-4">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Empreendimento</TableHead>
+        <Card className="overflow-hidden border-primary/15 shadow-sm shadow-primary/5">
+          <Table className="[&_th]:px-3.5 [&_td]:px-3.5 [&_td]:py-2.5">
+            <TableHeader
+              style={{
+                backgroundColor: "transparent",
+                backgroundImage: BRAND_GRADIENT_STYLE.backgroundImage,
+              }}
+              className="text-white"
+            >
+              <TableRow className="hover:bg-transparent">
+                <ImoveisTableHead>Empreendimento</ImoveisTableHead>
                 {showCampo("construtora") ? (
-                  <TableHead>Construtora</TableHead>
+                  <ImoveisTableHead>Construtora</ImoveisTableHead>
                 ) : null}
                 {showCampo("localidade") ? (
-                  <TableHead>Localidade</TableHead>
+                  <ImoveisTableHead>Localidade</ImoveisTableHead>
                 ) : null}
                 {showCampo("tipo") ||
                 showCampo("status") ||
                 showCampo("tags") ? (
-                  <TableHead>
+                  <ImoveisTableHead>
                     {showCampo("tipo") || showCampo("status")
                       ? "Status"
                       : "Tags"}
-                  </TableHead>
+                  </ImoveisTableHead>
                 ) : null}
-                {showCampo("previsao") ? <TableHead>Previsão</TableHead> : null}
-                {showCampo("quartos") ? <TableHead>Quartos</TableHead> : null}
-                {showCampo("metragem") ? <TableHead>Metragem</TableHead> : null}
+                {showCampo("previsao") ? (
+                  <ImoveisTableHead>Previsão</ImoveisTableHead>
+                ) : null}
+                {showCampo("quartos") ? (
+                  <ImoveisTableHead className="text-center">
+                    Quartos
+                  </ImoveisTableHead>
+                ) : null}
+                {showCampo("metragem") ? (
+                  <ImoveisTableHead>Metragem</ImoveisTableHead>
+                ) : null}
                 {showCampo("valor") ? (
-                  <TableHead>A partir de</TableHead>
+                  <ImoveisTableHead className="text-right">
+                    A partir de
+                  </ImoveisTableHead>
                 ) : null}
-                <TableHead className="w-28 text-right">Ações</TableHead>
+                <ImoveisTableHead className="w-28 text-right">
+                  Ações
+                </ImoveisTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <p className="font-bold leading-snug">{item.nome}</p>
-                    {showCampo("endereco") && item.endereco ? (
-                      <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">
-                        {item.endereco}
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  {showCampo("construtora") ? (
-                    <TableCell className="text-sm">
-                      {item.construtora?.nome ?? "—"}
-                    </TableCell>
-                  ) : null}
-                  {showCampo("localidade") ? (
-                    <TableCell className="text-sm">
-                      {empreendimentoLocalidadeNome(item) || "—"}
-                    </TableCell>
-                  ) : null}
-                  {showCampo("tipo") ||
-                  showCampo("status") ||
-                  showCampo("tags") ? (
+              {sorted.map((item, index) => (
+                  <TableRow
+                    key={item.id}
+                    className={cn(
+                      "group border-border/50 hover:bg-primary/10",
+                      index % 2 === 0
+                        ? "bg-linear-to-r from-primary/10 via-primary/4 to-transparent"
+                        : "bg-linear-to-r from-primary/[0.04] to-transparent",
+                    )}
+                  >
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {showCampo("tipo") && item.tipo ? (
-                          <Badge
-                            className={cn(
-                              STATUS_CHIP_CLASS,
-                              colorByLabel("empreendimento_tipo", item.tipo),
-                            )}
-                          >
-                            {empreendimentoTipoLabel(item.tipo)}
-                          </Badge>
-                        ) : null}
-                        {showCampo("status") && item.status ? (
-                          <Badge
-                            className={cn(
-                              STATUS_CHIP_CLASS,
-                              colorByLabel(
-                                "empreendimento_status",
-                                item.status,
-                              ),
-                            )}
-                          >
-                            {empreendimentoStatusLabel(item.status)}
-                          </Badge>
-                        ) : null}
-                        {showCampo("tags")
-                          ? (item.tags ?? []).map((tag) => (
-                              <Badge
-                                key={tag}
-                                className={cn(
-                                  STATUS_CHIP_CLASS,
-                                  colorByLabel("empreendimento_tag", tag),
-                                )}
-                                title={tag}
-                              >
-                                {tag}
-                              </Badge>
-                            ))
-                          : null}
+                      <div className="flex min-w-40 items-start gap-2.5">
+                        <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-linear-to-b from-[#0e6f8a] to-primary shadow-sm shadow-primary/25" />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold leading-snug tracking-tight text-foreground">
+                            {item.nome}
+                          </p>
+                          {showCampo("endereco") && item.endereco ? (
+                            <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">
+                              {item.endereco}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                     </TableCell>
-                  ) : null}
-                  {showCampo("previsao") ? (
-                    <TableCell>
-                      {item.previsaoEntrega
-                        ? formatPrevisao(item.previsaoEntrega)
-                        : "—"}
-                    </TableCell>
-                  ) : null}
-                  {showCampo("quartos") ? (
-                    <TableCell className="tabular-nums">
-                      {item.quartos != null ? item.quartos : "—"}
-                    </TableCell>
-                  ) : null}
-                  {showCampo("metragem") ? (
-                    <TableCell className="tabular-nums">
-                      {item.areaM2 != null ? `${item.areaM2} m²` : "—"}
-                    </TableCell>
-                  ) : null}
-                  {showCampo("valor") ? (
-                    <TableCell className="font-semibold tabular-nums">
-                      {item.valorReferencia != null
-                        ? brl(item.valorReferencia)
-                        : "—"}
-                    </TableCell>
-                  ) : null}
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-0.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Clientes compatíveis"
-                        onClick={() => void openMatches(item)}
-                      >
-                        <Users className="h-4 w-4" />
-                      </Button>
-                      {canManage ? (
+                    {showCampo("construtora") ? (
+                      <TableCell className="text-sm text-muted-foreground">
+                        {item.construtora?.nome ?? "—"}
+                      </TableCell>
+                    ) : null}
+                    {showCampo("localidade") ? (
+                      <TableCell className="text-sm text-muted-foreground">
+                        {empreendimentoLocalidadeNome(item) || "—"}
+                      </TableCell>
+                    ) : null}
+                    {showCampo("tipo") ||
+                    showCampo("status") ||
+                    showCampo("tags") ? (
+                      <TableCell>
+                        <div className="flex max-w-64 flex-wrap gap-1">
+                          {showCampo("tipo") && item.tipo ? (
+                            <Badge
+                              className={cn(
+                                STATUS_CHIP_CLASS,
+                                IMOVEIS_TABLE_CHIP,
+                                colorByLabel("empreendimento_tipo", item.tipo),
+                              )}
+                            >
+                              {empreendimentoTipoLabel(item.tipo)}
+                            </Badge>
+                          ) : null}
+                          {showCampo("status") && item.status ? (
+                            <Badge
+                              className={cn(
+                                STATUS_CHIP_CLASS,
+                                IMOVEIS_TABLE_CHIP,
+                                colorByLabel(
+                                  "empreendimento_status",
+                                  item.status,
+                                ),
+                              )}
+                            >
+                              {empreendimentoStatusLabel(item.status)}
+                            </Badge>
+                          ) : null}
+                          {showCampo("tags")
+                            ? (item.tags ?? []).map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  className={cn(
+                                    STATUS_CHIP_CLASS,
+                                    IMOVEIS_TABLE_CHIP,
+                                    colorByLabel("empreendimento_tag", tag),
+                                  )}
+                                  title={tag}
+                                >
+                                  {tag}
+                                </Badge>
+                              ))
+                            : null}
+                        </div>
+                      </TableCell>
+                    ) : null}
+                    {showCampo("previsao") ? (
+                      <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
+                        {item.previsaoEntrega
+                          ? formatPrevisao(item.previsaoEntrega)
+                          : "—"}
+                      </TableCell>
+                    ) : null}
+                    {showCampo("quartos") ? (
+                      <TableCell className="text-center tabular-nums text-sm text-muted-foreground">
+                        {item.quartos != null ? item.quartos : "—"}
+                      </TableCell>
+                    ) : null}
+                    {showCampo("metragem") ? (
+                      <TableCell className="whitespace-nowrap tabular-nums text-sm text-muted-foreground">
+                        {item.areaM2 != null ? `${item.areaM2} m²` : "—"}
+                      </TableCell>
+                    ) : null}
+                    {showCampo("valor") ? (
+                      <TableCell className="text-right">
+                        {item.valorReferencia != null ? (
+                          <span className="inline-flex rounded-md bg-linear-to-r from-primary/15 to-cyan-400/20 px-2 py-0.5 font-semibold tabular-nums tracking-tight text-primary">
+                            {brl(item.valorReferencia)}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                    ) : null}
+                    <TableCell className="text-right">
+                      <div className="inline-flex rounded-lg border border-primary/20 bg-linear-to-br from-primary/10 to-cyan-400/10 p-0.5">
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
-                          title="Editar"
-                          onClick={() => void openEdit(item)}
+                          className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
+                          title="Clientes compatíveis"
+                          onClick={() => void openMatches(item)}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Users className="h-3.5 w-3.5" />
                         </Button>
-                      ) : null}
-                      {canDelete ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="Excluir"
-                          onClick={() => setDeleteId(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                        {canManage ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 hover:bg-primary/10"
+                            title="Editar"
+                            onClick={() => void openEdit(item)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : null}
+                        {canDelete ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 hover:bg-destructive/10"
+                            title="Excluir"
+                            onClick={() => setDeleteId(item.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
               ))}
             </TableBody>
           </Table>

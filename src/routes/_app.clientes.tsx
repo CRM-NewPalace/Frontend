@@ -106,6 +106,10 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  FILTER_BAR_SHELL,
+  FILTER_CONTROL,
+} from "@/lib/filter-bar";
 import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import { toast } from "sonner";
 import { SOFT_BTN } from "@/lib/soft-btn";
@@ -690,8 +694,12 @@ function Clientes() {
           </>
         }
       />
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <TableSortSelect value={sort} onChange={setSort} />
+      <div className={FILTER_BAR_SHELL}>
+        <TableSortSelect
+          value={sort}
+          onChange={setSort}
+          className={FILTER_CONTROL}
+        />
       </div>
       <Card className="overflow-hidden">
         <Table>

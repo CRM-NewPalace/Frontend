@@ -46,7 +46,8 @@ import {
   fetchParceiros,
   updateParceiro,
 } from "@/lib/financeiro-api";
-import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { FILTER_CONTROL } from "@/lib/filter-bar";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   type ParceiroFinanceiro,
@@ -320,7 +321,7 @@ function Page() {
             })}
         extra={
           <Select value={ativo} onValueChange={setAtivo}>
-            <SelectTrigger className="w-full sm:w-45">
+            <SelectTrigger className={cn("w-full sm:w-45", FILTER_CONTROL)}>
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>

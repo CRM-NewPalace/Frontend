@@ -106,6 +106,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SOFT_BTN } from "@/lib/soft-btn";
+import { FILTER_BAR_SURFACE } from "@/lib/filter-bar";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import {
   Popover,
@@ -1169,7 +1170,12 @@ function AgendaPage() {
         </div>
       ) : (
         <>
-          <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+          <div
+            className={cn(
+              "mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between",
+              FILTER_BAR_SURFACE,
+            )}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"

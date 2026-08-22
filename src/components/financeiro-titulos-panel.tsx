@@ -80,6 +80,7 @@ import {
   type VistaParcelas,
 } from "@/lib/financeiro-prefs";
 import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { FILTER_LABEL, FILTER_VISTA_WRAP } from "@/lib/filter-bar";
 import {
   formatMoneyInput,
   maskMoneyInput,
@@ -1533,10 +1534,15 @@ export function FinanceiroTitulosPanel({
         }}
         extra={
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
+            <span className={cn(FILTER_LABEL, "mb-0 whitespace-nowrap")}>
               Tipo:
             </span>
-            <div className="grid flex-1 grid-cols-2 rounded-lg border bg-muted/40 p-1 sm:flex sm:w-auto sm:flex-none">
+            <div
+              className={cn(
+                FILTER_VISTA_WRAP,
+                "grid h-auto flex-1 grid-cols-2 sm:flex sm:w-auto sm:flex-none",
+              )}
+            >
               {(
                 [
                   { value: "todos", label: "Todas" },

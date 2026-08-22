@@ -75,6 +75,12 @@ import { catalogColorBadgeClass } from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { displayEmail } from "@/lib/email";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  FILTER_BAR_SHELL,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
 
 export const Route = createFileRoute("/_app/leads-perdidos")({
   head: () => ({ meta: [{ title: "Leads Perdidos — Zone Connection" }] }),
@@ -314,22 +320,22 @@ function LeadsPerdidos() {
         }
       />
 
-      <Card className="mb-4">
-        <div className="p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative max-w-md flex-1 min-w-50">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, motivo, corretor..."
-                className="pl-9 h-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <TableSortSelect value={sort} onChange={setSort} />
-          </div>
+      <div className={FILTER_BAR_SHELL}>
+        <div className="relative min-w-50 max-w-md flex-1">
+          <Search className={FILTER_SEARCH_ICON} />
+          <Input
+            placeholder="Buscar por nome, motivo, corretor..."
+            className={cn("pl-9 h-9", FILTER_CONTROL)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      </Card>
+        <TableSortSelect
+          value={sort}
+          onChange={setSort}
+          className={FILTER_CONTROL}
+        />
+      </div>
 
       <Card className="overflow-hidden">
         <Table className="[&_th]:px-4 [&_td]:px-4">

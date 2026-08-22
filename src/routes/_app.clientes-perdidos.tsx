@@ -58,6 +58,12 @@ import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
 import { catalogColorBadgeClass } from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { displayEmail } from "@/lib/email";
+import { cn } from "@/lib/utils";
+import {
+  FILTER_BAR_SHELL,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/clientes-perdidos")({
@@ -190,22 +196,22 @@ function ClientesPerdidos() {
         }
       />
 
-      <Card className="mb-4">
-        <div className="p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative max-w-md flex-1 min-w-50">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, motivo..."
-                className="pl-9 h-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <TableSortSelect value={sort} onChange={setSort} />
-          </div>
+      <div className={FILTER_BAR_SHELL}>
+        <div className="relative min-w-50 max-w-md flex-1">
+          <Search className={FILTER_SEARCH_ICON} />
+          <Input
+            placeholder="Buscar por nome, motivo..."
+            className={cn("pl-9 h-9", FILTER_CONTROL)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      </Card>
+        <TableSortSelect
+          value={sort}
+          onChange={setSort}
+          className={FILTER_CONTROL}
+        />
+      </div>
 
       <Card>
         <Table>

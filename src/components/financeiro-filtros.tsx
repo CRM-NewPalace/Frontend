@@ -14,6 +14,13 @@ import {
   type PeriodoFiltro,
   type StatusTitulo,
 } from "@/lib/financeiro-mock";
+import {
+  FILTER_BAR_SHELL,
+  FILTER_CLEAR_BTN,
+  FILTER_CONTROL,
+  FILTER_SEARCH_ICON,
+} from "@/lib/filter-bar";
+import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 
 export function FinanceiroFiltrosBar({
@@ -46,15 +53,15 @@ export function FinanceiroFiltrosBar({
   hasActive?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center mb-4">
+    <div className={FILTER_BAR_SHELL}>
       {onSearchChange != null && (
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative min-w-[200px] flex-1 max-w-sm">
+          <Search className={FILTER_SEARCH_ICON} />
           <Input
             value={search ?? ""}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="pl-9"
+            className={cn("pl-9", FILTER_CONTROL)}
           />
         </div>
       )}
@@ -63,7 +70,7 @@ export function FinanceiroFiltrosBar({
           value={periodo}
           onValueChange={(v) => onPeriodoChange(v as PeriodoFiltro)}
         >
-          <SelectTrigger className="w-full sm:w-[160px]">
+          <SelectTrigger className={cn("w-full sm:w-[160px]", FILTER_CONTROL)}>
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
@@ -80,7 +87,7 @@ export function FinanceiroFiltrosBar({
           value={status}
           onValueChange={(v) => onStatusChange(v as StatusTitulo | "todos")}
         >
-          <SelectTrigger className="w-full sm:w-[170px]">
+          <SelectTrigger className={cn("w-full sm:w-[170px]", FILTER_CONTROL)}>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -94,7 +101,7 @@ export function FinanceiroFiltrosBar({
       )}
       {onTipoChange != null && tipoOptions && (
         <Select value={tipo} onValueChange={onTipoChange}>
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className={cn("w-full sm:w-[180px]", FILTER_CONTROL)}>
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -108,8 +115,14 @@ export function FinanceiroFiltrosBar({
       )}
       {extra}
       {hasActive && onClear && (
-        <Button type="button" variant="ghost" size="sm" onClick={onClear}>
-          <X className="h-4 w-4 mr-1" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={FILTER_CLEAR_BTN}
+          onClick={onClear}
+        >
+          <X className="mr-1 h-4 w-4" />
           Limpar
         </Button>
       )}
