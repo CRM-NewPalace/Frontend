@@ -82,6 +82,17 @@ import {
 import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import { FILTER_LABEL, FILTER_VISTA_WRAP } from "@/lib/filter-bar";
 import {
+  FORM_CONTROL,
+  FORM_OPTION_CARD,
+  FORM_OPTION_CARD_ACTIVE,
+  FORM_SECTION,
+  FORM_STEP_INDEX,
+  FORM_STEP_LIST,
+  FORM_STEP_TRIGGER,
+} from "@/lib/form-surface";
+import { SOFT_BTN } from "@/lib/soft-btn";
+import { BRAND_GRADIENT_BTN, BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
+import {
   formatMoneyInput,
   maskMoneyInput,
   parseMoneyInput,
@@ -105,6 +116,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertTriangle,
+  ArrowDownLeft,
+  ArrowUpRight,
   Banknote,
   Building2,
   CheckCircle2,
@@ -112,6 +125,7 @@ import {
   ChevronRight,
   Clock3,
   Eye,
+  FileText,
   Layers,
   ListOrdered,
   Loader2,
@@ -119,8 +133,10 @@ import {
   Percent,
   Plus,
   Repeat,
+  ScrollText,
   Tags,
   Trash2,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -1475,13 +1491,18 @@ export function FinanceiroTitulosPanel({
                 <Button
                   type="button"
                   variant="outline"
+                  className={SOFT_BTN}
                   onClick={() => setComissaoDialogOpen(true)}
                 >
                   <Percent className="w-4 h-4 mr-1" />
                   Lançar comissão
                 </Button>
               ) : null}
-              <Button onClick={openCreate}>
+              <Button
+                onClick={openCreate}
+                className={BRAND_GRADIENT_BTN}
+                style={BRAND_GRADIENT_STYLE}
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Novo título
               </Button>
@@ -1858,7 +1879,7 @@ export function FinanceiroTitulosPanel({
         open={open}
         onOpenChange={setOpen}
         icon={<Banknote className="w-5 h-5" />}
-        className={comoContrato ? "max-w-2xl" : undefined}
+        className="max-w-2xl"
         title={
           formMode === "create"
             ? comoContrato
@@ -1878,15 +1899,28 @@ export function FinanceiroTitulosPanel({
                 : "Conta a pagar vinculada ao fluxo de caixa."
         }
         footer={
-          <FormDialogActions>
+          <FormDialogActions
+            hint={
+              formMode === "create"
+                ? "Os campos com * são obrigatórios."
+                : undefined
+            }
+          >
             <Button
               type="button"
               variant="outline"
+              className={SOFT_BTN}
               onClick={() => setOpen(false)}
             >
               Cancelar
             </Button>
-            <Button type="submit" form="titulo-form" disabled={saving}>
+            <Button
+              type="submit"
+              form="titulo-form"
+              disabled={saving}
+              className={BRAND_GRADIENT_BTN}
+              style={BRAND_GRADIENT_STYLE}
+            >
               {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Salvar
             </Button>
@@ -1894,40 +1928,51 @@ export function FinanceiroTitulosPanel({
         }
       >
         <FormDialogBody>
-          <form id="titulo-form" className="space-y-4" onSubmit={onSubmit}>
-            <div className="rounded-xl border bg-muted/30 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-              <Badge variant="secondary">
-                {tipo === "receber" ? "Conta a receber" : "Conta a pagar"}
-              </Badge>
-              <span className="text-sm font-medium">
-                {comoContrato
-                  ? "Contrato"
-                  : parcelado && formMode === "create"
-                    ? recorrenciaIndeterminada
-                      ? "Recorrência mensal indeterminada"
-                      : `Recorrência ${RECORRENCIAS.find((r) => r.value === recorrencia)?.label.toLowerCase()}`
-                    : parcelado
-                      ? "Título parcelado"
-                      : "Título avulso"}
-              </span>
-              <span className="text-xs text-muted-foreground sm:ml-auto">
-                {comoContrato
-                  ? `Previsto: ${brl(
-                      (parseValor(contratoForm.valorAdesao) || 0) +
-                        (parseValor(contratoForm.valorMensalidade) || 0) *
-                          (Number(qtdParcelas) || 1),
-                    )}`
-                  : form.valor
-                    ? parcelado && formMode === "create"
+          <form
+            id="titulo-form"
+            className="space-y-4 [&_input]:border-primary/20 [&_input]:bg-background/90"
+            onSubmit={onSubmit}
+          >
+            <div className="overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-br from-primary/12 via-card to-card p-4 shadow-sm shadow-primary/5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                  {tipo === "receber" ? (
+                    <ArrowDownLeft className="h-3.5 w-3.5" />
+                  ) : (
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  )}
+                  {tipo === "receber" ? "Conta a receber" : "Conta a pagar"}
+                </span>
+                <span className="inline-flex items-center rounded-full border border-primary/20 bg-background/80 px-3 py-1 text-xs font-medium text-primary">
+                  {comoContrato
+                    ? "Contrato"
+                    : parcelado && formMode === "create"
                       ? recorrenciaIndeterminada
-                        ? "Mensal, sem data de término"
-                        : `Total: ${brl(
-                          (parseValor(form.valor) || 0) *
+                        ? "Recorrência mensal"
+                        : `Recorrência ${RECORRENCIAS.find((r) => r.value === recorrencia)?.label.toLowerCase()}`
+                      : parcelado
+                        ? "Título parcelado"
+                        : "Título avulso"}
+                </span>
+                <span className="ml-auto rounded-xl bg-primary/12 px-3 py-1.5 text-sm font-semibold tabular-nums text-primary">
+                  {comoContrato
+                    ? `Previsto: ${brl(
+                        (parseValor(contratoForm.valorAdesao) || 0) +
+                          (parseValor(contratoForm.valorMensalidade) || 0) *
                             (Number(qtdParcelas) || 1),
-                        )}`
-                      : `Valor: ${brl(parseValor(form.valor) || 0)}`
-                    : "Preencha os dados para continuar"}
-              </span>
+                      )}`
+                    : form.valor
+                      ? parcelado && formMode === "create"
+                        ? recorrenciaIndeterminada
+                          ? "Mensal, sem término"
+                          : `Total: ${brl(
+                            (parseValor(form.valor) || 0) *
+                              (Number(qtdParcelas) || 1),
+                          )}`
+                        : `Valor: ${brl(parseValor(form.valor) || 0)}`
+                      : "Preencha os dados"}
+                </span>
+              </div>
             </div>
 
             <Tabs
@@ -1935,19 +1980,48 @@ export function FinanceiroTitulosPanel({
               onValueChange={(value) => setFormTab(value as TituloFormTab)}
             >
               <TabsList
-                className={`grid w-full ${comoContrato ? "grid-cols-3" : "grid-cols-2"}`}
+                className={cn(
+                  FORM_STEP_LIST,
+                  comoContrato ? "grid-cols-3" : "grid-cols-2",
+                )}
               >
-                <TabsTrigger value="dados">Dados</TabsTrigger>
-                <TabsTrigger value="cobranca">
+                <TabsTrigger
+                  value="dados"
+                  className={cn("group", FORM_STEP_TRIGGER)}
+                >
+                  <span className={FORM_STEP_INDEX}>1</span>
+                  Dados
+                </TabsTrigger>
+                <TabsTrigger
+                  value="cobranca"
+                  className={cn("group", FORM_STEP_TRIGGER)}
+                >
+                  <span className={FORM_STEP_INDEX}>2</span>
                   {tipo === "pagar" ? "Pagamento" : "Cobrança"}
                 </TabsTrigger>
                 {comoContrato ? (
-                  <TabsTrigger value="contrato">Contrato</TabsTrigger>
+                  <TabsTrigger
+                    value="contrato"
+                    className={cn("group", FORM_STEP_TRIGGER)}
+                  >
+                    <span className={FORM_STEP_INDEX}>3</span>
+                    Contrato
+                  </TabsTrigger>
                 ) : null}
               </TabsList>
             </Tabs>
 
             <FormSection
+              icon={
+                formTab === "dados" ? (
+                  <FileText className="h-4 w-4" />
+                ) : formTab === "contrato" ? (
+                  <ScrollText className="h-4 w-4" />
+                ) : (
+                  <Wallet className="h-4 w-4" />
+                )
+              }
+              className={FORM_SECTION}
               title={
                 formTab === "dados"
                   ? "Identificação"
@@ -1956,6 +2030,15 @@ export function FinanceiroTitulosPanel({
                     : tipo === "pagar"
                       ? "Pagamento e recorrência"
                       : "Cobrança e parcelas"
+              }
+              description={
+                formTab === "dados"
+                  ? "Descreva o título e classifique fornecedor, centro e tipo."
+                  : formTab === "contrato"
+                    ? "Valores de adesão, mensalidade e vigência."
+                    : tipo === "pagar"
+                      ? "Informe vencimento, valor e se a conta se repete."
+                      : "Informe vencimento, valor e se a cobrança se repete."
               }
             >
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1995,7 +2078,7 @@ export function FinanceiroTitulosPanel({
                         setForm((f) => ({ ...f, parceiroId: v }))
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={FORM_CONTROL}>
                         <SelectValue
                           placeholder={
                             comoContrato && !isAssinaturaPlataforma
@@ -2018,7 +2101,12 @@ export function FinanceiroTitulosPanel({
                 {canUseContrato &&
                 formMode === "create" &&
                 formTab === "dados" ? (
-                  <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                  <div
+                    className={cn(
+                      FORM_OPTION_CARD,
+                      comoContrato && FORM_OPTION_CARD_ACTIVE,
+                    )}
+                  >
                     <Checkbox
                       id="titulo-contrato"
                       className="mt-0.5"
@@ -2067,7 +2155,7 @@ export function FinanceiroTitulosPanel({
                 {canLancarComissao &&
                 formMode === "create" &&
                 formTab === "dados" ? (
-                  <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                  <div className={FORM_OPTION_CARD}>
                     <Checkbox
                       id="titulo-comissao"
                       className="mt-0.5"
@@ -2104,7 +2192,7 @@ export function FinanceiroTitulosPanel({
                         applyRecorrencia(value as Recorrencia)
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={FORM_CONTROL}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2128,14 +2216,15 @@ export function FinanceiroTitulosPanel({
                 (formTab === "dados" || formMode === "edit-grupo") ? (
                   <div className="sm:col-span-2 space-y-1.5">
                     <Label>Tipo de despesa *</Label>
-                    <div className="inline-flex h-9 rounded-lg border bg-muted/40 p-0.5">
+                    <div className={cn(FILTER_VISTA_WRAP, "h-10 p-1")}>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "h-8 px-4",
-                          form.natureza === "fixa" && "bg-background shadow-sm",
+                          "h-8 px-4 text-primary hover:bg-primary/10 hover:text-primary",
+                          form.natureza === "fixa" &&
+                            "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground",
                         )}
                         onClick={() =>
                           setForm((f) => ({ ...f, natureza: "fixa" }))
@@ -2148,9 +2237,9 @@ export function FinanceiroTitulosPanel({
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "h-8 px-4",
+                          "h-8 px-4 text-primary hover:bg-primary/10 hover:text-primary",
                           form.natureza === "variavel" &&
-                            "bg-background shadow-sm",
+                            "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground",
                         )}
                         onClick={() =>
                           setForm((f) => ({ ...f, natureza: "variavel" }))
@@ -2179,7 +2268,7 @@ export function FinanceiroTitulosPanel({
                             setContratoForm((f) => ({ ...f, tenantId: v }))
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={FORM_CONTROL}>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
@@ -2221,7 +2310,7 @@ export function FinanceiroTitulosPanel({
                             }))
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={FORM_CONTROL}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -2247,7 +2336,7 @@ export function FinanceiroTitulosPanel({
                             }))
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={FORM_CONTROL}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -2274,7 +2363,7 @@ export function FinanceiroTitulosPanel({
                             }))
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={FORM_CONTROL}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -2445,7 +2534,7 @@ export function FinanceiroTitulosPanel({
                         applyRecorrencia(value as Recorrencia)
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={FORM_CONTROL}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2466,7 +2555,12 @@ export function FinanceiroTitulosPanel({
                 {!comoContrato &&
                 formTab === "cobranca" &&
                 formMode === "edit" ? (
-                  <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                  <div
+                    className={cn(
+                      FORM_OPTION_CARD,
+                      parcelado && FORM_OPTION_CARD_ACTIVE,
+                    )}
+                  >
                     <Checkbox
                       id="titulo-parcelado"
                       className="mt-0.5"
@@ -2554,7 +2648,17 @@ export function FinanceiroTitulosPanel({
                     <Button
                       type="button"
                       variant={recorrenciaIndeterminada ? "default" : "outline"}
-                      className="w-full sm:w-auto"
+                      className={cn(
+                        "w-full sm:w-auto",
+                        recorrenciaIndeterminada
+                          ? BRAND_GRADIENT_BTN
+                          : SOFT_BTN,
+                      )}
+                      style={
+                        recorrenciaIndeterminada
+                          ? BRAND_GRADIENT_STYLE
+                          : undefined
+                      }
                       onClick={toggleRecorrenciaIndeterminada}
                     >
                       <Repeat className="w-4 h-4 mr-1.5" />
@@ -2787,6 +2891,7 @@ export function FinanceiroTitulosPanel({
                     <CategoriaSearchSelect
                       value={form.categoria}
                       options={categorias}
+                      className={FORM_CONTROL}
                       onChange={(v) => {
                         const match = catalogTipos.find(
                           (item) =>
@@ -2831,7 +2936,7 @@ export function FinanceiroTitulosPanel({
                         }))
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={FORM_CONTROL}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2889,6 +2994,7 @@ export function FinanceiroTitulosPanel({
             <Button
               type="button"
               variant="outline"
+              className={SOFT_BTN}
               onClick={() => setQuickKind(null)}
             >
               Cancelar
@@ -2897,6 +3003,8 @@ export function FinanceiroTitulosPanel({
               type="submit"
               form="quick-financeiro-form"
               disabled={quickSaving}
+              className={BRAND_GRADIENT_BTN}
+              style={BRAND_GRADIENT_STYLE}
             >
               {quickSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Criar
@@ -2967,6 +3075,7 @@ export function FinanceiroTitulosPanel({
             <Button
               type="button"
               variant="outline"
+              className={SOFT_BTN}
               onClick={() => setBaixarTarget(null)}
             >
               Cancelar
@@ -2974,6 +3083,8 @@ export function FinanceiroTitulosPanel({
             <Button
               type="button"
               disabled={busy}
+              className={BRAND_GRADIENT_BTN}
+              style={BRAND_GRADIENT_STYLE}
               onClick={() => void onBaixar()}
             >
               {busy && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
@@ -2983,38 +3094,45 @@ export function FinanceiroTitulosPanel({
         }
       >
         <FormDialogBody>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Data do pagamento</Label>
-              <Input
-                type="date"
-                value={baixarData}
-                onChange={(e) => setBaixarData(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Forma de pagamento</Label>
-              <Select value={baixarForma} onValueChange={setBaixarForma}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FORMAS.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {baixarTarget ? (
-              <div className="sm:col-span-2 space-y-1 text-sm text-muted-foreground">
-                <p>
-                  Valor:{" "}
-                  <span className="font-semibold text-foreground">
-                    {brl(baixarTarget.valor)}
-                  </span>
-                </p>
+          <FormSection
+            icon={<Wallet className="h-4 w-4" />}
+            className={FORM_SECTION}
+            title={tipo === "receber" ? "Recebimento" : "Pagamento"}
+            description="Confirme a data e a forma para lançar no fluxo de caixa."
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Data do pagamento</Label>
+                <Input
+                  type="date"
+                  value={baixarData}
+                  onChange={(e) => setBaixarData(e.target.value)}
+                  className={FORM_CONTROL}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Forma de pagamento</Label>
+                <Select value={baixarForma} onValueChange={setBaixarForma}>
+                  <SelectTrigger className={FORM_CONTROL}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMAS.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {f}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {baixarTarget ? (
+                <div className="sm:col-span-2 space-y-1 rounded-xl border border-primary/15 bg-primary/5 px-3.5 py-3 text-sm text-muted-foreground">
+                  <p>
+                    Valor:{" "}
+                    <span className="font-semibold tabular-nums text-primary">
+                      {brl(baixarTarget.valor)}
+                    </span>
+                  </p>
                 <p>
                   Vencimento:{" "}
                   <span className="text-foreground">
@@ -3024,7 +3142,8 @@ export function FinanceiroTitulosPanel({
                 <p>O lançamento entra no fluxo de caixa como realizado.</p>
               </div>
             ) : null}
-          </div>
+            </div>
+          </FormSection>
         </FormDialogBody>
       </FormDialogShell>
 

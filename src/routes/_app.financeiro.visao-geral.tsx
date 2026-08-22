@@ -30,12 +30,17 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Banknote,
+  Building2,
+  CalendarDays,
+  CircleDashed,
   Eye,
   EyeOff,
   Loader2,
+  Pin,
   Plus,
   TrendingUp,
   Wallet,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -440,12 +445,7 @@ function Page() {
         </Card>
       </div>
 
-      <div
-        className={cn(
-          "mt-4 grid gap-4",
-          pipeline.outros.length > 0 ? "lg:grid-cols-3" : "lg:grid-cols-2",
-        )}
-      >
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <DespesaPipelineColumn
           title="Fixas"
           emptyText="Nenhuma despesa fixa neste mês."
@@ -464,17 +464,15 @@ function Page() {
           fator={fator}
           hideValues={hideValues}
         />
-        {pipeline.outros.length > 0 ? (
-          <DespesaPipelineColumn
-            title="Sem classificação"
-            emptyText="Todas as despesas deste mês estão classificadas."
-            items={pipeline.outros}
-            tone="outros"
-            total={k.despesasOutrosMes ?? 0}
-            fator={fator}
-            hideValues={hideValues}
-          />
-        ) : null}
+        <DespesaPipelineColumn
+          title="Sem classificação"
+          emptyText="Todas as despesas deste mês estão classificadas."
+          items={pipeline.outros}
+          tone="outros"
+          total={k.despesasOutrosMes ?? 0}
+          fator={fator}
+          hideValues={hideValues}
+        />
       </div>
     </div>
   );
@@ -497,77 +495,146 @@ function DespesaPipelineColumn({
   fator: number;
   hideValues?: boolean;
 }) {
-  const accent =
+  const visual =
     tone === "fixa"
-      ? "border-l-[#079ed4]"
+      ? {
+          Icon: Pin,
+          shell:
+            "border-primary/20 bg-linear-to-b from-primary/8 via-card to-card shadow-primary/5",
+          head: "from-primary/18",
+          stripe: "bg-linear-to-b from-[#0e6f8a] to-primary",
+          iconWrap: "bg-primary/15 text-primary",
+          totalChip: "bg-primary/12 text-primary",
+          countChip: "border-primary/20 bg-primary/10 text-primary",
+        }
       : tone === "variavel"
-        ? "border-l-amber-400"
-        : "border-l-muted-foreground/40";
-  const head =
-    tone === "fixa"
-      ? "from-[#079ed4]/15"
-      : tone === "variavel"
-        ? "from-amber-400/20"
-        : "from-muted/80";
+        ? {
+            Icon: Zap,
+            shell:
+              "border-amber-400/30 bg-linear-to-b from-amber-400/12 via-card to-card shadow-amber-400/5",
+            head: "from-amber-400/22",
+            stripe: "bg-linear-to-b from-amber-500 to-amber-300",
+            iconWrap: "bg-amber-400/20 text-amber-700 dark:text-amber-300",
+            totalChip:
+              "bg-amber-400/15 text-amber-800 dark:text-amber-200",
+            countChip:
+              "border-amber-400/30 bg-amber-400/15 text-amber-800 dark:text-amber-200",
+          }
+        : {
+            Icon: CircleDashed,
+            shell:
+              "border-slate-400/25 bg-linear-to-b from-slate-400/10 via-card to-card",
+            head: "from-slate-400/18",
+            stripe: "bg-linear-to-b from-slate-500 to-slate-300",
+            iconWrap: "bg-slate-400/15 text-slate-600 dark:text-slate-300",
+            totalChip: "bg-slate-400/15 text-slate-700 dark:text-slate-200",
+            countChip:
+              "border-slate-400/30 bg-slate-400/10 text-slate-600 dark:text-slate-300",
+          };
+  const Icon = visual.Icon;
 
   return (
-    <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+    <div
+      className={cn(
+        "flex min-h-80 flex-col overflow-hidden rounded-2xl border shadow-sm",
+        visual.shell,
+      )}
+    >
       <div
         className={cn(
-          "flex items-center justify-between gap-3 border-b bg-gradient-to-r via-background to-background px-4 py-3",
-          head,
+          "flex items-center gap-3 border-b border-border/50 bg-gradient-to-r via-background/80 to-transparent px-4 py-3.5",
+          visual.head,
         )}
       >
-        <div>
-          <p className="text-sm font-semibold">{title}</p>
-          <p className="text-xs text-muted-foreground">
+        <span
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+            visual.iconWrap,
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold tracking-tight">{title}</p>
+          <span
+            className={cn(
+              "mt-0.5 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium",
+              visual.countChip,
+            )}
+          >
             {items.length} lançamento{items.length === 1 ? "" : "s"}
-          </p>
+          </span>
         </div>
         <p
           className={cn(
-            "text-sm font-semibold tabular-nums",
+            "shrink-0 rounded-xl px-2.5 py-1.5 text-sm font-semibold tabular-nums",
+            visual.totalChip,
             hideValues && MONEY_BLUR,
           )}
         >
           {brl(Math.round(total * fator))}
         </p>
       </div>
-      <div className="max-h-96 space-y-2 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {items.length === 0 ? (
-          <p className="rounded-xl border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
-            {emptyText}
-          </p>
+          <div className="flex h-full min-h-44 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-background/50 px-4 text-center">
+            <span
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-full",
+                visual.iconWrap,
+              )}
+            >
+              <Icon className="h-4 w-4 opacity-80" />
+            </span>
+            <p className="max-w-48 text-sm text-muted-foreground">{emptyText}</p>
+          </div>
         ) : (
           items.map((item) => (
             <article
               key={item.id}
-              className={cn(
-                "rounded-xl border border-l-[3px] bg-background px-3 py-2 shadow-sm",
-                accent,
-              )}
+              className="relative overflow-hidden rounded-xl border border-border/70 bg-background/90 p-3 pl-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-background"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 truncate text-sm font-medium">
+              <span
+                className={cn(
+                  "absolute inset-y-0 left-0 w-1",
+                  visual.stripe,
+                )}
+              />
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 line-clamp-2 text-sm font-semibold leading-snug">
                   {item.descricao}
                 </p>
                 <p
                   className={cn(
-                    "shrink-0 text-sm font-semibold tabular-nums",
+                    "shrink-0 text-sm font-semibold tabular-nums tracking-tight",
                     hideValues && MONEY_BLUR,
                   )}
                 >
                   {brl(item.valor)}
                 </p>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                <span>{formatDate(item.data)}</span>
-                {item.centro ? <span>{item.centro}</span> : null}
-                {item.parceiro ? <span>{item.parceiro}</span> : null}
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                  <CalendarDays className="h-3 w-3" />
+                  {formatDate(item.data)}
+                </span>
+                {item.centro ? (
+                  <span className="inline-flex max-w-40 items-center truncate rounded-full bg-muted/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                    {item.centro}
+                  </span>
+                ) : null}
+                {item.parceiro ? (
+                  <span className="inline-flex max-w-40 items-center gap-1 truncate rounded-full bg-muted/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                    <Building2 className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{item.parceiro}</span>
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-2">
                 <Badge
                   variant="secondary"
                   className={cn(
-                    "h-5 px-1.5 text-[10px]",
+                    "h-5 w-auto px-2 text-[10px]",
                     statusBadgeClass(item.status),
                   )}
                 >

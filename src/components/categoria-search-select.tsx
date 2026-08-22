@@ -23,6 +23,7 @@ export function CategoriaSearchSelect({
   placeholder = "Buscar categoria…",
   emptyLabel = "Nenhum item cadastrado",
   disabled,
+  className,
 }: {
   value: string;
   options: string[];
@@ -30,6 +31,7 @@ export function CategoriaSearchSelect({
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -42,7 +44,10 @@ export function CategoriaSearchSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="h-10 w-full justify-between font-normal"
+          className={cn(
+            "h-10 w-full justify-between font-normal",
+            className,
+          )}
         >
           <span className="truncate">
             {value || placeholder}
