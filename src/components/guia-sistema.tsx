@@ -320,6 +320,7 @@ export function GuiaSistemaPage({
           topic.href,
           user.tenant?.modules ?? null,
           user.tenant?.plano ?? null,
+          user.permissions ?? null,
         );
       }),
     })).filter((group) => group.topics.length > 0);
@@ -369,6 +370,7 @@ export function GuiaSistemaPage({
       href,
       user.tenant?.modules ?? null,
       user.tenant?.plano ?? null,
+      user.permissions ?? null,
     );
   }
 

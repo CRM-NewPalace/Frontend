@@ -411,6 +411,15 @@ export function canUserAction(
   return effectivePermissions(role, stored, plano).actions[action] === true;
 }
 
+export function hasUserModule(
+  role: Role,
+  stored: UserPermissions | null | undefined,
+  moduleKey: string,
+  plano?: string | null,
+): boolean {
+  return effectivePermissions(role, stored, plano).modules[moduleKey] === true;
+}
+
 export function moduleForPath(pathname: string): PermissionModuleKey | null {
   const path = pathname.split("?")[0].replace(/\/$/, "") || "/";
   const ranked = [...PERMISSION_MODULES].sort(

@@ -224,7 +224,7 @@ function ConstrutorasPage() {
   const navigate = Route.useNavigate();
   const user = getSession();
   const isAdmin = user?.role === "admin";
-  const canViewVendas = canViewRankingVendas(user?.role);
+  const canViewVendas = canViewRankingVendas(user);
   const canManage =
     isAdmin ||
     user?.role === "gerente" ||

@@ -327,6 +327,7 @@ function Config() {
         "/imoveis",
         user.tenant?.modules ?? null,
         user.tenant?.plano ?? null,
+        user.permissions ?? null,
       ),
   );
   const showMetas = Boolean(
@@ -336,6 +337,7 @@ function Config() {
         "/metas",
         user.tenant?.modules ?? null,
         user.tenant?.plano ?? null,
+        user.permissions ?? null,
       ),
   );
   const { catalog, loading, error, addItem, updateItem, removeItem } =

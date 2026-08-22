@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
-import { canViewRankingVendas } from "@/lib/permissions";
+import { canViewModule } from "@/lib/permissions";
 import {
   fetchDashboardRanking,
   fetchCorretorVendas,
@@ -170,7 +170,7 @@ function agoraBrasil() {
 
 function Page() {
   const user = getSession();
-  const canView = canViewRankingVendas(user?.role);
+  const canView = canViewModule(user, "corretores");
   const isGerente = user?.role === "gerente";
   /** Ranking entre gerentes: só admin. */
   const showRankingGerentes = user?.role === "admin";
@@ -335,7 +335,7 @@ function Page() {
         />
         <SemConexao
           title="Acesso restrito"
-          description="O ranking de corretores está disponível para administradores e gerentes."
+          description="Peça ao administrador para liberar o módulo Ranking nas permissões do seu usuário."
         />
       </div>
     );

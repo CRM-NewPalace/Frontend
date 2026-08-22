@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { canViewModule } from "@/lib/permissions";
 import { origemBadgeClass } from "@/lib/catalog-colors";
 import { fetchConstrutoras, type Construtora } from "@/lib/construtoras-api";
 import {
@@ -158,7 +159,7 @@ const APPLY_FILTERS_STYLE = BRAND_GRADIENT_STYLE;
 
 function VendasPage() {
   const user = getSession();
-  const canView = user?.role === "admin" || user?.role === "gerente";
+  const canView = canViewModule(user, "vendas");
   const canEdit = user?.role === "admin";
   const [docs, setDocs] = useState<Documentacao[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
@@ -477,7 +478,7 @@ function VendasPage() {
         />
         <SemConexao
           title="Acesso restrito"
-          description="A página de vendas está disponível para administradores e gerentes."
+          description="Peça ao administrador para liberar o módulo Vendas nas permissões do seu usuário."
         />
       </div>
     );

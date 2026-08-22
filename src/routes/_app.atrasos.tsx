@@ -23,7 +23,7 @@ import { getSession } from "@/lib/auth";
 import { fetchCorretoresMonitoramento } from "@/lib/leads-api";
 import { resumoAtrasos } from "@/lib/lead-monitoramento";
 import type { CorretorMonitoramento } from "@/lib/lead-monitoramento";
-import { canViewRankingVendas } from "@/lib/permissions";
+import { canViewModule } from "@/lib/permissions";
 import {
   FILTER_CONTROL,
   FILTER_SEARCH_ICON,
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_app/atrasos")({
 
 function Page() {
   const user = getSession();
-  const canView = canViewRankingVendas(user?.role);
+  const canView = canViewModule(user, "atrasos");
   const isGerente = user?.role === "gerente";
   const [rows, setRows] = useState<CorretorMonitoramento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +94,7 @@ function Page() {
         />
         <SemConexao
           title="Acesso restrito"
-          description="O acompanhamento de atrasos está disponível para administradores e gerentes."
+          description="Peça ao administrador para liberar o módulo Atrasos nas permissões do seu usuário."
         />
       </div>
     );

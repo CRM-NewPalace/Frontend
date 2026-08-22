@@ -4,6 +4,7 @@ import {
   actionForFinancePath,
   canUserAction,
   effectivePermissions,
+  hasUserModule,
   moduleForPath,
   type UserPermissions,
 } from "@/lib/user-permissions";
@@ -321,9 +322,34 @@ export function canFinanceiroAction(
   );
 }
 
-/** Ranking, VGV e vendas por construtora: só gestão. */
-export function canViewRankingVendas(role: Role | null | undefined): boolean {
-  return role === "admin" || role === "gerente";
+/** Módulo concedido (ou padrão do cargo). */
+export function canViewModule(
+  user: Pick<AuthUser, "role" | "permissions" | "tenant"> | null | undefined,
+  moduleKey: string,
+): boolean {
+  if (!user) return false;
+  if (user.role === "super_admin") return true;
+  return hasUserModule(
+    user.role,
+    user.permissions,
+    moduleKey,
+    user.tenant?.plano,
+  );
+}
+
+/** Ranking, VGV e vendas por construtora: gestão ou módulo concedido. */
+export function canViewRankingVendas(
+  user:
+    | Pick<AuthUser, "role" | "permissions" | "tenant">
+    | Role
+    | null
+    | undefined,
+): boolean {
+  if (!user) return false;
+  if (typeof user === "string") {
+    return user === "admin" || user === "gerente";
+  }
+  return canViewModule(user, "corretores") || canViewModule(user, "vendas");
 }
 
 /**

@@ -21,6 +21,7 @@ import {
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { canAccessRoute, isCorretorLike } from "@/lib/permissions";
+import { hasUserModule } from "@/lib/user-permissions";
 import { catalogColorToChartHex } from "@/lib/catalog-colors";
 import { useCatalog, type FunnelStage } from "@/lib/catalog-store";
 import {
@@ -200,12 +201,25 @@ function agoraBrasil() {
 
 function Page() {
   const user = getSession();
+  const dashboardLiberado = Boolean(
+    user &&
+      hasUserModule(
+        user.role,
+        user.permissions,
+        "dashboard",
+        user.tenant?.plano,
+      ),
+  );
 
-  if (isCorretorLike(user?.role)) {
+  if (isCorretorLike(user?.role) && !dashboardLiberado) {
     return <DashboardCorretorView />;
   }
 
-  if (user?.role === "admin" || user?.role === "gerente") {
+  if (
+    user?.role === "admin" ||
+    user?.role === "gerente" ||
+    dashboardLiberado
+  ) {
     return <DashboardAdminView />;
   }
 
@@ -217,7 +231,7 @@ function Page() {
       />
       <SemConexao
         title="Sem painel para este perfil"
-        description="O dashboard gerencial é para admin/gerente. Corretores têm o painel operacional."
+        description="Peça ao administrador para liberar o módulo Dashboard nas permissões do seu usuário."
       />
     </div>
   );
@@ -1001,6 +1015,7 @@ function DashboardCorretorView() {
         "/documentacao",
         user.tenant?.modules ?? null,
         user.tenant?.plano ?? null,
+        user.permissions ?? null,
       )
     : false;
   const { funnelStages, stageByPapel } = useCatalog();

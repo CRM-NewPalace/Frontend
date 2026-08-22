@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
-import { getSession, type Role } from "@/lib/auth";
+import { fetchMe, getSession, type Role } from "@/lib/auth";
 import { BRAND_GRADIENT_BTN, BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 import { FILTER_CONTROL } from "@/lib/filter-bar";
 import { cn } from "@/lib/utils";
@@ -105,7 +105,14 @@ function Page() {
       };
       if (key === "leadsPerdidos") next.actions["leads.viewLost"] = value;
       if (key === "leads") next.actions["leads.view"] = value;
-      if (key === "financeiro") next.actions["financeiro.access"] = value;
+      if (key === "financeiro") {
+        next.actions["financeiro.access"] = value;
+        if (value) {
+          next.actions["financeiro.pagar.view"] = true;
+          next.actions["financeiro.receber.view"] = true;
+          next.actions["financeiro.fluxo"] = true;
+        }
+      }
       if (key === "comissao") next.actions["financeiro.comissao"] = value;
       return next;
     });
@@ -134,6 +141,9 @@ function Page() {
       setUsers((prev) =>
         prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
       );
+      if (session?.id === selected.id) {
+        await fetchMe();
+      }
       toast.success("Permissões atualizadas.");
     } catch (err) {
       toast.error(

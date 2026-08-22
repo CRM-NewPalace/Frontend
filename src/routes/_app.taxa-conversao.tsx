@@ -30,6 +30,7 @@ import {
 import { SemConexao } from "@/components/sem-conexao";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { canViewModule } from "@/lib/permissions";
 import {
   fetchDashboardAdmin,
   fetchDashboardRanking,
@@ -95,7 +96,7 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 
 function Page() {
   const user = getSession();
-  const canView = user?.role === "admin" || user?.role === "gerente";
+  const canView = canViewModule(user, "taxaConversao");
   /** Ranking entre gerentes/equipes: só admin. */
   const showRankingGerentes = user?.role === "admin";
   const isGerente = user?.role === "gerente";
@@ -210,7 +211,7 @@ function Page() {
         />
         <SemConexao
           title="Acesso restrito"
-          description="A taxa de conversão está disponível para administradores e gerentes."
+          description="Peça ao administrador para liberar o módulo Taxa de conversão nas permissões do seu usuário."
         />
       </div>
     );
