@@ -1,5 +1,12 @@
 import type { AuthUser, Role } from "@/lib/auth";
 import { ROUTE_MODULE_KEY, isFinanceiroPathAllowed, type TenantPlano } from "@/lib/tenant-modules";
+import {
+  actionForFinancePath,
+  canUserAction,
+  effectivePermissions,
+  moduleForPath,
+  type UserPermissions,
+} from "@/lib/user-permissions";
 
 /**
  * Rotas por perfil:
@@ -7,6 +14,7 @@ import { ROUTE_MODULE_KEY, isFinanceiroPathAllowed, type TenantPlano } from "@/l
  * - gerente: operação da equipe; carteira própria (/clientes) e vendas
  * - corretor: essencial (próprios leads/agenda/clientes) + cadastro de construtoras (sem vendas)
  * - analista: documentação, resultado e catálogos (origens/tags/motivos)
+ * - financeiro: somente o módulo Financeiro (visão, parceiros, fluxo, títulos, despesas, comissão)
  * - treinee: mesmo acesso operacional do corretor + cadastro de construtoras/empreendimentos/origens/tags/CCAs; documentação só vinculada
  */
 const ROLE_ROUTES: Record<Role, readonly string[]> = {
@@ -41,6 +49,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/documentacao",
     "/resultado",
     "/usuarios",
+    "/permissoes",
     "/equipes",
     "/construtoras",
     "/leads-perdidos",
@@ -108,6 +117,17 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/configuracoes",
     "/perfil",
   ],
+  financeiro: [
+    "/financeiro/visao-geral",
+    "/financeiro/clientes-fornecedores",
+    "/financeiro/movimentacao",
+    "/financeiro/fluxo-caixa",
+    "/financeiro/contas-a-receber",
+    "/financeiro/contas-a-pagar",
+    "/financeiro/despesas",
+    "/financeiro/comissao",
+    "/perfil",
+  ],
   treinee: [
     "/dashboard",
     "/leads",
@@ -157,35 +177,67 @@ export function canAccessRoute(
   pathname: string,
   modules?: Record<string, boolean> | null,
   plano?: TenantPlano | null,
+  userPermissions?: UserPermissions | null,
 ): boolean {
   const path = pathname.split("?")[0].replace(/\/$/, "") || "/";
-  const roleRoutes =
-    role === "gerente" && plano === "bronze"
-      ? GERENTE_BRONZE_ROUTES
-      : ROLE_ROUTES[role];
-  const allowedByRole = roleRoutes.some(
-    (route) => path === route || path.startsWith(`${route}/`),
-  );
-  if (!allowedByRole) return false;
+  if (path === "/perfil") return true;
 
   if (!isFinanceiroPathAllowed(path, plano ?? null)) return false;
 
   if (modules) {
-    const moduleKey = Object.entries(ROUTE_MODULE_KEY).find(
+    const tenantKey = Object.entries(ROUTE_MODULE_KEY).find(
       ([route]) => path === route || path.startsWith(`${route}/`),
     )?.[1];
-    if (moduleKey && modules[moduleKey] === false) return false;
+    if (tenantKey && modules[tenantKey] === false) return false;
   }
 
-  return true;
+  const permKey = moduleForPath(path);
+  if (permKey && role !== "super_admin") {
+    const effective = effectivePermissions(role, userPermissions, plano);
+    if (permKey === "comissao") {
+      const allowed =
+        effective.modules.comissao === true ||
+        effective.modules.financeiro === true;
+      if (!allowed) return false;
+      return effective.actions["financeiro.comissao"] !== false;
+    }
+    if (effective.modules[permKey] !== true) return false;
+    if (permKey === "leads" && effective.actions["leads.view"] === false) {
+      return false;
+    }
+    if (
+      permKey === "leadsPerdidos" &&
+      effective.actions["leads.viewLost"] === false
+    ) {
+      return false;
+    }
+    const financeAction = actionForFinancePath(path);
+    if (financeAction && effective.actions[financeAction] === false) {
+      return false;
+    }
+    return true;
+  }
+
+  const roleRoutes =
+    role === "gerente" && plano === "bronze"
+      ? GERENTE_BRONZE_ROUTES
+      : ROLE_ROUTES[role];
+  return roleRoutes.some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
 }
 
 export function defaultRouteForRole(
   role: Role,
-  user?: Pick<AuthUser, "tenant"> | null,
+  user?: Pick<AuthUser, "tenant" | "permissions"> | null,
 ): string {
   if (role === "super_admin") return "/tenants";
   if (role === "analista") return "/documentacao";
+  if (role === "financeiro") {
+    return user?.tenant?.plano === "solo"
+      ? "/financeiro/fluxo-caixa"
+      : "/financeiro/visao-geral";
+  }
 
   const home = user?.tenant?.homePath?.trim();
   if (
@@ -195,16 +247,78 @@ export function defaultRouteForRole(
       home,
       user?.tenant?.modules ?? null,
       user?.tenant?.plano ?? null,
+      user?.permissions ?? null,
     )
   ) {
     return home;
   }
-  return "/dashboard";
+  if (
+    canAccessRoute(
+      role,
+      "/dashboard",
+      user?.tenant?.modules ?? null,
+      user?.tenant?.plano ?? null,
+      user?.permissions ?? null,
+    )
+  ) {
+    return "/dashboard";
+  }
+  return "/perfil";
 }
 
 /** Apenas admin vê indicadores financeiros (receita, comissão, valores em R$). */
 export function canViewFinancial(role: Role): boolean {
-  return role === "admin";
+  return role === "admin" || role === "financeiro";
+}
+
+export type FinanceiroAcao = "view" | "create" | "edit" | "delete";
+
+export function canFinanceiroAction(
+  user: Pick<
+    AuthUser,
+    | "role"
+    | "financeiroCanView"
+    | "financeiroCanCreate"
+    | "financeiroCanEdit"
+    | "financeiroCanDelete"
+    | "permissions"
+  > | null | undefined,
+  action: FinanceiroAcao,
+): boolean {
+  if (!user) return false;
+  if (
+    user.role === "admin" ||
+    user.role === "super_admin" ||
+    user.role === "gerente"
+  ) {
+    return true;
+  }
+  if (user.role === "financeiro") {
+    if (action === "view") return user.financeiroCanView !== false;
+    if (action === "create") return user.financeiroCanCreate !== false;
+    if (action === "edit") return user.financeiroCanEdit !== false;
+    return user.financeiroCanDelete !== false;
+  }
+  if (!user.permissions) return false;
+  if (action === "view") {
+    return canUserAction(user.role, user.permissions, "financeiro.access");
+  }
+  if (action === "create") {
+    return (
+      canUserAction(user.role, user.permissions, "financeiro.pagar.create") ||
+      canUserAction(user.role, user.permissions, "financeiro.receber.create")
+    );
+  }
+  if (action === "edit") {
+    return (
+      canUserAction(user.role, user.permissions, "financeiro.pagar.edit") ||
+      canUserAction(user.role, user.permissions, "financeiro.receber.edit")
+    );
+  }
+  return (
+    canUserAction(user.role, user.permissions, "financeiro.pagar.delete") ||
+    canUserAction(user.role, user.permissions, "financeiro.receber.delete")
+  );
 }
 
 /** Ranking, VGV e vendas por construtora: só gestão. */

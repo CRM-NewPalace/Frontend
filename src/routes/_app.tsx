@@ -18,6 +18,7 @@ function guardUser(user: AuthUser, pathname: string) {
       pathname,
       user.tenant?.modules ?? null,
       user.tenant?.plano ?? null,
+      user.permissions ?? null,
     )
   ) {
     throw redirect({ to: defaultRouteForRole(user.role, user) });

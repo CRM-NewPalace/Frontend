@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type { Role, UserStatus } from "@/lib/auth";
+import type { UserPermissions } from "@/lib/user-permissions";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 
 export const CRECI_PROCESSO_STATUS = [
@@ -103,6 +104,11 @@ export type ApiUser = {
   cor: string | null;
   role: Role;
   status: UserStatus;
+  financeiroCanView?: boolean;
+  financeiroCanCreate?: boolean;
+  financeiroCanEdit?: boolean;
+  financeiroCanDelete?: boolean;
+  permissions?: UserPermissions | null;
   avatar: string | null;
   lastLoginAt: string | null;
   createdAt: string;
@@ -127,6 +133,10 @@ export type CreateUserInput = {
   cor?: string | null;
   role: Role;
   status?: UserStatus;
+  financeiroCanView?: boolean;
+  financeiroCanCreate?: boolean;
+  financeiroCanEdit?: boolean;
+  financeiroCanDelete?: boolean;
 };
 
 export type UpdateUserInput = {
@@ -141,6 +151,11 @@ export type UpdateUserInput = {
   cor?: string | null;
   role?: Role;
   status?: UserStatus;
+  financeiroCanView?: boolean;
+  financeiroCanCreate?: boolean;
+  financeiroCanEdit?: boolean;
+  financeiroCanDelete?: boolean;
+  permissions?: UserPermissions;
 };
 
 export async function fetchUsers(params?: {

@@ -44,6 +44,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
+import { canFinanceiroAction } from "@/lib/permissions";
 import {
   baixarTitulo,
   fetchFluxoCaixa,
@@ -130,6 +132,7 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 }
 
 function Page() {
+  const canEditFin = canFinanceiroAction(getSession(), "edit");
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("calendario");
   const [view, setView] = useState<AgendaViewMode>("mes");
   const [selectedDay, setSelectedDay] = useState<Date>(() =>
@@ -874,7 +877,7 @@ function Page() {
                             Abrir comissão
                           </Link>
                         </Button>
-                      ) : it.natureza === "previsto" ? (
+                      ) : it.natureza === "previsto" && canEditFin ? (
                         <Button
                           type="button"
                           size="sm"

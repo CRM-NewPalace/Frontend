@@ -80,6 +80,7 @@ import {
   type VistaParcelas,
 } from "@/lib/financeiro-prefs";
 import { cn, digitsOnly, formatCpfCnpj } from "@/lib/utils";
+import { canFinanceiroAction } from "@/lib/permissions";
 import { FILTER_LABEL, FILTER_VISTA_WRAP } from "@/lib/filter-bar";
 import {
   FORM_CONTROL,
@@ -476,14 +477,21 @@ export function FinanceiroTitulosPanel({
     useState<GrupoParcelaTipo | null>(null);
   const [valorGrupoParcelas, setValorGrupoParcelas] = useState("");
   const [formTab, setFormTab] = useState<TituloFormTab>("dados");
-  const isPlatformAdmin = getSession()?.role === "super_admin";
+  const session = getSession();
+  const isPlatformAdmin = session?.role === "super_admin";
   const canUseContrato =
-    isPlatformAdmin || getSession()?.role === "admin";
+    isPlatformAdmin || session?.role === "admin";
   const isAssinaturaPlataforma = isPlatformAdmin && tipo === "receber";
   const [comoContrato, setComoContrato] = useState(false);
+  const canCreateFin = !readOnly && canFinanceiroAction(session, "create");
+  const canEditFin = !readOnly && canFinanceiroAction(session, "edit");
+  const canDeleteFin = !readOnly && canFinanceiroAction(session, "delete");
   const canLancarComissao =
     tipo === "receber" &&
-    (getSession()?.role === "admin" || getSession()?.role === "super_admin");
+    canCreateFin &&
+    (session?.role === "admin" ||
+      session?.role === "super_admin" ||
+      session?.role === "financeiro");
   const [comissaoDialogOpen, setComissaoDialogOpen] = useState(false);
   const [parcelarAdesao, setParcelarAdesao] = useState(false);
   const [qtdParcelasAdesao, setQtdParcelasAdesao] = useState("2");
@@ -814,7 +822,7 @@ export function FinanceiroTitulosPanel({
             <ListOrdered className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {!readOnly && !opts?.hideBaixar &&
+        {canEditFin && !opts?.hideBaixar &&
         t.status !== "pago" &&
         t.status !== "cancelado" ? (
           <Button
@@ -827,7 +835,7 @@ export function FinanceiroTitulosPanel({
             <Banknote className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {!readOnly ? (
+        {canEditFin ? (
           <Button
             variant="ghost"
             size="icon"
@@ -838,7 +846,7 @@ export function FinanceiroTitulosPanel({
             <Pencil className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {!readOnly && !opts?.hideGrupoEdit && t.grupoParcelasId ? (
+        {canEditFin && !opts?.hideGrupoEdit && t.grupoParcelasId ? (
           <Button
             variant="ghost"
             size="icon"
@@ -849,7 +857,7 @@ export function FinanceiroTitulosPanel({
             <Layers className="w-3.5 h-3.5" />
           </Button>
         ) : null}
-        {!readOnly ? (
+        {canDeleteFin ? (
           <Button
             variant="ghost"
             size="icon"
@@ -1485,7 +1493,7 @@ export function FinanceiroTitulosPanel({
         title={title}
         description={description}
         actions={
-          readOnly ? undefined : (
+          !canCreateFin ? undefined : (
             <div className="flex flex-wrap items-center gap-2">
               {canLancarComissao ? (
                 <Button
@@ -1772,7 +1780,7 @@ export function FinanceiroTitulosPanel({
                           >
                             <ListOrdered className="w-3.5 h-3.5" />
                           </Button>
-                          {!readOnly ? (
+                          {canEditFin ? (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1783,7 +1791,7 @@ export function FinanceiroTitulosPanel({
                               <Pencil className="w-3.5 h-3.5" />
                             </Button>
                           ) : null}
-                          {!readOnly ? (
+                          {canDeleteFin ? (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1834,7 +1842,7 @@ export function FinanceiroTitulosPanel({
                             </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-1 items-center">
-                                {!readOnly &&
+                                {canEditFin &&
                                 t.status !== "pago" &&
                                 t.status !== "cancelado" ? (
                                   <Button
@@ -3274,7 +3282,7 @@ export function FinanceiroTitulosPanel({
         }
         footer={
           <FormDialogActions>
-            {!readOnly && grupoTitulos.length > 0 ? (
+            {canEditFin && grupoTitulos.length > 0 ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -3284,7 +3292,7 @@ export function FinanceiroTitulosPanel({
                 Editar todas
               </Button>
             ) : null}
-            {!readOnly && grupoTitulos[0]?.grupoParcelasId ? (
+            {canDeleteFin && grupoTitulos[0]?.grupoParcelasId ? (
               <Button
                 type="button"
                 variant="destructive"
@@ -3361,7 +3369,7 @@ export function FinanceiroTitulosPanel({
                               {statusLabel(t.status)}
                             </p>
                           </div>
-                          {!readOnly ? (
+                          {canEditFin ? (
                             <Button
                               size="sm"
                               onClick={() => {

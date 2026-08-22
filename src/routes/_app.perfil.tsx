@@ -43,6 +43,7 @@ const ROLE_LABEL: Record<string, string> = {
   corretor: "Corretor",
   analista: "Analista",
   treinee: "Treinee",
+  financeiro: "Financeiro",
 };
 
 function ColorSwatches({

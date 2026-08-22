@@ -6,7 +6,8 @@ export type Role =
   | "gerente"
   | "corretor"
   | "analista"
-  | "treinee";
+  | "treinee"
+  | "financeiro";
 export type UserStatus = "ativo" | "inativo";
 
 export type TenantBranding = {
@@ -38,6 +39,14 @@ export interface AuthUser {
   email: string;
   role: Role;
   status: UserStatus;
+  financeiroCanView?: boolean;
+  financeiroCanCreate?: boolean;
+  financeiroCanEdit?: boolean;
+  financeiroCanDelete?: boolean;
+  permissions?: {
+    modules: Record<string, boolean>;
+    actions: Record<string, boolean>;
+  } | null;
   phone?: string | null;
   cargo?: string | null;
   creci?: string | null;

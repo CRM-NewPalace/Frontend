@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { canFinanceiroAction } from "@/lib/permissions";
 import {
   createParceiro,
   deleteParceiro,
@@ -133,7 +134,11 @@ function toForm(p: ParceiroFinanceiro, forceFornecedor: boolean): FormState {
 }
 
 function Page() {
-  const isPlatformAdmin = getSession()?.role === "super_admin";
+  const session = getSession();
+  const isPlatformAdmin = session?.role === "super_admin";
+  const canCreateFin = canFinanceiroAction(session, "create");
+  const canEditFin = canFinanceiroAction(session, "edit");
+  const canDeleteFin = canFinanceiroAction(session, "delete");
   const emptyForm = isPlatformAdmin ? EMPTY_FORM_FORNECEDOR : EMPTY_FORM;
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,10 +306,12 @@ function Page() {
             : "Cadastro de parceiros financeiros"
         }
         actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            {isPlatformAdmin ? "Novo fornecedor" : "Novo parceiro"}
-          </Button>
+          canCreateFin ? (
+            <Button type="button" onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              {isPlatformAdmin ? "Novo fornecedor" : "Novo parceiro"}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -412,24 +419,28 @@ function Page() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title="Editar"
-                          onClick={() => openEdit(p)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title="Excluir"
-                          onClick={() => setDeleteTarget(p)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        {canEditFin ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Editar"
+                            onClick={() => openEdit(p)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        ) : null}
+                        {canDeleteFin ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Excluir"
+                            onClick={() => setDeleteTarget(p)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>

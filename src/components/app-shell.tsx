@@ -41,6 +41,7 @@ import {
   Library,
   Receipt,
   TriangleAlert,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -277,6 +278,7 @@ const NAV_SECTIONS: {
       { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
       { to: "/equipes", label: "Equipes", icon: Network },
       { to: "/usuarios", label: "Usuários", icon: UsersRound },
+      { to: "/permissoes", label: "Permissões", icon: KeyRound },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
     ],
   },
@@ -309,6 +311,7 @@ const ROLE_LABEL: Record<string, string> = {
   corretor: "Corretor",
   analista: "Analista",
   treinee: "Treinee",
+  financeiro: "Financeiro",
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -320,6 +323,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const plano = user?.tenant?.plano ?? null;
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
+    financeiro: true,
   });
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
@@ -550,6 +554,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           "/propostas",
           user.tenant?.modules ?? null,
           user.tenant?.plano,
+          user.permissions,
         )
       ) {
         void navigate({ to: "/propostas" });
@@ -602,6 +607,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           "/documentacao",
           user.tenant?.modules ?? null,
           user.tenant?.plano ?? null,
+          user.permissions,
         )
       ) {
         void navigate({ to: "/documentacao" });
@@ -647,14 +653,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             .map((item) => {
               if (isNavGroup(item)) {
                 const children = item.children.filter((c) =>
-                  canAccessRoute(user.role, c.to, modules, plano),
+                  canAccessRoute(
+                    user.role,
+                    c.to,
+                    modules,
+                    plano,
+                    user.permissions,
+                  ),
                 );
                 return children.length ? { ...item, children } : null;
               }
               if (item.to === "/imoveis" && hideImoveisFromSidebar) {
                 return null;
               }
-              return canAccessRoute(user.role, item.to, modules, plano)
+              return canAccessRoute(
+                user.role,
+                item.to,
+                modules,
+                plano,
+                user.permissions,
+              )
                 ? item
                 : null;
             })
@@ -750,7 +768,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .slice(0, 2)
       .join("") ?? "U";
   const canSettings = user
-    ? canAccessRoute(user.role, "/configuracoes", modules, plano)
+    ? canAccessRoute(
+        user.role,
+        "/configuracoes",
+        modules,
+        plano,
+        user.permissions,
+      )
     : false;
 
   // Renderiza as seções de navegação. Reaproveitado tanto pelo <aside> fixo

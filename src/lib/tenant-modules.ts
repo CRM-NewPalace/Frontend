@@ -217,6 +217,15 @@ export function isGerenteAllowed(plano: TenantPlano | null | undefined): boolean
   return plano !== "solo";
 }
 
+export function isFinanceiroRoleAllowed(
+  plano: TenantPlano | null | undefined,
+  modules?: Record<string, boolean> | null,
+): boolean {
+  if (!plano || plano === "bronze") return false;
+  if (plano === "solo") return true;
+  return modules?.financeiro !== false;
+}
+
 export function isFinanceiroPathAllowed(
   path: string,
   plano?: TenantPlano | null,

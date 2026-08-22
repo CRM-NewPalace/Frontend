@@ -11,7 +11,9 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import { fetchVisaoGeral } from "@/lib/financeiro-api";
+import { canFinanceiroAction } from "@/lib/permissions";
 import { useHideFinanceiroValues } from "@/lib/financeiro-prefs";
 import {
   brl,
@@ -100,6 +102,7 @@ const MONEY_BLUR = "select-none blur-[8px]";
 
 function Page() {
   const navigate = useNavigate();
+  const canCreateFin = canFinanceiroAction(getSession(), "create");
   const [hideValues, setHideValues] = useHideFinanceiroValues();
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
   const [loading, setLoading] = useState(true);
@@ -220,18 +223,20 @@ function Page() {
               )}
               {hideValues ? "Mostrar valores" : "Ocultar valores"}
             </Button>
-            <Button
-              type="button"
-              onClick={() =>
-                void navigate({
-                  to: "/financeiro/movimentacao",
-                  search: { novo: true },
-                })
-              }
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Novo lançamento
-            </Button>
+            {canCreateFin ? (
+              <Button
+                type="button"
+                onClick={() =>
+                  void navigate({
+                    to: "/financeiro/movimentacao",
+                    search: { novo: true },
+                  })
+                }
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Novo lançamento
+              </Button>
+            ) : null}
           </div>
         }
       />

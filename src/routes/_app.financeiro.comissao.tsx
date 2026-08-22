@@ -47,7 +47,9 @@ import {
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
-import { isCorretorLike } from "@/lib/permissions";
+import { FILTER_CONTROL } from "@/lib/filter-bar";
+import { cn } from "@/lib/utils";
+import { canFinanceiroAction, isCorretorLike } from "@/lib/permissions";
 import {
   deleteComissao,
   fetchComissoes,
@@ -82,19 +84,24 @@ const STATUS_OPTIONS = [
 function Page() {
   const { id: comissaoIdFromUrl } = Route.useSearch();
   const navigate = useNavigate();
-  const role = getSession()?.role;
-  const canManage = role === "admin" || role === "super_admin";
+  const session = getSession();
+  const role = session?.role;
+  const isFinanceTeam =
+    role === "admin" || role === "super_admin" || role === "financeiro";
+  const canCreateFin = isFinanceTeam && canFinanceiroAction(session, "create");
+  const canEditFin = isFinanceTeam && canFinanceiroAction(session, "edit");
+  const canDeleteFin = isFinanceTeam && canFinanceiroAction(session, "delete");
   const commissionValue = useCallback(
     (item: Comissao) =>
       isCorretorLike(role)
         ? item.valorCorretor
         : role === "gerente"
           ? item.valorGerente
-          : item.comissaoLiquida,
+          : item.comissaoBruta,
     [role],
   );
-  const commissionValueLabel = canManage ? "Total líquido" : "Total a receber";
-  const commissionColumnLabel = canManage ? "Líquida" : "Sua comissão";
+  const commissionValueLabel = isFinanceTeam ? "Total bruto" : "Total a receber";
+  const commissionColumnLabel = isFinanceTeam ? "Bruta" : "Sua comissão";
   const [items, setItems] = useState<Comissao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -260,12 +267,12 @@ function Page() {
       <PageHeader
         title="Comissão"
         description={
-          canManage
+          isFinanceTeam
             ? "Gestão das comissões por venda. Ao lançar, as fatias já entram em Contas a receber e a pagar; se estiver pendente, o fluxo projeta o recebimento. Ao marcar como paga (aqui ou na baixa), o fluxo registra como realizado."
             : "Acompanhe as comissões disponíveis para o seu perfil"
         }
         actions={
-          canManage ? (
+          canCreateFin ? (
             <Button type="button" onClick={openCreate}>
               <Plus className="mr-1 size-4" />
               Lançar comissão
@@ -312,7 +319,7 @@ function Page() {
         tipoOptions={STATUS_OPTIONS}
         extra={
           <Select value={equipe} onValueChange={setEquipe}>
-            <SelectTrigger className="w-full sm:w-45">
+            <SelectTrigger className={cn("w-full sm:w-45", FILTER_CONTROL)}>
               <SelectValue placeholder="Equipe" />
             </SelectTrigger>
             <SelectContent>
@@ -424,7 +431,7 @@ function Page() {
                         : brl(numberValue(commissionValue(item)))}
                     </TableCell>
                     <TableCell className="py-2">
-                      {canManage ? (
+                      {canEditFin ? (
                         <Select
                           value={item.status}
                           onValueChange={(value) =>
@@ -469,29 +476,29 @@ function Page() {
                       >
                         <Eye className="size-4" />
                       </Button>
-                      {canManage && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(item)}
-                            aria-label="Editar comissão"
-                            title="Editar"
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeleteTarget(item)}
-                            aria-label="Excluir comissão"
-                            title="Excluir"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </>
-                      )}
+                      {canEditFin ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEdit(item)}
+                          aria-label="Editar comissão"
+                          title="Editar"
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                      ) : null}
+                      {canDeleteFin ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(item)}
+                          aria-label="Excluir comissão"
+                          title="Excluir"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))
@@ -538,7 +545,7 @@ function Page() {
             <Button type="button" variant="outline" onClick={() => closeDetail()}>
               Fechar
             </Button>
-            {canManage && detail && (
+            {canEditFin && detail && (
               <Button
                 type="button"
                 onClick={() => {

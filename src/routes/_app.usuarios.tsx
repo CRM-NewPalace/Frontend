@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -70,7 +71,11 @@ import {
   IdCard,
 } from "lucide-react";
 import { getSession, type Role, type UserStatus } from "@/lib/auth";
-import { isAnalistaAllowed, isGerenteAllowed } from "@/lib/tenant-modules";
+import {
+  isAnalistaAllowed,
+  isFinanceiroRoleAllowed,
+  isGerenteAllowed,
+} from "@/lib/tenant-modules";
 import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
@@ -167,6 +172,7 @@ const ROLE_LABEL: Record<Role, string> = {
   corretor: "Corretor",
   analista: "Analista",
   treinee: "Treinee",
+  financeiro: "Financeiro",
 };
 
 const STATUS_LABEL: Record<UserStatus, string> = {
@@ -190,6 +196,9 @@ type FormState = {
   role: Role;
   status: UserStatus;
   password: string;
+  financeiroCanCreate: boolean;
+  financeiroCanEdit: boolean;
+  financeiroCanDelete: boolean;
 };
 
 const emptyForm = (): FormState => ({
@@ -205,6 +214,9 @@ const emptyForm = (): FormState => ({
   role: "corretor",
   status: "ativo",
   password: "",
+  financeiroCanCreate: true,
+  financeiroCanEdit: true,
+  financeiroCanDelete: true,
 });
 
 function toDateInput(value: string | null | undefined) {
@@ -232,6 +244,9 @@ function userToForm(u: ApiUser): FormState {
     role: u.role,
     status: u.status,
     password: "",
+    financeiroCanCreate: u.financeiroCanCreate !== false,
+    financeiroCanEdit: u.financeiroCanEdit !== false,
+    financeiroCanDelete: u.financeiroCanDelete !== false,
   };
 }
 
@@ -253,6 +268,8 @@ function roleBadgeClass(role: Role) {
     return `${size} bg-sky-500/15 text-sky-700 border-sky-500/30`;
   if (role === "treinee")
     return `${size} bg-emerald-500/15 text-emerald-700 border-emerald-500/30`;
+  if (role === "financeiro")
+    return `${size} bg-amber-500/15 text-amber-800 border-amber-500/30`;
   return `${size} bg-muted text-muted-foreground`;
 }
 
@@ -380,6 +397,10 @@ function Usuarios() {
     session?.tenant?.modules ?? null,
   );
   const canUseGerente = isGerenteAllowed(session?.tenant?.plano);
+  const canUseFinanceiro = isFinanceiroRoleAllowed(
+    session?.tenant?.plano,
+    session?.tenant?.modules ?? null,
+  );
   const { leads, refresh: refreshLeads } = useLeads();
 
   const cachedUsers = getUsersCache();
@@ -655,6 +676,10 @@ function Usuarios() {
           cor: cor || undefined,
           role: form.role,
           status: form.status,
+          financeiroCanView: true,
+          financeiroCanCreate: form.financeiroCanCreate,
+          financeiroCanEdit: form.financeiroCanEdit,
+          financeiroCanDelete: form.financeiroCanDelete,
         });
         setUsers((prev) => [
           created,
@@ -683,6 +708,10 @@ function Usuarios() {
           cor: cor || null,
           role: form.role,
           status: form.status,
+          financeiroCanView: true,
+          financeiroCanCreate: form.financeiroCanCreate,
+          financeiroCanEdit: form.financeiroCanEdit,
+          financeiroCanDelete: form.financeiroCanDelete,
         });
         setUsers((prev) =>
           prev.map((u) => (u.id === updated.id ? updated : u)),
@@ -891,6 +920,9 @@ function Usuarios() {
                 <SelectItem value="analista">Analista</SelectItem>
               )}
               <SelectItem value="treinee">Treinee</SelectItem>
+              {canUseFinanceiro && (
+                <SelectItem value="financeiro">Financeiro</SelectItem>
+              )}
               <SelectItem value="corretor">Corretor</SelectItem>
             </SelectContent>
           </Select>
@@ -1354,7 +1386,15 @@ function Usuarios() {
                   </Label>
                   <Select
                     value={form.role}
-                    onValueChange={(v) => setField("role", v as Role)}
+                    onValueChange={(v) => {
+                      const role = v as Role;
+                      setField("role", role);
+                      if (role !== "financeiro") {
+                        setField("financeiroCanCreate", true);
+                        setField("financeiroCanEdit", true);
+                        setField("financeiroCanDelete", true);
+                      }
+                    }}
                   >
                     <SelectTrigger className="h-10 bg-background">
                       <SelectValue />
@@ -1370,6 +1410,11 @@ function Usuarios() {
                             <SelectItem value="analista">Analista</SelectItem>
                           )}
                           <SelectItem value="treinee">Treinee</SelectItem>
+                          {canUseFinanceiro && (
+                            <SelectItem value="financeiro">
+                              Financeiro
+                            </SelectItem>
+                          )}
                         </>
                       )}
                       <SelectItem value="corretor">Corretor</SelectItem>
@@ -1395,6 +1440,59 @@ function Usuarios() {
                   </Select>
                 </div>
               </div>
+              {form.role === "financeiro" ? (
+                <div className="space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
+                  <div>
+                    <p className="text-sm font-medium">Permissões do Financeiro</p>
+                    <p className="text-xs text-muted-foreground">
+                      Este perfil acessa só o módulo Financeiro. Visualizar
+                      sempre fica ativo.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/80 px-3 py-2">
+                      <Label className="text-xs">Visualizar</Label>
+                      <Switch checked disabled />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/80 px-3 py-2">
+                      <Label htmlFor="fin-create" className="text-xs">
+                        Criar
+                      </Label>
+                      <Switch
+                        id="fin-create"
+                        checked={form.financeiroCanCreate}
+                        onCheckedChange={(v) =>
+                          setField("financeiroCanCreate", v)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/80 px-3 py-2">
+                      <Label htmlFor="fin-edit" className="text-xs">
+                        Editar
+                      </Label>
+                      <Switch
+                        id="fin-edit"
+                        checked={form.financeiroCanEdit}
+                        onCheckedChange={(v) =>
+                          setField("financeiroCanEdit", v)
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/80 px-3 py-2">
+                      <Label htmlFor="fin-delete" className="text-xs">
+                        Excluir
+                      </Label>
+                      <Switch
+                        id="fin-delete"
+                        checked={form.financeiroCanDelete}
+                        onCheckedChange={(v) =>
+                          setField("financeiroCanDelete", v)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {formMode === "create" && (
                 <div className="space-y-1.5">
                   <Label

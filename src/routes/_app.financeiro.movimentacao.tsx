@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { PageHeader } from "@/components/app-shell";
 import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { getSession } from "@/lib/auth";
+import { canFinanceiroAction } from "@/lib/permissions";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import {
@@ -179,7 +180,11 @@ function toForm(m: MovimentoFinanceiro, defaultCategoria = ""): FormState {
 function Page() {
   const navigate = useNavigate();
   const { novo } = Route.useSearch();
-  const isPlatform = getSession()?.role === "super_admin";
+  const session = getSession();
+  const isPlatform = session?.role === "super_admin";
+  const canCreateFin = canFinanceiroAction(session, "create");
+  const canEditFin = canFinanceiroAction(session, "edit");
+  const canDeleteFin = canFinanceiroAction(session, "delete");
   const parceiroLabel = isPlatform ? "Fornecedor" : "Parceiro";
   const [items, setItems] = useState<MovimentoFinanceiro[]>([]);
   const [parceiros, setParceiros] = useState<ParceiroFinanceiro[]>([]);
@@ -428,7 +433,7 @@ function Page() {
   }
 
   useEffect(() => {
-    if (!novo) return;
+    if (!novo || !canCreateFin) return;
     openCreate();
     void navigate({
       to: "/financeiro/movimentacao",
@@ -542,10 +547,12 @@ function Page() {
         title="Movimentação financeira"
         description="Lançamentos de entrada e saída"
         actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            Novo lançamento
-          </Button>
+          canCreateFin ? (
+            <Button type="button" onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo lançamento
+            </Button>
+          ) : undefined
         }
       />
 
@@ -666,24 +673,28 @@ function Page() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title="Editar"
-                          onClick={() => openEdit(m)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title="Excluir"
-                          onClick={() => setDeleteTarget(m)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        {canEditFin ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Editar"
+                            onClick={() => openEdit(m)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        ) : null}
+                        {canDeleteFin ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Excluir"
+                            onClick={() => setDeleteTarget(m)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -787,14 +798,16 @@ function Page() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label>{parceiroLabel}</Label>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => openQuick("parceiro")}
-                    >
-                      + Novo {parceiroLabel.toLowerCase()}
-                    </Button>
+                    {canCreateFin ? (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => openQuick("parceiro")}
+                      >
+                        + Novo {parceiroLabel.toLowerCase()}
+                      </Button>
+                    ) : null}
                   </div>
                   <Select
                     value={form.parceiroId}
@@ -818,17 +831,19 @@ function Page() {
                 <div className="space-y-2 sm:col-span-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label>{catalogLabel} *</Label>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => openQuick("categoria")}
-                    >
-                      +{" "}
-                      {form.tipo === "entrada"
-                        ? "Nova categoria"
-                        : "Novo centro"}
-                    </Button>
+                    {canCreateFin ? (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => openQuick("categoria")}
+                      >
+                        +{" "}
+                        {form.tipo === "entrada"
+                          ? "Nova categoria"
+                          : "Novo centro"}
+                      </Button>
+                    ) : null}
                   </div>
                   <CategoriaSearchSelect
                     value={form.categoria}

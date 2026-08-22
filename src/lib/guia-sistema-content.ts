@@ -774,7 +774,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/usuarios",
         who: "Admin cria. Gerente pode ver/gerar senha temporária da equipe, conforme permissão.",
         summary:
-          "Contas e papéis: admin, gerente, corretor, analista, treinee. O plano limita quantidade (Solo 1, Bronze 5, Prata 15, Ouro 30).",
+          "Contas e papéis: admin, gerente, corretor, analista, treinee e financeiro. O plano limita quantidade (Solo 1, Bronze 5, Prata 15, Ouro 30).",
         actions: [
           {
             title: "Criar usuário",
@@ -784,7 +784,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Papéis",
             detail:
-              "Admin = operação + gestão + financeiro (se o plano tiver). Gerente = time (não no Solo). Corretor = carteira. Analista = documentação/análise (não no Solo/Bronze). Treinee ≈ corretor com mais cadastro de catálogo.",
+              "Admin = operação + gestão + financeiro (se o plano tiver). Gerente = time (não no Solo). Corretor = carteira. Analista = documentação/análise (não no Solo/Bronze). Treinee ≈ corretor com mais cadastro de catálogo. Financeiro = só o módulo Financeiro, com permissões de visualizar/criar/editar/excluir (não no Bronze).",
           },
         ],
         tips: [
@@ -840,7 +840,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-visao",
         title: "Visão geral",
         href: "/financeiro/visao-geral",
-        who: "Admin (e super_admin na plataforma). Corretor não vê o caixa — só Comissão.",
+        who: "Admin, perfil Financeiro e super_admin na plataforma. Corretor não vê o caixa — só Comissão.",
         summary:
           "Saldo, receitas, despesas, a receber, a pagar e resultado do período, com gráficos por mês e por centro.",
         actions: [
@@ -866,7 +866,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-parceiros",
         title: "Clientes e fornecedores",
         href: "/financeiro/clientes-fornecedores",
-        who: "Admin do financeiro.",
+        who: "Admin e perfil Financeiro.",
         summary:
           "Cadastro de quem paga e de quem recebe. Títulos e movimentação apontam para este cadastro.",
         actions: [
@@ -881,7 +881,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-mov",
         title: "Movimentação financeira",
         href: "/financeiro/movimentacao",
-        who: "Admin do financeiro.",
+        who: "Admin e perfil Financeiro.",
         summary:
           "Entradas e saídas já realizadas (caixa de fato). Título a receber/pagar só vira movimento quando é baixado.",
         actions: [
@@ -901,7 +901,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-fluxo",
         title: "Fluxo de caixa",
         href: "/financeiro/fluxo-caixa",
-        who: "Admin do financeiro.",
+        who: "Admin e perfil Financeiro.",
         summary:
           "Projeção por vencimento: o que entra, o que sai e o saldo no dia/semana/mês. Comissão pendente entra como previsão pelos títulos; ao baixar (aqui, em contas a receber ou na comissão), vira realizado. Dá para baixar título direto do quadro.",
         actions: [
@@ -927,7 +927,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-receber",
         title: "Contas a receber",
         href: "/financeiro/contas-a-receber",
-        who: "Admin do financeiro.",
+        who: "Admin e perfil Financeiro.",
         summary:
           "Títulos de entrada (ex.: comissão da construtora). Em aberto até a baixa, que gera o movimento.",
         actions: [
@@ -947,7 +947,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-pagar",
         title: "Contas a pagar",
         href: "/financeiro/contas-a-pagar",
-        who: "Admin do financeiro.",
+        who: "Admin e perfil Financeiro.",
         summary:
           "Títulos de saída. Mesma lógica de vencimento, baixa e centro que o a receber.",
         actions: [
@@ -962,7 +962,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-despesas",
         title: "Despesas",
         href: "/financeiro/despesas",
-        who: "Admin. Tela de conferência das saídas classificadas.",
+        who: "Admin e perfil Financeiro. Tela de conferência das saídas classificadas.",
         summary:
           "Obrigações com fornecedores e centros de custo. Comissões não entram aqui — use Comissão para lançar e Contas a pagar para baixar as fatias.",
         actions: [
@@ -977,7 +977,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         id: "fin-comissao",
         title: "Comissão",
         href: "/financeiro/comissao",
-        who: "Admin vê o consolidado. Gerente a da equipe. Corretor/treinee a fatia deles. Não exige o caixa inteiro no plano.",
+        who: "Admin e perfil Financeiro veem o consolidado. Gerente a da equipe. Corretor/treinee a fatia deles. Não exige o caixa inteiro no plano.",
         summary:
           "Rateio sobre o VGV da venda: bruta da imobiliária, tributos, líquida e split (corretor, gerente, caixa, sócios). Ao lançar, as fatias já aparecem em Contas a receber (caixa/sócios) e a pagar. Se estiver pendente, o fluxo de caixa projeta o recebimento na data prevista. Status: pendente → liberada → paga.",
         actions: [

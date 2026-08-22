@@ -92,6 +92,7 @@ import {
 } from "@/lib/catalog-colors";
 import { getSession } from "@/lib/auth";
 import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import { canUserAction } from "@/lib/user-permissions";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
   DEFAULT_TABLE_SORT,
@@ -290,7 +291,16 @@ function LeadsPage() {
   const navigate = useNavigate();
   const user = getSession();
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
-  const isCorretor = !canSeeTeam;
+  const canViewOthers = user
+    ? canUserAction(user.role, user.permissions, "leads.viewOthers")
+    : false;
+  const canExportLeads = user
+    ? canUserAction(user.role, user.permissions, "leads.export")
+    : false;
+  const canDeleteLeads = user
+    ? canUserAction(user.role, user.permissions, "leads.delete")
+    : false;
+  const isCorretor = !canSeeTeam && !canViewOthers;
   const canDistribuir = user?.role === "admin" || user?.role === "gerente";
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
@@ -1164,6 +1174,7 @@ function LeadsPage() {
                   Distribuir
                 </Button>
               )}
+              {canExportLeads ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -1203,7 +1214,8 @@ function LeadsPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {selectedCount > 0 && (
+              ) : null}
+              {selectedCount > 0 && canDeleteLeads && (
                 <Button
                   variant="destructive"
                   size="sm"
