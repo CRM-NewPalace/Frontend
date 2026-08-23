@@ -135,11 +135,17 @@ export async function sendHeartbeat(): Promise<void> {
 }
 
 /** Busca o usuário atual no backend e atualiza o cache local. */
+function notifySessionUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("crm-session-updated"));
+}
+
 export async function fetchMe(): Promise<AuthUser> {
   const user = await apiFetch<AuthUser>("/auth/me");
   sessionCache.setUser(user);
   lastValidatedAt = Date.now();
   writeValidatedAt(lastValidatedAt);
+  notifySessionUpdated();
   return user;
 }
 
@@ -228,6 +234,32 @@ export async function updateMe(input: {
   sessionCache.setUser(user);
   lastValidatedAt = Date.now();
   writeValidatedAt(lastValidatedAt);
+  notifySessionUpdated();
+  return user;
+}
+
+export async function uploadMyAvatar(file: File): Promise<AuthUser> {
+  const data = new FormData();
+  data.append("file", file);
+  const user = await apiFetch<AuthUser>("/auth/me/avatar", {
+    method: "POST",
+    body: data,
+  });
+  sessionCache.setUser(user);
+  lastValidatedAt = Date.now();
+  writeValidatedAt(lastValidatedAt);
+  notifySessionUpdated();
+  return user;
+}
+
+export async function removeMyAvatar(): Promise<AuthUser> {
+  const user = await apiFetch<AuthUser>("/auth/me/avatar", {
+    method: "DELETE",
+  });
+  sessionCache.setUser(user);
+  lastValidatedAt = Date.now();
+  writeValidatedAt(lastValidatedAt);
+  notifySessionUpdated();
   return user;
 }
 

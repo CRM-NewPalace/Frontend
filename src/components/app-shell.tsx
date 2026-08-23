@@ -65,7 +65,7 @@ import {
   type AgendaUrgencia,
 } from "@/lib/agenda-api";
 import { AgendaLembretesDialog } from "@/components/agenda-lembretes-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -340,7 +340,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isTriagem = pathname === "/triagem";
 
   useEffect(() => {
-    setUser(getSession());
+    const sync = () => setUser(getSession());
+    sync();
+    window.addEventListener("crm-session-updated", sync);
+    return () => window.removeEventListener("crm-session-updated", sync);
   }, []);
 
   const loadNotificacoes = useCallback(async () => {
@@ -1214,6 +1217,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   aria-label="Menu da conta"
                 >
                   <Avatar className="w-7 h-7">
+                    {user?.avatar ? (
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                    ) : null}
                     <AvatarFallback className="avatar-fallback-brand text-xs">
                       {initials}
                     </AvatarFallback>

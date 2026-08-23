@@ -4,11 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Eye, EyeOff } from "lucide-react";
-import { useEffect, useState } from "react";
-import { changePassword, getSession, type AuthUser } from "@/lib/auth";
+import { useEffect, useRef, useState } from "react";
+import {
+  changePassword,
+  getSession,
+  removeMyAvatar,
+  uploadMyAvatar,
+  type AuthUser,
+} from "@/lib/auth";
+import { assertImageFile } from "@/components/image-upload-field";
+import { IMAGE_UPLOAD_ACCEPT } from "@/lib/empreendimentos-api";
 import { userCanInformarCreci } from "@/lib/users-api";
 import { ConfigCreciPanel } from "@/components/config-creci-panel";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
@@ -35,6 +43,40 @@ export const Route = createFileRoute("/_app/perfil")({
   head: () => ({ meta: [{ title: "Perfil — Zone Connection" }] }),
   component: Perfil,
 });
+
+const AVATAR_MIN_SIDE = 256;
+
+function readImageSize(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+      URL.revokeObjectURL(url);
+      resolve({ width, height });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Não foi possível ler a imagem."));
+    };
+    img.src = url;
+  });
+}
+
+async function assertAvatarFile(file: File): Promise<string | null> {
+  const typeError = assertImageFile(file);
+  if (typeError) return typeError;
+  try {
+    const { width, height } = await readImageSize(file);
+    if (width < AVATAR_MIN_SIDE || height < AVATAR_MIN_SIDE) {
+      return `A foto deve ter pelo menos ${AVATAR_MIN_SIDE} × ${AVATAR_MIN_SIDE} pixels.`;
+    }
+  } catch {
+    return "Não foi possível ler a imagem.";
+  }
+  return null;
+}
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super Admin",
@@ -201,13 +243,18 @@ function Perfil() {
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [appearance, setAppearance] =
     useState<AppearancePrefs>(DEFAULT_APPEARANCE);
 
   useEffect(() => {
-    setUser(getSession());
+    const sync = () => setUser(getSession());
+    sync();
     setDarkMode(getTheme() === "dark");
     setAppearance(getAppearancePrefs());
+    window.addEventListener("crm-session-updated", sync);
+    return () => window.removeEventListener("crm-session-updated", sync);
   }, []);
 
   function updateAppearance(slot: AppearanceSlot, id: string) {
@@ -241,6 +288,50 @@ function Perfil() {
       .map((n) => n[0])
       .slice(0, 2)
       .join("") ?? "U";
+
+  async function handleAvatarPick(list: FileList | null) {
+    const file = list?.[0];
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+    if (!file) return;
+
+    const invalid = await assertAvatarFile(file);
+    if (invalid) {
+      toast.error(invalid);
+      return;
+    }
+
+    setSavingAvatar(true);
+    try {
+      const next = await uploadMyAvatar(file);
+      setUser(next);
+      toast.success("Foto de perfil atualizada");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar a foto",
+      );
+    } finally {
+      setSavingAvatar(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    setSavingAvatar(true);
+    try {
+      const next = await removeMyAvatar();
+      setUser(next);
+      toast.success("Foto de perfil removida");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível remover a foto",
+      );
+    } finally {
+      setSavingAvatar(false);
+    }
+  }
 
   async function handleChangePassword() {
     if (!currentPassword || !newPassword) {
@@ -282,6 +373,9 @@ function Perfil() {
         <Card className="flex h-full flex-col">
           <CardContent className="flex flex-1 flex-col items-center justify-center p-6 text-center">
             <Avatar className="mb-3 h-24 w-24">
+              {user?.avatar ? (
+                <AvatarImage src={user.avatar} alt={user.name} />
+              ) : null}
               <AvatarFallback className="bg-primary text-2xl text-primary-foreground">
                 {initials}
               </AvatarFallback>
@@ -295,9 +389,45 @@ function Perfil() {
                 CRECI {user.creci.trim()}
               </div>
             ) : null}
-            <Button variant="outline" size="sm" className="mt-4">
-              Alterar foto
-            </Button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept={IMAGE_UPLOAD_ACCEPT}
+              className="sr-only"
+              disabled={savingAvatar}
+              onChange={(event) => handleAvatarPick(event.target.files)}
+            />
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={savingAvatar}
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                {savingAvatar
+                  ? "Enviando..."
+                  : user?.avatar
+                    ? "Trocar foto"
+                    : "Alterar foto"}
+              </Button>
+              {user?.avatar ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={savingAvatar}
+                  onClick={handleRemoveAvatar}
+                >
+                  Remover
+                </Button>
+              ) : null}
+            </div>
+            <p className="mt-3 max-w-56 text-[11px] leading-relaxed text-muted-foreground">
+              JPG, PNG ou WebP · até 5 MB. Ideal:{" "}
+              <span className="font-medium text-foreground">1080 × 1080</span>.
+              Retrato 1080 × 1920 também serve — recortamos o centro.
+            </p>
           </CardContent>
         </Card>
         <Card className="lg:col-span-2">
