@@ -146,7 +146,7 @@ export function modulesFromTenantJson(
 export type TenantPlano = "solo" | "bronze" | "prata" | "ouro";
 
 export const PLANO_MAX_USUARIOS: Record<TenantPlano, number> = {
-  solo: 1,
+  solo: 2,
   bronze: 5,
   prata: 15,
   ouro: 30,

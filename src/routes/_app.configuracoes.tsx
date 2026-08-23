@@ -560,7 +560,7 @@ function Config() {
                 <TabsTrigger value="funil">Funil</TabsTrigger>
               ) : null}
               {showUsuarioExtraTab ? (
-                <TabsTrigger value="usuario-extra">Usuário extra</TabsTrigger>
+                <TabsTrigger value="usuario-extra">Assistente</TabsTrigger>
               ) : null}
             </>
           ) : null}

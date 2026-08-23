@@ -7,7 +7,8 @@ export type Role =
   | "corretor"
   | "analista"
   | "treinee"
-  | "financeiro";
+  | "financeiro"
+  | "assistente";
 export type UserStatus = "ativo" | "inativo";
 
 export type TenantBranding = {

@@ -154,6 +154,7 @@ const ROLE_ROUTES: Record<Role, readonly string[]> = {
     "/configuracoes",
     "/perfil",
   ],
+  assistente: ["/perfil"],
 };
 
 /** No Bronze o gerente acessa só o CRM operacional. */

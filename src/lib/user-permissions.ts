@@ -270,6 +270,7 @@ const ROLE_DEFAULT_ROUTES: Record<Role, readonly string[]> = {
     "/configuracoes",
     "/perfil",
   ],
+  assistente: ["/perfil"],
 };
 
 const GERENTE_BRONZE_ROUTES = [

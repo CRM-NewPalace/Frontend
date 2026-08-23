@@ -1,16 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,43 +16,81 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ApiError } from "@/lib/api";
-import { getSession, type Role } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import {
   createUser,
   deleteUser,
   fetchUsers,
   fetchUsersQuota,
+  updateUser,
   type ApiUser,
   type UsersQuota,
 } from "@/lib/users-api";
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
-import { Copy, Loader2, Trash2, UserPlus } from "lucide-react";
+import {
+  PERMISSION_GROUPS,
+  PERMISSION_MODULES,
+  defaultsFromRole,
+  effectivePermissions,
+  type UserPermissions,
+} from "@/lib/user-permissions";
+import { Copy, KeyRound, Loader2, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
-const ROLE_LABEL: Record<string, string> = {
-  admin: "Administrador",
-  corretor: "Corretor",
-  financeiro: "Financeiro",
-  treinee: "Treinee",
-};
-
 const PASSWORD_HINT = "Mín. 8 caracteres, com maiúscula, minúscula e número.";
+
+/** Módulos que fazem sentido no Solo (sem equipes/usuários/ranking). */
+const SOLO_ASSISTENTE_MODULES = new Set(
+  PERMISSION_MODULES.map((m) => m.key).filter(
+    (key) =>
+      key !== "equipes" &&
+      key !== "usuarios" &&
+      key !== "permissoes" &&
+      key !== "corretores" &&
+      key !== "clientes" &&
+      key !== "clientesPerdidos",
+  ),
+);
 
 function isStrongPassword(value: string) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
 }
 
-function roleBadgeClass(role: Role) {
-  if (role === "admin") {
-    return `${STATUS_CHIP_CLASS} bg-primary/15 text-primary border-primary/30`;
+function emptyDraft(): UserPermissions {
+  const base = defaultsFromRole("assistente");
+  return {
+    modules: { ...base.modules },
+    actions: { ...base.actions },
+  };
+}
+
+function applyModuleToggle(
+  prev: UserPermissions,
+  key: string,
+  value: boolean,
+): UserPermissions {
+  const next: UserPermissions = {
+    modules: { ...prev.modules, [key]: value },
+    actions: { ...prev.actions },
+  };
+  if (key === "leadsPerdidos") next.actions["leads.viewLost"] = value;
+  if (key === "leads") {
+    next.actions["leads.view"] = value;
+    next.actions["leads.create"] = value;
+    next.actions["leads.edit"] = value;
+    // No Solo o assistente precisa ver a carteira do corretor.
+    next.actions["leads.viewOthers"] = value;
   }
-  if (role === "financeiro") {
-    return `${STATUS_CHIP_CLASS} bg-amber-500/15 text-amber-800 border-amber-500/30`;
+  if (key === "financeiro") {
+    next.actions["financeiro.access"] = value;
+    if (value) {
+      next.actions["financeiro.pagar.view"] = true;
+      next.actions["financeiro.receber.view"] = true;
+      next.actions["financeiro.fluxo"] = true;
+    }
   }
-  if (role === "treinee") {
-    return `${STATUS_CHIP_CLASS} bg-emerald-500/15 text-emerald-700 border-emerald-500/30`;
-  }
-  return `${STATUS_CHIP_CLASS} bg-muted text-muted-foreground`;
+  if (key === "comissao") next.actions["financeiro.comissao"] = value;
+  return next;
 }
 
 export function ConfigUsuarioExtraPanel() {
@@ -70,7 +102,10 @@ export function ConfigUsuarioExtraPanel() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("corretor");
+  const [draft, setDraft] = useState<UserPermissions>(() => emptyDraft());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<UserPermissions | null>(null);
+  const [savingPerms, setSavingPerms] = useState(false);
   const [credentials, setCredentials] = useState<{
     name: string;
     email: string;
@@ -79,6 +114,17 @@ export function ConfigUsuarioExtraPanel() {
   const [deleteTarget, setDeleteTarget] = useState<ApiUser | null>(null);
 
   const extras = users.filter((u) => u.id !== session?.id);
+
+  const moduleGroups = useMemo(
+    () =>
+      PERMISSION_GROUPS.map((group) => ({
+        ...group,
+        modules: PERMISSION_MODULES.filter(
+          (m) => m.group === group.id && SOLO_ASSISTENTE_MODULES.has(m.key),
+        ),
+      })).filter((g) => g.modules.length > 0),
+    [],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,6 +149,10 @@ export function ConfigUsuarioExtraPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  function setCreateModule(key: string, value: boolean) {
+    setDraft((prev) => applyModuleToggle(prev, key, value));
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -129,12 +179,9 @@ export function ConfigUsuarioExtraPanel() {
         name: nome,
         email: mail,
         password,
-        role,
+        role: "assistente",
         status: "ativo",
-        financeiroCanView: true,
-        financeiroCanCreate: true,
-        financeiroCanEdit: true,
-        financeiroCanDelete: true,
+        permissions: draft,
       });
       setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
       setCredentials({
@@ -145,8 +192,8 @@ export function ConfigUsuarioExtraPanel() {
       setName("");
       setEmail("");
       setPassword("");
-      setRole("corretor");
-      toast.success("Usuário extra cadastrado.");
+      setDraft(emptyDraft());
+      toast.success("Assistente cadastrado.");
       void fetchUsersQuota()
         .then(setQuota)
         .catch(() => undefined);
@@ -161,6 +208,33 @@ export function ConfigUsuarioExtraPanel() {
     }
   }
 
+  function openEdit(user: ApiUser) {
+    setEditingId(user.id);
+    setEditDraft(effectivePermissions(user.role, user.permissions));
+  }
+
+  async function saveEditPerms() {
+    if (!editingId || !editDraft) return;
+    setSavingPerms(true);
+    try {
+      const updated = await updateUser(editingId, { permissions: editDraft });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
+      );
+      toast.success("Permissões atualizadas.");
+      setEditingId(null);
+      setEditDraft(null);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível salvar as permissões.",
+      );
+    } finally {
+      setSavingPerms(false);
+    }
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return;
     const target = deleteTarget;
@@ -168,6 +242,10 @@ export function ConfigUsuarioExtraPanel() {
     try {
       await deleteUser(target.id);
       setUsers((prev) => prev.filter((u) => u.id !== target.id));
+      if (editingId === target.id) {
+        setEditingId(null);
+        setEditDraft(null);
+      }
       toast.success(`${target.name} excluído.`);
       void fetchUsersQuota()
         .then(setQuota)
@@ -192,19 +270,58 @@ export function ConfigUsuarioExtraPanel() {
 
   const canCreate = !quota || quota.restantes > 0;
 
+  function renderModuleSwitches(
+    perms: UserPermissions,
+    onToggle: (key: string, value: boolean) => void,
+    disabled?: boolean,
+  ) {
+    return (
+      <div className="space-y-4">
+        {moduleGroups.map((group) => (
+          <div key={group.id} className="space-y-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {group.label}
+            </h4>
+            <div className="space-y-2 rounded-lg border p-3">
+              {group.modules.map((mod) => (
+                <div
+                  key={mod.key}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <Label
+                    htmlFor={`perm-${mod.key}`}
+                    className="text-sm font-normal"
+                  >
+                    {mod.label}
+                  </Label>
+                  <Switch
+                    id={`perm-${mod.key}`}
+                    checked={perms.modules[mod.key] === true}
+                    onCheckedChange={(v) => onToggle(mod.key, v)}
+                    disabled={disabled}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <UserPlus className="h-4 w-4 text-primary" />
-            Usuário extra
+            Assistente
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            O plano Solo tem um administrador (você). Se precisar, cadastre um
-            usuário extra aqui — sem as telas de equipe.
+            No Solo você não cria corretor, gerente ou treinee. Cadastre um
+            assistente e libere só os módulos que ele pode usar.
           </p>
           {quota ? (
             <p className="text-xs text-muted-foreground">
@@ -219,14 +336,14 @@ export function ConfigUsuarioExtraPanel() {
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : extras.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nenhum usuário extra cadastrado.
+              Nenhum assistente cadastrado.
             </p>
           ) : (
             <div className="space-y-2">
               {extras.map((u) => (
                 <div
                   key={u.id}
-                  className="flex items-center gap-3 rounded-lg border px-3 py-2"
+                  className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{u.name}</p>
@@ -234,9 +351,21 @@ export function ConfigUsuarioExtraPanel() {
                       {u.email}
                     </p>
                   </div>
-                  <Badge variant="outline" className={roleBadgeClass(u.role)}>
-                    {ROLE_LABEL[u.role] ?? u.role}
+                  <Badge
+                    variant="outline"
+                    className={`${STATUS_CHIP_CLASS} bg-sky-500/15 text-sky-800 border-sky-500/30`}
+                  >
+                    Assistente
                   </Badge>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEdit(u)}
+                  >
+                    <KeyRound className="mr-1 h-3.5 w-3.5" />
+                    Permissões
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -251,12 +380,55 @@ export function ConfigUsuarioExtraPanel() {
               ))}
             </div>
           )}
+
+          {editingId && editDraft ? (
+            <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">
+                  Permissões do assistente
+                </h3>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingId(null);
+                      setEditDraft(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={savingPerms}
+                    onClick={() => void saveEditPerms()}
+                  >
+                    {savingPerms ? (
+                      <>
+                        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                        Salvando…
+                      </>
+                    ) : (
+                      "Salvar"
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {renderModuleSwitches(editDraft, (key, value) =>
+                setEditDraft((prev) =>
+                  prev ? applyModuleToggle(prev, key, value) : prev,
+                ),
+              )}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Cadastrar usuário</CardTitle>
+          <CardTitle className="text-base">Cadastrar assistente</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={(e) => void handleCreate(e)}>
@@ -282,7 +454,7 @@ export function ConfigUsuarioExtraPanel() {
                   disabled={!canCreate}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="extra-senha">Senha inicial</Label>
                 <Input
                   id="extra-senha"
@@ -294,24 +466,21 @@ export function ConfigUsuarioExtraPanel() {
                 />
                 <p className="text-xs text-muted-foreground">{PASSWORD_HINT}</p>
               </div>
-              <div className="space-y-1.5">
-                <Label>Perfil</Label>
-                <Select
-                  value={role}
-                  onValueChange={(v) => setRole(v as Role)}
-                  disabled={!canCreate}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="corretor">Corretor</SelectItem>
-                    <SelectItem value="financeiro">Financeiro</SelectItem>
-                    <SelectItem value="treinee">Treinee</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
+
+            <div className="space-y-2">
+              <Label>Módulos liberados</Label>
+              <p className="text-xs text-muted-foreground">
+                Marque o que o assistente poderá acessar. Você pode alterar
+                depois.
+              </p>
+              {renderModuleSwitches(
+                draft,
+                setCreateModule,
+                !canCreate,
+              )}
+            </div>
+
             <div className="flex justify-end">
               <Button type="submit" disabled={saving || !canCreate}>
                 {saving ? (
@@ -320,7 +489,7 @@ export function ConfigUsuarioExtraPanel() {
                     Salvando…
                   </>
                 ) : (
-                  "Cadastrar"
+                  "Cadastrar assistente"
                 )}
               </Button>
             </div>
@@ -382,7 +551,7 @@ export function ConfigUsuarioExtraPanel() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir assistente?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
                 ? `Tem certeza que deseja excluir ${deleteTarget.name}? Esta ação não pode ser desfeita.`

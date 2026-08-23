@@ -173,6 +173,7 @@ const ROLE_LABEL: Record<Role, string> = {
   analista: "Analista",
   treinee: "Treinee",
   financeiro: "Financeiro",
+  assistente: "Assistente",
 };
 
 const STATUS_LABEL: Record<UserStatus, string> = {

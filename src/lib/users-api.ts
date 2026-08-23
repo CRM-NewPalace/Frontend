@@ -137,6 +137,7 @@ export type CreateUserInput = {
   financeiroCanCreate?: boolean;
   financeiroCanEdit?: boolean;
   financeiroCanDelete?: boolean;
+  permissions?: UserPermissions;
 };
 
 export type UpdateUserInput = {

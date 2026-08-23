@@ -205,12 +205,15 @@ export function ComercialFunilBoard({
 }) {
   const isClientesFunil = tipoFiltro === "cliente";
   const user = getSession();
+  const isSolo = user?.tenant?.plano === "solo";
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
   const canWriteTriagem = roleCanWriteTriagem(user?.role);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isGerente = user?.role === "gerente";
   const isManager = canSeeTeam;
+  /** Solo não tem equipes/corretores no filtro — é carteira própria. */
+  const showTeamFilters = !isSolo && !isClientesFunil;
   const {
     leads: allLeads,
     assignees,
@@ -260,7 +263,7 @@ export function ComercialFunilBoard({
   }, []);
 
   useEffect(() => {
-    if (!isAdmin && !isGerente) return;
+    if (isSolo || (!isAdmin && !isGerente)) return;
     let cancelled = false;
     void fetchEquipes()
       .then((list) => {
@@ -272,7 +275,7 @@ export function ComercialFunilBoard({
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, isGerente]);
+  }, [isAdmin, isGerente, isSolo]);
 
   const corretorOptions = useMemo(() => {
     let list = assignees.filter((a) => !a.role || isCorretorLike(a.role));
@@ -1012,7 +1015,7 @@ export function ComercialFunilBoard({
             ? "Carregando funil..."
             : isClientesFunil
               ? "Sua carteira de clientes no funil — arraste os cards para mover entre etapas."
-              : isCorretor
+              : isSolo || isCorretor
                 ? "Seus leads no funil — inclusive os em atraso. Arraste os cards para mover entre etapas."
                 : isGerente
                   ? "Funil da sua equipe — seus leads e os da equipe, inclusive os em atraso."
@@ -1020,7 +1023,7 @@ export function ComercialFunilBoard({
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {!isClientesFunil && isAdmin && (
+            {showTeamFilters && isAdmin && (
               <Select
                 value={filterEquipeId}
                 onValueChange={(v) => {
@@ -1042,7 +1045,7 @@ export function ComercialFunilBoard({
                 </SelectContent>
               </Select>
             )}
-            {!isClientesFunil && isManager && (
+            {showTeamFilters && isManager && (
               <Popover
                 open={corretorFilterOpen}
                 onOpenChange={setCorretorFilterOpen}
