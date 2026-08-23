@@ -94,6 +94,7 @@ function Page() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
+  const isSolo = user?.tenant?.plano === "solo";
   const [metas, setMetas] = useState<Meta[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [usuarios, setUsuarios] = useState<ApiUser[]>([]);
@@ -121,13 +122,15 @@ function Page() {
       const [itens, equipesAtuais, usuariosAtuais, assigneesAtuais] =
         await Promise.all([
           fetchMetas(),
-          isAdmin || isGerente ? fetchEquipes() : Promise.resolve([]),
-          isAdmin || isGerente
+          !isSolo && (isAdmin || isGerente)
+            ? fetchEquipes()
+            : Promise.resolve([]),
+          !isSolo && (isAdmin || isGerente)
             ? fetchUsers({ status: "ativo", page: 1, limit: 100 })
                 .then((res) => res.data)
                 .catch(() => [] as ApiUser[])
             : Promise.resolve([]),
-          isAdmin || isGerente
+          !isSolo && (isAdmin || isGerente)
             ? fetchLeadAssignees().catch(() => [] as LeadAssignee[])
             : Promise.resolve([]),
         ]);
@@ -144,7 +147,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, isGerente]);
+  }, [isAdmin, isGerente, isSolo]);
 
   useEffect(() => {
     void load();
@@ -318,7 +321,7 @@ function Page() {
   function openCreate() {
     setEditing(null);
     setForm({
-      escopo: isAdmin ? "imobiliaria" : "corretor",
+      escopo: isSolo ? "imobiliaria" : isAdmin ? "imobiliaria" : "corretor",
       corretorId: "",
       gerenteId: "",
       tipo: "vendas",
@@ -364,13 +367,14 @@ function Page() {
     }
     if (!editing) {
       if (
+        !isSolo &&
         (isGerente || (isAdmin && form.escopo === "corretor")) &&
         !form.corretorId
       ) {
         toast.error("Selecione o corretor que receberá a meta.");
         return;
       }
-      if (isAdmin && form.escopo === "gerente" && !form.gerenteId) {
+      if (!isSolo && isAdmin && form.escopo === "gerente" && !form.gerenteId) {
         toast.error("Selecione o gerente que receberá a meta.");
         return;
       }
@@ -383,11 +387,14 @@ function Page() {
         toast.success("Meta atualizada.");
       } else {
         await createMeta({
-          ...(isAdmin ? { escopo: form.escopo } : {}),
-          ...(form.escopo === "corretor" && (isAdmin || isGerente)
+          ...(isAdmin && !isSolo ? { escopo: form.escopo } : {}),
+          ...(isSolo ? { escopo: "imobiliaria" as const } : {}),
+          ...(!isSolo &&
+          form.escopo === "corretor" &&
+          (isAdmin || isGerente)
             ? { corretorId: form.corretorId }
             : {}),
-          ...(isAdmin && form.escopo === "gerente"
+          ...(!isSolo && isAdmin && form.escopo === "gerente"
             ? { gerenteId: form.gerenteId }
             : {}),
           tipo: form.tipo,
@@ -445,25 +452,34 @@ function Page() {
 
   const gestorTabs: Array<{ id: MetasTab; label: string }> = [
     { id: "todas", label: "Todas" },
-    ...(isAdmin ? [{ id: "imobiliaria" as const, label: "Imobiliária" }] : []),
-    { id: "gerente", label: "Gerentes" },
-    { id: "corretor", label: "Corretores" },
+    ...(isAdmin && !isSolo
+      ? [{ id: "imobiliaria" as const, label: "Imobiliária" }]
+      : []),
+    ...(!isSolo
+      ? [
+          { id: "gerente" as const, label: "Gerentes" },
+          { id: "corretor" as const, label: "Corretores" },
+        ]
+      : []),
   ];
   const corretorTabs: Array<{ id: MetasTab; label: string }> = [
     { id: "todas", label: "Todas" },
     { id: "atribuidas", label: "Atribuídas" },
     { id: "pessoais", label: "Pessoais" },
   ];
-  const tabs = isGestor ? gestorTabs : corretorTabs;
+  const tabs = isSolo ? [] : isGestor ? gestorTabs : corretorTabs;
   const showImobiliaria =
+    !isSolo &&
     isGestor &&
     (tab === "imobiliaria" ||
       (tab === "todas" && filteredImobiliaria.length > 0));
   const showGerentes =
+    !isSolo &&
     isGestor &&
     (tab === "gerente" ||
       (tab === "todas" && filteredGruposGerentes.length > 0));
   const showCorretores =
+    !isSolo &&
     isGestor &&
     (tab === "corretor" ||
       (tab === "todas" && filteredGruposCorretores.length > 0));
@@ -473,11 +489,13 @@ function Page() {
       <PageHeader
         title="Metas"
         description={
-          isAdmin
-            ? "Defina metas da imobiliária, por gerente ou por corretor."
-            : isGerente
-              ? "Defina e acompanhe as metas da sua equipe."
-              : "Acompanhe suas metas pessoais e as definidas pela gerência."
+          isSolo
+            ? "Defina tipo, valor e período das suas metas."
+            : isAdmin
+              ? "Defina metas da imobiliária, por gerente ou por corretor."
+              : isGerente
+                ? "Defina e acompanhe as metas da sua equipe."
+                : "Acompanhe suas metas pessoais e as definidas pela gerência."
         }
         actions={
           canCreate ? (
@@ -486,16 +504,19 @@ function Page() {
               onClick={openCreate}
             >
               <Plus className="w-4 h-4 mr-1" />
-              {isAdmin
+              {isSolo
                 ? "Nova meta"
-                : isGerente
-                  ? "Definir meta"
-                  : "Minha meta"}
+                : isAdmin
+                  ? "Nova meta"
+                  : isGerente
+                    ? "Definir meta"
+                    : "Minha meta"}
             </Button>
           ) : undefined
         }
       />
 
+      {tabs.length > 0 ? (
       <div className="mb-4 inline-flex rounded-full border bg-muted/40 p-1">
         {tabs.map((item) => (
           <button
@@ -513,6 +534,7 @@ function Page() {
           </button>
         ))}
       </div>
+      ) : null}
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -588,7 +610,16 @@ function Page() {
             </div>
           </div>
 
-          {!isGestor ? (
+          {isSolo ? (
+            <MetasPorOrigem
+              metas={filteredMetas}
+              vista={vista}
+              flat
+              canEdit={canEditMeta}
+              onEdit={openEdit}
+              onRemove={remove}
+            />
+          ) : !isGestor ? (
             <MetasPorOrigem
               metas={filteredMetas.filter((meta) => meta.escopo === "corretor")}
               vista={vista}
@@ -622,12 +653,16 @@ function Page() {
         title={editing ? "Editar meta" : "Nova meta"}
         description={
           editing
-            ? "Ajuste o valor. Tipo, período e responsável não mudam depois de criada."
-            : isAdmin
-              ? "Defina o responsável, o tipo e o período da meta."
-              : isGerente
-                ? "A meta será atribuída ao corretor selecionado."
-                : "Defina uma meta pessoal para acompanhar o período."
+            ? isSolo
+              ? "Ajuste o valor. Tipo e período não mudam depois de criada."
+              : "Ajuste o valor. Tipo, período e responsável não mudam depois de criada."
+            : isSolo
+              ? "Defina o tipo, o período e o valor da meta."
+              : isAdmin
+                ? "Defina o responsável, o tipo e o período da meta."
+                : isGerente
+                  ? "A meta será atribuída ao corretor selecionado."
+                  : "Defina uma meta pessoal para acompanhar o período."
         }
         footer={
           <FormDialogActions>
@@ -659,7 +694,7 @@ function Page() {
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <FormDialogBody>
-            {isAdmin && !editing ? (
+            {isAdmin && !isSolo && !editing ? (
               <FormSection
                 title="Responsável"
                 icon={<Users className="w-4 h-4 text-primary" />}

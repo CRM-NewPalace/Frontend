@@ -220,12 +220,15 @@ export function MetasGestorBoard({
 export function MetasPorOrigem({
   metas,
   vista = "cards",
+  flat = false,
   canEdit,
   onEdit,
   onRemove,
 }: {
   metas: Meta[];
   vista?: MetasVista;
+  /** Solo: lista única sem escopo/origem de equipe. */
+  flat?: boolean;
 } & MetaActions) {
   const metasGerencia = metas.filter(
     (meta) => meta.origem === "gerente" || meta.origem === "admin",
@@ -239,11 +242,36 @@ export function MetasPorOrigem({
       <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
         <MetasTable
           metas={metas}
+          showResponsavel={!flat}
           emptyText="Nenhuma meta neste recorte."
           canEdit={canEdit}
           onEdit={onEdit}
           onRemove={onRemove}
         />
+      </div>
+    );
+  }
+
+  if (flat) {
+    return (
+      <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+        <PanelBlock
+          heading={
+            <SectionHeading
+              icon={Target}
+              title="Suas metas"
+              count={metas.length}
+            />
+          }
+        >
+          <MetaList
+            metas={metas}
+            canEdit={canEdit}
+            onEdit={onEdit}
+            onRemove={onRemove}
+            hideEscopo
+          />
+        </PanelBlock>
       </div>
     );
   }
@@ -299,8 +327,10 @@ function MetaList({
   canEdit,
   onEdit,
   onRemove,
+  hideEscopo = false,
 }: {
   metas: Meta[];
+  hideEscopo?: boolean;
 } & MetaActions) {
   return (
     <div className="flex flex-col gap-2">
@@ -311,6 +341,7 @@ function MetaList({
           editavel={canEdit(meta)}
           onEdit={onEdit}
           onRemove={onRemove}
+          hideEscopo={hideEscopo}
         />
       ))}
     </div>
@@ -461,11 +492,13 @@ function MetaCard({
   editavel,
   onEdit,
   onRemove,
+  hideEscopo = false,
 }: {
   meta: Meta;
   editavel: boolean;
   onEdit: (meta: Meta) => void;
   onRemove: (meta: Meta) => void;
+  hideEscopo?: boolean;
 }) {
   const Icon = META_TIPO_ICON[meta.tipo];
   const concluida = meta.percentual >= 100;
@@ -500,7 +533,7 @@ function MetaCard({
               <CalendarDays className="h-3 w-3 text-primary" />
               {META_PERIODO_LABEL[meta.periodo]}
             </span>
-            {meta.escopo !== "corretor" ? (
+            {!hideEscopo && meta.escopo !== "corretor" && meta.escopo !== "imobiliaria" ? (
               <span className="hidden truncate text-[11px] text-muted-foreground sm:inline">
                 {META_ESCOPO_LABEL[meta.escopo]}
               </span>

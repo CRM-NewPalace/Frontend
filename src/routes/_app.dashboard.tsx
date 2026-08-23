@@ -1,8 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { PageHeader } from "@/components/app-shell";
 import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -43,7 +48,6 @@ import {
   AlertTriangle,
   Banknote,
   BriefcaseBusiness,
-  CalendarCheck,
   CheckCircle2,
   ClipboardList,
   Clock3,
@@ -62,6 +66,7 @@ import { SemConexao } from "@/components/sem-conexao";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { SOFT_BTN } from "@/lib/soft-btn";
+import { cn } from "@/lib/utils";
 
 const chartConfig = {
   total: { label: "Leads", color: "hsl(var(--primary))" },
@@ -190,6 +195,80 @@ function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+const KPI_EMBED = "shadow-none border-border/50 bg-muted/35";
+
+function DashboardPanel({
+  title,
+  description,
+  action,
+  children,
+  className,
+  guia,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  guia?: string;
+}) {
+  return (
+    <section
+      data-guia={guia}
+      className={cn(
+        "overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm",
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-border/50 px-4 py-3 sm:px-5">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold tracking-tight text-module-title">
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      <div className="p-3 sm:p-4">{children}</div>
+    </section>
+  );
+}
+
+type PanelHref =
+  | "/leads"
+  | "/leads-perdidos"
+  | "/clientes"
+  | "/vendas"
+  | "/documentacao"
+  | "/financeiro/comissao"
+  | "/agenda"
+  | "/metas"
+  | "/funil"
+  | "/corretores";
+
+function PanelLink({
+  to,
+  children,
+}: {
+  to: PanelHref;
+  children: ReactNode;
+}) {
+  return (
+    <Button
+      asChild
+      variant="outline"
+      size="sm"
+      className={cn("h-8 text-xs", SOFT_BTN)}
+    >
+      <Link to={to}>{children}</Link>
+    </Button>
+  );
+}
+
 /** Ano/mês corrente no fuso de Brasília (UTC−3). */
 function agoraBrasil() {
   const brasil = new Date(Date.now() - 3 * 60 * 60 * 1000);
@@ -247,6 +326,7 @@ function DashboardAdminView() {
   const [summary, setSummary] = useState<DashboardAdmin | null>(null);
   const [loading, setLoading] = useState(true);
   const isGerente = user?.role === "gerente";
+  const isSolo = user?.tenant?.plano === "solo";
 
   const anosDisponiveis = useMemo(() => {
     const list: number[] = [];
@@ -375,7 +455,7 @@ function DashboardAdminView() {
   }
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Dashboard"
         description={`Visão gerencial · ${mesLabel} · comparação com o mês anterior.`}
@@ -383,247 +463,251 @@ function DashboardAdminView() {
       />
 
       {loading ? (
-        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Atualizando indicadores…
         </div>
       ) : null}
 
-      <section
-        data-guia="dashboard-kpis"
-        className="grid gap-3 grid-cols-2 xl:grid-cols-4"
+      <DashboardPanel
+        guia="dashboard-kpis"
+        title="Entrada do mês"
+        description={`Novos leads e VGV em ${mesLabel}.`}
+        action={<PanelLink to="/leads">Ver leads</PanelLink>}
       >
-        <FinanceKpiCard
-          label="Novos leads (mês)"
-          value={summary.entradas.mes.valor}
-          evolucaoPct={summary.entradas.mes.evolucaoPct}
-          valorMesAnterior={summary.entradas.mes.valorMesAnterior}
-          icon={TrendingUp}
-          tone="teal"
-          format="number"
-          href="/leads"
-        />
-        <FinanceKpiCard
-          label="Novos hoje"
-          value={summary.entradas.hoje}
-          icon={UsersRound}
-          tone="blue"
-          format="number"
-          href="/leads"
-        />
-        <FinanceKpiCard
-          label="Novos na semana"
-          value={summary.entradas.semana}
-          icon={ClipboardList}
-          tone="violet"
-          format="number"
-        />
-        <FinanceKpiCard
-          label="VGV vendido (mês)"
-          value={summary.conversao.vgv.valor}
-          evolucaoPct={summary.conversao.vgv.evolucaoPct}
-          valorMesAnterior={summary.conversao.vgv.valorMesAnterior}
-          icon={Wallet}
-          tone="emerald"
-          href="/vendas"
-        />
-      </section>
-
-      <section className="mt-5 grid gap-3 grid-cols-2 xl:grid-cols-4">
-        <FinanceKpiCard
-          label="Sem corretor atribuído"
-          value={summary.atencao.semDono}
-          icon={UserX}
-          tone="orange"
-          format="number"
-          href="/leads"
-          search={{ distribuicao: "chegaram" }}
-        />
-        <FinanceKpiCard
-          label={`Parados (${summary.atencao.diasParado}d)`}
-          value={summary.atencao.parados}
-          icon={AlertTriangle}
-          tone="rose"
-          format="number"
-          href="/leads"
-          search={{ parados: "1" }}
-        />
-        <FinanceKpiCard
-          label="Perdidos no mês"
-          value={summary.perdidos.mes.valor}
-          evolucaoPct={summary.perdidos.mes.evolucaoPct}
-          valorMesAnterior={summary.perdidos.mes.valorMesAnterior}
-          invertEvolucao
-          icon={UserX}
-          tone="red"
-          format="number"
-          href="/leads-perdidos"
-        />
-        <FinanceKpiCard
-          label="Conversão (doc → venda)"
-          value={summary.conversao.taxa.valor}
-          evolucaoPct={summary.conversao.taxa.evolucaoPct}
-          valorMesAnterior={summary.conversao.taxa.valorMesAnterior}
-          icon={Goal}
-          tone="teal"
-          format="percent"
-        />
-      </section>
-
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-module-title">
-            Pipeline de documentação
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Processos cadastrados em {mesLabel}.
-          </p>
+        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          <FinanceKpiCard
+            label="Novos leads (mês)"
+            value={summary.entradas.mes.valor}
+            evolucaoPct={summary.entradas.mes.evolucaoPct}
+            valorMesAnterior={summary.entradas.mes.valorMesAnterior}
+            icon={TrendingUp}
+            tone="teal"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="Novos hoje"
+            value={summary.entradas.hoje}
+            icon={UsersRound}
+            tone="blue"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="Novos na semana"
+            value={summary.entradas.semana}
+            icon={ClipboardList}
+            tone="violet"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="VGV vendido (mês)"
+            value={summary.conversao.vgv.valor}
+            evolucaoPct={summary.conversao.vgv.evolucaoPct}
+            valorMesAnterior={summary.conversao.vgv.valorMesAnterior}
+            icon={Wallet}
+            tone="emerald"
+            compact
+            className={KPI_EMBED}
+          />
         </div>
-        <Button asChild variant="outline" size="sm" className={SOFT_BTN}>
-          <Link to="/documentacao">Ver documentação</Link>
-        </Button>
-      </div>
-      <section className="mt-3 grid gap-3 grid-cols-1 sm:grid-cols-3">
-        <FinanceKpiCard
-          label="Aprovadas"
-          value={summary.documentacaoPipeline.aprovadas.valor}
-          evolucaoPct={summary.documentacaoPipeline.aprovadas.evolucaoPct}
-          valorMesAnterior={
-            summary.documentacaoPipeline.aprovadas.valorMesAnterior
-          }
-          icon={CheckCircle2}
-          tone="emerald"
-          format="number"
-          href="/documentacao"
-          search={{ status: "aprovado" }}
-        />
-        <FinanceKpiCard
-          label="Reprovadas"
-          value={summary.documentacaoPipeline.reprovadas.valor}
-          evolucaoPct={summary.documentacaoPipeline.reprovadas.evolucaoPct}
-          valorMesAnterior={
-            summary.documentacaoPipeline.reprovadas.valorMesAnterior
-          }
-          invertEvolucao
-          icon={XCircle}
-          tone="red"
-          format="number"
-          href="/documentacao"
-          search={{ status: "reprovado" }}
-        />
-        <FinanceKpiCard
-          label="Em análise"
-          value={summary.documentacaoPipeline.emAnalise.valor}
-          evolucaoPct={summary.documentacaoPipeline.emAnalise.evolucaoPct}
-          valorMesAnterior={
-            summary.documentacaoPipeline.emAnalise.valorMesAnterior
-          }
-          icon={Clock3}
-          tone="orange"
-          format="number"
-          href="/documentacao"
-          search={{ status: "analise" }}
-        />
-      </section>
+      </DashboardPanel>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-module-title">
-            {isGerente ? "Sua comissão do mês" : "Comissões do mês"}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            {isGerente
+      <DashboardPanel
+        title="Precisa de atenção"
+        description="Leads sem dono, parados e perdidos neste período."
+        action={<PanelLink to="/leads">Ver leads</PanelLink>}
+      >
+        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          <FinanceKpiCard
+            label="Sem corretor atribuído"
+            value={summary.atencao.semDono}
+            icon={UserX}
+            tone="orange"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label={`Parados (${summary.atencao.diasParado}d)`}
+            value={summary.atencao.parados}
+            icon={AlertTriangle}
+            tone="rose"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="Perdidos no mês"
+            value={summary.perdidos.mes.valor}
+            evolucaoPct={summary.perdidos.mes.evolucaoPct}
+            valorMesAnterior={summary.perdidos.mes.valorMesAnterior}
+            invertEvolucao
+            icon={UserX}
+            tone="red"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="Conversão (doc → venda)"
+            value={summary.conversao.taxa.valor}
+            evolucaoPct={summary.conversao.taxa.evolucaoPct}
+            valorMesAnterior={summary.conversao.taxa.valorMesAnterior}
+            icon={Goal}
+            tone="teal"
+            format="percent"
+            compact
+            className={KPI_EMBED}
+          />
+        </div>
+      </DashboardPanel>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DashboardPanel
+          title="Pipeline de documentação"
+          description={`Processos cadastrados em ${mesLabel}.`}
+          action={<PanelLink to="/documentacao">Ver documentação</PanelLink>}
+        >
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            <FinanceKpiCard
+              label="Aprovadas"
+              value={summary.documentacaoPipeline.aprovadas.valor}
+              evolucaoPct={summary.documentacaoPipeline.aprovadas.evolucaoPct}
+              valorMesAnterior={
+                summary.documentacaoPipeline.aprovadas.valorMesAnterior
+              }
+              icon={CheckCircle2}
+              tone="emerald"
+              format="number"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Reprovadas"
+              value={summary.documentacaoPipeline.reprovadas.valor}
+              evolucaoPct={summary.documentacaoPipeline.reprovadas.evolucaoPct}
+              valorMesAnterior={
+                summary.documentacaoPipeline.reprovadas.valorMesAnterior
+              }
+              invertEvolucao
+              icon={XCircle}
+              tone="red"
+              format="number"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Em análise"
+              value={summary.documentacaoPipeline.emAnalise.valor}
+              evolucaoPct={summary.documentacaoPipeline.emAnalise.evolucaoPct}
+              valorMesAnterior={
+                summary.documentacaoPipeline.emAnalise.valorMesAnterior
+              }
+              icon={Clock3}
+              tone="orange"
+              format="number"
+              compact
+              className={KPI_EMBED}
+            />
+          </div>
+        </DashboardPanel>
+
+        <DashboardPanel
+          guia="dashboard-comissao"
+          title={isGerente ? "Sua comissão do mês" : "Comissões do mês"}
+          description={
+            isGerente
               ? `Valor a receber nas vendas de ${mesLabel} (sua fatia de gerente).`
-              : `Comissão líquida lançada nas vendas de ${mesLabel}.`}
-          </p>
-        </div>
-        <Button asChild variant="outline" size="sm" className={SOFT_BTN}>
-          <Link to="/financeiro/comissao">Ver comissões</Link>
-        </Button>
+              : `Comissão líquida lançada nas vendas de ${mesLabel}.`
+          }
+          action={<PanelLink to="/financeiro/comissao">Ver comissões</PanelLink>}
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <FinanceKpiCard
+              label={isGerente ? "A receber" : "Total líquido"}
+              value={
+                isGerente
+                  ? summary.comissao.aReceber.valor
+                  : summary.comissao.total.valor
+              }
+              evolucaoPct={
+                isGerente
+                  ? summary.comissao.aReceber.evolucaoPct
+                  : summary.comissao.total.evolucaoPct
+              }
+              valorMesAnterior={
+                isGerente
+                  ? summary.comissao.aReceber.valorMesAnterior
+                  : summary.comissao.total.valorMesAnterior
+              }
+              icon={Percent}
+              tone="violet"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Pendentes"
+              value={summary.comissao.pendente.valor}
+              evolucaoPct={summary.comissao.pendente.evolucaoPct}
+              valorMesAnterior={summary.comissao.pendente.valorMesAnterior}
+              icon={Clock3}
+              tone="orange"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Liberadas"
+              value={summary.comissao.liberada.valor}
+              evolucaoPct={summary.comissao.liberada.evolucaoPct}
+              valorMesAnterior={summary.comissao.liberada.valorMesAnterior}
+              icon={Banknote}
+              tone="blue"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Pagas"
+              value={summary.comissao.paga.valor}
+              evolucaoPct={summary.comissao.paga.evolucaoPct}
+              valorMesAnterior={summary.comissao.paga.valorMesAnterior}
+              icon={CheckCircle2}
+              tone="emerald"
+              compact
+              className={KPI_EMBED}
+            />
+          </div>
+        </DashboardPanel>
       </div>
-      <section
-        data-guia="dashboard-comissao"
-        className="mt-3 grid gap-3 grid-cols-2 xl:grid-cols-4"
-      >
-        <FinanceKpiCard
-          label={isGerente ? "A receber" : "Total líquido"}
-          value={
-            isGerente
-              ? summary.comissao.aReceber.valor
-              : summary.comissao.total.valor
-          }
-          evolucaoPct={
-            isGerente
-              ? summary.comissao.aReceber.evolucaoPct
-              : summary.comissao.total.evolucaoPct
-          }
-          valorMesAnterior={
-            isGerente
-              ? summary.comissao.aReceber.valorMesAnterior
-              : summary.comissao.total.valorMesAnterior
-          }
-          icon={Percent}
-          tone="violet"
-          href="/financeiro/comissao"
-        />
-        <FinanceKpiCard
-          label="Pendentes"
-          value={summary.comissao.pendente.valor}
-          evolucaoPct={summary.comissao.pendente.evolucaoPct}
-          valorMesAnterior={summary.comissao.pendente.valorMesAnterior}
-          icon={Clock3}
-          tone="orange"
-          href="/financeiro/comissao"
-        />
-        <FinanceKpiCard
-          label="Liberadas"
-          value={summary.comissao.liberada.valor}
-          evolucaoPct={summary.comissao.liberada.evolucaoPct}
-          valorMesAnterior={summary.comissao.liberada.valorMesAnterior}
-          icon={Banknote}
-          tone="blue"
-          href="/financeiro/comissao"
-        />
-        <FinanceKpiCard
-          label="Pagas"
-          value={summary.comissao.paga.valor}
-          evolucaoPct={summary.comissao.paga.evolucaoPct}
-          valorMesAnterior={summary.comissao.paga.valorMesAnterior}
-          icon={CheckCircle2}
-          tone="emerald"
-          href="/financeiro/comissao"
-        />
-      </section>
 
       <section
         data-guia="dashboard-funil"
-        className="mt-5 grid gap-4 min-w-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]"
+        className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]"
       >
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-base">Funil geral</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Leads ativos nas etapas do funil de vendas.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <FunnelBarChart data={funnelData} />
-          </CardContent>
-        </Card>
+        <DashboardPanel
+          title="Funil geral"
+          description="Leads ativos nas etapas do funil de vendas."
+          action={<PanelLink to="/funil">Ver funil</PanelLink>}
+        >
+          <FunnelBarChart data={funnelData} />
+        </DashboardPanel>
 
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="px-4 sm:px-6">
-            <CardTitle className="text-base">Conversão do mês</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              % das documentações do mês que viraram venda (vs mês anterior).
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4 px-4 sm:px-6">
-            <div className="rounded-xl border bg-secondary/40 p-3 sm:p-4 text-center">
+        <DashboardPanel
+          title="Conversão do mês"
+          description="% das documentações do mês que viraram venda (vs mês anterior)."
+          action={<PanelLink to="/documentacao">Ver documentação</PanelLink>}
+        >
+          <div className="space-y-4">
+            <div className="rounded-xl border bg-secondary/40 p-3 text-center sm:p-4">
               <div className="text-xs font-semibold uppercase tracking-wider text-primary">
                 Taxa de conversão
               </div>
-              <div className="mt-1 text-3xl sm:text-4xl font-bold tabular-nums text-foreground">
+              <div className="mt-1 text-3xl font-bold tabular-nums text-foreground sm:text-4xl">
                 {summary.conversao.taxa.valor.toLocaleString("pt-BR", {
                   maximumFractionDigits: 1,
                 })}
@@ -634,7 +718,7 @@ function DashboardAdminView() {
                 previous={summary.conversao.taxa.valorMesAnterior}
                 className="mt-2 justify-center"
               />
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed px-1">
+              <p className="mt-2 px-1 text-xs leading-relaxed text-muted-foreground">
                 {summary.conversao.vendas.valor} venda
                 {summary.conversao.vendas.valor === 1 ? "" : "s"} de{" "}
                 {summary.conversao.documentacoes.valor}{" "}
@@ -644,7 +728,7 @@ function DashboardAdminView() {
                 do mês
               </p>
               {summary.entradas.semana > summary.entradas.mes.valor ? (
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300 leading-relaxed px-1">
+                <p className="mt-1 px-1 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
                   Nesta semana há {summary.entradas.semana} novos — parte pode
                   ser de dias do mês passado (a semana começa na segunda).
                 </p>
@@ -661,7 +745,7 @@ function DashboardAdminView() {
                     className="mt-0.5"
                   />
                 </div>
-                <span className="shrink-0 font-semibold tabular-nums pt-0.5">
+                <span className="shrink-0 pt-0.5 font-semibold tabular-nums">
                   {summary.conversao.documentacoes.valor}
                 </span>
               </div>
@@ -674,7 +758,7 @@ function DashboardAdminView() {
                     className="mt-0.5"
                   />
                 </div>
-                <span className="shrink-0 font-semibold tabular-nums pt-0.5">
+                <span className="shrink-0 pt-0.5 font-semibold tabular-nums">
                   {summary.conversao.vendas.valor}
                 </span>
               </div>
@@ -687,25 +771,24 @@ function DashboardAdminView() {
                     className="mt-0.5"
                   />
                 </div>
-                <span className="shrink-0 max-w-[45%] text-right font-semibold tabular-nums text-sm pt-0.5 break-all">
+                <span className="max-w-[45%] shrink-0 break-all pt-0.5 text-right text-sm font-semibold tabular-nums">
                   {money(summary.conversao.vgv.valor)}
                 </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardPanel>
       </section>
 
-      <section className="mt-5 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Leads perdidos — motivos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+      <section className="grid gap-4 lg:grid-cols-2">
+        <DashboardPanel
+          title="Leads perdidos — motivos"
+          description={`Motivos registrados em ${mesLabel}.`}
+          action={<PanelLink to="/leads-perdidos">Ver perdidos</PanelLink>}
+        >
+          <div className="space-y-2">
             {summary.perdidos.motivos.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">
+              <p className="py-4 text-sm text-muted-foreground">
                 Nenhum lead perdido neste mês.
               </p>
             ) : (
@@ -724,164 +807,140 @@ function DashboardAdminView() {
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardPanel>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base">Agenda de hoje</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {summary.agenda.totalHoje} compromisso
-                  {summary.agenda.totalHoje === 1 ? "" : "s"} ·{" "}
-                  {summary.agenda.atrasados} atrasado
-                  {summary.agenda.atrasados === 1 ? "" : "s"}
-                </p>
-              </div>
-              <CalendarCheck className="h-5 w-5 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-secondary px-2.5 py-1">
-                {summary.agenda.pendentesHoje} pendente
-                {summary.agenda.pendentesHoje === 1 ? "" : "s"}
-              </span>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
-                {summary.agenda.concluidosHoje} concluído
-                {summary.agenda.concluidosHoje === 1 ? "" : "s"}
-              </span>
-              <span className="rounded-full bg-rose-500/10 px-2.5 py-1 text-rose-700 dark:text-rose-300">
-                {summary.agenda.atrasados} atrasado
-                {summary.agenda.atrasados === 1 ? "" : "s"}
-              </span>
-            </div>
-            {summary.agenda.itens.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">
-                Nenhum compromisso hoje.
-              </p>
-            ) : (
-              <div className="divide-y rounded-md border">
-                {summary.agenda.itens.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 px-3 py-2.5"
-                  >
-                    {item.status === "concluido" ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                    ) : (
-                      <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {item.titulo}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.contato ?? item.tipo}
-                      </p>
-                    </div>
-                    <time className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
+        <DashboardPanel
+          title="Agenda de hoje"
+          description={`${summary.agenda.totalHoje} compromisso${summary.agenda.totalHoje === 1 ? "" : "s"} · ${summary.agenda.atrasados} atrasado${summary.agenda.atrasados === 1 ? "" : "s"}`}
+          action={<PanelLink to="/agenda">Abrir agenda</PanelLink>}
+        >
+          <div className="mb-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-secondary px-2.5 py-1">
+              {summary.agenda.pendentesHoje} pendente
+              {summary.agenda.pendentesHoje === 1 ? "" : "s"}
+            </span>
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+              {summary.agenda.concluidosHoje} concluído
+              {summary.agenda.concluidosHoje === 1 ? "" : "s"}
+            </span>
+            <span className="rounded-full bg-rose-500/10 px-2.5 py-1 text-rose-700 dark:text-rose-300">
+              {summary.agenda.atrasados} atrasado
+              {summary.agenda.atrasados === 1 ? "" : "s"}
+            </span>
+          </div>
+          {summary.agenda.itens.length === 0 ? (
+            <p className="py-4 text-sm text-muted-foreground">
+              Nenhum compromisso hoje.
+            </p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {summary.agenda.itens.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 px-3 py-2.5"
+                >
+                  {item.status === "concluido" ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  ) : (
+                    <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {item.titulo}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {item.contato ?? item.tipo}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-            <Button
-              asChild
-              type="button"
-              variant="outline"
-              size="sm"
-              className={`mt-3 ${SOFT_BTN}`}
-            >
-              <Link to="/agenda">Abrir agenda</Link>
-            </Button>
-          </CardContent>
-        </Card>
+                  <time className="shrink-0 text-xs text-muted-foreground">
+                    {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                </div>
+              ))}
+            </div>
+          )}
+        </DashboardPanel>
       </section>
 
-      <section className="mt-5 grid min-w-0 gap-4 xl:grid-cols-2">
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-base">Ranking de corretores</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Ordenado por VGV do mês.
+      {isSolo ? null : (
+      <section className="grid min-w-0 gap-4 xl:grid-cols-2">
+        <DashboardPanel
+          title="Ranking de corretores"
+          description="Ordenado por VGV do mês."
+          action={<PanelLink to="/corretores">Ver corretores</PanelLink>}
+        >
+          {summary.ranking.length === 0 ? (
+            <p className="py-4 text-sm text-muted-foreground">
+              Nenhum corretor ativo.
             </p>
-          </CardHeader>
-          <CardContent className="min-w-0">
-            {summary.ranking.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">
-                Nenhum corretor ativo.
-              </p>
-            ) : (
-              <div className="-mx-6 overflow-x-auto overscroll-x-contain px-6 touch-pan-x">
-                <table className="w-full min-w-140 text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 pr-3 font-medium whitespace-nowrap">
-                        Corretor
-                      </th>
-                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
-                        Leads
-                      </th>
-                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
-                        Visitas
-                      </th>
-                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
-                        Vendas
-                      </th>
-                      <th className="pb-2 text-right font-medium whitespace-nowrap">
-                        VGV
-                      </th>
+          ) : (
+            <div className="-mx-1 overflow-x-auto overscroll-x-contain touch-pan-x">
+              <table className="w-full min-w-140 text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 pr-3 font-medium whitespace-nowrap">
+                      Corretor
+                    </th>
+                    <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                      Leads
+                    </th>
+                    <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                      Visitas
+                    </th>
+                    <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                      Vendas
+                    </th>
+                    <th className="pb-2 text-right font-medium whitespace-nowrap">
+                      VGV
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.ranking.slice(0, 10).map((r) => (
+                    <tr
+                      key={r.corretorId}
+                      className="border-b last:border-0 hover:bg-muted/40"
+                    >
+                      <td className="max-w-48 py-2.5 pr-3">
+                        <div className="truncate font-medium">{r.nome}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {r.equipe ?? "Sem equipe"}
+                        </div>
+                      </td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                        {r.leads}
+                      </td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                        {r.visitas}
+                      </td>
+                      <td className="py-2.5 pr-3 text-right whitespace-nowrap">
+                        <div className="font-medium tabular-nums">
+                          {r.vendas.valor}
+                        </div>
+                        <EvolucaoBadge value={r.vendas.evolucaoPct} />
+                      </td>
+                      <td className="py-2.5 text-right whitespace-nowrap">
+                        <div className="font-medium tabular-nums">
+                          {money(r.vgv.valor)}
+                        </div>
+                        <EvolucaoBadge value={r.vgv.evolucaoPct} />
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {summary.ranking.slice(0, 10).map((r) => (
-                      <tr key={r.corretorId} className="border-b last:border-0">
-                        <td className="max-w-48 py-2.5 pr-3">
-                          <div className="truncate font-medium">{r.nome}</div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {r.equipe ?? "Sem equipe"}
-                          </div>
-                        </td>
-                        <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
-                          {r.leads}
-                        </td>
-                        <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
-                          {r.visitas}
-                        </td>
-                        <td className="py-2.5 pr-3 text-right whitespace-nowrap">
-                          <div className="font-medium tabular-nums">
-                            {r.vendas.valor}
-                          </div>
-                          <EvolucaoBadge value={r.vendas.evolucaoPct} />
-                        </td>
-                        <td className="py-2.5 text-right whitespace-nowrap">
-                          <div className="font-medium tabular-nums">
-                            {money(r.vgv.valor)}
-                          </div>
-                          <EvolucaoBadge value={r.vgv.evolucaoPct} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DashboardPanel>
 
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-base">Carteira por equipe</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <DashboardPanel title="Carteira por equipe">
+          <div className="space-y-3">
             {summary.equipes.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">
+              <p className="py-4 text-sm text-muted-foreground">
                 Nenhuma equipe cadastrada.
               </p>
             ) : (
@@ -910,99 +969,127 @@ function DashboardAdminView() {
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardPanel>
       </section>
+      )}
 
-      <section className="mt-5">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Metas vs realizado</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Metas mensais ativas · imobiliária, equipes e corretores.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="rounded-xl border bg-secondary/40 p-4">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="font-semibold text-primary">Imobiliária</div>
-                <div className="text-sm tabular-nums">
-                  {summary.metas.imobiliaria.atual.toLocaleString("pt-BR")} /{" "}
-                  {summary.metas.imobiliaria.meta.toLocaleString("pt-BR")} (
-                  {summary.metas.imobiliaria.percentual}%)
-                </div>
-              </div>
-              <Progress value={summary.metas.imobiliaria.percentual} />
-            </div>
-
-            {summary.metas.equipes.length > 0 && (
+      <DashboardPanel
+        title="Metas vs realizado"
+        description={
+          isSolo
+            ? "Metas ativas do período · tipo, valor e progresso."
+            : "Metas mensais ativas · imobiliária, equipes e corretores."
+        }
+        action={<PanelLink to="/metas">Ver metas</PanelLink>}
+      >
+        <div className="space-y-5">
+          {isSolo ? (
+            summary.metas.corretores.length > 0 ? (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-primary">
-                  Por equipe
-                </h3>
-                {summary.metas.equipes.map((eq) => (
-                  <div key={eq.equipeId}>
-                    <div className="mb-1 flex justify-between text-sm">
-                      <span>{eq.nome}</span>
+                {summary.metas.corretores.map((m) => (
+                  <div key={m.id}>
+                    <div className="mb-1 flex justify-between gap-3 text-sm">
+                      <span className="font-medium">
+                        {META_TIPO_LABEL[m.tipo] ?? m.tipo}
+                      </span>
                       <span className="tabular-nums text-muted-foreground">
-                        {eq.percentual}%
+                        {m.tipo === "vgv"
+                          ? `${money(m.atual)} / ${money(m.valor)}`
+                          : `${m.atual.toLocaleString("pt-BR")} / ${m.valor.toLocaleString("pt-BR")}`}{" "}
+                        ({m.percentual}%)
                       </span>
                     </div>
-                    <Progress value={eq.percentual} />
+                    <Progress value={m.percentual} />
                   </div>
                 ))}
-              </div>
-            )}
-
-            {summary.metas.corretores.length > 0 ? (
-              <div className="overflow-x-auto">
-                <h3 className="text-sm font-semibold text-primary mb-2">
-                  Por corretor
-                </h3>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Corretor</th>
-                      <th className="pb-2 font-medium">Tipo</th>
-                      <th className="pb-2 font-medium text-right">Progresso</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.metas.corretores.map((m) => (
-                      <tr key={m.id} className="border-b last:border-0">
-                        <td className="py-2">
-                          <div className="font-medium">{m.corretorNome}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {m.equipeNome ?? "Sem equipe"}
-                          </div>
-                        </td>
-                        <td className="py-2">
-                          {META_TIPO_LABEL[m.tipo] ?? m.tipo}
-                        </td>
-                        <td className="py-2 text-right">
-                          <div className="tabular-nums font-medium">
-                            {m.tipo === "vgv"
-                              ? `${money(m.atual)} / ${money(m.valor)}`
-                              : `${m.atual} / ${m.valor}`}
-                          </div>
-                          <div className="text-xs text-muted-foreground mb-1">
-                            {m.percentual}%
-                          </div>
-                          <Progress value={m.percentual} className="h-1.5" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Nenhuma meta mensal ativa. Cadastre em Metas.
               </p>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+            )
+          ) : (
+            <>
+          <div className="rounded-xl border bg-secondary/40 p-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="font-semibold text-primary">Imobiliária</div>
+              <div className="text-sm tabular-nums">
+                {summary.metas.imobiliaria.atual.toLocaleString("pt-BR")} /{" "}
+                {summary.metas.imobiliaria.meta.toLocaleString("pt-BR")} (
+                {summary.metas.imobiliaria.percentual}%)
+              </div>
+            </div>
+            <Progress value={summary.metas.imobiliaria.percentual} />
+          </div>
+
+          {summary.metas.equipes.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-primary">Por equipe</h3>
+              {summary.metas.equipes.map((eq) => (
+                <div key={eq.equipeId}>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span>{eq.nome}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {eq.percentual}%
+                    </span>
+                  </div>
+                  <Progress value={eq.percentual} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary.metas.corretores.length > 0 ? (
+            <div className="overflow-x-auto">
+              <h3 className="mb-2 text-sm font-semibold text-primary">
+                Por corretor
+              </h3>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 font-medium">Corretor</th>
+                    <th className="pb-2 font-medium">Tipo</th>
+                    <th className="pb-2 text-right font-medium">Progresso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.metas.corretores.map((m) => (
+                    <tr key={m.id} className="border-b last:border-0">
+                      <td className="py-2">
+                        <div className="font-medium">{m.corretorNome}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {m.equipeNome ?? "Sem equipe"}
+                        </div>
+                      </td>
+                      <td className="py-2">
+                        {META_TIPO_LABEL[m.tipo] ?? m.tipo}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div className="font-medium tabular-nums">
+                          {m.tipo === "vgv"
+                            ? `${money(m.atual)} / ${money(m.valor)}`
+                            : `${m.atual} / ${m.valor}`}
+                        </div>
+                        <div className="mb-1 text-xs text-muted-foreground">
+                          {m.percentual}%
+                        </div>
+                        <Progress value={m.percentual} className="h-1.5" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma meta mensal ativa. Cadastre em Metas.
+            </p>
+          )}
+            </>
+          )}
+        </div>
+      </DashboardPanel>
     </div>
   );
 }
@@ -1107,46 +1194,158 @@ function DashboardCorretorView() {
   );
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Dashboard"
         description={`Visão da sua carteira em ${mesLabel}.`}
       />
 
-      <section
-        data-guia="dashboard-kpis"
-        className="grid gap-3 grid-cols-2 xl:grid-cols-4"
+      <DashboardPanel
+        guia="dashboard-kpis"
+        title="Sua carteira"
+        description={`Resumo operacional em ${mesLabel}.`}
+        action={<PanelLink to="/leads">Ver leads</PanelLink>}
       >
-        <FinanceKpiCard
-          label="Leads ativos"
-          value={summary.carteira.leads}
-          icon={UsersRound}
-          tone="teal"
-          format="number"
-          href="/leads"
-        />
-        <FinanceKpiCard
-          label="Clientes na carteira"
-          value={summary.carteira.clientes}
-          icon={UserRound}
-          tone="blue"
-          format="number"
-          href="/clientes"
-        />
-        <FinanceKpiCard
-          label="Novos contatos no mês"
-          value={summary.carteira.novosContatos}
-          icon={TrendingUp}
-          tone="orange"
-          format="number"
-        />
-        <FinanceKpiCard
-          label="Em análise"
-          value={emAnalise}
-          icon={ClipboardList}
-          tone="violet"
-          format="number"
-          href={
+        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          <FinanceKpiCard
+            label="Leads ativos"
+            value={summary.carteira.leads}
+            icon={UsersRound}
+            tone="teal"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="Clientes na carteira"
+            value={summary.carteira.clientes}
+            icon={UserRound}
+            tone="blue"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="Novos contatos no mês"
+            value={summary.carteira.novosContatos}
+            icon={TrendingUp}
+            tone="orange"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+          <FinanceKpiCard
+            label="Em análise"
+            value={emAnalise}
+            icon={ClipboardList}
+            tone="violet"
+            format="number"
+            compact
+            className={KPI_EMBED}
+          />
+        </div>
+      </DashboardPanel>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DashboardPanel
+          title="Documentação e vendas"
+          description={`Resultado da sua carteira em ${mesLabel}.`}
+          action={
+            canOpenDocumentacao ? (
+              <PanelLink to="/documentacao">Ver documentação</PanelLink>
+            ) : undefined
+          }
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <FinanceKpiCard
+              label="Documentações registradas"
+              value={summary.documentacao.registrados}
+              icon={BriefcaseBusiness}
+              tone="blue"
+              format="number"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Em andamento"
+              value={summary.documentacao.emAndamento}
+              icon={FileCheck2}
+              tone="orange"
+              format="number"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Vendas registradas"
+              value={summary.documentacao.vendidos}
+              icon={FileCheck2}
+              tone="emerald"
+              format="number"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="VGV vendido no mês"
+              value={summary.documentacao.vgvVendidoMes}
+              icon={Wallet}
+              tone="teal"
+              compact
+              className={KPI_EMBED}
+            />
+          </div>
+        </DashboardPanel>
+
+        <DashboardPanel
+          guia="dashboard-comissao"
+          title="Sua comissão do mês"
+          description={`Quanto você recebe nas vendas de ${mesLabel}.`}
+          action={<PanelLink to="/financeiro/comissao">Ver comissões</PanelLink>}
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <FinanceKpiCard
+              label="A receber"
+              value={summary.comissao.aReceber}
+              icon={Percent}
+              tone="violet"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Pendentes"
+              value={summary.comissao.pendente}
+              icon={Clock3}
+              tone="orange"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Liberadas"
+              value={summary.comissao.liberada}
+              icon={Banknote}
+              tone="blue"
+              compact
+              className={KPI_EMBED}
+            />
+            <FinanceKpiCard
+              label="Pagas"
+              value={summary.comissao.paga}
+              icon={CheckCircle2}
+              tone="emerald"
+              compact
+              className={KPI_EMBED}
+            />
+          </div>
+        </DashboardPanel>
+      </div>
+
+      <section
+        data-guia="dashboard-funil"
+        className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,1fr)]"
+      >
+        <DashboardPanel
+          title="Funil atual"
+          description="Seus leads ativos nas etapas do funil de vendas."
+          action={
             user &&
             canAccessRoute(
               user.role,
@@ -1154,37 +1353,21 @@ function DashboardCorretorView() {
               user.tenant?.modules ?? null,
               user.tenant?.plano ?? null,
               user.permissions ?? null,
+            ) ? (
+              <PanelLink to="/funil">Ver funil</PanelLink>
+            ) : (
+              <PanelLink to="/leads">Ver leads</PanelLink>
             )
-              ? "/funil"
-              : "/leads"
           }
-        />
-      </section>
-
-      <section
-        data-guia="dashboard-funil"
-        className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,1fr)]"
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Funil atual</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Seus leads ativos nas etapas do funil de vendas.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <FunnelBarChart data={funnelData} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Status das análises</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        >
+          <FunnelBarChart data={funnelData} />
+        </DashboardPanel>
+        <DashboardPanel title="Status das análises">
+          <div className="space-y-3">
             {analiseData.map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between rounded-lg border px-3 py-2"
+                className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2"
               >
                 <span className="text-sm text-muted-foreground">
                   {item.label}
@@ -1192,130 +1375,38 @@ function DashboardCorretorView() {
                 <span className="font-semibold tabular-nums">{item.total}</span>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardPanel>
       </section>
 
-      <section className="mt-5 grid gap-3 grid-cols-2 xl:grid-cols-4">
-        <FinanceKpiCard
-          label="Documentações registradas"
-          value={summary.documentacao.registrados}
-          icon={BriefcaseBusiness}
-          tone="blue"
-          format="number"
-          href={canOpenDocumentacao ? "/documentacao" : undefined}
-        />
-        <FinanceKpiCard
-          label="Em andamento"
-          value={summary.documentacao.emAndamento}
-          icon={FileCheck2}
-          tone="orange"
-          format="number"
-          href={canOpenDocumentacao ? "/documentacao" : undefined}
-        />
-        <FinanceKpiCard
-          label="Vendas registradas"
-          value={summary.documentacao.vendidos}
-          icon={FileCheck2}
-          tone="emerald"
-          format="number"
-          href={canOpenDocumentacao ? "/documentacao" : undefined}
-        />
-        <FinanceKpiCard
-          label="VGV vendido no mês"
-          value={summary.documentacao.vgvVendidoMes}
-          icon={Wallet}
-          tone="teal"
-        />
-      </section>
-
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-module-title">
-            Sua comissão do mês
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Quanto você recebe nas vendas de {mesLabel}.
-          </p>
+      <DashboardPanel
+        title="Minha agenda de hoje"
+        description={`${summary.agenda.totalHoje} compromisso${summary.agenda.totalHoje === 1 ? "" : "s"} marcado${summary.agenda.totalHoje === 1 ? "" : "s"} para hoje.`}
+        action={<PanelLink to="/agenda">Abrir agenda</PanelLink>}
+      >
+        <div className="mb-3 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
+            {summary.agenda.pendentesHoje} pendente
+            {summary.agenda.pendentesHoje === 1 ? "" : "s"}
+          </span>
+          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+            {summary.agenda.concluidosHoje} concluído
+            {summary.agenda.concluidosHoje === 1 ? "" : "s"}
+          </span>
         </div>
-        <Button asChild variant="outline" size="sm" className={SOFT_BTN}>
-          <Link to="/financeiro/comissao">Ver comissões</Link>
-        </Button>
-      </div>
-      <section className="mt-3 grid gap-3 grid-cols-2 xl:grid-cols-4">
-        <FinanceKpiCard
-          label="A receber"
-          value={summary.comissao.aReceber}
-          icon={Percent}
-          tone="violet"
-          href="/financeiro/comissao"
-        />
-        <FinanceKpiCard
-          label="Pendentes"
-          value={summary.comissao.pendente}
-          icon={Clock3}
-          tone="orange"
-          href="/financeiro/comissao"
-        />
-        <FinanceKpiCard
-          label="Liberadas"
-          value={summary.comissao.liberada}
-          icon={Banknote}
-          tone="blue"
-          href="/financeiro/comissao"
-        />
-        <FinanceKpiCard
-          label="Pagas"
-          value={summary.comissao.paga}
-          icon={CheckCircle2}
-          tone="emerald"
-          href="/financeiro/comissao"
-        />
-      </section>
-
-      <section className="mt-5">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base">
-                  Minha agenda de hoje
-                </CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {summary.agenda.totalHoje} compromisso
-                  {summary.agenda.totalHoje === 1 ? "" : "s"} marcado
-                  {summary.agenda.totalHoje === 1 ? "" : "s"} para hoje.
-                </p>
-              </div>
-              <CalendarCheck className="h-5 w-5 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                {summary.agenda.pendentesHoje} pendente
-                {summary.agenda.pendentesHoje === 1 ? "" : "s"}
-              </span>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
-                {summary.agenda.concluidosHoje} concluído
-                {summary.agenda.concluidosHoje === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <AgendaCategoria
-                title="Atividades pessoais"
-                items={agendaPessoal}
-                emptyMessage="Nenhuma atividade pessoal marcada para hoje."
-              />
-              <AgendaCategoria
-                title="Com gerente ou superior"
-                items={agendaCompartilhada}
-                emptyMessage="Nenhuma atividade compartilhada marcada para hoje."
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AgendaCategoria
+            title="Atividades pessoais"
+            items={agendaPessoal}
+            emptyMessage="Nenhuma atividade pessoal marcada para hoje."
+          />
+          <AgendaCategoria
+            title="Com gerente ou superior"
+            items={agendaCompartilhada}
+            emptyMessage="Nenhuma atividade compartilhada marcada para hoje."
+          />
+        </div>
+      </DashboardPanel>
     </div>
   );
 }

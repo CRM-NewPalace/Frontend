@@ -16,10 +16,13 @@ import { toast } from "sonner";
 
 export function ConfigCreciPanel({
   compact = false,
+  solo = false,
   onSaved,
 }: {
   compact?: boolean;
-  onSaved?: (user: AuthUser) => void;
+  /** Texto sem menção a imobiliária (plano Solo). */
+  solo?: boolean;
+  onSaved?: (user: AuthUser) => void | Promise<void>;
 }) {
   const [user, setUser] = useState<AuthUser | null>(() => getSession());
   const [creci, setCreci] = useState(user?.creci ?? "");
@@ -46,7 +49,7 @@ export function ConfigCreciPanel({
       const updated = await updateMe({ creci: valor || null });
       setUser(updated);
       setCreci(updated.creci ?? "");
-      onSaved?.(updated);
+      await onSaved?.(updated);
       toast.success(
         valor ? "CRECI salvo no seu cadastro." : "CRECI removido do cadastro.",
       );
@@ -64,8 +67,9 @@ export function ConfigCreciPanel({
   const body = (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Informe o número do seu CRECI para aparecer em documentos, vendas e no
-        cadastro da imobiliária.
+        {solo
+          ? "Informe o número do seu CRECI para aparecer em documentos, vendas e contratos."
+          : "Informe o número do seu CRECI para aparecer em documentos, vendas e no cadastro da imobiliária."}
       </p>
       <div className="space-y-1.5">
         <Label htmlFor="meu-creci">Número do CRECI</Label>

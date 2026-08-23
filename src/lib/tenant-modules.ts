@@ -167,15 +167,21 @@ export const SOLO_FINANCEIRO_ROUTES = [
   "/financeiro/fluxo-caixa",
 ] as const;
 
-/** Kanban é de time — solo trabalha direto em Leads e Clientes. */
-export const SOLO_BLOCKED_ROUTES = ["/funil", "/funil-clientes"] as const;
+/** Telas de time / carteira — solo usa Funil em vez de Clientes. */
+export const SOLO_BLOCKED_ROUTES = [
+  "/clientes",
+  "/funil-clientes",
+  "/clientes-perdidos",
+  "/usuarios",
+  "/permissoes",
+] as const;
 
 const SOLO_ENABLED = new Set<TenantModuleKey>([
   "dashboard",
   "leads",
+  "funil",
   "agenda",
   "imoveis",
-  "clientes",
   "construtoras",
   "usuarios",
   "configuracoes",

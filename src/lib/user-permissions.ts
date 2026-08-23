@@ -350,10 +350,6 @@ export function defaultsFromRole(
     );
   }
 
-  if (plano === "solo") {
-    modules.funil = false;
-  }
-
   const gestor = role === "admin" || role === "gerente";
   const finUser =
     role === "admin" ||

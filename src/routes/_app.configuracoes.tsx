@@ -63,6 +63,7 @@ import { ConfigFunisPanel } from "@/components/config-funis-panel";
 import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
 import { ConfigCreciPanel } from "@/components/config-creci-panel";
 import { ConfigConexoesPanel } from "@/components/config-conexoes-panel";
+import { ConfigUsuarioExtraPanel } from "@/components/config-usuario-extra-panel";
 import { userCanInformarCreci } from "@/lib/users-api";
 import { CorPicker } from "@/components/cor-picker";
 import {
@@ -317,8 +318,11 @@ function Config() {
   const isCorretor = user?.role === "corretor";
   const showCreci = Boolean(user && userCanInformarCreci(user));
   const isSolo = user?.tenant?.plano === "solo";
+  /** Solo: CRECI fica em Meus dados. */
+  const showCreciTab = showCreci && !isSolo;
   const showOpsTabs = !isAnalista && !isTreinee && !isCorretor;
-  const showFunilTab = showOpsTabs && !isSolo;
+  const showFunilTab = showOpsTabs;
+  const showUsuarioExtraTab = showOpsTabs && isSolo;
   const showDocumentacao = !isTreinee && !isCorretor;
   const showMotivos = !isTreinee && !isCorretor;
   const showCatalogTabs = !isCorretor;
@@ -348,7 +352,7 @@ function Config() {
   const defaultTab = search.google
     ? "conexoes"
     : isCorretor
-      ? showCreci
+      ? showCreciTab
         ? "creci"
         : "conexoes"
       : isTreinee
@@ -530,7 +534,7 @@ function Config() {
               : isAnalista
                 ? "Gerencie conexões, documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
                 : isSolo
-                  ? "Personalize conexões, imobiliária, documentação, origens, motivos, tags, CCAs e imóveis."
+                  ? "Personalize conexões, meus dados, usuário extra, documentação, origens, motivos, tags, CCAs e imóveis."
                   : "Personalize conexões, imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
         }
       />
@@ -543,15 +547,20 @@ function Config() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex h-auto flex-wrap gap-1">
-          {showCreci ? (
+          {showCreciTab ? (
             <TabsTrigger value="creci">Meu CRECI</TabsTrigger>
           ) : null}
           <TabsTrigger value="conexoes">Conexões</TabsTrigger>
           {showOpsTabs ? (
             <>
-              <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
+              <TabsTrigger value="empresa">
+                {isSolo ? "Meus dados" : "Imobiliária"}
+              </TabsTrigger>
               {showFunilTab ? (
                 <TabsTrigger value="funil">Funil</TabsTrigger>
+              ) : null}
+              {showUsuarioExtraTab ? (
+                <TabsTrigger value="usuario-extra">Usuário extra</TabsTrigger>
               ) : null}
             </>
           ) : null}
@@ -570,7 +579,7 @@ function Config() {
           ) : null}
         </TabsList>
 
-        {showCreci ? (
+        {showCreciTab ? (
           <TabsContent value="creci">
             <ConfigCreciPanel />
           </TabsContent>
@@ -589,6 +598,12 @@ function Config() {
             {showFunilTab ? (
               <TabsContent value="funil">
                 <ConfigFunisPanel />
+              </TabsContent>
+            ) : null}
+
+            {showUsuarioExtraTab ? (
+              <TabsContent value="usuario-extra">
+                <ConfigUsuarioExtraPanel />
               </TabsContent>
             ) : null}
 

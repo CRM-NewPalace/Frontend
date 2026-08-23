@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,9 @@ import {
 } from "@/lib/tenant-company-api";
 import { formatPhone } from "@/lib/phone";
 import { formatCpfCnpj } from "@/lib/utils";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
+import { ConfigCreciPanel } from "@/components/config-creci-panel";
 
 type FormState = {
   name: string;
@@ -37,9 +38,47 @@ const emptyForm = (): FormState => ({
 export function ConfigEmpresaPanel() {
   const session = getSession();
   const isAdmin = session?.role === "admin";
+  const isSolo = session?.tenant?.plano === "solo";
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const copy = useMemo(
+    () =>
+      isSolo
+        ? {
+            title: "Meus dados",
+            blurb:
+              "Essas informações aparecem nos contratos de intermediação e na identificação do seu CRM.",
+            nameLabel: "Nome comercial",
+            namePlaceholder: "Ex.: João Silva Corretores",
+            nameRequired: "Informe o nome comercial.",
+            documentoLabel: "CPF ou CNPJ",
+            emailPlaceholder: "contato@seuemail.com",
+            loadError: "Não foi possível carregar seus dados.",
+            loading: "Carregando seus dados…",
+            saved: "Dados salvos.",
+            saveError: "Não foi possível salvar os dados.",
+            readOnly: "Somente o administrador pode editar estes dados.",
+          }
+        : {
+            title: "Dados da imobiliária",
+            blurb:
+              "Essas informações alimentam o contrato de intermediação e a identificação da imobiliária no CRM.",
+            nameLabel: "Nome da imobiliária",
+            namePlaceholder: "Ex.: IMOBILIÁRIA NEW PALACE",
+            nameRequired: "Informe o nome da imobiliária.",
+            documentoLabel: "CNPJ",
+            emailPlaceholder: "contato@imobiliaria.com",
+            loadError: "Não foi possível carregar os dados da imobiliária.",
+            loading: "Carregando dados da imobiliária…",
+            saved: "Dados da imobiliária salvos.",
+            saveError: "Não foi possível salvar os dados da imobiliária.",
+            readOnly:
+              "Somente o administrador pode editar os dados da imobiliária.",
+          },
+    [isSolo],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -60,9 +99,7 @@ export function ConfigEmpresaPanel() {
       .catch((err) => {
         if (cancelled) return;
         toast.error(
-          err instanceof ApiError
-            ? err.message
-            : "Não foi possível carregar os dados da imobiliária.",
+          err instanceof ApiError ? err.message : copy.loadError,
         );
       })
       .finally(() => {
@@ -71,7 +108,7 @@ export function ConfigEmpresaPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [copy.loadError]);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -82,7 +119,7 @@ export function ConfigEmpresaPanel() {
     if (!isAdmin) return;
     const name = form.name.trim();
     if (name.length < 2) {
-      toast.error("Informe o nome da imobiliária.");
+      toast.error(copy.nameRequired);
       return;
     }
     setSaving(true);
@@ -106,12 +143,10 @@ export function ConfigEmpresaPanel() {
         cidade: updated.cidade ?? "",
       });
       await fetchMe().catch(() => null);
-      toast.success("Dados da imobiliária salvos.");
+      toast.success(copy.saved);
     } catch (err) {
       toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível salvar os dados da imobiliária.",
+        err instanceof ApiError ? err.message : copy.saveError,
       );
     } finally {
       setSaving(false);
@@ -123,39 +158,38 @@ export function ConfigEmpresaPanel() {
       <Card>
         <CardContent className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando dados da imobiliária…
+          {copy.loading}
         </CardContent>
       </Card>
     );
   }
 
+  const TitleIcon = isSolo ? UserRound : Building2;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Building2 className="h-4 w-4 text-primary" />
-          Dados da imobiliária
+          <TitleIcon className="h-4 w-4 text-primary" />
+          {copy.title}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Essas informações alimentam o contrato de intermediação e a
-          identificação da imobiliária no CRM.
-        </p>
+        <p className="mb-4 text-sm text-muted-foreground">{copy.blurb}</p>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="empresa-nome">Nome da imobiliária</Label>
+              <Label htmlFor="empresa-nome">{copy.nameLabel}</Label>
               <Input
                 id="empresa-nome"
                 value={form.name}
                 disabled={!isAdmin || saving}
-                placeholder="Ex.: IMOBILIÁRIA NEW PALACE"
+                placeholder={copy.namePlaceholder}
                 onChange={(e) => setField("name", e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="empresa-cnpj">CNPJ</Label>
+              <Label htmlFor="empresa-cnpj">{copy.documentoLabel}</Label>
               <Input
                 id="empresa-cnpj"
                 value={form.documento}
@@ -166,16 +200,18 @@ export function ConfigEmpresaPanel() {
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="empresa-creci">CRECI</Label>
-              <Input
-                id="empresa-creci"
-                value={form.creci}
-                disabled={!isAdmin || saving}
-                placeholder="Ex.: 18937-J"
-                onChange={(e) => setField("creci", e.target.value)}
-              />
-            </div>
+            {isSolo ? null : (
+              <div className="space-y-2">
+                <Label htmlFor="empresa-creci">CRECI</Label>
+                <Input
+                  id="empresa-creci"
+                  value={form.creci}
+                  disabled={!isAdmin || saving}
+                  placeholder="Ex.: 18937-J"
+                  onChange={(e) => setField("creci", e.target.value)}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="empresa-email">E-mail</Label>
               <Input
@@ -183,7 +219,7 @@ export function ConfigEmpresaPanel() {
                 type="email"
                 value={form.email}
                 disabled={!isAdmin || saving}
-                placeholder="contato@imobiliaria.com"
+                placeholder={copy.emailPlaceholder}
                 onChange={(e) => setField("email", e.target.value)}
               />
             </div>
@@ -232,11 +268,28 @@ export function ConfigEmpresaPanel() {
               </Button>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">
-              Somente o administrador pode editar os dados da imobiliária.
-            </p>
+            <p className="text-xs text-muted-foreground">{copy.readOnly}</p>
           )}
         </form>
+
+        {isSolo ? (
+          <div className="mt-6 space-y-3 border-t pt-6">
+            <div className="text-sm font-medium">Meu CRECI</div>
+            <ConfigCreciPanel
+              compact
+              solo
+              onSaved={async (updated) => {
+                const creci = updated.creci?.trim() ?? "";
+                setField("creci", creci);
+                try {
+                  await updateTenantCompany({ creci });
+                } catch {
+                  // Cadastro pessoal já salvou; contrato pode sincronizar depois.
+                }
+              }}
+            />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

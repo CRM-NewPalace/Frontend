@@ -7,7 +7,7 @@ const CONTACT_MSG =
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalDocument title="Política de Privacidade" updatedAt="7 de agosto de 2026">
+    <LegalDocument title="Política de Privacidade" updatedAt="22 de agosto de 2026">
       <LegalSection id="introducao" title="1. Introdução">
         <p>
           Esta Política de Privacidade descreve como a{" "}
@@ -130,7 +130,8 @@ export default function PrivacyPolicyPage() {
           </li>
           <li>
             <strong>Google</strong>, na qualidade de operador/tecnologia de
-            analytics, nos termos desta política;
+            analytics e, quando você conecta o Google Agenda no CRM, para
+            sincronizar compromissos, nos termos desta política;
           </li>
           <li>
             autoridades públicas, quando houver obrigação legal ou ordem
@@ -138,6 +139,32 @@ export default function PrivacyPolicyPage() {
           </li>
         </ul>
         <p>Não vendemos dados pessoais.</p>
+        <h3>6.1. Google Agenda (OAuth)</h3>
+        <p>
+          Usuários autenticados no CRM podem, se quiserem, conectar a própria
+          conta Google em Configurações → Conexões. Pedimos apenas o escopo{" "}
+          <code>calendar.events</code>, além de e-mail para identificar a
+          conta. Com isso, criamos, atualizamos e removemos no Google Agenda as
+          cópias dos compromissos que o usuário já vê no CRM (visitas, ligações,
+          reuniões e tarefas). A sincronização é só do CRM para o Google: não
+          importamos nem alteramos eventos que existam apenas no Calendar.
+        </p>
+        <p>
+          O token de acesso fica criptografado e associado à conta do CRM. Não
+          usamos dados do Calendar para anúncios, não vendemos esses dados e não
+          acessamos outros calendários além do necessário para gravar essas
+          cópias. O usuário pode trocar de conta ou desconectar a qualquer
+          momento no CRM; também pode revogar o acesso em{" "}
+          <a
+            href="https://myaccount.google.com/permissions"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            myaccount.google.com/permissions
+          </a>
+          . Ao desconectar, paramos de enviar novos eventos; os que já foram
+          criados no Google permanecem lá até o usuário apagá-los.
+        </p>
       </LegalSection>
 
       <LegalSection id="retencao" title="7. Retenção">
