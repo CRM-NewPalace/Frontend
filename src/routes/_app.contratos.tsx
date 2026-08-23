@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import { downloadContratoPdf, resolveContratoBrandHex } from "@/lib/contratos-pdf";
 import {
   CONTRATO_TEMPLATES,
@@ -28,13 +27,25 @@ import {
 import { formatPhone } from "@/lib/phone";
 import { maskMoneyInput, parseMoneyInput } from "@/lib/money-input";
 import { reaisPorExtenso } from "@/lib/valor-extenso";
-import { formatCpfCnpj } from "@/lib/utils";
+import { formatCpfCnpj, cn } from "@/lib/utils";
 import { useTenantTheme } from "@/lib/tenant-theme";
 import { getSession, type TenantBranding } from "@/lib/auth";
-import { Download, FileText, Loader2 } from "lucide-react";
+import {
+  ArrowRight,
+  Ban,
+  ClipboardList,
+  Download,
+  FileText,
+  Handshake,
+  Loader2,
+  Receipt,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { SOFT_BTN } from "@/lib/soft-btn";
 
 /** Modelos que o corretor não pode emitir. */
 const TEMPLATES_BLOQUEADOS_CORRETOR: ReadonlySet<ContratoTemplateId> = new Set([
@@ -48,6 +59,74 @@ function canUseContratoTemplate(templateId: ContratoTemplateId): boolean {
   }
   return true;
 }
+
+const TEMPLATE_META: Record<
+  ContratoTemplateId,
+  { icon: LucideIcon; accent: string; accentBg: string }
+> = {
+  "carta-cancelamento": {
+    icon: Ban,
+    accent: "text-rose-600 dark:text-rose-400",
+    accentBg: "bg-rose-500/10",
+  },
+  "recibo-pagamento": {
+    icon: Receipt,
+    accent: "text-emerald-600 dark:text-emerald-400",
+    accentBg: "bg-emerald-500/10",
+  },
+  "parentesco-sem-conjuge": {
+    icon: Users,
+    accent: "text-violet-600 dark:text-violet-400",
+    accentBg: "bg-violet-500/10",
+  },
+  "parentesco-com-conjuge": {
+    icon: Users,
+    accent: "text-indigo-600 dark:text-indigo-400",
+    accentBg: "bg-indigo-500/10",
+  },
+  intermediacao: {
+    icon: Handshake,
+    accent: "text-sky-600 dark:text-sky-400",
+    accentBg: "bg-sky-500/10",
+  },
+  "checklist-renda-informal": {
+    icon: ClipboardList,
+    accent: "text-amber-600 dark:text-amber-400",
+    accentBg: "bg-amber-500/10",
+  },
+};
+
+const CONTRATO_GROUPS: Array<{
+  id: string;
+  title: string;
+  description: string;
+  templateIds: ContratoTemplateId[];
+}> = [
+  {
+    id: "habitacional",
+    title: "Documentação habitacional",
+    description: "Cancelamentos e checklists para análise em construtora.",
+    templateIds: ["carta-cancelamento", "checklist-renda-informal"],
+  },
+  {
+    id: "declaracoes",
+    title: "Declarações de parentesco",
+    description: "Comprovação de parentesco, residência e ausência de renda.",
+    templateIds: ["parentesco-sem-conjuge", "parentesco-com-conjuge"],
+  },
+  {
+    id: "comercial",
+    title: "Contratos comerciais",
+    description: "Intermediação de compra e venda de imóvel.",
+    templateIds: ["intermediacao"],
+  },
+  {
+    id: "financeiro",
+    title: "Financeiro",
+    description: "Comprovantes de pagamento e recebimento.",
+    templateIds: ["recibo-pagamento"],
+  },
+];
 
 const INTERMEDIACAO_SECTIONS = [
   {
@@ -101,6 +180,7 @@ const INTERMEDIACAO_SECTIONS = [
   {
     id: "imobiliaria",
     label: "Imobiliária",
+    soloLabel: "Meus dados",
     keys: [
       "contratadaNome",
       "contratadaCnpj",
@@ -549,6 +629,7 @@ function ContratoPreview({
 
 function ContratosPage() {
   const { logoUrl, tenant } = useTenantTheme();
+  const isSolo = getSession()?.tenant?.plano === "solo";
   const [logoColor, setLogoColor] = useState<string | null>(null);
   const [selected, setSelected] = useState<ContratoTemplate | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
@@ -560,6 +641,16 @@ function ContratosPage() {
     () => CONTRATO_TEMPLATES.filter((t) => canUseContratoTemplate(t.id)),
     [],
   );
+
+  const gruposVisiveis = useMemo(() => {
+    const byId = new Map(templatesVisiveis.map((t) => [t.id, t]));
+    return CONTRATO_GROUPS.map((group) => ({
+      ...group,
+      templates: group.templateIds
+        .map((id) => byId.get(id))
+        .filter(Boolean) as ContratoTemplate[],
+    })).filter((group) => group.templates.length > 0);
+  }, [templatesVisiveis]);
 
   useEffect(() => {
     let cancelled = false;
@@ -628,40 +719,65 @@ function ContratosPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader
         title="Contratos"
-        description="Selecione o modelo, preencha os dados e baixe o PDF automaticamente."
+        description="Escolha o modelo por categoria, preencha os dados e baixe o PDF."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {templatesVisiveis.map((template) => (
-          <Card
-            key={template.id}
-            className="flex flex-col gap-3 p-4 border-border/60"
+      <div className="space-y-5">
+        {gruposVisiveis.map((group) => (
+          <section
+            key={group.id}
+            className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm"
           >
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <FileText className="size-5" />
-              </div>
-              <div className="min-w-0 space-y-1">
-                <h2 className="text-sm font-semibold leading-snug">
-                  {template.titulo}
-                </h2>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {template.descricao}
-                </p>
-              </div>
+            <div className="border-b border-border/50 px-4 py-3.5 sm:px-5">
+              <h2 className="text-sm font-semibold tracking-tight text-module-title">
+                {group.title}
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {group.description}
+              </p>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              className="mt-auto w-full"
-              onClick={() => openTemplate(template)}
-            >
-              Preencher
-            </Button>
-          </Card>
+            <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-3">
+              {group.templates.map((template) => {
+                const meta = TEMPLATE_META[template.id];
+                const Icon = meta?.icon ?? FileText;
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => openTemplate(template)}
+                    className={cn(
+                      "group flex h-full flex-col rounded-xl border border-border/60 bg-muted/20 p-4 text-left transition",
+                      "hover:border-primary/35 hover:bg-primary/[0.04] hover:shadow-md",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "mb-3 flex size-11 items-center justify-center rounded-xl",
+                        meta?.accentBg ?? "bg-primary/10",
+                        meta?.accent ?? "text-primary",
+                      )}
+                    >
+                      <Icon className="size-5" />
+                    </div>
+                    <h3 className="text-sm font-semibold leading-snug text-foreground">
+                      {template.titulo}
+                    </h3>
+                    <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted-foreground">
+                      {template.descricao}
+                    </p>
+                    <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition group-hover:gap-2">
+                      Preencher
+                      <ArrowRight className="size-3.5" />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         ))}
       </div>
 
@@ -679,6 +795,7 @@ function ContratosPage() {
             <Button
               type="button"
               variant="outline"
+              className={SOFT_BTN}
               onClick={() => setSelected(null)}
               disabled={generating}
             >
@@ -722,7 +839,9 @@ function ContratosPage() {
                       }
                       onClick={() => setIntermediacaoSection(section.id)}
                     >
-                      {section.label}
+                      {section.id === "imobiliaria" && isSolo
+                        ? section.soloLabel
+                        : section.label}
                     </Button>
                   ))}
                 </div>

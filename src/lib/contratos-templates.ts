@@ -226,7 +226,7 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
     id: "intermediacao",
     titulo: "Contrato de intermediação",
     descricao:
-      "Intermediação para compra/venda de imóvel entre contratante e imobiliária.",
+      "Intermediação para compra/venda de imóvel entre contratante e contratada.",
     fields: [
       {
         key: "contratanteNome",
