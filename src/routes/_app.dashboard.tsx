@@ -1146,7 +1146,18 @@ function DashboardCorretorView() {
           icon={ClipboardList}
           tone="violet"
           format="number"
-          href="/funil"
+          href={
+            user &&
+            canAccessRoute(
+              user.role,
+              "/funil",
+              user.tenant?.modules ?? null,
+              user.tenant?.plano ?? null,
+              user.permissions ?? null,
+            )
+              ? "/funil"
+              : "/leads"
+          }
         />
       </section>
 

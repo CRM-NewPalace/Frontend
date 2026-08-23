@@ -1,5 +1,10 @@
 import type { AuthUser, Role } from "@/lib/auth";
-import { ROUTE_MODULE_KEY, isFinanceiroPathAllowed, type TenantPlano } from "@/lib/tenant-modules";
+import {
+  ROUTE_MODULE_KEY,
+  isFinanceiroPathAllowed,
+  isSoloPathAllowed,
+  type TenantPlano,
+} from "@/lib/tenant-modules";
 import {
   actionForFinancePath,
   canUserAction,
@@ -184,6 +189,7 @@ export function canAccessRoute(
   if (path === "/perfil") return true;
 
   if (!isFinanceiroPathAllowed(path, plano ?? null)) return false;
+  if (!isSoloPathAllowed(path, plano ?? null)) return false;
 
   if (modules) {
     const tenantKey = Object.entries(ROUTE_MODULE_KEY).find(

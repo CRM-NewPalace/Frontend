@@ -167,10 +167,12 @@ export const SOLO_FINANCEIRO_ROUTES = [
   "/financeiro/fluxo-caixa",
 ] as const;
 
+/** Kanban é de time — solo trabalha direto em Leads e Clientes. */
+export const SOLO_BLOCKED_ROUTES = ["/funil", "/funil-clientes"] as const;
+
 const SOLO_ENABLED = new Set<TenantModuleKey>([
   "dashboard",
   "leads",
-  "funil",
   "agenda",
   "imoveis",
   "clientes",
@@ -234,6 +236,16 @@ export function isFinanceiroPathAllowed(
   if (path === "/financeiro" || path === "/financeiro/") return true;
   if (!path.startsWith("/financeiro")) return true;
   return SOLO_FINANCEIRO_ROUTES.some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}
+
+export function isSoloPathAllowed(
+  path: string,
+  plano?: TenantPlano | null,
+): boolean {
+  if (plano !== "solo") return true;
+  return !SOLO_BLOCKED_ROUTES.some(
     (route) => path === route || path.startsWith(`${route}/`),
   );
 }

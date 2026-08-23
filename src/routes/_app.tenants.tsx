@@ -1084,7 +1084,7 @@ function TenantsPage() {
                 <FormSection title="Módulos">
                   <p className="text-xs text-muted-foreground -mt-1">
                     {form.plano === "solo"
-                      ? "Solo tem recorte fixo: CRM, fechamento, metas e financeiro enxuto (comissão, a receber, a pagar e fluxo de caixa)."
+                      ? "Solo tem recorte fixo: CRM (sem funis), fechamento, metas e financeiro enxuto (comissão, a receber, a pagar e fluxo de caixa)."
                       : form.plano === "bronze"
                       ? "Bronze inclui apenas o CRM operacional (Usuários e Configurações ficam para o admin)."
                       : form.plano === "prata"
