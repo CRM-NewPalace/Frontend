@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 import { fetchConstrutoras, type Construtora } from "@/lib/construtoras-api";
 import {
   fetchDocumentacaoCorretores,
@@ -217,6 +218,8 @@ export function ComissaoLancamentoDialog({
   via?: "comissao" | "titulo";
   createSuccessMessage?: string;
 }) {
+  const session = getSession();
+  const isSolo = session?.tenant?.plano === "solo";
   const [form, setForm] = useState<ComissaoFormState>(EMPTY_FORM);
   const [eligibleSales, setEligibleSales] = useState<VendaElegivelComissao[]>(
     [],
@@ -282,10 +285,13 @@ export function ComissaoLancamentoDialog({
       setForm(toForm(editing));
       return;
     }
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      ...(isSolo && session?.id ? { corretorId: session.id } : {}),
+    });
     void loadEligibleSales();
     void loadCatalogs();
-  }, [open, mode, editing, loadEligibleSales, loadCatalogs]);
+  }, [open, mode, editing, loadEligibleSales, loadCatalogs, isSolo, session?.id]);
 
   const selectedSale = useMemo(
     () =>
@@ -303,22 +309,29 @@ export function ComissaoLancamentoDialog({
     );
   }, [empreendimentos, form.construtoraId]);
 
-  const percentages = useMemo(
-    () => ({
+  const percentages = useMemo(() => {
+    const base = {
       percentualImobiliaria: numberValue(form.percentualImobiliaria),
       percentualTributos: numberValue(form.percentualTributos),
       percentualCorretor: numberValue(form.percentualCorretor),
       percentualGerente: numberValue(form.percentualGerente),
       percentualCaixa: numberValue(form.percentualCaixa),
       percentualSocios: numberValue(form.percentualSocios),
-    }),
-    [form],
-  );
-  const splitTotal =
-    percentages.percentualCorretor +
-    percentages.percentualGerente +
-    percentages.percentualCaixa +
-    percentages.percentualSocios;
+    };
+    if (!isSolo) return base;
+    // Solo: só caixa + uso pessoal no rateio da líquida.
+    return {
+      ...base,
+      percentualGerente: 0,
+      percentualSocios: 0,
+    };
+  }, [form, isSolo]);
+  const splitTotal = isSolo
+    ? percentages.percentualCorretor + percentages.percentualCaixa
+    : percentages.percentualCorretor +
+      percentages.percentualGerente +
+      percentages.percentualCaixa +
+      percentages.percentualSocios;
   const preview = useMemo(() => {
     const vgv = previewVgv;
     const gross = (vgv * percentages.percentualImobiliaria) / 100;
@@ -339,7 +352,7 @@ export function ComissaoLancamentoDialog({
     corretor: numberValue(form.percentualPremiacaoCorretor),
     imposto: numberValue(form.percentualPremiacaoImposto),
     imobiliaria: numberValue(form.percentualPremiacaoImobiliaria),
-    gerente: numberValue(form.percentualPremiacaoGerente),
+    gerente: isSolo ? 0 : numberValue(form.percentualPremiacaoGerente),
   };
   const premiacaoPreview = calculatePremiacaoCascata({
     valor: premiacaoValor,
@@ -388,7 +401,11 @@ export function ComissaoLancamentoDialog({
       }
     }
     if (percentages.percentualImobiliaria <= 0) {
-      toast.error("Informe o percentual da imobiliária.");
+      toast.error(
+        isSolo
+          ? "Informe o percentual de comissão sobre o VGV."
+          : "Informe o percentual da imobiliária.",
+      );
       return;
     }
     if (!form.dataPrevistaRecebimento) {
@@ -404,7 +421,11 @@ export function ComissaoLancamentoDialog({
       return;
     }
     if (Math.abs(splitTotal - 100) > 0.001) {
-      toast.error("Corretor, gerente, caixa e sócios devem somar 100%.");
+      toast.error(
+        isSolo
+          ? "Caixa e uso pessoal devem somar 100%."
+          : "Corretor, gerente, caixa e sócios devem somar 100%.",
+      );
       return;
     }
     if (
@@ -682,19 +703,25 @@ export function ComissaoLancamentoDialog({
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Corretor</Label>
-                  <IdSearchSelect
-                    value={form.corretorId}
-                    options={corretores.map((item) => ({
-                      id: item.id,
-                      label: corretorLabel(item),
-                    }))}
-                    onChange={(id) => setField("corretorId", id)}
-                    placeholder="Selecione o corretor"
-                    searchPlaceholder="Pesquisar corretor…"
-                    emptyLabel="Nenhum corretor cadastrado"
-                    allowNone={false}
-                    disabled={loadingCatalogs}
-                  />
+                  {isSolo ? (
+                    <p className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                      {session?.name?.trim() || "Você"}
+                    </p>
+                  ) : (
+                    <IdSearchSelect
+                      value={form.corretorId}
+                      options={corretores.map((item) => ({
+                        id: item.id,
+                        label: corretorLabel(item),
+                      }))}
+                      onChange={(id) => setField("corretorId", id)}
+                      placeholder="Selecione o corretor"
+                      searchPlaceholder="Pesquisar corretor…"
+                      emptyLabel="Nenhum corretor cadastrado"
+                      allowNone={false}
+                      disabled={loadingCatalogs}
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Construtora</Label>
@@ -761,14 +788,18 @@ export function ComissaoLancamentoDialog({
                   label="Empreendimento"
                   value={relationName(saleSummary.empreendimento)}
                 />
-                <Summary
-                  label="Corretor"
-                  value={relationName(saleSummary.corretor)}
-                />
-                <Summary
-                  label="Gerente"
-                  value={relationName(saleSummary.gerente)}
-                />
+                {!isSolo ? (
+                  <Summary
+                    label="Corretor"
+                    value={relationName(saleSummary.corretor)}
+                  />
+                ) : null}
+                {!isSolo ? (
+                  <Summary
+                    label="Gerente"
+                    value={relationName(saleSummary.gerente)}
+                  />
+                ) : null}
                 <Summary
                   label="Data da venda"
                   value={formatDate(saleSummary.dataVenda)}
@@ -803,49 +834,93 @@ export function ComissaoLancamentoDialog({
           </FormSection>
 
           <FormSection title="Percentuais">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <PercentField
-                label="Imobiliária"
-                value={form.percentualImobiliaria}
-                onChange={(value) => setField("percentualImobiliaria", value)}
-              />
-              <PercentField
-                label="Tributos"
-                value={form.percentualTributos}
-                onChange={(value) => setField("percentualTributos", value)}
-              />
-              <PercentField
-                label="Corretor"
-                value={form.percentualCorretor}
-                onChange={(value) => setField("percentualCorretor", value)}
-              />
-              <PercentField
-                label="Gerente"
-                value={form.percentualGerente}
-                onChange={(value) => setField("percentualGerente", value)}
-              />
-              <PercentField
-                label="Caixa"
-                value={form.percentualCaixa}
-                onChange={(value) => setField("percentualCaixa", value)}
-              />
-              <PercentField
-                label="Sócios"
-                value={form.percentualSocios}
-                onChange={(value) => setField("percentualSocios", value)}
-              />
-            </div>
-            <p
-              className={cn(
-                "text-xs",
-                Math.abs(splitTotal - 100) < 0.001
-                  ? "text-emerald-600"
-                  : "text-destructive",
-              )}
-            >
-              Corretor + gerente + caixa + sócios:{" "}
-              {splitTotal.toLocaleString("pt-BR")}% (deve somar 100%)
-            </p>
+            {isSolo ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <PercentField
+                    label="Comissão (% sobre o VGV)"
+                    value={form.percentualImobiliaria}
+                    onChange={(value) =>
+                      setField("percentualImobiliaria", value)
+                    }
+                  />
+                  <PercentField
+                    label="Tributos"
+                    value={form.percentualTributos}
+                    onChange={(value) => setField("percentualTributos", value)}
+                  />
+                  <PercentField
+                    label="Caixa"
+                    value={form.percentualCaixa}
+                    onChange={(value) => setField("percentualCaixa", value)}
+                  />
+                  <PercentField
+                    label="Uso pessoal"
+                    value={form.percentualCorretor}
+                    onChange={(value) => setField("percentualCorretor", value)}
+                  />
+                </div>
+                <p
+                  className={cn(
+                    "text-xs",
+                    Math.abs(splitTotal - 100) < 0.001
+                      ? "text-emerald-600"
+                      : "text-destructive",
+                  )}
+                >
+                  Caixa + uso pessoal: {splitTotal.toLocaleString("pt-BR")}%
+                  (deve somar 100% da líquida)
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <PercentField
+                    label="Imobiliária"
+                    value={form.percentualImobiliaria}
+                    onChange={(value) =>
+                      setField("percentualImobiliaria", value)
+                    }
+                  />
+                  <PercentField
+                    label="Tributos"
+                    value={form.percentualTributos}
+                    onChange={(value) => setField("percentualTributos", value)}
+                  />
+                  <PercentField
+                    label="Corretor"
+                    value={form.percentualCorretor}
+                    onChange={(value) => setField("percentualCorretor", value)}
+                  />
+                  <PercentField
+                    label="Gerente"
+                    value={form.percentualGerente}
+                    onChange={(value) => setField("percentualGerente", value)}
+                  />
+                  <PercentField
+                    label="Caixa"
+                    value={form.percentualCaixa}
+                    onChange={(value) => setField("percentualCaixa", value)}
+                  />
+                  <PercentField
+                    label="Sócios"
+                    value={form.percentualSocios}
+                    onChange={(value) => setField("percentualSocios", value)}
+                  />
+                </div>
+                <p
+                  className={cn(
+                    "text-xs",
+                    Math.abs(splitTotal - 100) < 0.001
+                      ? "text-emerald-600"
+                      : "text-destructive",
+                  )}
+                >
+                  Corretor + gerente + caixa + sócios:{" "}
+                  {splitTotal.toLocaleString("pt-BR")}% (deve somar 100%)
+                </p>
+              </>
+            )}
             {mode === "edit" && (
               <div className="max-w-xs space-y-2">
                 <Label>Status</Label>
@@ -872,9 +947,9 @@ export function ComissaoLancamentoDialog({
 
           <FormSection title="Premiação">
             <p className="text-xs text-muted-foreground">
-              Valor à parte da comissão. Cada percentual incide sobre o saldo
-              da etapa anterior (corretor → imposto → imobiliária → gerente) e
-              não entra no rateio de 100% da líquida.
+              {isSolo
+                ? "Valor à parte da comissão. Cada percentual incide sobre o saldo da etapa anterior (uso pessoal → tributos → caixa)."
+                : "Valor à parte da comissão. Cada percentual incide sobre o saldo da etapa anterior (corretor → imposto → imobiliária → gerente) e não entra no rateio de 100% da líquida."}
             </p>
             <div className="max-w-xs space-y-2">
               <Label htmlFor="comissao-premiacao">Valor total da premiação</Label>
@@ -888,58 +963,89 @@ export function ComissaoLancamentoDialog({
                 placeholder="0,00"
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <PercentField
-                label="Corretor"
-                value={form.percentualPremiacaoCorretor}
-                onChange={(value) =>
-                  setField("percentualPremiacaoCorretor", value)
-                }
-                required={false}
-              />
-              <PercentField
-                label="Imposto (%)"
-                value={form.percentualPremiacaoImposto}
-                onChange={(value) =>
-                  setField("percentualPremiacaoImposto", value)
-                }
-                required={false}
-              />
-              <PercentField
-                label="Imobiliária"
-                value={form.percentualPremiacaoImobiliaria}
-                onChange={(value) =>
-                  setField("percentualPremiacaoImobiliaria", value)
-                }
-                required={false}
-              />
-              <PercentField
-                label="Gerente"
-                value={form.percentualPremiacaoGerente}
-                onChange={(value) =>
-                  setField("percentualPremiacaoGerente", value)
-                }
-                required={false}
-              />
-            </div>
+            {isSolo ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <PercentField
+                  label="Uso pessoal"
+                  value={form.percentualPremiacaoCorretor}
+                  onChange={(value) =>
+                    setField("percentualPremiacaoCorretor", value)
+                  }
+                  required={false}
+                />
+                <PercentField
+                  label="Tributos"
+                  value={form.percentualPremiacaoImposto}
+                  onChange={(value) =>
+                    setField("percentualPremiacaoImposto", value)
+                  }
+                  required={false}
+                />
+                <PercentField
+                  label="Caixa"
+                  value={form.percentualPremiacaoImobiliaria}
+                  onChange={(value) =>
+                    setField("percentualPremiacaoImobiliaria", value)
+                  }
+                  required={false}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <PercentField
+                  label="Corretor"
+                  value={form.percentualPremiacaoCorretor}
+                  onChange={(value) =>
+                    setField("percentualPremiacaoCorretor", value)
+                  }
+                  required={false}
+                />
+                <PercentField
+                  label="Imposto (%)"
+                  value={form.percentualPremiacaoImposto}
+                  onChange={(value) =>
+                    setField("percentualPremiacaoImposto", value)
+                  }
+                  required={false}
+                />
+                <PercentField
+                  label="Imobiliária"
+                  value={form.percentualPremiacaoImobiliaria}
+                  onChange={(value) =>
+                    setField("percentualPremiacaoImobiliaria", value)
+                  }
+                  required={false}
+                />
+                <PercentField
+                  label="Gerente"
+                  value={form.percentualPremiacaoGerente}
+                  onChange={(value) =>
+                    setField("percentualPremiacaoGerente", value)
+                  }
+                  required={false}
+                />
+              </div>
+            )}
             {premiacaoValor > 0 && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Summary
-                  label="Corretor"
+                  label={isSolo ? "Uso pessoal" : "Corretor"}
                   value={brl(premiacaoPreview.corretor)}
                 />
                 <Summary
-                  label="Imposto"
+                  label={isSolo ? "Tributos" : "Imposto"}
                   value={brl(premiacaoPreview.imposto)}
                 />
                 <Summary
-                  label="Imobiliária"
+                  label={isSolo ? "Caixa" : "Imobiliária"}
                   value={brl(premiacaoPreview.imobiliaria)}
                 />
-                <Summary
-                  label="Gerente"
-                  value={brl(premiacaoPreview.gerente)}
-                />
+                {!isSolo ? (
+                  <Summary
+                    label="Gerente"
+                    value={brl(premiacaoPreview.gerente)}
+                  />
+                ) : null}
                 <Summary
                   label="Valor restante"
                   value={brl(premiacaoPreview.restante)}
@@ -958,14 +1064,22 @@ export function ComissaoLancamentoDialog({
                 value={brl(preview.net)}
                 emphasized
               />
-              <Summary label="Corretor" value={brl(preview.broker)} />
-              <Summary label="Gerente" value={brl(preview.manager)} />
+              <Summary
+                label={isSolo ? "Uso pessoal" : "Corretor"}
+                value={brl(preview.broker)}
+              />
+              {!isSolo ? (
+                <Summary label="Gerente" value={brl(preview.manager)} />
+              ) : null}
               <Summary label="Caixa" value={brl(preview.cash)} />
-              <Summary label="Sócios" value={brl(preview.partners)} />
+              {!isSolo ? (
+                <Summary label="Sócios" value={brl(preview.partners)} />
+              ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              Bruta = VGV × % imobiliária; líquida = bruta − tributos;
-              distribuição calculada sobre a líquida.
+              {isSolo
+                ? "Bruta = VGV × % comissão; líquida = bruta − tributos; caixa e uso pessoal sobre a líquida."
+                : "Bruta = VGV × % imobiliária; líquida = bruta − tributos; distribuição calculada sobre a líquida."}
             </p>
           </FormSection>
         </FormDialogBody>

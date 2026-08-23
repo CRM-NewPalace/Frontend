@@ -85,6 +85,7 @@ function Page() {
   const { id: comissaoIdFromUrl } = Route.useSearch();
   const navigate = useNavigate();
   const session = getSession();
+  const isSolo = session?.tenant?.plano === "solo";
   const role = session?.role;
   const isFinanceTeam =
     role === "admin" || role === "super_admin" || role === "financeiro";
@@ -615,7 +616,7 @@ function Page() {
             <FormSection title="Percentuais">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <DetailField
-                  label="Imobiliária"
+                  label={isSolo ? "Comissão" : "Imobiliária"}
                   value={`${numberValue(detail.percentualImobiliaria).toLocaleString("pt-BR")}%`}
                 />
                 <DetailField
@@ -623,21 +624,25 @@ function Page() {
                   value={`${numberValue(detail.percentualTributos).toLocaleString("pt-BR")}%`}
                 />
                 <DetailField
-                  label="Corretor"
+                  label={isSolo ? "Uso pessoal" : "Corretor"}
                   value={`${numberValue(detail.percentualCorretor).toLocaleString("pt-BR")}%`}
                 />
-                <DetailField
-                  label="Gerente"
-                  value={`${numberValue(detail.percentualGerente).toLocaleString("pt-BR")}%`}
-                />
+                {!isSolo ? (
+                  <DetailField
+                    label="Gerente"
+                    value={`${numberValue(detail.percentualGerente).toLocaleString("pt-BR")}%`}
+                  />
+                ) : null}
                 <DetailField
                   label="Caixa"
                   value={`${numberValue(detail.percentualCaixa).toLocaleString("pt-BR")}%`}
                 />
-                <DetailField
-                  label="Sócios"
-                  value={`${numberValue(detail.percentualSocios).toLocaleString("pt-BR")}%`}
-                />
+                {!isSolo ? (
+                  <DetailField
+                    label="Sócios"
+                    value={`${numberValue(detail.percentualSocios).toLocaleString("pt-BR")}%`}
+                  />
+                ) : null}
               </div>
             </FormSection>
 
@@ -660,21 +665,25 @@ function Page() {
                   }
                 />
                 <DetailField
-                  label="Corretor"
+                  label={isSolo ? "Uso pessoal" : "Corretor"}
                   value={brl(numberValue(detail.valorCorretor))}
                 />
-                <DetailField
-                  label="Gerente"
-                  value={brl(numberValue(detail.valorGerente))}
-                />
+                {!isSolo ? (
+                  <DetailField
+                    label="Gerente"
+                    value={brl(numberValue(detail.valorGerente))}
+                  />
+                ) : null}
                 <DetailField
                   label="Caixa"
                   value={brl(numberValue(detail.valorCaixa))}
                 />
-                <DetailField
-                  label="Sócios"
-                  value={brl(numberValue(detail.valorSocios))}
-                />
+                {!isSolo ? (
+                  <DetailField
+                    label="Sócios"
+                    value={brl(numberValue(detail.valorSocios))}
+                  />
+                ) : null}
               </div>
             </FormSection>
 
@@ -686,21 +695,23 @@ function Page() {
                     value={brl(numberValue(detail.valorPremiacao))}
                   />
                   <DetailField
-                    label="Corretor"
+                    label={isSolo ? "Uso pessoal" : "Corretor"}
                     value={`${brl(numberValue(detail.valorPremiacaoCorretor))} (${numberValue(detail.percentualPremiacaoCorretor).toLocaleString("pt-BR")}%)`}
                   />
                   <DetailField
-                    label="Imposto"
+                    label={isSolo ? "Tributos" : "Imposto"}
                     value={`${brl(numberValue(detail.valorPremiacaoImposto))} (${numberValue(detail.percentualPremiacaoImposto).toLocaleString("pt-BR")}%)`}
                   />
                   <DetailField
-                    label="Imobiliária"
+                    label={isSolo ? "Caixa" : "Imobiliária"}
                     value={`${brl(numberValue(detail.valorPremiacaoImobiliaria))} (${numberValue(detail.percentualPremiacaoImobiliaria).toLocaleString("pt-BR")}%)`}
                   />
-                  <DetailField
-                    label="Gerente"
-                    value={`${brl(numberValue(detail.valorPremiacaoGerente))} (${numberValue(detail.percentualPremiacaoGerente).toLocaleString("pt-BR")}%)`}
-                  />
+                  {!isSolo ? (
+                    <DetailField
+                      label="Gerente"
+                      value={`${brl(numberValue(detail.valorPremiacaoGerente))} (${numberValue(detail.percentualPremiacaoGerente).toLocaleString("pt-BR")}%)`}
+                    />
+                  ) : null}
                   <DetailField
                     label="Valor restante"
                     value={brl(numberValue(detail.valorPremiacaoRestante))}
