@@ -5,9 +5,9 @@ export const SITE_NAME = "Zone Connection";
  * Imagem de preview ao compartilhar o link.
  * `?v=` força recache no WhatsApp/Facebook depois de trocar a arte.
  */
-export const DEFAULT_OG_IMAGE = "/logoZoneConnection.png?v=20260819";
-export const DEFAULT_OG_IMAGE_WIDTH = "1029";
-export const DEFAULT_OG_IMAGE_HEIGHT = "711";
+export const DEFAULT_OG_IMAGE = "/og-default.png?v=zone-20260819";
+export const DEFAULT_OG_IMAGE_WIDTH = "1200";
+export const DEFAULT_OG_IMAGE_HEIGHT = "630";
 
 const APEX_HOST = "zoneconnection.com.br";
 const WWW_ORIGIN = "https://www.zoneconnection.com.br";

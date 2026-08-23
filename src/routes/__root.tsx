@@ -166,6 +166,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           },
           { name: "author", content: "Zone Connection" },
           {
+            name: "google-site-verification",
+            content: "u4AxezzUBKxY6bnL5ft52lRBOo3-0eLSae6vyQWtcWA",
+          },
+          {
             property: "og:title",
             content:
               "Zone Connection | CRM, IA no WhatsApp e Sites para Imobiliárias",
