@@ -49,6 +49,8 @@ import {
   Banknote,
   BriefcaseBusiness,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Clock3,
   FileCheck2,
@@ -196,6 +198,76 @@ function money(n: number) {
 }
 
 const KPI_EMBED = "shadow-none border-border/50 bg-muted/35";
+const DASHBOARD_PAGE_SIZE = 5;
+
+function usePagedList<T>(items: T[], pageSize = DASHBOARD_PAGE_SIZE) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+
+  useEffect(() => {
+    setPage((current) => Math.min(Math.max(1, current), totalPages));
+  }, [totalPages, items.length]);
+
+  const pageItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, page, pageSize]);
+
+  return {
+    page,
+    setPage,
+    totalPages,
+    pageItems,
+    total: items.length,
+    showPager: items.length > pageSize,
+  };
+}
+
+function ListPager({
+  page,
+  totalPages,
+  total,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        Exibindo até {DASHBOARD_PAGE_SIZE} por página · {total} no total
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+          disabled={page <= 1}
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          aria-label="Página anterior"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          Anterior
+        </button>
+        <span className="px-2 tabular-nums text-foreground">
+          Página {page} de {totalPages}
+        </span>
+        <button
+          type="button"
+          className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          aria-label="Próxima página"
+        >
+          Próxima
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function DashboardPanel({
   title,
@@ -374,6 +446,20 @@ function DashboardAdminView() {
       }),
     [mes, ano],
   );
+
+  const perdidosMotivos = summary?.perdidos.motivos ?? [];
+  const agendaItens = summary?.agenda.itens ?? [];
+  const rankingItens = summary?.ranking ?? [];
+  const equipesItens = summary?.equipes ?? [];
+  const metasEquipes = summary?.metas.equipes ?? [];
+  const metasCorretores = summary?.metas.corretores ?? [];
+
+  const perdidosPage = usePagedList(perdidosMotivos);
+  const agendaPage = usePagedList(agendaItens);
+  const rankingPage = usePagedList(rankingItens);
+  const equipesPage = usePagedList(equipesItens);
+  const metasEquipesPage = usePagedList(metasEquipes);
+  const metasCorretoresPage = usePagedList(metasCorretores);
 
   const filtros = (
     <div className="flex w-full flex-wrap items-end gap-2">
@@ -787,25 +873,33 @@ function DashboardAdminView() {
           action={<PanelLink to="/leads-perdidos">Ver perdidos</PanelLink>}
         >
           <div className="space-y-2">
-            {summary.perdidos.motivos.length === 0 ? (
+            {perdidosMotivos.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
                 Nenhum lead perdido neste mês.
               </p>
             ) : (
-              summary.perdidos.motivos.map((m) => (
-                <div
-                  key={m.motivo}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
-                      {m.motivo}
+              <>
+                {perdidosPage.pageItems.map((m) => (
+                  <div
+                    key={m.motivo}
+                    className="flex items-center justify-between rounded-lg border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {m.motivo}
+                      </div>
+                      <EvolucaoBadge value={m.evolucaoPct} invert />
                     </div>
-                    <EvolucaoBadge value={m.evolucaoPct} invert />
+                    <span className="font-semibold tabular-nums">{m.valor}</span>
                   </div>
-                  <span className="font-semibold tabular-nums">{m.valor}</span>
-                </div>
-              ))
+                ))}
+                <ListPager
+                  page={perdidosPage.page}
+                  totalPages={perdidosPage.totalPages}
+                  total={perdidosPage.total}
+                  onPageChange={perdidosPage.setPage}
+                />
+              </>
             )}
           </div>
         </DashboardPanel>
@@ -829,39 +923,47 @@ function DashboardAdminView() {
               {summary.agenda.atrasados === 1 ? "" : "s"}
             </span>
           </div>
-          {summary.agenda.itens.length === 0 ? (
+          {agendaItens.length === 0 ? (
             <p className="py-4 text-sm text-muted-foreground">
               Nenhum compromisso hoje.
             </p>
           ) : (
-            <div className="divide-y rounded-md border">
-              {summary.agenda.itens.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 px-3 py-2.5"
-                >
-                  {item.status === "concluido" ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                  ) : (
-                    <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {item.titulo}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.contato ?? item.tipo}
-                    </p>
+            <>
+              <div className="divide-y rounded-md border">
+                {agendaPage.pageItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 px-3 py-2.5"
+                  >
+                    {item.status === "concluido" ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                    ) : (
+                      <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {item.titulo}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.contato ?? item.tipo}
+                      </p>
+                    </div>
+                    <time className="shrink-0 text-xs text-muted-foreground">
+                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
                   </div>
-                  <time className="shrink-0 text-xs text-muted-foreground">
-                    {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </time>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <ListPager
+                page={agendaPage.page}
+                totalPages={agendaPage.totalPages}
+                total={agendaPage.total}
+                onPageChange={agendaPage.setPage}
+              />
+            </>
           )}
         </DashboardPanel>
       </section>
@@ -873,101 +975,117 @@ function DashboardAdminView() {
           description="Ordenado por VGV do mês."
           action={<PanelLink to="/corretores">Ver corretores</PanelLink>}
         >
-          {summary.ranking.length === 0 ? (
+          {rankingItens.length === 0 ? (
             <p className="py-4 text-sm text-muted-foreground">
               Nenhum corretor ativo.
             </p>
           ) : (
-            <div className="-mx-1 overflow-x-auto overscroll-x-contain touch-pan-x">
-              <table className="w-full min-w-140 text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 pr-3 font-medium whitespace-nowrap">
-                      Corretor
-                    </th>
-                    <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
-                      Leads
-                    </th>
-                    <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
-                      Visitas
-                    </th>
-                    <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
-                      Vendas
-                    </th>
-                    <th className="pb-2 text-right font-medium whitespace-nowrap">
-                      VGV
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.ranking.slice(0, 10).map((r) => (
-                    <tr
-                      key={r.corretorId}
-                      className="border-b last:border-0 hover:bg-muted/40"
-                    >
-                      <td className="max-w-48 py-2.5 pr-3">
-                        <div className="truncate font-medium">{r.nome}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {r.equipe ?? "Sem equipe"}
-                        </div>
-                      </td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
-                        {r.leads}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
-                        {r.visitas}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right whitespace-nowrap">
-                        <div className="font-medium tabular-nums">
-                          {r.vendas.valor}
-                        </div>
-                        <EvolucaoBadge value={r.vendas.evolucaoPct} />
-                      </td>
-                      <td className="py-2.5 text-right whitespace-nowrap">
-                        <div className="font-medium tabular-nums">
-                          {money(r.vgv.valor)}
-                        </div>
-                        <EvolucaoBadge value={r.vgv.evolucaoPct} />
-                      </td>
+            <>
+              <div className="-mx-1 overflow-x-auto overscroll-x-contain touch-pan-x">
+                <table className="w-full min-w-140 text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 pr-3 font-medium whitespace-nowrap">
+                        Corretor
+                      </th>
+                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                        Leads
+                      </th>
+                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                        Visitas
+                      </th>
+                      <th className="pb-2 pr-3 text-right font-medium whitespace-nowrap">
+                        Vendas
+                      </th>
+                      <th className="pb-2 text-right font-medium whitespace-nowrap">
+                        VGV
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {rankingPage.pageItems.map((r) => (
+                      <tr
+                        key={r.corretorId}
+                        className="border-b last:border-0 hover:bg-muted/40"
+                      >
+                        <td className="max-w-48 py-2.5 pr-3">
+                          <div className="truncate font-medium">{r.nome}</div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {r.equipe ?? "Sem equipe"}
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                          {r.leads}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                          {r.visitas}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right whitespace-nowrap">
+                          <div className="font-medium tabular-nums">
+                            {r.vendas.valor}
+                          </div>
+                          <EvolucaoBadge value={r.vendas.evolucaoPct} />
+                        </td>
+                        <td className="py-2.5 text-right whitespace-nowrap">
+                          <div className="font-medium tabular-nums">
+                            {money(r.vgv.valor)}
+                          </div>
+                          <EvolucaoBadge value={r.vgv.evolucaoPct} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ListPager
+                page={rankingPage.page}
+                totalPages={rankingPage.totalPages}
+                total={rankingPage.total}
+                onPageChange={rankingPage.setPage}
+              />
+            </>
           )}
         </DashboardPanel>
 
         <DashboardPanel title="Carteira por equipe">
           <div className="space-y-3">
-            {summary.equipes.length === 0 ? (
+            {equipesItens.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
                 Nenhuma equipe cadastrada.
               </p>
             ) : (
-              summary.equipes.map((eq) => (
-                <div
-                  key={eq.equipeId}
-                  className="rounded-lg border px-3 py-2.5"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-medium">{eq.nome}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {eq.corretores} corretor
-                        {eq.corretores === 1 ? "" : "es"}
+              <>
+                {equipesPage.pageItems.map((eq) => (
+                  <div
+                    key={eq.equipeId}
+                    className="rounded-lg border px-3 py-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-medium">{eq.nome}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {eq.corretores} corretor
+                          {eq.corretores === 1 ? "" : "es"}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right text-sm">
-                      <div className="font-semibold tabular-nums">
-                        {eq.total}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {eq.leads} leads · {eq.clientes} clientes
+                      <div className="text-right text-sm">
+                        <div className="font-semibold tabular-nums">
+                          {eq.total}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {eq.leads} leads · {eq.clientes} clientes
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+                <ListPager
+                  page={equipesPage.page}
+                  totalPages={equipesPage.totalPages}
+                  total={equipesPage.total}
+                  onPageChange={equipesPage.setPage}
+                />
+              </>
             )}
           </div>
         </DashboardPanel>
@@ -985,9 +1103,9 @@ function DashboardAdminView() {
       >
         <div className="space-y-5">
           {isSolo ? (
-            summary.metas.corretores.length > 0 ? (
+            metasCorretores.length > 0 ? (
               <div className="space-y-3">
-                {summary.metas.corretores.map((m) => (
+                {metasCorretoresPage.pageItems.map((m) => (
                   <div key={m.id}>
                     <div className="mb-1 flex justify-between gap-3 text-sm">
                       <span className="font-medium">
@@ -1003,6 +1121,12 @@ function DashboardAdminView() {
                     <Progress value={m.percentual} />
                   </div>
                 ))}
+                <ListPager
+                  page={metasCorretoresPage.page}
+                  totalPages={metasCorretoresPage.totalPages}
+                  total={metasCorretoresPage.total}
+                  onPageChange={metasCorretoresPage.setPage}
+                />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -1023,10 +1147,10 @@ function DashboardAdminView() {
             <Progress value={summary.metas.imobiliaria.percentual} />
           </div>
 
-          {summary.metas.equipes.length > 0 && (
+          {metasEquipes.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-primary">Por equipe</h3>
-              {summary.metas.equipes.map((eq) => (
+              {metasEquipesPage.pageItems.map((eq) => (
                 <div key={eq.equipeId}>
                   <div className="mb-1 flex justify-between text-sm">
                     <span>{eq.nome}</span>
@@ -1037,10 +1161,16 @@ function DashboardAdminView() {
                   <Progress value={eq.percentual} />
                 </div>
               ))}
+              <ListPager
+                page={metasEquipesPage.page}
+                totalPages={metasEquipesPage.totalPages}
+                total={metasEquipesPage.total}
+                onPageChange={metasEquipesPage.setPage}
+              />
             </div>
           )}
 
-          {summary.metas.corretores.length > 0 ? (
+          {metasCorretores.length > 0 ? (
             <div className="overflow-x-auto">
               <h3 className="mb-2 text-sm font-semibold text-primary">
                 Por corretor
@@ -1054,7 +1184,7 @@ function DashboardAdminView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {summary.metas.corretores.map((m) => (
+                  {metasCorretoresPage.pageItems.map((m) => (
                     <tr key={m.id} className="border-b last:border-0">
                       <td className="py-2">
                         <div className="font-medium">{m.corretorNome}</div>
@@ -1080,6 +1210,12 @@ function DashboardAdminView() {
                   ))}
                 </tbody>
               </table>
+              <ListPager
+                page={metasCorretoresPage.page}
+                totalPages={metasCorretoresPage.totalPages}
+                total={metasCorretoresPage.total}
+                onPageChange={metasCorretoresPage.setPage}
+              />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -1420,6 +1556,8 @@ function AgendaCategoria({
   items: DashboardCorretor["agenda"]["itens"];
   emptyMessage: string;
 }) {
+  const pageState = usePagedList(items);
+
   return (
     <div className="rounded-lg border p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -1431,7 +1569,7 @@ function AgendaCategoria({
       ) : (
         <>
           <div className="divide-y rounded-md border">
-            {items.slice(0, 7).map((item) => (
+            {pageState.pageItems.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center gap-3 px-3 py-2.5"
@@ -1456,17 +1594,12 @@ function AgendaCategoria({
               </div>
             ))}
           </div>
-          {items.length > 7 && (
-            <Button
-              asChild
-              type="button"
-              variant="outline"
-              size="sm"
-              className={`mt-3 ${SOFT_BTN}`}
-            >
-              <Link to="/agenda">Exibir mais</Link>
-            </Button>
-          )}
+          <ListPager
+            page={pageState.page}
+            totalPages={pageState.totalPages}
+            total={pageState.total}
+            onPageChange={pageState.setPage}
+          />
         </>
       )}
     </div>
