@@ -546,6 +546,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       void navigate({ to: "/imoveis" });
       return;
     }
+    const canOpenFunil = Boolean(
+      user &&
+        canAccessRoute(
+          user.role,
+          "/funil",
+          user.tenant?.modules ?? null,
+          user.tenant?.plano,
+          user.permissions,
+        ),
+    );
+    const leadDest = canOpenFunil ? "/funil" : "/leads";
     if (n.tipo === "proposta_vencimento_proximo") {
       if (
         user &&
@@ -558,13 +569,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )
       ) {
         void navigate({ to: "/propostas" });
-      } else if (n.leadId) {
+      } else if (n.leadId && canOpenFunil) {
         void navigate({
           to: "/funil",
           search: { lead: n.leadId },
         });
       } else {
-        void navigate({ to: "/funil" });
+        void navigate({ to: leadDest });
       }
       return;
     }
@@ -574,14 +585,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       n.tipo === "lead_sem_atendimento" ||
       n.tipo === "tarefa_atrasada"
     ) {
-      void navigate({
-        to: "/funil",
-        search: { lead: n.leadId ?? undefined },
-      });
+      if (canOpenFunil) {
+        void navigate({
+          to: "/funil",
+          search: { lead: n.leadId ?? undefined },
+        });
+      } else {
+        void navigate({ to: "/leads" });
+      }
       return;
     }
     void navigate({
-      to: user?.role === "analista" ? "/documentacao" : "/funil",
+      to: user?.role === "analista" ? "/documentacao" : leadDest,
     });
   }
 

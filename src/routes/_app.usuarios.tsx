@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import {
@@ -401,6 +401,8 @@ function Usuarios() {
     session?.tenant?.plano,
     session?.tenant?.modules ?? null,
   );
+  const isSolo = session?.tenant?.plano === "solo";
+  const canCreateAdmin = isAdmin && !isSolo;
   const { leads, refresh: refreshLeads } = useLeads();
 
   const cachedUsers = getUsersCache();
@@ -438,6 +440,7 @@ function Usuarios() {
   );
   const [weekPresenceLoading, setWeekPresenceLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ApiUser | null>(null);
+  const deleteTargetRef = useRef<ApiUser | null>(null);
   const [credentials, setCredentials] = useState<{
     name: string;
     email: string;
@@ -729,17 +732,23 @@ function Usuarios() {
     }
   }
 
+  function requestDelete(u: ApiUser) {
+    deleteTargetRef.current = u;
+    window.setTimeout(() => setDeleteTarget(u), 0);
+  }
+
   async function confirmDelete() {
-    if (!deleteTarget) return;
+    const target = deleteTargetRef.current ?? deleteTarget;
+    if (!target) return;
+    deleteTargetRef.current = null;
     if (
       !isAdmin &&
-      !(isGerente && isCorretorLike(deleteTarget.role))
+      !(isGerente && isCorretorLike(target.role))
     ) {
       toast.error("Você não tem permissão para excluir este usuário.");
       setDeleteTarget(null);
       return;
     }
-    const target = deleteTarget;
     // Otimista: some da tabela na hora; volta se a API falhar.
     setUsers((prev) => prev.filter((u) => u.id !== target.id));
     setDeleteTarget(null);
@@ -1133,7 +1142,7 @@ function Usuarios() {
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               disabled={session?.id === u.id}
-                              onClick={() => setDeleteTarget(u)}
+                              onSelect={() => requestDelete(u)}
                             >
                               <Trash2 className="w-3.5 h-3.5 mr-2" />
                               Excluir
@@ -1402,7 +1411,9 @@ function Usuarios() {
                     <SelectContent>
                       {isAdmin && (
                         <>
-                          <SelectItem value="admin">Administrador</SelectItem>
+                          {(canCreateAdmin || form.role === "admin") && (
+                            <SelectItem value="admin">Administrador</SelectItem>
+                          )}
                           {canUseGerente && (
                             <SelectItem value="gerente">Gerente</SelectItem>
                           )}
@@ -1760,6 +1771,21 @@ function Usuarios() {
                   Editar
                 </Button>
               )}
+              {(isAdmin ||
+                (isGerente && isCorretorLike(detail.role))) &&
+                session?.id !== detail.id && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      setDetail(null);
+                      requestDelete(detail);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Excluir
+                  </Button>
+                )}
             </FormDialogActions>
           </>
         )}

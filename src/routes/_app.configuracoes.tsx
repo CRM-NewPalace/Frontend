@@ -316,7 +316,9 @@ function Config() {
   const isTreinee = user?.role === "treinee";
   const isCorretor = user?.role === "corretor";
   const showCreci = Boolean(user && userCanInformarCreci(user));
+  const isSolo = user?.tenant?.plano === "solo";
   const showOpsTabs = !isAnalista && !isTreinee && !isCorretor;
+  const showFunilTab = showOpsTabs && !isSolo;
   const showDocumentacao = !isTreinee && !isCorretor;
   const showMotivos = !isTreinee && !isCorretor;
   const showCatalogTabs = !isCorretor;
@@ -527,7 +529,9 @@ function Config() {
               ? "Gerencie conexões, origens, tags, CCAs e catálogos de imóveis."
               : isAnalista
                 ? "Gerencie conexões, documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
-                : "Personalize conexões, imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
+                : isSolo
+                  ? "Personalize conexões, imobiliária, documentação, origens, motivos, tags, CCAs e imóveis."
+                  : "Personalize conexões, imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
         }
       />
 
@@ -546,7 +550,9 @@ function Config() {
           {showOpsTabs ? (
             <>
               <TabsTrigger value="empresa">Imobiliária</TabsTrigger>
-              <TabsTrigger value="funil">Funil</TabsTrigger>
+              {showFunilTab ? (
+                <TabsTrigger value="funil">Funil</TabsTrigger>
+              ) : null}
             </>
           ) : null}
           {showDocumentacao ? (
@@ -580,9 +586,11 @@ function Config() {
               <ConfigEmpresaPanel />
             </TabsContent>
 
-            <TabsContent value="funil">
-              <ConfigFunisPanel />
-            </TabsContent>
+            {showFunilTab ? (
+              <TabsContent value="funil">
+                <ConfigFunisPanel />
+              </TabsContent>
+            ) : null}
 
             <TabsContent value="financeiro" className="space-y-4">
               <Card>

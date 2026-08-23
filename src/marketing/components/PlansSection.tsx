@@ -71,7 +71,7 @@ const PLANS: Plan[] = [
       },
     ],
     features: [
-      "CRM do corretor (leads, funil, agenda, clientes e imóveis)",
+      "CRM do corretor (leads, agenda, clientes e imóveis)",
       "Propostas, documentação e contratos",
       "Metas pessoais",
       "Comissão, contas a receber/pagar e fluxo de caixa",
