@@ -163,7 +163,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           { name: "author", content: "Zone Connection" },
           {
             name: "google-site-verification",
-            content: "u4AxezzUBKxY6bnL5ft52lRBOo3-0eLSae6vyQWtcWA",
+            content: "yift0QDya_7v9ye-6ucfkaKQIRZxrnOhPWxpNSkb83k",
           },
           {
             property: "og:title",
