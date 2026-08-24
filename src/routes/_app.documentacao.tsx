@@ -583,7 +583,9 @@ function DocumentacaoPage() {
   const navigate = useNavigate();
   const routeSearch = Route.useSearch();
   const user = getSession();
+  const isSolo = user?.tenant?.plano === "solo";
   const isManager = user ? canViewTeamData(user.role) : false;
+  const showTeamFilters = isManager && !isSolo;
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
   const canOwnCarteira = isAdmin || isGerente;
@@ -855,6 +857,10 @@ function DocumentacaoPage() {
       setConstrutoras(c);
       setEmpreendimentos(e);
       setDocCorretores(corretores);
+      if (isSolo) {
+        setGerentes([]);
+        return;
+      }
       const gerentesFromCredit = corretores
         .filter((c) => c.role === "gerente")
         .map((c) => ({
@@ -885,7 +891,7 @@ function DocumentacaoPage() {
           : "Não foi possível carregar construtoras/empreendimentos.",
       );
     }
-  }, [user?.role]);
+  }, [user?.role, isSolo]);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -1337,8 +1343,12 @@ function DocumentacaoPage() {
 
   function applyContact(contact: Lead) {
     setForm((prev) => {
-      const corretorId = contact.corretorId ?? prev.corretorId;
-      const gerenteId = gerenteIdOfCorretor(corretorId) || prev.gerenteId;
+      const corretorId = isSolo
+        ? user?.id || prev.corretorId
+        : (contact.corretorId ?? prev.corretorId);
+      const gerenteId = isSolo
+        ? ""
+        : gerenteIdOfCorretor(corretorId) || prev.gerenteId;
       const dataAnalise =
         prev.dataAnalise ||
         (isStatusAnalise(prev.status1) ? todayDateInput() : "");
@@ -1370,10 +1380,13 @@ function DocumentacaoPage() {
     const base = emptyForm();
     base.dataAnalise = todayDateInput();
     base.createdAt = todayDateInput();
-    if (user?.role === "gerente") {
+    if (isSolo && user?.id) {
+      base.corretorId = user.id;
+      base.gerenteId = "";
+    } else if (user?.role === "gerente") {
       base.gerenteId = user.id;
     }
-    if (user?.role === "gerente" || user?.role === "treinee") {
+    if (!isSolo && (user?.role === "gerente" || user?.role === "treinee")) {
       base.corretorId = user.id;
       if (!base.gerenteId) {
         base.gerenteId = gerenteIdOfCorretor(user.id);
@@ -1414,8 +1427,8 @@ function DocumentacaoPage() {
       fonte: doc.fonte,
       status1: doc.status1,
       status2: doc.status2,
-      corretorId: doc.corretorId ?? "",
-      gerenteId: doc.gerenteId ?? "",
+      corretorId: doc.corretorId || (isSolo ? user?.id ?? "" : ""),
+      gerenteId: isSolo ? "" : (doc.gerenteId ?? ""),
       createdAt: toDateInput(doc.createdAt) || todayDateInput(),
       dataAnalise: toDateInput(doc.dataAnalise),
       dataVenda: toDateInput(doc.dataVenda),
@@ -1462,8 +1475,10 @@ function DocumentacaoPage() {
       fonte: form.fonte,
       status1: form.status1.trim(),
       status2: form.status2.trim(),
-      corretorId: form.corretorId || null,
-      gerenteId: form.gerenteId || null,
+      corretorId: isSolo
+        ? form.corretorId || user?.id || null
+        : form.corretorId || null,
+      gerenteId: isSolo ? null : form.gerenteId || null,
       createdAt: form.createdAt || null,
       dataAnalise: form.dataAnalise || null,
       dataVenda: form.dataVenda || null,
@@ -2456,7 +2471,7 @@ function DocumentacaoPage() {
                       </div>
                     </div>
 
-                    {isManager ? (
+                    {showTeamFilters ? (
                       <div className="space-y-2.5">
                         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                           Equipe
@@ -2681,7 +2696,9 @@ function DocumentacaoPage() {
                   <TableHead className="w-40">Status 1</TableHead>
                   <TableHead className="w-40">Status 2</TableHead>
                   <TableHead className="w-40">Corretor</TableHead>
-                  <TableHead className="w-40">Gerente</TableHead>
+                  {!isSolo ? (
+                    <TableHead className="w-40">Gerente</TableHead>
+                  ) : null}
                   <TableHead className="w-40">Fonte</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -2768,19 +2785,21 @@ function DocumentacaoPage() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell>
-                      {doc.gerente?.name ? (
-                        <Badge
-                          variant="secondary"
-                          className={DOC_PERSON_CHIP}
-                          title={doc.gerente.name}
-                        >
-                          {doc.gerente.name}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
+                    {!isSolo ? (
+                      <TableCell>
+                        {doc.gerente?.name ? (
+                          <Badge
+                            variant="secondary"
+                            className={DOC_PERSON_CHIP}
+                            title={doc.gerente.name}
+                          >
+                            {doc.gerente.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    ) : null}
                     <TableCell>
                       {(() => {
                         const fonte = displayFonte(doc.fonte);
@@ -3204,9 +3223,11 @@ function DocumentacaoPage() {
                       setForm((prev) => ({
                         ...prev,
                         corretorId,
-                        gerenteId: corretorId
-                          ? gerenteIdOfCorretor(corretorId) || prev.gerenteId
-                          : prev.gerenteId,
+                        gerenteId: isSolo
+                          ? ""
+                          : corretorId
+                            ? gerenteIdOfCorretor(corretorId) || prev.gerenteId
+                            : prev.gerenteId,
                       }));
                     }}
                     disabled={readOnly}
@@ -3225,28 +3246,30 @@ function DocumentacaoPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Gerente</Label>
-                  <Select
-                    value={form.gerenteId || "__none__"}
-                    onValueChange={(v) =>
-                      setField("gerenteId", v === "__none__" ? "" : v)
-                    }
-                    disabled={readOnly}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {gerenteOptions.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {!isSolo ? (
+                  <div className="space-y-2">
+                    <Label>Gerente</Label>
+                    <Select
+                      value={form.gerenteId || "__none__"}
+                      onValueChange={(v) =>
+                        setField("gerenteId", v === "__none__" ? "" : v)
+                      }
+                      disabled={readOnly}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">—</SelectItem>
+                        {gerenteOptions.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
 
                 <div className="space-y-2">
                   <Label htmlFor="createdAt">Data cadastro</Label>

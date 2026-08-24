@@ -159,6 +159,7 @@ const APPLY_FILTERS_STYLE = BRAND_GRADIENT_STYLE;
 
 function VendasPage() {
   const user = getSession();
+  const isSolo = user?.tenant?.plano === "solo";
   const canView = canViewModule(user, "vendas");
   const canEdit = user?.role === "admin";
   const [docs, setDocs] = useState<Documentacao[]>([]);
@@ -173,14 +174,17 @@ function VendasPage() {
   const [editForm, setEditForm] = useState<VendaEditForm>(emptyVendaEditForm);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const emptyFilters = {
-    search: "",
-    equipeId: "__all__",
-    gerenteId: "__all__",
-    corretorId: "__all__",
-    origem: "__all__",
-    ...currentMonthRange(),
-  };
+  const emptyFilters = useMemo(
+    () => ({
+      search: "",
+      equipeId: "__all__",
+      gerenteId: "__all__",
+      corretorId: "__all__",
+      origem: "__all__",
+      ...currentMonthRange(),
+    }),
+    [],
+  );
   const [draft, setDraft] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
   const [page, setPage] = useState(1);
@@ -193,7 +197,10 @@ function VendasPage() {
     }
     let active = true;
     setLoading(true);
-    Promise.all([fetchDocumentacoes(undefined, undefined, true), fetchEquipes()])
+    Promise.all([
+      fetchDocumentacoes(undefined, undefined, true),
+      isSolo ? Promise.resolve([] as Equipe[]) : fetchEquipes(),
+    ])
       .then(([documentacoes, equipesData]) => {
         if (!active) return;
         setDocs(documentacoes.filter((doc) => isStatusVendido(doc.status2)));
@@ -211,7 +218,7 @@ function VendasPage() {
     return () => {
       active = false;
     };
-  }, [canView]);
+  }, [canView, isSolo]);
 
   const corretorEquipe = useMemo(() => {
     const map = new Map<string, Equipe>();
@@ -415,7 +422,12 @@ function VendasPage() {
   async function openEdit(doc: Documentacao) {
     if (!canEdit) return;
     setEditing(doc);
-    setEditForm(toVendaEditForm(doc));
+    const form = toVendaEditForm(doc);
+    if (isSolo && user?.id && !form.corretorId) {
+      form.corretorId = user.id;
+    }
+    if (isSolo) form.gerenteId = "";
+    setEditForm(form);
     try {
       await ensureEditCatalogs();
       setEditOpen(true);
@@ -447,8 +459,10 @@ function VendasPage() {
         nome,
         construtoraId: editForm.construtoraId || null,
         empreendimentoId: editForm.empreendimentoId || null,
-        corretorId: editForm.corretorId || null,
-        gerenteId: editForm.gerenteId || null,
+        corretorId: isSolo
+          ? editForm.corretorId || user?.id || null
+          : editForm.corretorId || null,
+        gerenteId: isSolo ? null : editForm.gerenteId || null,
         dataVenda: editForm.dataVenda || null,
         vgv: vgv == null ? null : Math.round(vgv),
       });
@@ -517,7 +531,13 @@ function VendasPage() {
 
       <div className={cn("mt-5", FILTER_BAR_SURFACE)}>
         <div className="space-y-3">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div
+            className={cn(
+              "grid gap-3",
+              !isSolo &&
+                "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]",
+            )}
+          >
             <div className="relative min-w-0">
               <Search className={FILTER_SEARCH_ICON} />
               <Input
@@ -529,67 +549,80 @@ function VendasPage() {
                 className={cn("rounded-sm pl-9", FILTER_CONTROL)}
               />
             </div>
-            <Select
-              value={draft.equipeId}
-              onValueChange={(value) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  equipeId: value,
-                  corretorId: "__all__",
-                }))
-              }
-            >
-              <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
-                <SelectValue placeholder="Todas as equipes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todas as equipes</SelectItem>
-                {equipes.map((equipe) => (
-                  <SelectItem key={equipe.id} value={equipe.id}>
-                    {equipe.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.gerenteId}
-              onValueChange={(value) =>
-                setDraft((prev) => ({ ...prev, gerenteId: value }))
-              }
-            >
-              <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
-                <SelectValue placeholder="Todos os gerentes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todos os gerentes</SelectItem>
-                {gerentes.map(([id, name]) => (
-                  <SelectItem key={id} value={id}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!isSolo ? (
+              <>
+                <Select
+                  value={draft.equipeId}
+                  onValueChange={(value) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      equipeId: value,
+                      corretorId: "__all__",
+                    }))
+                  }
+                >
+                  <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
+                    <SelectValue placeholder="Todas as equipes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todas as equipes</SelectItem>
+                    {equipes.map((equipe) => (
+                      <SelectItem key={equipe.id} value={equipe.id}>
+                        {equipe.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={draft.gerenteId}
+                  onValueChange={(value) =>
+                    setDraft((prev) => ({ ...prev, gerenteId: value }))
+                  }
+                >
+                  <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
+                    <SelectValue placeholder="Todos os gerentes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos os gerentes</SelectItem>
+                    {gerentes.map(([id, name]) => (
+                      <SelectItem key={id} value={id}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            ) : null}
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto]">
-            <Select
-              value={draft.corretorId}
-              onValueChange={(value) =>
-                setDraft((prev) => ({ ...prev, corretorId: value }))
-              }
-            >
-              <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
-                <SelectValue placeholder="Todos os corretores" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todos os corretores</SelectItem>
-                {corretores.map(([id, name]) => (
-                  <SelectItem key={id} value={id}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div
+            className={cn(
+              "grid gap-3",
+              isSolo
+                ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
+                : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto]",
+            )}
+          >
+            {!isSolo ? (
+              <Select
+                value={draft.corretorId}
+                onValueChange={(value) =>
+                  setDraft((prev) => ({ ...prev, corretorId: value }))
+                }
+              >
+                <SelectTrigger className={cn("rounded-sm", FILTER_CONTROL)}>
+                  <SelectValue placeholder="Todos os corretores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os corretores</SelectItem>
+                  {corretores.map(([id, name]) => (
+                    <SelectItem key={id} value={id}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             <Select
               value={draft.origem}
               onValueChange={(value) =>
@@ -687,8 +720,8 @@ function VendasPage() {
                     <TableHead>Cliente</TableHead>
                     <TableHead>Empreendimento</TableHead>
                     <TableHead>Origem</TableHead>
-                    <TableHead>Equipe</TableHead>
-                    <TableHead>Gerente</TableHead>
+                    {!isSolo ? <TableHead>Equipe</TableHead> : null}
+                    {!isSolo ? <TableHead>Gerente</TableHead> : null}
                     <TableHead>Corretor</TableHead>
                     <TableHead>Data da venda</TableHead>
                     <TableHead className="text-right">VGV</TableHead>
@@ -724,12 +757,16 @@ function VendasPage() {
                             {origemLabel}
                           </Badge>
                         </TableCell>
-                        <TableCell>{equipe?.name ?? "—"}</TableCell>
-                        <TableCell>
-                          <span className="table-person-name text-sm">
-                            {doc.gerente?.name ?? equipe?.gerente.name ?? "—"}
-                          </span>
-                        </TableCell>
+                        {!isSolo ? (
+                          <TableCell>{equipe?.name ?? "—"}</TableCell>
+                        ) : null}
+                        {!isSolo ? (
+                          <TableCell>
+                            <span className="table-person-name text-sm">
+                              {doc.gerente?.name ?? equipe?.gerente.name ?? "—"}
+                            </span>
+                          </TableCell>
+                        ) : null}
                         <TableCell>
                           <span className="table-person-name text-sm">
                             {doc.corretor?.name ?? doc.lead.corretor?.name ?? "—"}
@@ -920,9 +957,11 @@ function VendasPage() {
                       setEditForm((prev) => ({
                         ...prev,
                         corretorId,
-                        gerenteId: corretorId
-                          ? gerenteIdOfCorretor(corretorId) || prev.gerenteId
-                          : prev.gerenteId,
+                        gerenteId: isSolo
+                          ? ""
+                          : corretorId
+                            ? gerenteIdOfCorretor(corretorId) || prev.gerenteId
+                            : prev.gerenteId,
                       }));
                     }}
                   >
@@ -939,30 +978,32 @@ function VendasPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Gerente</Label>
-                  <Select
-                    value={editForm.gerenteId || "__none__"}
-                    onValueChange={(value) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        gerenteId: value === "__none__" ? "" : value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">—</SelectItem>
-                      {gerenteSelectOptions.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {!isSolo ? (
+                  <div className="space-y-2">
+                    <Label>Gerente</Label>
+                    <Select
+                      value={editForm.gerenteId || "__none__"}
+                      onValueChange={(value) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          gerenteId: value === "__none__" ? "" : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">—</SelectItem>
+                        {gerenteSelectOptions.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <div className="space-y-2">
                   <Label htmlFor="venda-data">Data da venda</Label>
                   <Input

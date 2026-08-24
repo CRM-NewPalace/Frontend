@@ -11,7 +11,8 @@ function Page() {
     <FinanceiroTitulosPanel
       tipo="pagar"
       title="Contas a pagar"
-      description="Obrigações com fornecedores e parceiros — cadastro, parcelamento e baixa"
+      description="Obrigações com fornecedores e parceiros — cadastro, parcelamento e baixa. Comissões ficam em Comissão."
+      ocultarComissao
     />
   );
 }

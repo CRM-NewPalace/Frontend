@@ -11,7 +11,7 @@ function Page() {
     <FinanceiroTitulosPanel
       tipo="pagar"
       title="Despesas"
-      description="Consulta das obrigações com fornecedores e parceiros — somente visualização. Comissões ficam em Comissão e em Contas a pagar."
+      description="Consulta das obrigações com fornecedores e parceiros — somente visualização. Comissões ficam em Comissão."
       readOnly
       ocultarComissao
     />
