@@ -27,13 +27,14 @@ export function status1Group(
   if (!n) return null;
   if (n.startsWith("reprov")) return "reprovado";
   if (
-    n === "aprovado" ||
-    n === "aprovada" ||
-    n === "aprovados" ||
-    n === "aprovadas"
+    n.includes("restric") ||
+    n.includes("restricao") ||
+    n.includes("comrestr")
   ) {
+    // Tratado como parecer especial no badge; grupo base continua "aprovado".
     return "aprovado";
   }
+  if (n.startsWith("aprov")) return "aprovado";
   // Antes de "analise": "preanalise" contém a substring "analise".
   if (
     n.startsWith("preanalise") ||
@@ -147,6 +148,43 @@ export function docStatus1BadgeClass(
     return `${size} border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300`;
   }
   return `${size} border-border bg-muted/60 text-muted-foreground`;
+}
+
+/** Classes da tag compacta (pill + bolinha) do Status 1 no funil. */
+export function docStatus1FunilTagClasses(status1: string): {
+  wrap: string;
+  dot: string;
+} {
+  const parecer = docCreditoParecer(status1);
+  const group = status1Group(status1);
+  if (parecer === "aprovado") {
+    return {
+      wrap: "border-emerald-500/45 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      dot: "bg-emerald-500",
+    };
+  }
+  if (parecer === "reprovado") {
+    return {
+      wrap: "border-destructive/40 bg-destructive/10 text-destructive",
+      dot: "bg-destructive",
+    };
+  }
+  if (parecer === "aprovado_restricao") {
+    return {
+      wrap: "border-amber-500/45 bg-amber-500/10 text-amber-800 dark:text-amber-200",
+      dot: "bg-amber-500",
+    };
+  }
+  if (group === "analise" || group === "pre_analise") {
+    return {
+      wrap: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+      dot: "bg-violet-500",
+    };
+  }
+  return {
+    wrap: "border-border bg-muted/60 text-muted-foreground",
+    dot: "bg-muted-foreground",
+  };
 }
 
 /** Status 1 de documentação aprovado (inclui "Aprovado c/ restrição"). */

@@ -79,7 +79,7 @@ import {
   analiseBadgeClass,
   shouldShowAnaliseStatus,
 } from "@/lib/analise-status";
-import { docStatus1BadgeClass } from "@/lib/documentacao-status";
+import { DocStatus1FunilTag } from "@/components/doc-status1-funil-tag";
 import { ApiError } from "@/lib/api";
 import {
   FormDialogActions,
@@ -1354,30 +1354,33 @@ export function ComercialFunilBoard({
                         />
                         <span className="truncate">{l.nome}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isGerente &&
-                          !isClientesFunil &&
-                          isLeadCarteiraPropria(l, user?.id) && (
-                            <MeuLeadBadge />
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <div className="flex items-center gap-1.5">
+                          {isGerente &&
+                            !isClientesFunil &&
+                            isLeadCarteiraPropria(l, user?.id) && (
+                              <MeuLeadBadge />
+                            )}
+                          {l.tipo === "cliente" && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 h-5 border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                              title={`Cliente da carteira de ${l.corretor}`}
+                            >
+                              Cliente
+                            </Badge>
                           )}
-                        {l.tipo === "cliente" && (
-                          <Badge
-                            variant="outline"
-                            className="text-[9px] px-1.5 py-0 h-5 border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-                            title={`Cliente da carteira de ${l.corretor}`}
-                          >
-                            Cliente
-                          </Badge>
-                        )}
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            l.prioridade === "Alta"
-                              ? "bg-destructive"
-                              : l.prioridade === "Média"
-                                ? "bg-warning"
-                                : "bg-muted-foreground"
-                          }`}
-                        />
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              l.prioridade === "Alta"
+                                ? "bg-destructive"
+                                : l.prioridade === "Média"
+                                  ? "bg-warning"
+                                  : "bg-muted-foreground"
+                            }`}
+                          />
+                        </div>
+                        <DocStatus1FunilTag status1={l.documentacaoStatus1} />
                       </div>
                     </div>
                     {isOrphanColumn && (
@@ -1389,18 +1392,6 @@ export function ComercialFunilBoard({
                         {l.stage}
                       </Badge>
                     )}
-                    {l.documentacaoStatus1?.trim() ? (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "mb-1",
-                          docStatus1BadgeClass(l.documentacaoStatus1),
-                        )}
-                        title={`Documentação · Status 1 · ${l.documentacaoStatus1.trim()}`}
-                      >
-                        {l.documentacaoStatus1.trim()}
-                      </Badge>
-                    ) : null}
                     {l.analise && shouldShowAnaliseStatus(l.analise.status) && (
                       <Badge
                         variant="outline"

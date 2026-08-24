@@ -23,12 +23,49 @@ import {
   type LeadAssignee,
   type UpdateLeadInput,
 } from "@/lib/leads-api";
+import {
+  fetchDocumentacoes,
+  type Documentacao,
+} from "@/lib/documentacao-api";
 import { prependLostLeadToCache } from "@/lib/lost-leads-cache";
 import { prependLostClienteToCache } from "@/lib/lost-clientes-cache";
 
 const LEGACY_STORAGE_KEY = "crm_mock_leads";
 
 export type { LeadAssignee };
+
+/** Status 1/2 mais recente por lead (Documentação). */
+function latestDocStatusByLeadId(docs: Documentacao[]) {
+  const map = new Map<
+    string,
+    { status1: string; status2: string; updatedAt: string }
+  >();
+  for (const doc of docs) {
+    if (!doc.leadId) continue;
+    const prev = map.get(doc.leadId);
+    if (!prev || doc.updatedAt > prev.updatedAt) {
+      map.set(doc.leadId, {
+        status1: doc.status1,
+        status2: doc.status2,
+        updatedAt: doc.updatedAt,
+      });
+    }
+  }
+  return map;
+}
+
+function applyDocStatusToLead(
+  lead: Lead,
+  byLead: Map<string, { status1: string; status2: string; updatedAt: string }>,
+): Lead {
+  const fromDoc = byLead.get(lead.id);
+  if (!fromDoc) return lead;
+  return {
+    ...lead,
+    documentacaoStatus1: fromDoc.status1,
+    documentacaoStatus2: fromDoc.status2,
+  };
+}
 
 type LeadsContextValue = {
   leads: Lead[];
@@ -135,9 +172,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const pageSize = 200;
-      const [first, team] = await Promise.all([
+      const [first, team, docs] = await Promise.all([
         fetchLeads({ page: 1, limit: pageSize }),
         fetchLeadAssignees(),
+        fetchDocumentacoes().catch(() => [] as Documentacao[]),
       ]);
       const all = [...first.data];
       const totalPages = Math.max(1, first.meta.totalPages);
@@ -149,7 +187,12 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         );
         for (const page of rest) all.push(...page.data);
       }
-      setLeads(all.map(mapApiLead));
+      const docStatusByLead = latestDocStatusByLeadId(docs);
+      setLeads(
+        all
+          .map(mapApiLead)
+          .map((lead) => applyDocStatusToLead(lead, docStatusByLead)),
+      );
       setAssignees(
         [...team].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       );
