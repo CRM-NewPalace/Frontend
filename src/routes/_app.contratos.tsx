@@ -731,8 +731,8 @@ function ContratosPage() {
             key={group.id}
             className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm"
           >
-            <div className="border-b border-border/50 px-4 py-3.5 sm:px-5">
-              <h2 className="text-sm font-semibold tracking-tight text-module-title">
+            <div className="border-b border-border/40 bg-gradient-to-r from-primary/[0.09] via-primary/[0.03] to-transparent px-4 py-3.5 sm:px-5">
+              <h2 className="text-base font-semibold tracking-tight text-module-title">
                 {group.title}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -749,7 +749,7 @@ function ContratosPage() {
                     type="button"
                     onClick={() => openTemplate(template)}
                     className={cn(
-                      "group flex h-full flex-col rounded-xl border border-border/60 bg-muted/20 p-4 text-left transition",
+                      "group flex h-full cursor-pointer flex-col rounded-xl border border-border/60 bg-muted/20 p-4 text-left transition",
                       "hover:border-primary/35 hover:bg-primary/[0.04] hover:shadow-md",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     )}
@@ -763,7 +763,7 @@ function ContratosPage() {
                     >
                       <Icon className="size-5" />
                     </div>
-                    <h3 className="text-sm font-semibold leading-snug text-foreground">
+                    <h3 className="text-[15px] font-semibold leading-snug text-foreground">
                       {template.titulo}
                     </h3>
                     <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted-foreground">

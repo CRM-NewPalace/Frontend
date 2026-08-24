@@ -101,11 +101,57 @@ export const DEFAULT_CCA_COLOR = "#3B82F6";
 
 export const DEFAULT_CATALOG_COLOR: CatalogColor = "bg-slate-500 text-white";
 
+function parseHexRgb(hex: string): { r: number; g: number; b: number } | null {
+  if (!isHexColor(hex)) return null;
+  return {
+    r: Number.parseInt(hex.slice(1, 3), 16),
+    g: Number.parseInt(hex.slice(3, 5), 16),
+    b: Number.parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function mixHex(hex: string, withWhite: number, withBlack = 0): string {
+  const rgb = parseHexRgb(hex);
+  if (!rgb) return hex;
+  const mix = (channel: number) => {
+    let v = channel;
+    if (withWhite > 0) v = Math.round(v + (255 - v) * withWhite);
+    if (withBlack > 0) v = Math.round(v * (1 - withBlack));
+    return Math.min(255, Math.max(0, v));
+  };
+  const r = mix(rgb.r).toString(16).padStart(2, "0");
+  const g = mix(rgb.g).toString(16).padStart(2, "0");
+  const b = mix(rgb.b).toString(16).padStart(2, "0");
+  return `#${r}${g}${b}`;
+}
+
+function hexGradientStops(hex: string): { a: string; b: string; c: string } {
+  const normalized = hex.trim();
+  return {
+    a: mixHex(normalized, 0.45),
+    b: normalized,
+    c: mixHex(normalized, 0, 0.28),
+  };
+}
+
+function hexLuminance(hex: string): number {
+  const rgb = parseHexRgb(hex);
+  if (!rgb) return 0.5;
+  return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+}
+
+/** Texto legível sobre fundo hex (badge). */
+export function hexBadgeTextClass(hex: string): string {
+  return hexLuminance(hex) > 0.62
+    ? "text-gray-900 dark:text-gray-950"
+    : "text-white";
+}
+
 /** Extrai a classe de fundo para o swatch (ex.: bg-blue-500). */
 export function catalogColorSwatch(color: string | null | undefined): string {
-  const bg = normalizeCatalogColor(color)
-    .split(/\s+/)
-    .find((c) => c.startsWith("bg-"));
+  const normalized = normalizeCatalogColor(color);
+  if (isHexColor(normalized)) return "bg-slate-500";
+  const bg = normalized.split(/\s+/).find((c) => c.startsWith("bg-"));
   return bg ?? "bg-slate-500";
 }
 
@@ -199,7 +245,10 @@ export function catalogColorBadgeClass(
   color: string | null | undefined,
   extra?: string,
 ): string {
-  const text = catalogColorTextClass(color);
+  const normalized = normalizeCatalogColor(color);
+  const text = isHexColor(normalized)
+    ? hexBadgeTextClass(normalized)
+    : catalogColorTextClass(normalized);
   return [
     STATUS_CHIP_CLASS,
     "border-transparent bg-transparent shadow-none",
@@ -255,7 +304,9 @@ export function catalogColorSoftBadgeClass(
 }
 
 function catalogGradientStops(color: string | null | undefined) {
-  const bg = catalogColorSwatch(color);
+  const normalized = normalizeCatalogColor(color);
+  if (isHexColor(normalized)) return hexGradientStops(normalized);
+  const bg = catalogColorSwatch(normalized);
   return CATALOG_BG_SOFT_STOPS[bg] ?? CATALOG_BG_SOFT_STOPS["bg-slate-500"];
 }
 
@@ -294,8 +345,11 @@ export function catalogColorSoftSurfaceClass(
 export function catalogColorSoftSurfaceStyle(
   color: string | null | undefined,
 ): { backgroundImage: string } {
-  const bg = catalogColorSwatch(color);
-  const stops = CATALOG_BG_SOFT_STOPS[bg] ?? CATALOG_BG_SOFT_STOPS["bg-slate-500"];
+  const normalized = normalizeCatalogColor(color);
+  const stops = isHexColor(normalized)
+    ? hexGradientStops(normalized)
+    : CATALOG_BG_SOFT_STOPS[catalogColorSwatch(normalized)] ??
+      CATALOG_BG_SOFT_STOPS["bg-slate-500"];
   return {
     backgroundImage: `linear-gradient(90deg, color-mix(in oklab, ${stops.b} 28%, white) 0%, color-mix(in oklab, ${stops.a} 18%, white) 55%, white 100%)`,
   };
@@ -304,7 +358,9 @@ export function catalogColorSoftSurfaceStyle(
 export function catalogColorToChartHex(
   color: string | null | undefined,
 ): string {
-  const bg = catalogColorSwatch(color);
+  const normalized = normalizeCatalogColor(color);
+  if (isHexColor(normalized)) return normalized;
+  const bg = catalogColorSwatch(normalized);
   return CATALOG_BG_TO_CHART_HEX[bg] ?? "#64748b";
 }
 
@@ -332,6 +388,24 @@ const FUNNEL_COLUMN_ASIDE_SCALE_LIGHT = [
   "bg-[#adc2d0] dark:bg-[#22384a]",
 ] as const;
 
+/** Bordas dos cards alinhadas ao degradê das colunas. */
+const FUNNEL_COLUMN_BORDER_SCALE = [
+  "border-[#d0dbe3] dark:border-[#3d5163]",
+  "border-[#c2d0db] dark:border-[#42586c]",
+  "border-[#b3c4d2] dark:border-[#476075]",
+  "border-[#a4b9c9] dark:border-[#4c687e]",
+  "border-[#95adc0] dark:border-[#517087]",
+  "border-[#86a2b7] dark:border-[#567890]",
+  "border-[#7796ae] dark:border-[#5b8099]",
+  "border-[#688ba5] dark:border-[#6088a2]",
+] as const;
+
+function funnelScaleIndex(index: number, total: number, length: number) {
+  if (total <= 1) return 0;
+  const t = Math.min(1, Math.max(0, index / (total - 1)));
+  return Math.round(t * (length - 1));
+}
+
 /**
  * Fundo de coluna em degradê na família do aside.
  * `tone: "light"` — mais suave (ex.: equipes).
@@ -345,10 +419,13 @@ export function funnelColumnBg(
     tone === "light"
       ? FUNNEL_COLUMN_ASIDE_SCALE_LIGHT
       : FUNNEL_COLUMN_ASIDE_SCALE;
-  if (total <= 1) return scale[0];
-  const t = Math.min(1, Math.max(0, index / (total - 1)));
-  const i = Math.round(t * (scale.length - 1));
-  return scale[i];
+  return scale[funnelScaleIndex(index, total, scale.length)];
+}
+
+/** Borda do card na mesma família do degradê da coluna. */
+export function funnelColumnBorder(index: number, total: number): string {
+  const scale = FUNNEL_COLUMN_BORDER_SCALE;
+  return scale[funnelScaleIndex(index, total, scale.length)];
 }
 
 export function nextCatalogColor(index: number): CatalogColor {

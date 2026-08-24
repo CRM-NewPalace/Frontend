@@ -117,6 +117,7 @@ import {
 } from "@/lib/documentacao-api";
 import {
   funnelColumnBg,
+  funnelColumnBorder,
   nextCatalogColor,
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
@@ -1343,6 +1344,12 @@ export function ComercialFunilBoard({
                       dragging === l.id
                         ? "scale-[0.98] border-dashed border-primary/40 bg-muted/40 opacity-35 shadow-none"
                         : "hover:shadow-md",
+                      isClientesFunil &&
+                        dragging !== l.id &&
+                        "border-2 bg-white dark:bg-card",
+                      isClientesFunil &&
+                        dragging !== l.id &&
+                        funnelColumnBorder(stageIndex, boardStages.length),
                       leadMonitoramentoCardClass(l),
                     )}
                   >

@@ -62,6 +62,10 @@ import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { ConstrutoraVendasTable } from "@/components/vendas-resumo-dialog";
 import { useCatalog } from "@/lib/catalog-store";
 import {
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+} from "@/lib/catalog-colors";
+import {
   construtoraBadgeStyle,
   CONSTRUTORA_MAX_IMAGES,
   createConstrutora,
@@ -1198,11 +1202,13 @@ function ConstrutorasPage() {
                         <TableCell>
                           {item.cca ? (
                             <Badge
-                              variant="secondary"
-                              className="border-transparent font-medium"
-                              style={construtoraBadgeStyle(
+                              className={catalogColorBadgeClass(
                                 ccas.find((c) => c.label === item.cca)?.color,
                               )}
+                              style={catalogColorBadgeStyle(
+                                ccas.find((c) => c.label === item.cca)?.color,
+                              )}
+                              title={item.cca}
                             >
                               {item.cca}
                             </Badge>
@@ -1721,11 +1727,13 @@ function ConstrutorasPage() {
                     </Select>
                     {form.cca ? (
                       <Badge
-                        variant="secondary"
-                        className="border-transparent"
-                        style={construtoraBadgeStyle(
+                        className={catalogColorBadgeClass(
                           ccas.find((c) => c.label === form.cca)?.color,
                         )}
+                        style={catalogColorBadgeStyle(
+                          ccas.find((c) => c.label === form.cca)?.color,
+                        )}
+                        title={form.cca}
                       >
                         {form.cca}
                       </Badge>

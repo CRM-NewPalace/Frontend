@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   AGENDAMENTO_STATUS_LABEL,
-  AGENDAMENTO_TIPO_ACCENT,
   AGENDAMENTO_TIPO_CARD,
   AGENDAMENTO_TIPO_SOFT,
   AGENDAMENTO_TIPO_WELL,
@@ -252,12 +251,6 @@ export function AgendaDayTable({
         )[0]
     : undefined;
 
-  const occupiedByHour = new Map<number, Agendamento>();
-  for (const item of dayItems) {
-    const hour = new Date(item.startsAt).getHours();
-    if (!occupiedByHour.has(hour)) occupiedByHour.set(hour, item);
-  }
-
   return (
     <div className="overflow-hidden rounded-3xl border bg-card shadow-sm max-sm:-mx-3 max-sm:rounded-none max-sm:border-x-0">
       {onSelectDay ? (
@@ -283,29 +276,6 @@ export function AgendaDayTable({
               ? ` · próximo às ${formatTime(new Date(nextItem.startsAt))}`
               : ""}
           </p>
-          <div className="mt-2.5 flex items-center gap-px" aria-hidden>
-            {DAY_HOURS.map((hour) => {
-              const item = occupiedByHour.get(hour);
-              const visual = item ? getAgendamentoVisual(item) : null;
-              return (
-                <span
-                  key={hour}
-                  title={
-                    item
-                      ? `${formatHourLabel(hour)} · ${getAgendamentoCardTitle(item)}`
-                      : formatHourLabel(hour)
-                  }
-                  className={cn(
-                    "h-1.5 flex-1 first:rounded-l-full last:rounded-r-full",
-                    visual
-                      ? AGENDAMENTO_TIPO_ACCENT[visual]
-                      : "bg-muted",
-                    isToday && hour === currentHour && "ring-1 ring-primary ring-offset-1",
-                  )}
-                />
-              );
-            })}
-          </div>
         </div>
         <Button
           size="sm"

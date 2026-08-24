@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  CONSTRUTORA_CORES_PRESET,
-  construtoraBadgeStyle,
-} from "@/lib/construtoras-api";
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+} from "@/lib/catalog-colors";
+import { CONSTRUTORA_CORES_PRESET } from "@/lib/construtoras-api";
 
 type CorPickerProps = {
   id?: string;
@@ -56,9 +57,9 @@ export function CorPicker({
         ) : null}
         {previewLabel?.trim() && value ? (
           <Badge
-            variant="secondary"
-            className="border-transparent"
-            style={construtoraBadgeStyle(value)}
+            className={catalogColorBadgeClass(value)}
+            style={catalogColorBadgeStyle(value)}
+            title={previewLabel.trim()}
           >
             {previewLabel.trim()}
           </Badge>

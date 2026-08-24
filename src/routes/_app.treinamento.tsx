@@ -524,11 +524,19 @@ function SecaoBlock({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card",
-        depth > 1 && "border-border/70",
+        "overflow-hidden rounded-xl border",
+        depth === 1
+          ? "border-border/60 bg-gradient-to-br from-primary/[0.09] via-primary/[0.03] to-card shadow-sm"
+          : "border-border/70 bg-card",
       )}
     >
-      <div className="flex items-start gap-2 px-3 py-2.5">
+      <div
+        className={cn(
+          "flex items-start gap-2 px-3 py-2.5",
+          depth === 1 &&
+            "border-b border-border/40 bg-gradient-to-r from-primary/[0.06] via-transparent to-transparent",
+        )}
+      >
         <button
           type="button"
           className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"

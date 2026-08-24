@@ -30,7 +30,6 @@ import {
   nextCatalogColor,
   normalizeCatalogColor,
   sameCatalogColor,
-  STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import {
   getVistaParcelas,
@@ -66,10 +65,7 @@ import { ConfigConexoesPanel } from "@/components/config-conexoes-panel";
 import { ConfigUsuarioExtraPanel } from "@/components/config-usuario-extra-panel";
 import { userCanInformarCreci } from "@/lib/users-api";
 import { CorPicker } from "@/components/cor-picker";
-import {
-  CONSTRUTORA_CORES_PRESET,
-  construtoraBadgeStyle,
-} from "@/lib/construtoras-api";
+import { CONSTRUTORA_CORES_PRESET } from "@/lib/construtoras-api";
 
 export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Zone Connection" }] }),
@@ -215,18 +211,6 @@ function ColorSwatchPicker({
 }
 
 function CatalogItemBadge({ item }: { item: CatalogItem }) {
-  if (isHexColor(item.color)) {
-    return (
-      <Badge
-        variant="secondary"
-        className={cn(STATUS_CHIP_CLASS, "border-transparent")}
-        style={construtoraBadgeStyle(item.color)}
-        title={item.label}
-      >
-        {item.label}
-      </Badge>
-    );
-  }
   return (
     <Badge
       className={catalogColorBadgeClass(item.color)}

@@ -477,7 +477,7 @@ function Page() {
           {showRankingGerentes && (
             <section className="mt-5 mb-6">
               <Card className="overflow-hidden">
-                <CardHeader>
+                <CardHeader className="border-b border-border/40 bg-gradient-to-r from-primary/[0.09] via-primary/[0.03] to-transparent">
                   <CardTitle className="text-base flex items-center gap-2">
                     <UsersRound className="h-4 w-4 text-primary" />
                     Ranking Gerentes
