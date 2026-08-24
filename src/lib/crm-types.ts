@@ -63,6 +63,12 @@ export interface Lead {
     parecer: string | null;
     analistaId?: string | null;
   } | null;
+  /**
+   * Parecer de crédito da documentação mais recente (Status 1).
+   * Ex.: Aprovado, Reprovado, Aprovado c/ restrição.
+   */
+  documentacaoStatus1?: string | null;
+  documentacaoStatus2?: string | null;
   monitoramento?: LeadMonitoramento | null;
 }
 

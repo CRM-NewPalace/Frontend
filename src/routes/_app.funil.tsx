@@ -79,6 +79,7 @@ import {
   analiseBadgeClass,
   shouldShowAnaliseStatus,
 } from "@/lib/analise-status";
+import { docStatus1BadgeClass } from "@/lib/documentacao-status";
 import { ApiError } from "@/lib/api";
 import {
   FormDialogActions,
@@ -141,6 +142,7 @@ import {
   LifeBuoy,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { FaWhatsapp } from "react-icons/fa";
 import { cn } from "@/lib/utils";
@@ -482,11 +484,15 @@ export function ComercialFunilBoard({
     });
   }, [funilAtivo]);
   const boardRef = useRef<HTMLDivElement>(null);
+  const dragOverlayRef = useRef<HTMLDivElement>(null);
   const dragSession = useRef<{
     leadId: string;
     pointerId: number;
     startX: number;
     startY: number;
+    offsetX: number;
+    offsetY: number;
+    width: number;
     activated: boolean;
     longPressTimer: ReturnType<typeof setTimeout> | null;
   } | null>(null);
@@ -719,6 +725,18 @@ export function ComercialFunilBoard({
     };
   }, []);
 
+  useEffect(() => {
+    if (!dragging) return;
+    const prevCursor = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevUserSelect;
+    };
+  }, [dragging]);
+
   const DRAG_THRESHOLD_PX = 8;
   const TOUCH_DRAG_DELAY_MS = 200;
 
@@ -742,17 +760,39 @@ export function ComercialFunilBoard({
     }
   }
 
+  function positionDragOverlay(clientX: number, clientY: number) {
+    const s = dragSession.current;
+    const el = dragOverlayRef.current;
+    if (!s?.activated || !el) return;
+    const x = clientX - s.offsetX;
+    const y = clientY - s.offsetY;
+    el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(3deg) scale(1.04)`;
+  }
+
   function activateCardDrag(leadId: string, target: HTMLElement, pointerId: number) {
     const s = dragSession.current;
     if (!s || s.leadId !== leadId || s.activated) return;
     s.activated = true;
     didDrag.current = true;
+    const rect = target.getBoundingClientRect();
+    s.offsetX = Math.min(Math.max(s.startX - rect.left, 16), rect.width - 16);
+    s.offsetY = Math.min(Math.max(s.startY - rect.top, 16), rect.height - 16);
+    s.width = rect.width;
     try {
       target.setPointerCapture(pointerId);
     } catch {
       /* pointer already released */
     }
     setDragging(leadId);
+    // Posiciona o overlay após o portal montar.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        positionDragOverlay(
+          dragSession.current?.startX ?? s.startX,
+          dragSession.current?.startY ?? s.startY,
+        );
+      });
+    });
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       try {
         navigator.vibrate?.(12);
@@ -782,6 +822,9 @@ export function ComercialFunilBoard({
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
+      offsetX: 0,
+      offsetY: 0,
+      width: 0,
       activated: false,
       longPressTimer: null,
     };
@@ -816,6 +859,7 @@ export function ComercialFunilBoard({
 
     if (!dragSession.current?.activated) return;
     e.preventDefault();
+    positionDragOverlay(e.clientX, e.clientY);
     setActiveDropStage(stageFromPoint(e.clientX, e.clientY));
     autoScrollBoard(e.clientX);
   }
@@ -1254,13 +1298,13 @@ export function ComercialFunilBoard({
               key={stage.id}
               data-funnel-stage={isOrphanColumn ? undefined : stage.id}
               className={cn(
-                "w-72 shrink-0 flex flex-col rounded-xl p-3 transition-colors",
+                "w-72 shrink-0 flex flex-col rounded-xl p-3 transition-[box-shadow,background-color,transform] duration-200 ease-out",
                 isOrphanColumn
                   ? "bg-amber-50 dark:bg-amber-950/20"
                   : funnelColumnBg(stageIndex, boardStages.length),
                 !isOrphanColumn &&
                   activeDropStage === stage.id &&
-                  "ring-2 ring-[#079ED4]/40 brightness-[0.98]",
+                  "scale-[1.01] bg-primary/8 ring-2 ring-[#079ED4]/50 shadow-lg shadow-[#079ED4]/10",
               )}
             >
               <div className="flex items-center justify-between mb-3">
@@ -1295,8 +1339,10 @@ export function ComercialFunilBoard({
                     onPointerCancel={(e) => endCardPointer(e, false)}
                     onClick={() => openDetail(l)}
                     className={cn(
-                      "p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow touch-manipulation select-none",
-                      dragging === l.id && "opacity-40 touch-none shadow-md",
+                      "p-3 cursor-grab active:cursor-grabbing touch-manipulation select-none transition-[opacity,box-shadow,transform] duration-200",
+                      dragging === l.id
+                        ? "scale-[0.98] border-dashed border-primary/40 bg-muted/40 opacity-35 shadow-none"
+                        : "hover:shadow-md",
                       leadMonitoramentoCardClass(l),
                     )}
                   >
@@ -1343,6 +1389,18 @@ export function ComercialFunilBoard({
                         {l.stage}
                       </Badge>
                     )}
+                    {l.documentacaoStatus1?.trim() ? (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "mb-1",
+                          docStatus1BadgeClass(l.documentacaoStatus1),
+                        )}
+                        title={`Documentação · Status 1 · ${l.documentacaoStatus1.trim()}`}
+                      >
+                        {l.documentacaoStatus1.trim()}
+                      </Badge>
+                    ) : null}
                     {l.analise && shouldShowAnaliseStatus(l.analise.status) && (
                       <Badge
                         variant="outline"
@@ -1433,6 +1491,71 @@ export function ComercialFunilBoard({
           );
         })}
       </div>
+
+      {dragging &&
+        typeof document !== "undefined" &&
+        createPortal(
+          (() => {
+            const lead =
+              allLeads.find((item) => item.id === dragging) ??
+              leads.find((item) => item.id === dragging) ??
+              null;
+            if (!lead) return null;
+            const width = dragSession.current?.width || 280;
+            return (
+              <div
+                ref={dragOverlayRef}
+                data-dragging-card=""
+                className="pointer-events-none fixed left-0 top-0 z-[200] will-change-transform"
+                style={{
+                  width,
+                  transform: "translate3d(-9999px, -9999px, 0)",
+                }}
+              >
+                <Card className="animate-in fade-in zoom-in-95 origin-center border-primary/30 bg-card p-3 shadow-2xl shadow-black/25 ring-1 ring-black/5 duration-150">
+                  <div className="mb-1.5 flex items-start justify-between gap-2">
+                    <div className="table-person-name flex min-w-0 items-center gap-1.5 text-sm">
+                      <CircleUser
+                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <span className="truncate font-medium">{lead.nome}</span>
+                    </div>
+                    <div
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                        lead.prioridade === "Alta"
+                          ? "bg-destructive"
+                          : lead.prioridade === "Média"
+                            ? "bg-warning"
+                            : "bg-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{lead.telefone}</span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <Banknote
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <span className="text-sm font-semibold text-primary">
+                      {lead.renda != null ? brl(lead.renda) : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between border-t pt-2 text-[11px] text-muted-foreground">
+                    <span className="truncate">
+                      {lead.corretor.split(" ")[0]}
+                    </span>
+                    <span>{lead.updatedAt}</span>
+                  </div>
+                </Card>
+              </div>
+            );
+          })(),
+          document.body,
+        )}
 
       <LeadDetalheDialog
         lead={detailLead}

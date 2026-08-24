@@ -1,3 +1,5 @@
+import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+
 /** Remove acentos, caixa e caracteres não alfanuméricos. */
 export function normalizeDocStatus(
   status: string | null | undefined,
@@ -89,6 +91,62 @@ export function isStatusParecerFinal(
 ): boolean {
   const g = status1Group(status);
   return g === "aprovado" || g === "reprovado";
+}
+
+/** Parecer final de crédito (Status 1 da documentação). */
+export type DocCreditoParecer =
+  | "aprovado"
+  | "reprovado"
+  | "aprovado_restricao";
+
+export function docCreditoParecer(
+  status1: string | null | undefined,
+): DocCreditoParecer | null {
+  const n = normalizeDocStatus(status1);
+  if (!n) return null;
+  if (n.startsWith("reprov")) return "reprovado";
+  if (
+    n.includes("restric") ||
+    n.includes("restricao") ||
+    n.includes("comrestr")
+  ) {
+    return "aprovado_restricao";
+  }
+  if (n.startsWith("aprov")) return "aprovado";
+  return null;
+}
+
+export const DOC_CREDITO_PARECER_LABEL: Record<DocCreditoParecer, string> = {
+  aprovado: "Aprovado",
+  reprovado: "Reprovado",
+  aprovado_restricao: "Aprovado c/ restrição",
+};
+
+export function docCreditoParecerBadgeClass(
+  parecer: DocCreditoParecer,
+): string {
+  const size = STATUS_CHIP_CLASS;
+  if (parecer === "aprovado") {
+    return `${size} border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
+  }
+  if (parecer === "reprovado") {
+    return `${size} border-destructive/40 bg-destructive/10 text-destructive`;
+  }
+  return `${size} border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200`;
+}
+
+/** Badge do Status 1 no card do funil (qualquer valor da ficha). */
+export function docStatus1BadgeClass(
+  status1: string | null | undefined,
+): string {
+  const parecer = docCreditoParecer(status1);
+  if (parecer) return docCreditoParecerBadgeClass(parecer);
+  const size = STATUS_CHIP_CLASS;
+  const group = status1Group(status1);
+  if (group === "analise" || group === "pre_analise") {
+    return `${size} border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300`;
+  }
+  return `${size} border-border bg-muted/60 text-muted-foreground`;
 }
 
 /** Status 1 de documentação aprovado (inclui "Aprovado c/ restrição"). */

@@ -47,6 +47,15 @@ export interface ApiLead {
     parecer: string | null;
     analistaId?: string | null;
   } | null;
+  documentacoes?: Array<{
+    id: string;
+    status1: string;
+    status2: string;
+    updatedAt: string;
+  }>;
+  /** Status 1 da documentação mais recente (já achatado pelo backend). */
+  documentacaoStatus1?: string | null;
+  documentacaoStatus2?: string | null;
   perdidoAt?: string | null;
   motivoPerda?: string | null;
   perdidoPorId?: string | null;
@@ -129,6 +138,10 @@ export function mapApiLead(api: ApiLead): Lead {
     updatedAtIso: api.updatedAt,
     tags: api.tags ?? [],
     analise: api.analise ?? null,
+    documentacaoStatus1:
+      api.documentacaoStatus1 ?? api.documentacoes?.[0]?.status1 ?? null,
+    documentacaoStatus2:
+      api.documentacaoStatus2 ?? api.documentacoes?.[0]?.status2 ?? null,
     monitoramento: api.monitoramento ?? null,
   };
 }

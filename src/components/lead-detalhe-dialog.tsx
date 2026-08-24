@@ -33,6 +33,7 @@ import {
   analiseBadgeClass,
   shouldShowAnaliseStatus,
 } from "@/lib/analise-status";
+import { docStatus1BadgeClass } from "@/lib/documentacao-status";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
@@ -453,6 +454,18 @@ export function LeadDetalheDialog({
                     >
                       Prioridade {lead.prioridade}
                     </Badge>
+                    {lead.documentacaoStatus1?.trim() ? (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          docStatus1BadgeClass(lead.documentacaoStatus1),
+                          CHIP,
+                        )}
+                        title={`Documentação · Status 1 · ${lead.documentacaoStatus1.trim()}`}
+                      >
+                        {lead.documentacaoStatus1.trim()}
+                      </Badge>
+                    ) : null}
                     {lead.analise &&
                       shouldShowAnaliseStatus(lead.analise.status) && (
                         <Badge
