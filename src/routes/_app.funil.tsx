@@ -1066,99 +1066,63 @@ export function ComercialFunilBoard({
                   ? "Funil da sua equipe — seus leads e os da equipe, inclusive os em atraso."
                   : "Funil da imobiliária — todos os leads de captação, inclusive os em atraso."
         }
+        actionsClassName="lg:max-w-none"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {showTeamFilters && isAdmin && (
-              <Select
-                value={filterEquipeId}
-                onValueChange={(v) => {
-                  setFilterEquipeId(v);
-                  setFilterCorretorId("__all__");
-                }}
-              >
-                <SelectTrigger className="h-8 w-46 rounded-full bg-background py-0">
-                  <SelectValue placeholder="Equipe" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="__all__">Todas as equipes</SelectItem>
-                  <SelectItem value="__none__">Sem equipe</SelectItem>
-                  {equipes.map((eq) => (
-                    <SelectItem key={eq.id} value={eq.id}>
-                      {eq.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {showTeamFilters && isManager && (
-              <Popover
-                open={corretorFilterOpen}
-                onOpenChange={setCorretorFilterOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={corretorFilterOpen}
-                    className="h-8 w-46 justify-between rounded-full bg-background font-normal"
-                  >
-                    <span className="truncate">{selectedCorretorLabel}</span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0"
-                  align="start"
-                  onWheel={(event) => event.stopPropagation()}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {showTeamFilters && isAdmin && (
+                <Select
+                  value={filterEquipeId}
+                  onValueChange={(v) => {
+                    setFilterEquipeId(v);
+                    setFilterCorretorId("__all__");
+                  }}
                 >
-                  <Command>
-                    <CommandInput placeholder="Pesquisar corretor…" />
-                    <CommandList className="max-h-72">
-                      <CommandEmpty>Nenhum corretor encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem
-                          value="todos os corretores"
-                          onSelect={() => {
-                            setFilterCorretorId("__all__");
-                            setFilterMeusLeads(false);
-                            setCorretorFilterOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              filterCorretorId === "__all__"
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-                          Todos os corretores
-                        </CommandItem>
-                        <CommandItem
-                          value="sem corretor"
-                          onSelect={() => {
-                            setFilterCorretorId("__none__");
-                            setFilterMeusLeads(false);
-                            setCorretorFilterOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              filterCorretorId === "__none__"
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-                          Sem corretor
-                        </CommandItem>
-                        {corretorOptions.map((c) => (
+                  <SelectTrigger className="h-8 w-46 rounded-full bg-background py-0">
+                    <SelectValue placeholder="Equipe" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value="__all__">Todas as equipes</SelectItem>
+                    <SelectItem value="__none__">Sem equipe</SelectItem>
+                    {equipes.map((eq) => (
+                      <SelectItem key={eq.id} value={eq.id}>
+                        {eq.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {showTeamFilters && isManager && (
+                <Popover
+                  open={corretorFilterOpen}
+                  onOpenChange={setCorretorFilterOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={corretorFilterOpen}
+                      className="h-8 w-46 justify-between rounded-full bg-background font-normal"
+                    >
+                      <span className="truncate">{selectedCorretorLabel}</span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
+                    align="start"
+                    onWheel={(event) => event.stopPropagation()}
+                  >
+                    <Command>
+                      <CommandInput placeholder="Pesquisar corretor…" />
+                      <CommandList className="max-h-72">
+                        <CommandEmpty>Nenhum corretor encontrado.</CommandEmpty>
+                        <CommandGroup>
                           <CommandItem
-                            key={c.id}
-                            value={`${c.name} ${c.id}`}
+                            value="todos os corretores"
                             onSelect={() => {
-                              setFilterCorretorId(c.id);
+                              setFilterCorretorId("__all__");
                               setFilterMeusLeads(false);
                               setCorretorFilterOpen(false);
                             }}
@@ -1166,54 +1130,103 @@ export function ComercialFunilBoard({
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                filterCorretorId === c.id
+                                filterCorretorId === "__all__"
                                   ? "opacity-100"
                                   : "opacity-0",
                               )}
                             />
-                            <span className="truncate">{c.name}</span>
+                            Todos os corretores
                           </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            )}
-            {!isClientesFunil && isGerente && (
-              <Button
-                type="button"
-                variant={filterMeusLeads ? "default" : "outline"}
-                className={cn(
-                  "h-8 rounded-full font-normal",
-                  !filterMeusLeads && "bg-background",
-                )}
-                onClick={() => {
-                  setFilterMeusLeads((v) => !v);
-                  setFilterCorretorId("__all__");
-                }}
+                          <CommandItem
+                            value="sem corretor"
+                            onSelect={() => {
+                              setFilterCorretorId("__none__");
+                              setFilterMeusLeads(false);
+                              setCorretorFilterOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                filterCorretorId === "__none__"
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            Sem corretor
+                          </CommandItem>
+                          {corretorOptions.map((c) => (
+                            <CommandItem
+                              key={c.id}
+                              value={`${c.name} ${c.id}`}
+                              onSelect={() => {
+                                setFilterCorretorId(c.id);
+                                setFilterMeusLeads(false);
+                                setCorretorFilterOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  filterCorretorId === c.id
+                                    ? "opacity-100"
+                                    : "opacity-0",
+                                )}
+                              />
+                              <span className="truncate">{c.name}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+              {!isClientesFunil && isGerente && (
+                <Button
+                  type="button"
+                  variant={filterMeusLeads ? "default" : "outline"}
+                  className={cn(
+                    "h-8 rounded-full font-normal",
+                    !filterMeusLeads && "bg-background",
+                  )}
+                  onClick={() => {
+                    setFilterMeusLeads((v) => !v);
+                    setFilterCorretorId("__all__");
+                  }}
+                >
+                  <Briefcase className="mr-1.5 h-3.5 w-3.5" />
+                  Meus leads
+                </Button>
+              )}
+              <Select
+                value={filterMonitoramento}
+                onValueChange={(v) =>
+                  setFilterMonitoramento(v as MonitoramentoFiltro)
+                }
               >
-                <Briefcase className="mr-1.5 h-3.5 w-3.5" />
-                Meus leads
-              </Button>
-            )}
-            <Select
-              value={filterMonitoramento}
-              onValueChange={(v) =>
-                setFilterMonitoramento(v as MonitoramentoFiltro)
-              }
-            >
-              <SelectTrigger className="h-8 w-52 rounded-full bg-background py-0">
-                <SelectValue placeholder="Monitoramento" />
-              </SelectTrigger>
-              <SelectContent>
-                {MONITORAMENTO_FILTRO_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectTrigger className="h-8 w-52 rounded-full bg-background py-0">
+                  <SelectValue placeholder="Monitoramento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONITORAMENTO_FILTRO_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!isCorretor && (
+                <Button
+                  size="sm"
+                  asChild
+                  className={cn("h-8 rounded-full", FUNIL_GRADIENT_BTN)}
+                  style={FUNIL_GRADIENT_STYLE}
+                >
+                  <Link to="/configuracoes">Configurar funil</Link>
+                </Button>
+              )}
+            </div>
             <div className="flex h-8 items-center overflow-hidden rounded-full border bg-background">
               <Button
                 type="button"
@@ -1241,16 +1254,6 @@ export function ComercialFunilBoard({
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
-            {!isCorretor && (
-              <Button
-                size="sm"
-                asChild
-                className={cn("h-8 rounded-full", FUNIL_GRADIENT_BTN)}
-                style={FUNIL_GRADIENT_STYLE}
-              >
-                <Link to="/configuracoes">Configurar funil</Link>
-              </Button>
-            )}
           </div>
         }
       />

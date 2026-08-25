@@ -196,6 +196,7 @@ export interface MesResumo {
   despesas: number;
   variaveis?: number;
   fixas?: number;
+  comissoesAReceber?: number;
 }
 
 export type DespesaPipelineItem = {
@@ -206,6 +207,7 @@ export type DespesaPipelineItem = {
   centro: string;
   parceiro: string;
   status: StatusTitulo;
+  comissaoId?: string | null;
 };
 
 export type NaturezaDespesa = "fixa" | "fixa_variavel" | "variavel";

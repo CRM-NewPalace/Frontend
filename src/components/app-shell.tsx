@@ -1319,10 +1319,13 @@ export function PageHeader({
   title,
   description,
   actions,
+  actionsClassName,
 }: {
   title: string;
   description?: React.ReactNode;
   actions?: React.ReactNode;
+  /** Classes extras no container das actions (ex.: funil sem max-width). */
+  actionsClassName?: string;
 }) {
   const { brandName } = useTenantTheme();
   return (
@@ -1342,15 +1345,22 @@ export function PageHeader({
           <ModuloAjudaButton />
         </div>
         {description && (
-          <p className="mt-1 max-w-2xl text-sm text-pretty wrap-break-word text-muted-foreground">
-            {description}
-          </p>
+          <div className="mt-1 text-sm text-pretty wrap-break-word text-muted-foreground">
+            {typeof description === "string" ? (
+              <p className="max-w-2xl">{description}</p>
+            ) : (
+              description
+            )}
+          </div>
         )}
       </div>
       {actions && (
         <div
           data-guia="page-actions"
-          className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0 lg:justify-end"
+          className={cn(
+            "flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:max-w-[min(100%,36rem)] lg:shrink-0",
+            actionsClassName,
+          )}
         >
           {actions}
         </div>
