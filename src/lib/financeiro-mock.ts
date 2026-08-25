@@ -197,6 +197,8 @@ export interface MesResumo {
   variaveis?: number;
   fixas?: number;
   comissoesAReceber?: number;
+  aReceber?: number;
+  aPagar?: number;
 }
 
 export type DespesaPipelineItem = {

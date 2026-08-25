@@ -141,14 +141,42 @@ function anosFiltro() {
   return [atual + 1, atual, atual - 1, atual - 2, atual - 3];
 }
 
+function ymFromVencimento(value: string | null | undefined) {
+  return String(value ?? "").match(/(\d{4}-\d{2})/)?.[1] ?? "";
+}
+
 function tituloNoPeriodo(
   titulo: TituloFinanceiro,
   ano: number,
   mes: number | "todos",
 ) {
-  const venc = (titulo.vencimento ?? "").slice(0, 7);
+  const venc = ymFromVencimento(titulo.vencimento);
   if (mes === "todos") return venc.startsWith(`${ano}-`);
   return venc === `${ano}-${String(mes).padStart(2, "0")}`;
+}
+
+function itemNoPeriodo(
+  dataIso: string | null | undefined,
+  ano: number,
+  mes: number | "todos",
+) {
+  const venc = ymFromVencimento(dataIso);
+  if (mes === "todos") return venc.startsWith(`${ano}-`);
+  return venc === `${ano}-${String(mes).padStart(2, "0")}`;
+}
+
+function somaTitulosAbertos(
+  titulos: TituloFinanceiro[],
+  ano: number,
+  mes: number | "todos",
+) {
+  return titulos
+    .filter(
+      (t) =>
+        (t.status === "aberto" || t.status === "atrasado") &&
+        tituloNoPeriodo(t, ano, mes),
+    )
+    .reduce((s, t) => s + t.valor, 0);
 }
 
 function tituloToPipeline(titulo: TituloFinanceiro): DespesaPipelineItem {
@@ -204,7 +232,8 @@ function Page() {
     (async () => {
       setLoading(true);
       try {
-        const [data, titulosComissao] = await Promise.all([
+        const [data, titulosComissao, titulosReceber, titulosPagar] =
+          await Promise.all([
           fetchVisaoGeral({
             ano,
             mes: mes === "todos" ? undefined : mes,
@@ -212,6 +241,10 @@ function Page() {
           fetchTitulos("receber", undefined, "comissao").catch(
             () => [] as TituloFinanceiro[],
           ),
+          fetchTitulos("receber", undefined, "sem_comissao").catch(
+            () => [] as TituloFinanceiro[],
+          ),
+          fetchTitulos("pagar").catch(() => [] as TituloFinanceiro[]),
         ]);
         if (cancelled) return;
         const abertas = titulosComissao.filter(
@@ -219,49 +252,91 @@ function Page() {
             (t.status === "aberto" || t.status === "atrasado") &&
             tituloNoPeriodo(t, ano, mes),
         );
+        const curto = mes === "todos" ? null : MESES_FILTRO[mes - 1]?.curto;
+        const rowDoMes = curto
+          ? (data.mesesResumo ?? []).find((row) => row.mes === curto)
+          : null;
+        const receitas =
+          mes === "todos"
+            ? (data.kpis.receitasMes ?? 0)
+            : (rowDoMes?.receitas ?? 0);
+        const despesas =
+          mes === "todos"
+            ? (data.kpis.despesasMes ?? 0)
+            : (rowDoMes?.despesas ?? 0);
+        const fixas =
+          mes === "todos"
+            ? (data.kpis.despesasFixaMes ?? 0)
+            : (rowDoMes?.fixas ?? 0);
+        const variaveis =
+          mes === "todos"
+            ? (data.kpis.despesasVariavelMes ?? 0)
+            : (rowDoMes?.variaveis ?? 0);
+        const outros =
+          mes === "todos"
+            ? (data.kpis.despesasOutrosMes ?? 0)
+            : Math.max(0, despesas - fixas - variaveis);
         const totalComissao =
-          (data.kpis.comissoesAReceberMes ?? 0) > 0
-            ? data.kpis.comissoesAReceberMes ?? 0
-            : abertas.reduce((s, t) => s + t.valor, 0);
-        const byTituloId = new Map(titulosComissao.map((t) => [t.id, t]));
-        const comissoesItens =
-          (data.despesasPipeline?.comissoes?.length ?? 0) > 0
-            ? data.despesasPipeline!.comissoes!.map((item) => ({
-                ...item,
-                comissaoId:
-                  item.comissaoId ?? byTituloId.get(item.id)?.comissaoId ?? null,
-              }))
-            : abertas
-                .sort((a, b) => b.valor - a.valor)
-                .slice(0, 40)
-                .map(tituloToPipeline);
+          mes === "todos"
+            ? (data.kpis.comissoesAReceberMes ?? 0) > 0
+              ? data.kpis.comissoesAReceberMes ?? 0
+              : somaTitulosAbertos(titulosComissao, ano, mes)
+            : (rowDoMes?.comissoesAReceber ?? 0) > 0
+              ? rowDoMes?.comissoesAReceber ?? 0
+              : somaTitulosAbertos(titulosComissao, ano, mes);
+        const aReceber = somaTitulosAbertos(titulosReceber, ano, mes);
+        const aPagar = somaTitulosAbertos(titulosPagar, ano, mes);
+        const comissoesItens = abertas
+          .sort((a, b) => b.valor - a.valor)
+          .slice(0, 40)
+          .map(tituloToPipeline);
+        const noMes = (item: DespesaPipelineItem) =>
+          itemNoPeriodo(item.data, ano, mes);
 
         const comissaoPorMes = new Map<string, number>();
         for (const t of titulosComissao) {
           if (t.status !== "aberto" && t.status !== "atrasado") continue;
-          const key = (t.vencimento ?? "").slice(0, 7);
+          const key = ymFromVencimento(t.vencimento);
+          if (!key.startsWith(`${ano}-`)) continue;
           comissaoPorMes.set(key, (comissaoPorMes.get(key) ?? 0) + t.valor);
         }
 
-        setKpis(data.kpis);
+        setKpis({
+          ...data.kpis,
+          receitasMes: receitas,
+          despesasMes: despesas,
+          despesasFixaMes: fixas,
+          despesasVariavelMes: variaveis,
+          despesasOutrosMes: outros,
+          comissoesAReceberMes: totalComissao,
+          aReceber,
+          aPagar,
+          resultadoMes: receitas - despesas,
+        });
         setComissoesMes(totalComissao);
         setMesesResumo(
-          data.mesesResumo.map((row, index) => {
+          (data.mesesResumo ?? []).map((row, index) => {
             const key = `${ano}-${String(index + 1).padStart(2, "0")}`;
             return {
               ...row,
-              comissoesAReceber:
-                (row.comissoesAReceber ?? 0) > 0
-                  ? row.comissoesAReceber
-                  : (comissaoPorMes.get(key) ?? 0),
+              receitas: row.receitas ?? 0,
+              despesas: row.despesas ?? 0,
+              variaveis: row.variaveis ?? 0,
+              fixas: row.fixas ?? 0,
+              aReceber: row.aReceber ?? 0,
+              aPagar: row.aPagar ?? 0,
+              comissoesAReceber: Math.max(
+                row.comissoesAReceber ?? 0,
+                comissaoPorMes.get(key) ?? 0,
+              ),
             };
           }),
         );
         setCentros(data.centros);
         setPipeline({
-          fixas: data.despesasPipeline?.fixas ?? [],
-          variaveis: data.despesasPipeline?.variaveis ?? [],
-          outros: data.despesasPipeline?.outros ?? [],
+          fixas: (data.despesasPipeline?.fixas ?? []).filter(noMes),
+          variaveis: (data.despesasPipeline?.variaveis ?? []).filter(noMes),
+          outros: (data.despesasPipeline?.outros ?? []).filter(noMes),
           comissoes: comissoesItens,
         });
       } catch (err) {
@@ -283,9 +358,31 @@ function Page() {
 
   const k = kpis;
   const chartData = useMemo(() => {
-    if (mes === "todos") return mesesResumo;
-    return mesesResumo.filter((_, index) => index === mes - 1);
-  }, [mes, mesesResumo]);
+    const rows = Array.isArray(mesesResumo) ? mesesResumo : [];
+    if (mes === "todos") {
+      return MESES_FILTRO.map((item) => {
+        const found = rows.find((row) => row.mes === item.curto);
+        return {
+          mes: item.curto,
+          receitas: found?.receitas ?? 0,
+          despesas: found?.despesas ?? 0,
+          variaveis: found?.variaveis ?? 0,
+          comissoesAReceber: found?.comissoesAReceber ?? 0,
+        };
+      });
+    }
+    const curto = MESES_FILTRO[mes - 1]?.curto ?? "Mes";
+    const found = rows.find((row) => row.mes === curto);
+    return [
+      {
+        mes: curto,
+        receitas: found?.receitas ?? 0,
+        despesas: found?.despesas ?? 0,
+        variaveis: found?.variaveis ?? 0,
+        comissoesAReceber: found?.comissoesAReceber ?? comissoesMes ?? 0,
+      },
+    ];
+  }, [comissoesMes, mes, mesesResumo]);
   const periodoAnoMes =
     mes === "todos"
       ? String(ano)
@@ -304,7 +401,7 @@ function Page() {
     const rows = COMPOSICAO.map((item) => ({
       ...item,
       value: values[item.key],
-    })).filter((row) => row.value > 0);
+    }));
     const total = rows.reduce((s, row) => s + row.value, 0);
     return { rows, total };
   }, [
@@ -503,13 +600,67 @@ function Page() {
                       tick={{ fontSize: 11 }}
                     />
                     <ChartTooltip
-                      content={
-                        <ChartTooltipContent
-                          formatter={(value) =>
-                            hideValues ? "••••" : brl(Number(value))
-                          }
-                        />
-                      }
+                      cursor={{ fill: "hsl(var(--muted) / 0.35)" }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const row = payload[0]?.payload as {
+                          mes?: string;
+                          receitas?: number;
+                          despesas?: number;
+                          variaveis?: number;
+                          comissoesAReceber?: number;
+                        };
+                        const series = [
+                          {
+                            key: "receitas",
+                            label: "Receitas",
+                            color: "hsl(160 84% 39%)",
+                            value: row.receitas ?? 0,
+                          },
+                          {
+                            key: "despesas",
+                            label: "Despesas",
+                            color: "hsl(0 72% 51%)",
+                            value: row.despesas ?? 0,
+                          },
+                          {
+                            key: "variaveis",
+                            label: "Variáveis",
+                            color: "hsl(45 93% 47%)",
+                            value: row.variaveis ?? 0,
+                          },
+                          {
+                            key: "comissoesAReceber",
+                            label: "Comissões a receber",
+                            color: "hsl(262 83% 58%)",
+                            value: row.comissoesAReceber ?? 0,
+                          },
+                        ];
+                        return (
+                          <div className="grid min-w-[11rem] gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                            <div className="font-medium">{row.mes}</div>
+                            {series.map((item) => (
+                              <div
+                                key={item.key}
+                                className="flex items-center justify-between gap-4"
+                              >
+                                <span className="flex items-center gap-2 text-muted-foreground">
+                                  <span
+                                    className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                                    style={{ background: item.color }}
+                                  />
+                                  {item.label}
+                                </span>
+                                <span className="font-mono font-medium tabular-nums">
+                                  {hideValues
+                                    ? "••••"
+                                    : brl(Number(item.value))}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }}
                     />
                     <Legend />
                     <Bar
@@ -576,11 +727,7 @@ function Page() {
             </div>
           </CardHeader>
           <CardContent>
-            {composicao.rows.length === 0 ? (
-              <p className="flex h-70 items-center justify-center text-sm text-muted-foreground">
-                Sem despesas ou comissões neste mês.
-              </p>
-            ) : composicaoVista === "pizza" ? (
+            {composicaoVista === "pizza" ? (
               <ResponsiveChartShell>
                 <ChartContainer
                   config={naturezaConfig}
@@ -620,22 +767,25 @@ function Page() {
             ) : (
               <div className="space-y-4">
                 <div className="flex h-3 overflow-hidden rounded-full bg-muted">
-                  {composicao.rows.map((row) => (
-                    <div
-                      key={row.key}
-                      className="h-full"
-                      style={{
-                        width: `${(row.value / composicao.total) * 100}%`,
-                        background: row.color,
-                      }}
-                    />
-                  ))}
+                  {composicao.total > 0
+                    ? composicao.rows.map((row) => (
+                        <div
+                          key={row.key}
+                          className="h-full"
+                          style={{
+                            width: `${(row.value / composicao.total) * 100}%`,
+                            background: row.color,
+                          }}
+                        />
+                      ))
+                    : null}
                 </div>
                 <ul className="space-y-3">
                   {composicao.rows.map((row) => {
-                    const pct = Math.round(
-                      (row.value / composicao.total) * 100,
-                    );
+                    const pct =
+                      composicao.total > 0
+                        ? Math.round((row.value / composicao.total) * 100)
+                        : 0;
                     return (
                       <li key={row.key}>
                         <div className="mb-1 flex items-center justify-between gap-2 text-sm">
