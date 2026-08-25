@@ -276,14 +276,11 @@ function Page() {
           mes === "todos"
             ? (data.kpis.despesasOutrosMes ?? 0)
             : Math.max(0, despesas - fixas - variaveis);
-        const totalComissao =
-          mes === "todos"
-            ? (data.kpis.comissoesAReceberMes ?? 0) > 0
-              ? data.kpis.comissoesAReceberMes ?? 0
-              : somaTitulosAbertos(titulosComissao, ano, mes)
-            : (rowDoMes?.comissoesAReceber ?? 0) > 0
-              ? rowDoMes?.comissoesAReceber ?? 0
-              : somaTitulosAbertos(titulosComissao, ano, mes);
+        const totalComissao = Math.max(
+          mes === "todos" ? (data.kpis.comissoesAReceberMes ?? 0) : 0,
+          rowDoMes?.comissoesAReceber ?? 0,
+          somaTitulosAbertos(titulosComissao, ano, mes),
+        );
         const aReceber = somaTitulosAbertos(titulosReceber, ano, mes);
         const aPagar = somaTitulosAbertos(titulosPagar, ano, mes);
         const comissoesItens = abertas
@@ -315,19 +312,23 @@ function Page() {
         });
         setComissoesMes(totalComissao);
         setMesesResumo(
-          (data.mesesResumo ?? []).map((row, index) => {
-            const key = `${ano}-${String(index + 1).padStart(2, "0")}`;
+          MESES_FILTRO.map((item) => {
+            const key = `${ano}-${String(item.value).padStart(2, "0")}`;
+            const row = (data.mesesResumo ?? []).find(
+              (entry) => entry.mes === item.curto,
+            );
             return {
-              ...row,
-              receitas: row.receitas ?? 0,
-              despesas: row.despesas ?? 0,
-              variaveis: row.variaveis ?? 0,
-              fixas: row.fixas ?? 0,
-              aReceber: row.aReceber ?? 0,
-              aPagar: row.aPagar ?? 0,
+              mes: item.curto,
+              receitas: row?.receitas ?? 0,
+              despesas: row?.despesas ?? 0,
+              variaveis: row?.variaveis ?? 0,
+              fixas: row?.fixas ?? 0,
+              aReceber: row?.aReceber ?? 0,
+              aPagar: row?.aPagar ?? 0,
               comissoesAReceber: Math.max(
-                row.comissoesAReceber ?? 0,
+                row?.comissoesAReceber ?? 0,
                 comissaoPorMes.get(key) ?? 0,
+                curto === item.curto ? totalComissao : 0,
               ),
             };
           }),
@@ -379,7 +380,7 @@ function Page() {
         receitas: found?.receitas ?? 0,
         despesas: found?.despesas ?? 0,
         variaveis: found?.variaveis ?? 0,
-        comissoesAReceber: found?.comissoesAReceber ?? comissoesMes ?? 0,
+        comissoesAReceber: comissoesMes || found?.comissoesAReceber || 0,
       },
     ];
   }, [comissoesMes, mes, mesesResumo]);
