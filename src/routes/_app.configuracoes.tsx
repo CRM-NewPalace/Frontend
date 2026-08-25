@@ -54,7 +54,7 @@ import {
   setMetasVista,
   type MetasVista,
 } from "@/lib/metas-nav-prefs";
-import { ImoveisPage } from "@/routes/_app.imoveis";
+import { ImoveisPage } from "@/components/imoveis-page";
 import { LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
