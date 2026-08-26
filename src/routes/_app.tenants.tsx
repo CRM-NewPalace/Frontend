@@ -48,7 +48,6 @@ import {
   deleteMetaConnection,
   deleteOzapConnection,
   deleteTenant,
-  duplicateTenant,
   fetchTenant,
   fetchTenants,
   populateTenantDemoData,
@@ -85,7 +84,6 @@ import {
   Check,
   Copy,
   DatabaseZap,
-  Files,
   KeyRound,
   Link2,
   Loader2,
@@ -178,8 +176,6 @@ function TenantsPage() {
     null,
   );
   const [deletingTenant, setDeletingTenant] = useState(false);
-  const [duplicateTarget, setDuplicateTarget] = useState<Tenant | null>(null);
-  const [duplicatingTenant, setDuplicatingTenant] = useState(false);
   const [demoTarget, setDemoTarget] = useState<Tenant | null>(null);
   const [demoLimparAntes, setDemoLimparAntes] = useState(false);
   const [populatingDemo, setPopulatingDemo] = useState(false);
@@ -507,27 +503,6 @@ function TenantsPage() {
     }
   }
 
-  async function confirmDuplicateTenant() {
-    if (!duplicateTarget) return;
-    setDuplicatingTenant(true);
-    try {
-      const created = await duplicateTenant(duplicateTarget.id);
-      toast.success(
-        `Cópia criada: ${created.name} (${created.slug}). Sem vínculo com o original.`,
-      );
-      setDuplicateTarget(null);
-      await loadItems();
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Falha ao duplicar o tenant.",
-      );
-    } finally {
-      setDuplicatingTenant(false);
-    }
-  }
-
   async function confirmPopulateDemo() {
     if (!demoTarget) return;
     setPopulatingDemo(true);
@@ -797,16 +772,6 @@ function TenantsPage() {
                           onClick={() => void openEdit(item)}
                         >
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title="Duplicar tenant"
-                          disabled={duplicatingTenant}
-                          onClick={() => setDuplicateTarget(item)}
-                        >
-                          <Files className="h-4 w-4" />
                         </Button>
                         <Button
                           type="button"
@@ -1702,42 +1667,6 @@ function TenantsPage() {
               }}
             >
               {deletingTenant ? "Excluindo…" : "Excluir"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog
-        open={Boolean(duplicateTarget)}
-        onOpenChange={(open) =>
-          !open && !duplicatingTenant && setDuplicateTarget(null)
-        }
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Duplicar tenant?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cria uma imobiliária nova e independente a partir de{" "}
-              <strong>{duplicateTarget?.name}</strong> (
-              <code>{duplicateTarget?.slug}</code>
-              ). Usuários, leads, imóveis, funil, agenda e financeiro
-              operacional são copiados com IDs novos — nada fica ligado ao
-              original. Conexões Meta/OZap e contratos da plataforma não entram
-              na cópia (são exclusivos do tenant de origem).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={duplicatingTenant}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={duplicatingTenant}
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmDuplicateTenant();
-              }}
-            >
-              {duplicatingTenant ? "Duplicando…" : "Duplicar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
