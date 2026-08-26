@@ -16,12 +16,19 @@ export const FUNIL_TIPOS: FunilTipo[] = [
   "venda_usados",
 ];
 
-export function funilTipoOf(funil: { tipo?: FunilTipo | null }): FunilTipo {
-  if (funil.tipo === "captacao" || funil.tipo === "venda_usados") {
-    return funil.tipo;
+export function parseFunilTipo(tipo: unknown): FunilTipo | null {
+  if (tipo === "comercial" || tipo === "captacao" || tipo === "venda_usados") {
+    return tipo;
   }
-  return "comercial";
+  return null;
 }
+
+/** Tipo gravado; `null` = legado sem vínculo (API antiga ou campo ausente). */
+export function funilTipoOf(funil: { tipo?: FunilTipo | null }): FunilTipo | null {
+  return parseFunilTipo(funil.tipo);
+}
+
+export const FUNIL_PADRAO_ETAPAS_COUNT: Record<FunilTipo, number> = {
   comercial: 11,
   captacao: 8,
   venda_usados: 9,
@@ -47,7 +54,7 @@ export type Funil = {
   id: string;
   tenantId: string;
   name: string;
-  tipo: FunilTipo;
+  tipo?: FunilTipo | null;
   ativo: boolean;
   inatividadeValor: number;
   inatividadeUnidade: "minutos" | "horas" | "dias";
@@ -111,6 +118,7 @@ export async function updateFunil(
   id: string,
   input: {
     name?: string;
+    tipo?: FunilTipo;
     inatividadeValor?: number;
     inatividadeUnidade?: "minutos" | "horas" | "dias";
   },

@@ -54,6 +54,7 @@ import {
   FUNIL_TIPO_LABEL,
   FUNIL_TIPOS,
   funilTipoOf,
+  parseFunilTipo,
   installFunilEtapasPadrao,
   recoverFunilEtapas,
   updateFunil,
@@ -98,6 +99,14 @@ const PAPEL_BADGE_LABEL: Record<FunilEtapaPapel, string> = {
   venda: "Venda",
   perdido: "Perdido",
 };
+
+type FiltroFunil = FunilTipo | "sem_tipo";
+
+function funilNoFiltro(funil: Funil, filtro: FiltroFunil): boolean {
+  const tipo = funilTipoOf(funil);
+  if (filtro === "sem_tipo") return tipo === null;
+  return tipo === filtro;
+}
 
 function resolveEtapaPapel(etapa: FunilEtapa): FunilEtapaPapel | null {
   if (etapa.papel) return etapa.papel;
@@ -165,7 +174,7 @@ export function ConfigFunisPanel() {
   const { refresh: refreshCatalog, applyFunnelEtapas } = useCatalog();
   const { refresh: refreshLeads } = useLeads();
   const [funis, setFunis] = useState<Funil[]>([]);
-  const [tipoFiltro, setTipoFiltro] = useState<FunilTipo>("comercial");
+  const [tipoFiltro, setTipoFiltro] = useState<FiltroFunil>("comercial");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -197,9 +206,14 @@ export function ConfigFunisPanel() {
   const [deleteEtapa, setDeleteEtapa] = useState<FunilEtapa | null>(null);
   const [confirmDefaults, setConfirmDefaults] = useState(false);
 
-  const funisDoTipo = funis.filter((f) => funilTipoOf(f) === tipoFiltro);
+  const funisDoTipo = funis.filter((f) => funilNoFiltro(f, tipoFiltro));
+  const funisSemTipo = funis.filter((f) => funilTipoOf(f) === null);
   const selected = funisDoTipo.find((f) => f.id === selectedId) ?? null;
   const activeEtapas = (selected?.etapas ?? []).filter((e) => e.active);
+  const funisParaVincular =
+    tipoFiltro === "sem_tipo"
+      ? []
+      : funis.filter((f) => !funilNoFiltro(f, tipoFiltro));
 
   useEffect(() => {
     if (!selected) return;
@@ -213,7 +227,7 @@ export function ConfigFunisPanel() {
       const list = await fetchFunis();
       setFunis(list);
       setSelectedId((prev) => {
-        const ofTipo = list.filter((f) => funilTipoOf(f) === tipoFiltro);
+        const ofTipo = list.filter((f) => funilNoFiltro(f, tipoFiltro));
         if (prev && ofTipo.some((f) => f.id === prev)) return prev;
         return ofTipo.find((f) => f.ativo)?.id ?? ofTipo[0]?.id ?? null;
       });
@@ -234,6 +248,7 @@ export function ConfigFunisPanel() {
       const next = [...without, updated].map((f) =>
         updated.ativo &&
           f.id !== updated.id &&
+          funilTipoOf(f) !== null &&
           funilTipoOf(f) === funilTipoOf(updated)
           ? { ...f, ativo: false }
           : f,
@@ -284,7 +299,7 @@ export function ConfigFunisPanel() {
       setCreatePadrao(true);
       setCreateCustomStages("");
       setCreateAtivar(false);
-      setTipoFiltro(created.tipo);
+      setTipoFiltro(parseFunilTipo(created.tipo) ?? createTipo);
       await afterMutation(created);
       await load();
     } catch (err) {
@@ -331,6 +346,25 @@ export function ConfigFunisPanel() {
     } catch (err) {
       toast.error(
         errorMessage(err, "Não foi possível salvar o período de inatividade."),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleVincularTipo(funil: Funil, tipo: FunilTipo) {
+    setSaving(true);
+    try {
+      const updated = await updateFunil(funil.id, { tipo });
+      toast.success(
+        `Funil "${updated.name}" vinculado a ${FUNIL_TIPO_LABEL[tipo]}.`,
+      );
+      setTipoFiltro(tipo);
+      await afterMutation(updated);
+      await load();
+    } catch (err) {
+      toast.error(
+        errorMessage(err, "Não foi possível vincular o funil a este tipo."),
       );
     } finally {
       setSaving(false);
@@ -496,7 +530,9 @@ export function ConfigFunisPanel() {
             <Button
               size="sm"
               onClick={() => {
-                setCreateTipo(tipoFiltro);
+                setCreateTipo(
+                  tipoFiltro === "sem_tipo" ? "comercial" : tipoFiltro,
+                );
                 setCreateOpen(true);
               }}
             >
@@ -507,7 +543,7 @@ export function ConfigFunisPanel() {
           <CardContent className="space-y-2">
             <Tabs
               value={tipoFiltro}
-              onValueChange={(v) => setTipoFiltro(v as FunilTipo)}
+              onValueChange={(v) => setTipoFiltro(v as FiltroFunil)}
             >
               <TabsList className="w-full h-auto flex-wrap justify-start">
                 {FUNIL_TIPOS.map((tipo) => (
@@ -515,6 +551,10 @@ export function ConfigFunisPanel() {
                     {FUNIL_TIPO_LABEL[tipo]}
                   </TabsTrigger>
                 ))}
+                <TabsTrigger value="sem_tipo" className="text-xs">
+                  Sem tipo
+                  {funisSemTipo.length > 0 ? ` (${funisSemTipo.length})` : ""}
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             {loading && (
@@ -524,9 +564,52 @@ export function ConfigFunisPanel() {
               </div>
             )}
             {!loading && funisDoTipo.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nenhum funil cadastrado neste tipo.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {tipoFiltro === "sem_tipo"
+                    ? "Todos os funis já estão vinculados a um tipo."
+                    : "Nenhum funil cadastrado neste tipo."}
+                </p>
+                {tipoFiltro !== "sem_tipo" && funisParaVincular.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-xs font-medium">
+                      Vincular um funil existente a{" "}
+                      {FUNIL_TIPO_LABEL[tipoFiltro]}
+                    </p>
+                    {funisParaVincular.map((f) => {
+                      const tipoAtual = funilTipoOf(f);
+                      return (
+                        <div
+                          key={f.id}
+                          className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">
+                              {f.name}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {tipoAtual
+                                ? FUNIL_TIPO_LABEL[tipoAtual]
+                                : "Sem tipo"}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={saving}
+                            onClick={() =>
+                              void handleVincularTipo(f, tipoFiltro)
+                            }
+                          >
+                            Vincular
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
             {funisDoTipo.map((f) => {
               const etapasAtivas = f.etapas.filter((e) => e.active);
@@ -552,6 +635,7 @@ export function ConfigFunisPanel() {
                         )}
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {funilTipoOf(f) === null ? "Sem tipo · " : ""}
                         {etapasAtivas.length} etapa
                         {etapasAtivas.length === 1 ? "" : "s"}
                       </div>
@@ -600,11 +684,15 @@ export function ConfigFunisPanel() {
                 {selected ? selected.name : "Etapas do funil"}
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                {selected?.ativo
-                  ? funilTipoOf(selected) === "comercial"
-                    ? "Este funil está ativo no kanban e nos novos leads."
-                    : "Este funil está ativo neste tipo de operação."
-                  : "Edite as etapas ou ative este funil para usá-lo."}
+                {selected
+                  ? funilTipoOf(selected) === null
+                    ? "Este funil ainda não tem tipo. Vincule-o a uma operação para usá-lo no kanban."
+                    : selected.ativo
+                      ? funilTipoOf(selected) === "comercial"
+                        ? "Este funil está ativo no kanban e nos novos leads."
+                        : "Este funil está ativo neste tipo de operação."
+                      : "Edite as etapas ou ative este funil para usá-lo."
+                  : "Edite as etapas ou ative este funil para usá-lo. Selecione um funil à esquerda."}
               </p>
             </div>
             {selected && (
@@ -676,6 +764,34 @@ export function ConfigFunisPanel() {
               <p className="text-sm text-muted-foreground">
                 Selecione um funil à esquerda.
               </p>
+            )}
+            {selected && (
+              <div className="rounded-lg border border-border/60 p-3 space-y-2">
+                <p className="text-xs font-medium">Tipo de operação</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Funis sem tipo não entram no kanban comercial. Vincule ao tipo
+                  certo; o kanban de vendas usa só Comercial.
+                </p>
+                <select
+                  className="h-8 w-full max-w-xs rounded-md border bg-background px-2 text-sm"
+                  value={funilTipoOf(selected) ?? ""}
+                  disabled={saving}
+                  onChange={(e) => {
+                    const tipo = parseFunilTipo(e.target.value);
+                    if (!tipo) return;
+                    void handleVincularTipo(selected, tipo);
+                  }}
+                >
+                  {funilTipoOf(selected) === null && (
+                    <option value="">Sem tipo — selecione para vincular</option>
+                  )}
+                  {FUNIL_TIPOS.map((tipo) => (
+                    <option key={tipo} value={tipo}>
+                      {FUNIL_TIPO_LABEL[tipo]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
             {selected && (
               <div className="rounded-lg border border-border/60 p-3 space-y-2">
