@@ -1,4 +1,4 @@
-import { apiFetch, sessionCache, storeCsrfToken } from "@/lib/api";
+import { apiFetch, expireReadableCsrfCookies, sessionCache, storeCsrfToken } from "@/lib/api";
 
 export type Role =
   | "super_admin"
@@ -99,6 +99,7 @@ export async function signIn(
   password: string,
   tenantSlug?: string,
 ): Promise<AuthUser> {
+  expireReadableCsrfCookies();
   const data = await apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
     skipAuth: true,
