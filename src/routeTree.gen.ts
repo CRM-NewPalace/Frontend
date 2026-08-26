@@ -17,6 +17,7 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppAtrasosRouteImport } from './routes/_app.atrasos'
+import { Route as AppCaptacaoRouteImport } from './routes/_app.captacao'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppClientesPerdidosRouteImport } from './routes/_app.clientes-perdidos'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
@@ -48,6 +49,10 @@ import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as ProdutosCrmImobiliarioRouteImport } from './routes/produtos.crm-imobiliario'
 import { Route as ProdutosIaWhatsappRouteImport } from './routes/produtos.ia-whatsapp'
 import { Route as ProdutosSitesInstitucionaisRouteImport } from './routes/produtos.sites-institucionais'
+import { Route as AppCaptacaoCaptacoesRouteImport } from './routes/_app.captacao.captacoes'
+import { Route as AppCaptacaoImoveisRouteImport } from './routes/_app.captacao.imoveis'
+import { Route as AppCaptacaoProprietariosRouteImport } from './routes/_app.captacao.proprietarios'
+import { Route as AppCaptacaoVisaoGeralRouteImport } from './routes/_app.captacao.visao-geral'
 import { Route as AppFinanceiroCategoriasRouteImport } from './routes/_app.financeiro.categorias'
 import { Route as AppFinanceiroCentroDespesasRouteImport } from './routes/_app.financeiro.centro-despesas'
 import { Route as AppFinanceiroCentroRecebimentosRouteImport } from './routes/_app.financeiro.centro-recebimentos'
@@ -60,6 +65,9 @@ import { Route as AppFinanceiroDespesasRouteImport } from './routes/_app.finance
 import { Route as AppFinanceiroFluxoCaixaRouteImport } from './routes/_app.financeiro.fluxo-caixa'
 import { Route as AppFinanceiroMovimentacaoRouteImport } from './routes/_app.financeiro.movimentacao'
 import { Route as AppFinanceiroVisaoGeralRouteImport } from './routes/_app.financeiro.visao-geral'
+import { Route as AppCaptacaoCaptacoesIdRouteImport } from './routes/_app.captacao.captacoes.$id'
+import { Route as AppCaptacaoImoveisIdRouteImport } from './routes/_app.captacao.imoveis.$id'
+import { Route as AppCaptacaoProprietariosIdRouteImport } from './routes/_app.captacao.proprietarios.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -98,6 +106,11 @@ const AppAgendaRoute = AppAgendaRouteImport.update({
 const AppAtrasosRoute = AppAtrasosRouteImport.update({
   id: '/atrasos',
   path: '/atrasos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCaptacaoRoute = AppCaptacaoRouteImport.update({
+  id: '/captacao',
+  path: '/captacao',
   getParentRoute: () => AppRoute,
 } as any)
 const AppClientesRoute = AppClientesRouteImport.update({
@@ -256,6 +269,27 @@ const ProdutosSitesInstitucionaisRoute =
     path: '/produtos/sites-institucionais',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppCaptacaoCaptacoesRoute = AppCaptacaoCaptacoesRouteImport.update({
+  id: '/captacoes',
+  path: '/captacoes',
+  getParentRoute: () => AppCaptacaoRoute,
+} as any)
+const AppCaptacaoImoveisRoute = AppCaptacaoImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => AppCaptacaoRoute,
+} as any)
+const AppCaptacaoProprietariosRoute =
+  AppCaptacaoProprietariosRouteImport.update({
+    id: '/proprietarios',
+    path: '/proprietarios',
+    getParentRoute: () => AppCaptacaoRoute,
+  } as any)
+const AppCaptacaoVisaoGeralRoute = AppCaptacaoVisaoGeralRouteImport.update({
+  id: '/visao-geral',
+  path: '/visao-geral',
+  getParentRoute: () => AppCaptacaoRoute,
+} as any)
 const AppFinanceiroCategoriasRoute = AppFinanceiroCategoriasRouteImport.update({
   id: '/categorias',
   path: '/categorias',
@@ -322,6 +356,22 @@ const AppFinanceiroVisaoGeralRoute = AppFinanceiroVisaoGeralRouteImport.update({
   path: '/visao-geral',
   getParentRoute: () => AppFinanceiroRoute,
 } as any)
+const AppCaptacaoCaptacoesIdRoute = AppCaptacaoCaptacoesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppCaptacaoCaptacoesRoute,
+} as any)
+const AppCaptacaoImoveisIdRoute = AppCaptacaoImoveisIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppCaptacaoImoveisRoute,
+} as any)
+const AppCaptacaoProprietariosIdRoute =
+  AppCaptacaoProprietariosIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AppCaptacaoProprietariosRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -331,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
   '/atrasos': typeof AppAtrasosRoute
+  '/captacao': typeof AppCaptacaoRouteWithChildren
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -362,6 +413,10 @@ export interface FileRoutesByFullPath {
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
+  '/captacao/captacoes': typeof AppCaptacaoCaptacoesRouteWithChildren
+  '/captacao/imoveis': typeof AppCaptacaoImoveisRouteWithChildren
+  '/captacao/proprietarios': typeof AppCaptacaoProprietariosRouteWithChildren
+  '/captacao/visao-geral': typeof AppCaptacaoVisaoGeralRoute
   '/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/centro-recebimentos': typeof AppFinanceiroCentroRecebimentosRoute
@@ -374,6 +429,9 @@ export interface FileRoutesByFullPath {
   '/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
+  '/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
+  '/captacao/imoveis/$id': typeof AppCaptacaoImoveisIdRoute
+  '/captacao/proprietarios/$id': typeof AppCaptacaoProprietariosIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -383,6 +441,7 @@ export interface FileRoutesByTo {
   '/termos': typeof TermosRoute
   '/agenda': typeof AppAgendaRoute
   '/atrasos': typeof AppAtrasosRoute
+  '/captacao': typeof AppCaptacaoRouteWithChildren
   '/clientes': typeof AppClientesRoute
   '/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -414,6 +473,10 @@ export interface FileRoutesByTo {
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
+  '/captacao/captacoes': typeof AppCaptacaoCaptacoesRouteWithChildren
+  '/captacao/imoveis': typeof AppCaptacaoImoveisRouteWithChildren
+  '/captacao/proprietarios': typeof AppCaptacaoProprietariosRouteWithChildren
+  '/captacao/visao-geral': typeof AppCaptacaoVisaoGeralRoute
   '/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/financeiro/centro-recebimentos': typeof AppFinanceiroCentroRecebimentosRoute
@@ -426,6 +489,9 @@ export interface FileRoutesByTo {
   '/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
+  '/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
+  '/captacao/imoveis/$id': typeof AppCaptacaoImoveisIdRoute
+  '/captacao/proprietarios/$id': typeof AppCaptacaoProprietariosIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -437,6 +503,7 @@ export interface FileRoutesById {
   '/termos': typeof TermosRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/atrasos': typeof AppAtrasosRoute
+  '/_app/captacao': typeof AppCaptacaoRouteWithChildren
   '/_app/clientes': typeof AppClientesRoute
   '/_app/clientes-perdidos': typeof AppClientesPerdidosRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
@@ -468,6 +535,10 @@ export interface FileRoutesById {
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
+  '/_app/captacao/captacoes': typeof AppCaptacaoCaptacoesRouteWithChildren
+  '/_app/captacao/imoveis': typeof AppCaptacaoImoveisRouteWithChildren
+  '/_app/captacao/proprietarios': typeof AppCaptacaoProprietariosRouteWithChildren
+  '/_app/captacao/visao-geral': typeof AppCaptacaoVisaoGeralRoute
   '/_app/financeiro/categorias': typeof AppFinanceiroCategoriasRoute
   '/_app/financeiro/centro-despesas': typeof AppFinanceiroCentroDespesasRoute
   '/_app/financeiro/centro-recebimentos': typeof AppFinanceiroCentroRecebimentosRoute
@@ -480,6 +551,9 @@ export interface FileRoutesById {
   '/_app/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/_app/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/_app/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
+  '/_app/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
+  '/_app/captacao/imoveis/$id': typeof AppCaptacaoImoveisIdRoute
+  '/_app/captacao/proprietarios/$id': typeof AppCaptacaoProprietariosIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -491,6 +565,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/agenda'
     | '/atrasos'
+    | '/captacao'
     | '/clientes'
     | '/clientes-perdidos'
     | '/configuracoes'
@@ -522,6 +597,10 @@ export interface FileRouteTypes {
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
+    | '/captacao/captacoes'
+    | '/captacao/imoveis'
+    | '/captacao/proprietarios'
+    | '/captacao/visao-geral'
     | '/financeiro/categorias'
     | '/financeiro/centro-despesas'
     | '/financeiro/centro-recebimentos'
@@ -534,6 +613,9 @@ export interface FileRouteTypes {
     | '/financeiro/fluxo-caixa'
     | '/financeiro/movimentacao'
     | '/financeiro/visao-geral'
+    | '/captacao/captacoes/$id'
+    | '/captacao/imoveis/$id'
+    | '/captacao/proprietarios/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -543,6 +625,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/agenda'
     | '/atrasos'
+    | '/captacao'
     | '/clientes'
     | '/clientes-perdidos'
     | '/configuracoes'
@@ -574,6 +657,10 @@ export interface FileRouteTypes {
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
+    | '/captacao/captacoes'
+    | '/captacao/imoveis'
+    | '/captacao/proprietarios'
+    | '/captacao/visao-geral'
     | '/financeiro/categorias'
     | '/financeiro/centro-despesas'
     | '/financeiro/centro-recebimentos'
@@ -586,6 +673,9 @@ export interface FileRouteTypes {
     | '/financeiro/fluxo-caixa'
     | '/financeiro/movimentacao'
     | '/financeiro/visao-geral'
+    | '/captacao/captacoes/$id'
+    | '/captacao/imoveis/$id'
+    | '/captacao/proprietarios/$id'
   id:
     | '__root__'
     | '/'
@@ -596,6 +686,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/_app/agenda'
     | '/_app/atrasos'
+    | '/_app/captacao'
     | '/_app/clientes'
     | '/_app/clientes-perdidos'
     | '/_app/configuracoes'
@@ -627,6 +718,10 @@ export interface FileRouteTypes {
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
+    | '/_app/captacao/captacoes'
+    | '/_app/captacao/imoveis'
+    | '/_app/captacao/proprietarios'
+    | '/_app/captacao/visao-geral'
     | '/_app/financeiro/categorias'
     | '/_app/financeiro/centro-despesas'
     | '/_app/financeiro/centro-recebimentos'
@@ -639,6 +734,9 @@ export interface FileRouteTypes {
     | '/_app/financeiro/fluxo-caixa'
     | '/_app/financeiro/movimentacao'
     | '/_app/financeiro/visao-geral'
+    | '/_app/captacao/captacoes/$id'
+    | '/_app/captacao/imoveis/$id'
+    | '/_app/captacao/proprietarios/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -709,6 +807,13 @@ declare module '@tanstack/react-router' {
       path: '/atrasos'
       fullPath: '/atrasos'
       preLoaderRoute: typeof AppAtrasosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/captacao': {
+      id: '/_app/captacao'
+      path: '/captacao'
+      fullPath: '/captacao'
+      preLoaderRoute: typeof AppCaptacaoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/clientes': {
@@ -928,6 +1033,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosSitesInstitucionaisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/captacao/captacoes': {
+      id: '/_app/captacao/captacoes'
+      path: '/captacoes'
+      fullPath: '/captacao/captacoes'
+      preLoaderRoute: typeof AppCaptacaoCaptacoesRouteImport
+      parentRoute: typeof AppCaptacaoRoute
+    }
+    '/_app/captacao/imoveis': {
+      id: '/_app/captacao/imoveis'
+      path: '/imoveis'
+      fullPath: '/captacao/imoveis'
+      preLoaderRoute: typeof AppCaptacaoImoveisRouteImport
+      parentRoute: typeof AppCaptacaoRoute
+    }
+    '/_app/captacao/proprietarios': {
+      id: '/_app/captacao/proprietarios'
+      path: '/proprietarios'
+      fullPath: '/captacao/proprietarios'
+      preLoaderRoute: typeof AppCaptacaoProprietariosRouteImport
+      parentRoute: typeof AppCaptacaoRoute
+    }
+    '/_app/captacao/visao-geral': {
+      id: '/_app/captacao/visao-geral'
+      path: '/visao-geral'
+      fullPath: '/captacao/visao-geral'
+      preLoaderRoute: typeof AppCaptacaoVisaoGeralRouteImport
+      parentRoute: typeof AppCaptacaoRoute
+    }
     '/_app/financeiro/categorias': {
       id: '/_app/financeiro/categorias'
       path: '/categorias'
@@ -1012,8 +1145,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinanceiroVisaoGeralRouteImport
       parentRoute: typeof AppFinanceiroRoute
     }
+    '/_app/captacao/captacoes/$id': {
+      id: '/_app/captacao/captacoes/$id'
+      path: '/$id'
+      fullPath: '/captacao/captacoes/$id'
+      preLoaderRoute: typeof AppCaptacaoCaptacoesIdRouteImport
+      parentRoute: typeof AppCaptacaoCaptacoesRoute
+    }
+    '/_app/captacao/imoveis/$id': {
+      id: '/_app/captacao/imoveis/$id'
+      path: '/$id'
+      fullPath: '/captacao/imoveis/$id'
+      preLoaderRoute: typeof AppCaptacaoImoveisIdRouteImport
+      parentRoute: typeof AppCaptacaoImoveisRoute
+    }
+    '/_app/captacao/proprietarios/$id': {
+      id: '/_app/captacao/proprietarios/$id'
+      path: '/$id'
+      fullPath: '/captacao/proprietarios/$id'
+      preLoaderRoute: typeof AppCaptacaoProprietariosIdRouteImport
+      parentRoute: typeof AppCaptacaoProprietariosRoute
+    }
   }
 }
+
+interface AppCaptacaoCaptacoesRouteChildren {
+  AppCaptacaoCaptacoesIdRoute: typeof AppCaptacaoCaptacoesIdRoute
+}
+
+const AppCaptacaoCaptacoesRouteChildren: AppCaptacaoCaptacoesRouteChildren = {
+  AppCaptacaoCaptacoesIdRoute: AppCaptacaoCaptacoesIdRoute,
+}
+
+const AppCaptacaoCaptacoesRouteWithChildren =
+  AppCaptacaoCaptacoesRoute._addFileChildren(AppCaptacaoCaptacoesRouteChildren)
+
+interface AppCaptacaoImoveisRouteChildren {
+  AppCaptacaoImoveisIdRoute: typeof AppCaptacaoImoveisIdRoute
+}
+
+const AppCaptacaoImoveisRouteChildren: AppCaptacaoImoveisRouteChildren = {
+  AppCaptacaoImoveisIdRoute: AppCaptacaoImoveisIdRoute,
+}
+
+const AppCaptacaoImoveisRouteWithChildren =
+  AppCaptacaoImoveisRoute._addFileChildren(AppCaptacaoImoveisRouteChildren)
+
+interface AppCaptacaoProprietariosRouteChildren {
+  AppCaptacaoProprietariosIdRoute: typeof AppCaptacaoProprietariosIdRoute
+}
+
+const AppCaptacaoProprietariosRouteChildren: AppCaptacaoProprietariosRouteChildren =
+  {
+    AppCaptacaoProprietariosIdRoute: AppCaptacaoProprietariosIdRoute,
+  }
+
+const AppCaptacaoProprietariosRouteWithChildren =
+  AppCaptacaoProprietariosRoute._addFileChildren(
+    AppCaptacaoProprietariosRouteChildren,
+  )
+
+interface AppCaptacaoRouteChildren {
+  AppCaptacaoCaptacoesRoute: typeof AppCaptacaoCaptacoesRouteWithChildren
+  AppCaptacaoImoveisRoute: typeof AppCaptacaoImoveisRouteWithChildren
+  AppCaptacaoProprietariosRoute: typeof AppCaptacaoProprietariosRouteWithChildren
+  AppCaptacaoVisaoGeralRoute: typeof AppCaptacaoVisaoGeralRoute
+}
+
+const AppCaptacaoRouteChildren: AppCaptacaoRouteChildren = {
+  AppCaptacaoCaptacoesRoute: AppCaptacaoCaptacoesRouteWithChildren,
+  AppCaptacaoImoveisRoute: AppCaptacaoImoveisRouteWithChildren,
+  AppCaptacaoProprietariosRoute: AppCaptacaoProprietariosRouteWithChildren,
+  AppCaptacaoVisaoGeralRoute: AppCaptacaoVisaoGeralRoute,
+}
+
+const AppCaptacaoRouteWithChildren = AppCaptacaoRoute._addFileChildren(
+  AppCaptacaoRouteChildren,
+)
 
 interface AppFinanceiroRouteChildren {
   AppFinanceiroCategoriasRoute: typeof AppFinanceiroCategoriasRoute
@@ -1053,6 +1261,7 @@ const AppFinanceiroRouteWithChildren = AppFinanceiroRoute._addFileChildren(
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppAtrasosRoute: typeof AppAtrasosRoute
+  AppCaptacaoRoute: typeof AppCaptacaoRouteWithChildren
   AppClientesRoute: typeof AppClientesRoute
   AppClientesPerdidosRoute: typeof AppClientesPerdidosRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
@@ -1086,6 +1295,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppAtrasosRoute: AppAtrasosRoute,
+  AppCaptacaoRoute: AppCaptacaoRouteWithChildren,
   AppClientesRoute: AppClientesRoute,
   AppClientesPerdidosRoute: AppClientesPerdidosRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,

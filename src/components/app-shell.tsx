@@ -1,5 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
+  Home,
   LayoutDashboard,
   Users,
   Kanban,
@@ -241,6 +242,17 @@ const NAV_SECTIONS: {
       { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
       { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
+      {
+        id: "captacao",
+        label: "Captação",
+        icon: Home,
+        children: [
+          { to: "/captacao/visao-geral", label: "Visão geral", icon: LayoutDashboard },
+          { to: "/captacao/captacoes", label: "Captações", icon: Kanban },
+          { to: "/captacao/proprietarios", label: "Proprietários", icon: Users },
+          { to: "/captacao/imoveis", label: "Imóveis", icon: Building2 },
+        ],
+      },
       { to: "/treinamento", label: "Treinamento", icon: GraduationCap },
     ],
   },
