@@ -11,7 +11,7 @@ import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
 function apiProxyTarget() {
   const raw =
     process.env.API_PROXY_TARGET ??
-    "https://api-zoneconnection-backendzoneconnection-0163c0-179-198-111-97.sslip.io";
+    "http://api-staging-zoneconnection.179.198.111.97.sslip.io";
   return raw.replace(/\/api\/?$/, "");
 }
 
