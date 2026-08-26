@@ -8,6 +8,7 @@ import {
   fetchProprietario,
   type Proprietario,
 } from "@/lib/captacao-api";
+import { formatCpfCnpj } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,7 +63,10 @@ function ProprietarioDetalhePage() {
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
             <p>E-mail: {item.email || "—"}</p>
-            <p>CPF/CNPJ: {item.cpfCnpj || "—"}</p>
+            <p>
+              {item.tipoPessoa === "juridica" ? "CNPJ" : "CPF"}:{" "}
+              {item.cpfCnpj ? formatCpfCnpj(item.cpfCnpj) : "—"}
+            </p>
             <p>Observações: {item.observacoes || "—"}</p>
           </CardContent>
         </Card>

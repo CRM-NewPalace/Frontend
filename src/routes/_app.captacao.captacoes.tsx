@@ -36,6 +36,7 @@ import {
   type Proprietario,
 } from "@/lib/captacao-api";
 import { FILTER_BAR_SHELL, FILTER_CONTROL } from "@/lib/filter-bar";
+import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -132,12 +133,8 @@ function CaptacoesPage() {
         responsavelId: form.responsavelId,
         origem: form.origem,
         exclusividade: form.exclusividade,
-        valorPretendido: form.valorPretendido
-          ? Number(form.valorPretendido.replace(",", "."))
-          : undefined,
-        valorAvaliacao: form.valorAvaliacao
-          ? Number(form.valorAvaliacao.replace(",", "."))
-          : undefined,
+        valorPretendido: parseOptionalMoneyInput(form.valorPretendido) ?? undefined,
+        valorAvaliacao: parseOptionalMoneyInput(form.valorAvaliacao) ?? undefined,
       });
       toast.success("Captação criada.");
       setOpen(false);
@@ -346,18 +343,28 @@ function CaptacoesPage() {
                 <div>
                   <Label>Valor pretendido</Label>
                   <Input
+                    inputMode="numeric"
+                    placeholder="0,00"
                     value={form.valorPretendido}
                     onChange={(e) =>
-                      setForm({ ...form, valorPretendido: e.target.value })
+                      setForm({
+                        ...form,
+                        valorPretendido: maskMoneyInput(e.target.value),
+                      })
                     }
                   />
                 </div>
                 <div>
                   <Label>Valor de avaliação</Label>
                   <Input
+                    inputMode="numeric"
+                    placeholder="0,00"
                     value={form.valorAvaliacao}
                     onChange={(e) =>
-                      setForm({ ...form, valorAvaliacao: e.target.value })
+                      setForm({
+                        ...form,
+                        valorAvaliacao: maskMoneyInput(e.target.value),
+                      })
                     }
                   />
                 </div>

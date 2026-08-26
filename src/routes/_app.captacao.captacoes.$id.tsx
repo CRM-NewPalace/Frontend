@@ -15,6 +15,7 @@ import {
   type CaptacaoResponsavel,
 } from "@/lib/captacao-api";
 import { fetchFunis, type Funil } from "@/lib/funis-api";
+import { formatMoneyInput, maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,10 +45,10 @@ function CaptacaoDetalhePage() {
       setFunis(list.filter((f) => f.tipo === "captacao"));
       setResponsaveis(users);
       setValorPretendido(
-        cap.valorPretendido != null ? String(cap.valorPretendido) : "",
+        cap.valorPretendido != null ? formatMoneyInput(cap.valorPretendido) : "",
       );
       setValorAvaliacao(
-        cap.valorAvaliacao != null ? String(cap.valorAvaliacao) : "",
+        cap.valorAvaliacao != null ? formatMoneyInput(cap.valorAvaliacao) : "",
       );
     } catch (err) {
       toast.error(
@@ -162,15 +163,23 @@ function CaptacaoDetalhePage() {
               <div>
                 <Label>Valor pretendido</Label>
                 <Input
+                  inputMode="numeric"
+                  placeholder="0,00"
                   value={valorPretendido}
-                  onChange={(e) => setValorPretendido(e.target.value)}
+                  onChange={(e) =>
+                    setValorPretendido(maskMoneyInput(e.target.value))
+                  }
                 />
               </div>
               <div>
                 <Label>Valor de avaliação</Label>
                 <Input
+                  inputMode="numeric"
+                  placeholder="0,00"
                   value={valorAvaliacao}
-                  onChange={(e) => setValorAvaliacao(e.target.value)}
+                  onChange={(e) =>
+                    setValorAvaliacao(maskMoneyInput(e.target.value))
+                  }
                 />
               </div>
             </div>
@@ -180,12 +189,8 @@ function CaptacaoDetalhePage() {
               onClick={() =>
                 void patch(
                   {
-                    valorPretendido: valorPretendido
-                      ? Number(valorPretendido.replace(",", "."))
-                      : null,
-                    valorAvaliacao: valorAvaliacao
-                      ? Number(valorAvaliacao.replace(",", "."))
-                      : null,
+                    valorPretendido: parseOptionalMoneyInput(valorPretendido),
+                    valorAvaliacao: parseOptionalMoneyInput(valorAvaliacao),
                   },
                   "Valores atualizados.",
                 )

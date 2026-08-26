@@ -28,6 +28,7 @@ import {
   type Proprietario,
 } from "@/lib/captacao-api";
 import { FILTER_BAR_SHELL, FILTER_CONTROL } from "@/lib/filter-bar";
+import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -82,7 +83,9 @@ function ProprietariosPage() {
     setForm({
       nome: item.nome,
       tipoPessoa: item.tipoPessoa,
-      cpfCnpj: item.cpfCnpj,
+      cpfCnpj: formatCpfCnpj(
+        digitsOnly(item.cpfCnpj, item.tipoPessoa === "juridica" ? 14 : 11),
+      ),
       telefone: item.telefone,
       email: item.email,
       observacoes: item.observacoes,
@@ -96,13 +99,25 @@ function ProprietariosPage() {
       toast.error("Informe o nome.");
       return;
     }
+    const doc = digitsOnly(
+      form.cpfCnpj,
+      form.tipoPessoa === "juridica" ? 14 : 11,
+    );
+    if (doc && form.tipoPessoa === "fisica" && doc.length !== 11) {
+      toast.error("Informe um CPF com 11 dígitos.");
+      return;
+    }
+    if (doc && form.tipoPessoa === "juridica" && doc.length !== 14) {
+      toast.error("Informe um CNPJ com 14 dígitos.");
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
-        await updateProprietario(editing.id, form);
+        await updateProprietario(editing.id, { ...form, cpfCnpj: doc });
         toast.success("Proprietário atualizado.");
       } else {
-        await createProprietario(form);
+        await createProprietario({ ...form, cpfCnpj: doc });
         toast.success("Proprietário cadastrado.");
       }
       setOpen(false);
@@ -227,19 +242,46 @@ function ProprietariosPage() {
                 <select
                   className="flex h-9 w-full rounded-md border bg-background px-3 text-sm"
                   value={form.tipoPessoa}
-                  onChange={(e) =>
-                    setForm({ ...form, tipoPessoa: e.target.value as PessoaTipo })
-                  }
+                  onChange={(e) => {
+                    const tipo = e.target.value as PessoaTipo;
+                    setForm({
+                      ...form,
+                      tipoPessoa: tipo,
+                      cpfCnpj: formatCpfCnpj(
+                        digitsOnly(form.cpfCnpj, tipo === "juridica" ? 14 : 11),
+                      ),
+                    });
+                  }}
                 >
                   <option value="fisica">Pessoa física</option>
                   <option value="juridica">Pessoa jurídica</option>
                 </select>
               </div>
               <div>
-                <Label>CPF/CNPJ</Label>
+                <Label>
+                  {form.tipoPessoa === "juridica" ? "CNPJ" : "CPF"}
+                </Label>
                 <Input
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder={
+                    form.tipoPessoa === "juridica"
+                      ? "00.000.000/0000-00"
+                      : "000.000.000-00"
+                  }
+                  maxLength={form.tipoPessoa === "juridica" ? 18 : 14}
                   value={form.cpfCnpj}
-                  onChange={(e) => setForm({ ...form, cpfCnpj: e.target.value })}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      cpfCnpj: formatCpfCnpj(
+                        digitsOnly(
+                          e.target.value,
+                          form.tipoPessoa === "juridica" ? 14 : 11,
+                        ),
+                      ),
+                    })
+                  }
                 />
               </div>
               <div>
