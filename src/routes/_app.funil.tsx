@@ -253,7 +253,7 @@ export function ComercialFunilBoard({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchFunilAtivo()
+    void fetchFunilAtivo("comercial")
       .then((funil) => {
         if (!cancelled) setFunilAtivo(funil);
       })

@@ -2,6 +2,26 @@ import { apiFetch } from "@/lib/api";
 
 export type FunilEtapaPapel = "inicial" | "analise" | "venda" | "perdido";
 
+export type FunilTipo = "comercial" | "captacao" | "venda_usados";
+
+export const FUNIL_TIPO_LABEL: Record<FunilTipo, string> = {
+  comercial: "Comercial",
+  captacao: "Captação",
+  venda_usados: "Venda de usados",
+};
+
+export const FUNIL_TIPOS: FunilTipo[] = [
+  "comercial",
+  "captacao",
+  "venda_usados",
+];
+
+export const FUNIL_PADRAO_ETAPAS_COUNT: Record<FunilTipo, number> = {
+  comercial: 11,
+  captacao: 8,
+  venda_usados: 9,
+};
+
 export type FunilEtapa = {
   id: string;
   funilId: string;
@@ -22,6 +42,7 @@ export type Funil = {
   id: string;
   tenantId: string;
   name: string;
+  tipo: FunilTipo;
   ativo: boolean;
   inatividadeValor: number;
   inatividadeUnidade: "minutos" | "horas" | "dias";
@@ -32,6 +53,7 @@ export type Funil = {
 
 export type CreateFunilInput = {
   name: string;
+  tipo?: FunilTipo;
   usarPadrao?: boolean;
   etapas?: Array<{
     label: string;
@@ -62,12 +84,18 @@ export type UpdateFunilEtapaInput = {
   alertaAntecedenciaPercent?: number;
 };
 
-export async function fetchFunis(): Promise<Funil[]> {
-  return apiFetch<Funil[]>("/funis");
+function tipoQuery(tipo?: FunilTipo) {
+  return tipo ? `?tipo=${encodeURIComponent(tipo)}` : "";
 }
 
-export async function fetchFunilAtivo(): Promise<Funil> {
-  return apiFetch<Funil>("/funis/ativo");
+export async function fetchFunis(tipo?: FunilTipo): Promise<Funil[]> {
+  return apiFetch<Funil[]>(`/funis${tipoQuery(tipo)}`);
+}
+
+export async function fetchFunilAtivo(
+  tipo: FunilTipo = "comercial",
+): Promise<Funil> {
+  return apiFetch<Funil>(`/funis/ativo${tipoQuery(tipo)}`);
 }
 
 export async function createFunil(input: CreateFunilInput): Promise<Funil> {
