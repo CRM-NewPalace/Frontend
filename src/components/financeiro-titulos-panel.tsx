@@ -417,7 +417,7 @@ export function FinanceiroTitulosPanel({
   title: string;
   description: string;
   readOnly?: boolean;
-  /** Despesas: comissões não entram na lista nem nos totais. */
+  /** Comissões não entram na lista nem nos totais (ficam em Comissão). */
   ocultarComissao?: boolean;
 }) {
   const navigate = useNavigate();

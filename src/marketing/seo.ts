@@ -22,9 +22,6 @@ const WWW_ORIGIN = "https://www.zoneconnection.com.br";
 export function getSiteUrl(): string {
   const fromEnv = (import.meta.env.VITE_SITE_URL as string | undefined)?.trim();
   if (fromEnv) return canonicalizeSiteUrl(fromEnv);
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return canonicalizeSiteUrl(window.location.origin);
-  }
   return WWW_ORIGIN;
 }
 

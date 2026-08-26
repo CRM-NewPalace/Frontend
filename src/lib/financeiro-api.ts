@@ -184,6 +184,7 @@ export type VisaoGeralResponse = {
     despesasFixaMes?: number;
     despesasVariavelMes?: number;
     despesasOutrosMes?: number;
+    comissoesAReceberMes?: number;
     aReceber: number;
     aPagar: number;
     resultadoMes: number;
@@ -197,6 +198,7 @@ export type VisaoGeralResponse = {
     fixas: DespesaPipelineItem[];
     variaveis: DespesaPipelineItem[];
     outros: DespesaPipelineItem[];
+    comissoes?: DespesaPipelineItem[];
   };
 };
 
@@ -489,8 +491,17 @@ export async function deleteComissao(id: string): Promise<void> {
   });
 }
 
-export async function fetchVisaoGeral(): Promise<VisaoGeralResponse> {
-  return apiFetch<VisaoGeralResponse>("/financeiro/visao-geral");
+export async function fetchVisaoGeral(params?: {
+  ano?: number;
+  mes?: number;
+}): Promise<VisaoGeralResponse> {
+  const qs = new URLSearchParams();
+  if (params?.ano) qs.set("ano", String(params.ano));
+  if (params?.mes) qs.set("mes", String(params.mes));
+  const query = qs.toString();
+  return apiFetch<VisaoGeralResponse>(
+    `/financeiro/visao-geral${query ? `?${query}` : ""}`,
+  );
 }
 
 export async function fetchFluxoCaixa(params?: {
