@@ -118,7 +118,13 @@ function resolveEtapaPapel(etapa: FunilEtapa): FunilEtapaPapel | null {
 }
 
 function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof ApiError ? err.message : fallback;
+  if (err instanceof ApiError) {
+    if (/tipo should not exist/i.test(err.message)) {
+      return "A API ainda está na versão antiga e recusa o campo tipo. Publique o Backend com a branch developer (e rode a migration de funil) e tente de novo.";
+    }
+    return err.message;
+  }
+  return fallback;
 }
 
 function ColorSwatchPicker({
