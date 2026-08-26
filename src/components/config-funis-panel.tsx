@@ -231,8 +231,10 @@ export function ConfigFunisPanel() {
   const [confirmDefaults, setConfirmDefaults] = useState(false);
 
   const tenantModules = getSession()?.tenant?.modules ?? null;
-  const tiposVisiveis = FUNIL_TIPOS.filter((t) =>
-    funilTipoVisivel(t, tenantModules),
+  const tiposVisiveis = FUNIL_TIPOS.filter(
+    (t) =>
+      funilTipoVisivel(t, tenantModules) ||
+      funis.some((f) => funilTipoOf(f) === t),
   );
   const funisDoTipo = funis.filter((f) => funilNoFiltro(f, tipoFiltro));
   const funisSemTipo = funis.filter((f) => funilTipoOf(f) === null);
@@ -269,15 +271,6 @@ export function ConfigFunisPanel() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (tipoFiltro === "sem_tipo") return;
-    if (!(tiposVisiveis as FunilTipo[]).includes(tipoFiltro)) {
-      setTipoFiltro(tiposVisiveis[0] ?? "comercial");
-    }
-    // tiposVisiveis é derivado de session; join evita loop de array novo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipoFiltro, tiposVisiveis.join(",")]);
 
   async function afterMutation(updated: Funil) {
     setFunis((prev) => {
@@ -340,6 +333,24 @@ export function ConfigFunisPanel() {
       await afterMutation(created);
       await load();
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const list = await fetchFunis().catch(() => funis);
+        setFunis(list);
+        const existing = list.find(
+          (f) => f.name.trim().toLowerCase() === name.toLowerCase(),
+        );
+        if (existing) {
+          setTipoFiltro(funilTipoOf(existing) ?? createTipo);
+          setSelectedId(existing.id);
+          setCreateOpen(false);
+          toast.message(
+            `O funil "${existing.name}" já existe. Ele está na aba ${
+              FUNIL_TIPO_LABEL[funilTipoOf(existing) ?? createTipo]
+            }.`,
+          );
+          return;
+        }
+      }
       toast.error(errorMessage(err, "Não foi possível criar o funil."));
     } finally {
       setSaving(false);
@@ -586,6 +597,7 @@ export function ConfigFunisPanel() {
                 {tiposVisiveis.map((tipo) => (
                   <TabsTrigger key={tipo} value={tipo} className="text-xs">
                     {FUNIL_TIPO_LABEL[tipo]}
+                    {!funilTipoVisivel(tipo, tenantModules) ? " *" : ""}
                   </TabsTrigger>
                 ))}
                 <TabsTrigger value="sem_tipo" className="text-xs">
@@ -594,6 +606,11 @@ export function ConfigFunisPanel() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+            {tiposVisiveis.some((t) => !funilTipoVisivel(t, tenantModules)) ? (
+              <p className="text-xs text-muted-foreground">
+                * Operação desativada em Módulos. O funil permanece cadastrado.
+              </p>
+            ) : null}
             {loading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
