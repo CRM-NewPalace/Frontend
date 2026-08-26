@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -64,19 +63,25 @@ import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
 import { ConfigCreciPanel } from "@/components/config-creci-panel";
 import { ConfigConexoesPanel } from "@/components/config-conexoes-panel";
 import { ConfigUsuarioExtraPanel } from "@/components/config-usuario-extra-panel";
+import { ConfigSettingsLayout } from "@/components/config-settings-layout";
 import { userCanInformarCreci } from "@/lib/users-api";
 import { CorPicker } from "@/components/cor-picker";
 import { CONSTRUTORA_CORES_PRESET } from "@/lib/construtoras-api";
+import { updateTenantCompany } from "@/lib/tenant-company-api";
+import {
+  buildConfigModules,
+  defaultConfigSelection,
+  parseConfigSearch,
+  resolveConfigSelection,
+  type ConfigItem,
+  type ConfigSearch,
+  type ConfigSecao,
+} from "@/lib/config-settings-nav";
 
 export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Zone Connection" }] }),
-  validateSearch: (search: Record<string, unknown>): { google?: string } => {
-    const google =
-      typeof search.google === "string" && search.google.trim()
-        ? search.google.trim()
-        : undefined;
-    return google ? { google } : {};
-  },
+  validateSearch: (search: Record<string, unknown>): ConfigSearch =>
+    parseConfigSearch(search),
   component: Config,
 });
 
@@ -303,10 +308,7 @@ function Config() {
   const isCorretor = user?.role === "corretor";
   const showCreci = Boolean(user && userCanInformarCreci(user));
   const isSolo = user?.tenant?.plano === "solo";
-  /** Solo: CRECI fica em Meus dados. */
-  const showCreciTab = showCreci && !isSolo;
   const showOpsTabs = !isAnalista && !isTreinee && !isCorretor;
-  const showFunilTab = showOpsTabs;
   const showUsuarioExtraTab = showOpsTabs && isSolo;
   const showDocumentacao = !isTreinee && !isCorretor;
   const showMotivos = !isTreinee && !isCorretor;
@@ -334,18 +336,50 @@ function Config() {
   const { catalog, loading, error, addItem, updateItem, removeItem } =
     useCatalog();
 
-  const defaultTab = search.google
-    ? "conexoes"
-    : isCorretor
-      ? showCreciTab
-        ? "creci"
-        : "conexoes"
-      : isTreinee
-        ? "listas"
-        : isAnalista
-          ? "documentacao"
-          : "empresa";
-  const [tab, setTab] = useState(defaultTab);
+  const navFlags = useMemo(
+    () => ({
+      showCreci,
+      showOps: showOpsTabs,
+      showUsuarioExtra: showUsuarioExtraTab,
+      showDocumentacao,
+      showCatalog: showCatalogTabs,
+      showImoveis,
+      showMetas,
+      isSolo,
+    }),
+    [
+      showCreci,
+      showOpsTabs,
+      showUsuarioExtraTab,
+      showDocumentacao,
+      showCatalogTabs,
+      showImoveis,
+      showMetas,
+      isSolo,
+    ],
+  );
+  const modules = useMemo(() => buildConfigModules(navFlags), [navFlags]);
+  const fallbackSelection = useMemo(
+    () => defaultConfigSelection(navFlags, modules),
+    [navFlags, modules],
+  );
+  const selection = search.google
+    ? { secao: "conta" as const, item: "conexoes" as const }
+    : resolveConfigSelection(
+        search.secao,
+        search.item,
+        modules,
+        fallbackSelection,
+      );
+
+  function goTo(secao: ConfigSecao, item: ConfigItem) {
+    void navigate({
+      to: "/configuracoes",
+      search: { secao, item },
+      replace: true,
+    });
+  }
+
   const [saving, setSaving] = useState(false);
   const [vistaParcelas, setVistaParcelasState] = useState<VistaParcelas>(() =>
     getVistaParcelas(),
@@ -471,19 +505,31 @@ function Config() {
   }
 
   useEffect(() => {
-    if (!search.google) return;
-    setTab("conexoes");
-    if (search.google === "connected") {
-      toast.success(
-        "Google Agenda conectada. Novos compromissos vão para o Calendar.",
-      );
-    } else if (search.google === "denied") {
-      toast.error("Conexão com o Google cancelada.");
-    } else {
-      toast.error("Não foi possível conectar o Google Agenda.");
+    if (search.google) {
+      if (search.google === "connected") {
+        toast.success(
+          "Google Agenda conectada. Novos compromissos vão para o Calendar.",
+        );
+      } else if (search.google === "denied") {
+        toast.error("Conexão com o Google cancelada.");
+      } else {
+        toast.error("Não foi possível conectar o Google Agenda.");
+      }
+      void navigate({
+        to: "/configuracoes",
+        search: { secao: "conta", item: "conexoes" },
+        replace: true,
+      });
+      return;
     }
-    void navigate({ to: "/configuracoes", search: {}, replace: true });
-  }, [search.google, navigate]);
+    if (search.secao !== selection.secao || search.item !== selection.item) {
+      void navigate({
+        to: "/configuracoes",
+        search: { secao: selection.secao, item: selection.item },
+        replace: true,
+      });
+    }
+  }, [search.google, search.secao, search.item, selection.secao, selection.item, navigate]);
 
   async function handleRemoveItem(item: CatalogItem) {
     try {
@@ -511,17 +557,7 @@ function Config() {
     <div>
       <PageHeader
         title="Configurações"
-        description={
-          isCorretor
-            ? "Informe o CRECI e conecte o Google Agenda."
-            : isTreinee
-              ? "Gerencie conexões, origens, tags, CCAs e catálogos de imóveis."
-              : isAnalista
-                ? "Gerencie conexões, documentação, origens, motivos de perda, tags, CCAs e catálogos de imóveis."
-                : isSolo
-                  ? "Personalize conexões, meus dados, usuário extra, documentação, origens, motivos, tags, CCAs e imóveis."
-                  : "Personalize conexões, imobiliária, funil, documentação, origens, motivos, tags, CCAs e imóveis."
-        }
+        description="Conta, operação e catálogos agrupados por módulo."
       />
 
       {error && (
@@ -530,78 +566,44 @@ function Config() {
         </div>
       )}
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex h-auto flex-wrap gap-1">
-          {showCreciTab ? (
-            <TabsTrigger value="creci">Meu CRECI</TabsTrigger>
-          ) : null}
-          <TabsTrigger value="conexoes">Conexões</TabsTrigger>
-          {showOpsTabs ? (
-            <>
-              <TabsTrigger value="empresa">
-                {isSolo ? "Meus dados" : "Imobiliária"}
-              </TabsTrigger>
-              {showFunilTab ? (
-                <TabsTrigger value="funil">Funil</TabsTrigger>
-              ) : null}
-              {showOpsTabs ? (
-                <TabsTrigger value="modulos">Módulos</TabsTrigger>
-              ) : null}
-              {showUsuarioExtraTab ? (
-                <TabsTrigger value="usuario-extra">Assistente</TabsTrigger>
-              ) : null}
-            </>
-          ) : null}
-          {showDocumentacao ? (
-            <TabsTrigger value="documentacao">Documentação</TabsTrigger>
-          ) : null}
-          {showOpsTabs ? (
-            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-          ) : null}
-          {showImoveis && showCatalogTabs ? (
-            <TabsTrigger value="imoveis">Imóveis</TabsTrigger>
-          ) : null}
-          {showMetas ? <TabsTrigger value="metas">Metas</TabsTrigger> : null}
-          {showCatalogTabs ? (
-            <TabsTrigger value="listas">Listas</TabsTrigger>
-          ) : null}
-        </TabsList>
-
-        {showCreciTab ? (
-          <TabsContent value="creci">
-            <ConfigCreciPanel />
-          </TabsContent>
+      <ConfigSettingsLayout
+        modules={modules}
+        selection={selection}
+        onChange={goTo}
+      >
+        {selection.item === "creci" ? (
+          <ConfigCreciPanel
+            solo={isSolo}
+            onSaved={
+              isSolo
+                ? async (updated) => {
+                    try {
+                      await updateTenantCompany({
+                        creci: updated.creci?.trim() ?? "",
+                      });
+                    } catch {
+                      // Cadastro pessoal já salvou; contrato pode sincronizar depois.
+                    }
+                  }
+                : undefined
+            }
+          />
         ) : null}
 
-        <TabsContent value="conexoes">
-          <ConfigConexoesPanel />
-        </TabsContent>
+        {selection.item === "conexoes" ? <ConfigConexoesPanel /> : null}
 
-        {showOpsTabs ? (
-          <>
-            <TabsContent value="empresa">
-              <ConfigEmpresaPanel />
-            </TabsContent>
+        {selection.item === "empresa" ? <ConfigEmpresaPanel /> : null}
 
-            {showFunilTab ? (
-              <TabsContent value="funil">
-                <ConfigFunisPanel />
-              </TabsContent>
-            ) : null}
+        {selection.item === "funil" ? <ConfigFunisPanel /> : null}
 
-            {showOpsTabs ? (
-              <TabsContent value="modulos">
-                <ConfigModulosOperacaoPanel />
-              </TabsContent>
-            ) : null}
+        {selection.item === "modulos" ? <ConfigModulosOperacaoPanel /> : null}
 
-            {showUsuarioExtraTab ? (
-              <TabsContent value="usuario-extra">
-                <ConfigUsuarioExtraPanel />
-              </TabsContent>
-            ) : null}
+        {selection.item === "usuario-extra" ? (
+          <ConfigUsuarioExtraPanel />
+        ) : null}
 
-            <TabsContent value="financeiro" className="space-y-4">
+        {selection.item === "financeiro" ? (
+          <div className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">
@@ -664,12 +666,11 @@ function Config() {
                   </RadioGroup>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </>
+            </div>
         ) : null}
 
-        {showImoveis && showCatalogTabs ? (
-          <TabsContent value="imoveis" className="space-y-6">
+        {selection.item === "imoveis" ? (
+          <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
               Catálogo do cadastro, aparência da lista e empreendimentos.
               Admin, gerente, analista e treinee podem criar, editar e excluir
@@ -759,7 +760,7 @@ function Config() {
                     <div>
                       <p className="text-sm font-medium">Ocultar do menu</p>
                       <p className="text-xs text-muted-foreground">
-                        Some do menu e fica só nesta aba.
+                        Some do menu e fica só em Configurações.
                       </p>
                     </div>
                     <Switch
@@ -769,7 +770,7 @@ function Config() {
                         setHideImoveisFromSidebar(checked);
                         toast.success(
                           checked
-                            ? "Imóveis oculto do menu. Use esta aba para cadastrar."
+                            ? "Imóveis oculto do menu. Use Configurações → Catálogos → Imóveis."
                             : "Imóveis voltou a aparecer no menu e em Configurações.",
                         );
                       }}
@@ -828,11 +829,11 @@ function Config() {
             <section className="space-y-3 border-t pt-6">
               <ImoveisPage embedded />
             </section>
-          </TabsContent>
+          </div>
         ) : null}
 
-        {showMetas ? (
-          <TabsContent value="metas" className="space-y-4">
+        {selection.item === "metas" ? (
+          <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Visualização padrão</CardTitle>
@@ -879,11 +880,11 @@ function Config() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
         ) : null}
 
-        {showDocumentacao ? (
-          <TabsContent value="documentacao" className="space-y-6">
+        {selection.item === "documentacao" ? (
+          <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
               Opções usadas no formulário rápido do analista e na tela
               Documentação. Crie fontes e status para seleção rápida.
@@ -919,11 +920,11 @@ function Config() {
                 Status 1 é da análise; Status 2 é do comercial.
               </p>
             </section>
-          </TabsContent>
+          </div>
         ) : null}
 
-        {showCatalogTabs ? (
-          <TabsContent value="listas" className="space-y-6">
+        {selection.item === "listas" ? (
+          <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
               Origens, tags, CCAs
               {showMotivos ? " e motivos de perda" : ""} usados no cadastro de
@@ -964,9 +965,9 @@ function Config() {
                 ))}
               </div>
             </section>
-          </TabsContent>
+          </div>
         ) : null}
-      </Tabs>
+      </ConfigSettingsLayout>
 
       <Dialog open={listOpen} onOpenChange={setListOpen}>
         <DialogContent className="sm:max-w-md">

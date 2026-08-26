@@ -374,7 +374,11 @@ function AgendaPage() {
     if (!search.google) return;
     void navigate({
       to: "/configuracoes",
-      search: { google: search.google },
+      search: {
+        google: search.google,
+        secao: "conta",
+        item: "conexoes",
+      },
       replace: true,
     });
   }, [search.google, navigate]);

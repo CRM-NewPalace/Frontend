@@ -1223,7 +1223,12 @@ export function ComercialFunilBoard({
                   className={cn("h-8 rounded-full", FUNIL_GRADIENT_BTN)}
                   style={FUNIL_GRADIENT_STYLE}
                 >
-                  <Link to="/configuracoes">Configurar funil</Link>
+                  <Link
+                    to="/configuracoes"
+                    search={{ secao: "operacao", item: "funil" }}
+                  >
+                    Configurar funil
+                  </Link>
                 </Button>
               )}
             </div>
