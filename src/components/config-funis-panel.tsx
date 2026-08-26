@@ -53,6 +53,7 @@ import {
   FUNIL_PADRAO_ETAPAS_COUNT,
   FUNIL_TIPO_LABEL,
   FUNIL_TIPOS,
+  funilTipoOf,
   installFunilEtapasPadrao,
   recoverFunilEtapas,
   updateFunil,
@@ -196,7 +197,7 @@ export function ConfigFunisPanel() {
   const [deleteEtapa, setDeleteEtapa] = useState<FunilEtapa | null>(null);
   const [confirmDefaults, setConfirmDefaults] = useState(false);
 
-  const funisDoTipo = funis.filter((f) => f.tipo === tipoFiltro);
+  const funisDoTipo = funis.filter((f) => funilTipoOf(f) === tipoFiltro);
   const selected = funisDoTipo.find((f) => f.id === selectedId) ?? null;
   const activeEtapas = (selected?.etapas ?? []).filter((e) => e.active);
 
@@ -212,7 +213,7 @@ export function ConfigFunisPanel() {
       const list = await fetchFunis();
       setFunis(list);
       setSelectedId((prev) => {
-        const ofTipo = list.filter((f) => f.tipo === tipoFiltro);
+        const ofTipo = list.filter((f) => funilTipoOf(f) === tipoFiltro);
         if (prev && ofTipo.some((f) => f.id === prev)) return prev;
         return ofTipo.find((f) => f.ativo)?.id ?? ofTipo[0]?.id ?? null;
       });
@@ -231,7 +232,9 @@ export function ConfigFunisPanel() {
     setFunis((prev) => {
       const without = prev.filter((f) => f.id !== updated.id);
       const next = [...without, updated].map((f) =>
-        updated.ativo && f.id !== updated.id && f.tipo === updated.tipo
+        updated.ativo &&
+          f.id !== updated.id &&
+          funilTipoOf(f) === funilTipoOf(updated)
           ? { ...f, ativo: false }
           : f,
       );
@@ -241,7 +244,7 @@ export function ConfigFunisPanel() {
       );
     });
     setSelectedId(updated.id);
-    if (updated.tipo === "comercial") {
+    if (funilTipoOf(updated) === "comercial") {
       applyFunnelEtapas(updated.etapas);
     }
     await refreshCatalog();
@@ -598,7 +601,7 @@ export function ConfigFunisPanel() {
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
                 {selected?.ativo
-                  ? selected.tipo === "comercial"
+                  ? funilTipoOf(selected) === "comercial"
                     ? "Este funil está ativo no kanban e nos novos leads."
                     : "Este funil está ativo neste tipo de operação."
                   : "Edite as etapas ou ative este funil para usá-lo."}
@@ -638,7 +641,7 @@ export function ConfigFunisPanel() {
                   <ListRestart className="w-4 h-4 mr-1" />
                   Etapas padrão
                 </Button>
-                {selected.tipo === "comercial" && (
+                {funilTipoOf(selected) === "comercial" && (
                 <Button
                   size="sm"
                   variant="outline"

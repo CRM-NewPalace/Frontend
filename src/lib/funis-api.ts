@@ -16,7 +16,12 @@ export const FUNIL_TIPOS: FunilTipo[] = [
   "venda_usados",
 ];
 
-export const FUNIL_PADRAO_ETAPAS_COUNT: Record<FunilTipo, number> = {
+export function funilTipoOf(funil: { tipo?: FunilTipo | null }): FunilTipo {
+  if (funil.tipo === "captacao" || funil.tipo === "venda_usados") {
+    return funil.tipo;
+  }
+  return "comercial";
+}
   comercial: 11,
   captacao: 8,
   venda_usados: 9,
