@@ -37,3 +37,30 @@ export async function updateTenantCompany(
     body: input,
   });
 }
+
+export type TenantOperationModules = {
+  comercial: boolean;
+  captacao: boolean;
+  imoveisUsados: boolean;
+  locacao: boolean;
+};
+
+export type TenantModulesResponse = {
+  modules: Record<string, boolean>;
+  operations: TenantOperationModules;
+};
+
+export async function fetchTenantOperationModules(): Promise<TenantModulesResponse> {
+  return apiFetch<TenantModulesResponse>("/tenant/modules");
+}
+
+export async function updateTenantOperationModules(input: {
+  captacao?: boolean;
+  imoveisUsados?: boolean;
+  locacao?: boolean;
+}): Promise<TenantModulesResponse> {
+  return apiFetch<TenantModulesResponse>("/tenant/modules", {
+    method: "PATCH",
+    body: input,
+  });
+}

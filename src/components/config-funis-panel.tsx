@@ -81,6 +81,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getSession } from "@/lib/auth";
+import { isTenantOperationEnabled } from "@/lib/tenant-modules";
 
 const PAPEL_OPTIONS: Array<{
   value: FunilEtapaPapel | "";
@@ -101,6 +103,22 @@ const PAPEL_BADGE_LABEL: Record<FunilEtapaPapel, string> = {
 };
 
 type FiltroFunil = FunilTipo | "sem_tipo";
+
+function funilTipoVisivel(
+  tipo: FunilTipo,
+  modules: Record<string, boolean> | null | undefined,
+): boolean {
+  if (tipo === "comercial") {
+    return isTenantOperationEnabled(modules, "comercial");
+  }
+  if (tipo === "captacao") {
+    return isTenantOperationEnabled(modules, "captacao");
+  }
+  if (tipo === "venda_usados") {
+    return isTenantOperationEnabled(modules, "imoveisUsados");
+  }
+  return true;
+}
 
 function funilNoFiltro(funil: Funil, filtro: FiltroFunil): boolean {
   const tipo = funilTipoOf(funil);
@@ -212,6 +230,10 @@ export function ConfigFunisPanel() {
   const [deleteEtapa, setDeleteEtapa] = useState<FunilEtapa | null>(null);
   const [confirmDefaults, setConfirmDefaults] = useState(false);
 
+  const tenantModules = getSession()?.tenant?.modules ?? null;
+  const tiposVisiveis = FUNIL_TIPOS.filter((t) =>
+    funilTipoVisivel(t, tenantModules),
+  );
   const funisDoTipo = funis.filter((f) => funilNoFiltro(f, tipoFiltro));
   const funisSemTipo = funis.filter((f) => funilTipoOf(f) === null);
   const selected = funisDoTipo.find((f) => f.id === selectedId) ?? null;
@@ -247,6 +269,15 @@ export function ConfigFunisPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (tipoFiltro === "sem_tipo") return;
+    if (!(tiposVisiveis as FunilTipo[]).includes(tipoFiltro)) {
+      setTipoFiltro(tiposVisiveis[0] ?? "comercial");
+    }
+    // tiposVisiveis é derivado de session; join evita loop de array novo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoFiltro, tiposVisiveis.join(",")]);
 
   async function afterMutation(updated: Funil) {
     setFunis((prev) => {
@@ -552,7 +583,7 @@ export function ConfigFunisPanel() {
               onValueChange={(v) => setTipoFiltro(v as FiltroFunil)}
             >
               <TabsList className="w-full h-auto flex-wrap justify-start">
-                {FUNIL_TIPOS.map((tipo) => (
+                {tiposVisiveis.map((tipo) => (
                   <TabsTrigger key={tipo} value={tipo} className="text-xs">
                     {FUNIL_TIPO_LABEL[tipo]}
                   </TabsTrigger>

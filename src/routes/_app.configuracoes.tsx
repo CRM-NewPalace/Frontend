@@ -59,6 +59,7 @@ import { LayoutGrid, LayoutList, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfigFunisPanel } from "@/components/config-funis-panel";
+import { ConfigModulosOperacaoPanel } from "@/components/config-modulos-operacao-panel";
 import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
 import { ConfigCreciPanel } from "@/components/config-creci-panel";
 import { ConfigConexoesPanel } from "@/components/config-conexoes-panel";
@@ -543,6 +544,9 @@ function Config() {
               {showFunilTab ? (
                 <TabsTrigger value="funil">Funil</TabsTrigger>
               ) : null}
+              {showOpsTabs ? (
+                <TabsTrigger value="modulos">Módulos</TabsTrigger>
+              ) : null}
               {showUsuarioExtraTab ? (
                 <TabsTrigger value="usuario-extra">Assistente</TabsTrigger>
               ) : null}
@@ -582,6 +586,12 @@ function Config() {
             {showFunilTab ? (
               <TabsContent value="funil">
                 <ConfigFunisPanel />
+              </TabsContent>
+            ) : null}
+
+            {showOpsTabs ? (
+              <TabsContent value="modulos">
+                <ConfigModulosOperacaoPanel />
               </TabsContent>
             ) : null}
 

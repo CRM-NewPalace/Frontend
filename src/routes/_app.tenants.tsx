@@ -1192,16 +1192,23 @@ function TenantsPage() {
                                 <label
                                   key={mod.key}
                                   className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
-                                    lockedOff || soloLocked
+                                    lockedOff ||
+                                    (soloLocked && group.id !== "operacoes")
                                       ? "opacity-60 bg-muted/40"
                                       : "bg-background"
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={form.modules[mod.key] !== false}
+                                    checked={
+                                      group.id === "operacoes"
+                                        ? form.modules[mod.key] === true
+                                        : form.modules[mod.key] !== false
+                                    }
                                     disabled={
-                                      lockedOff || bronzeLocked || soloLocked
+                                      lockedOff ||
+                                      bronzeLocked ||
+                                      (soloLocked && group.id !== "operacoes")
                                     }
                                     onChange={(e) =>
                                       setForm((prev) => {

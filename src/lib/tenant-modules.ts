@@ -26,7 +26,11 @@ export type TenantModuleKey =
   | "contratos"
   | "taxaConversao"
   | "configuracoes"
-  | "financeiro";
+  | "financeiro"
+  | "comercial"
+  | "captacao"
+  | "imoveisUsados"
+  | "locacao";
 
 export type TenantModuleDef = {
   key: TenantModuleKey;
@@ -36,7 +40,10 @@ export type TenantModuleDef = {
 };
 
 export type TenantModuleGroupId =
-  "operacional" | "administrativo" | "financeiro";
+  | "operacoes"
+  | "operacional"
+  | "administrativo"
+  | "financeiro";
 
 export type TenantModuleGroup = {
   id: TenantModuleGroupId;
@@ -45,6 +52,16 @@ export type TenantModuleGroup = {
 };
 
 export const TENANT_MODULE_GROUPS: TenantModuleGroup[] = [
+  {
+    id: "operacoes",
+    label: "Operações imobiliárias",
+    modules: [
+      { key: "comercial", label: "Comercial" },
+      { key: "captacao", label: "Captação de Imóveis" },
+      { key: "imoveisUsados", label: "Venda de Imóveis Usados" },
+      { key: "locacao", label: "Locação" },
+    ],
+  },
   {
     id: "operacional",
     label: "Operacional",
@@ -121,13 +138,50 @@ export const ROUTE_MODULE_KEY: Record<string, TenantModuleKey> = {
   "/taxa-conversao": "taxaConversao",
   "/configuracoes": "configuracoes",
   "/financeiro": "financeiro",
+  "/captacao": "captacao",
+  "/imoveis-usados": "imoveisUsados",
+  "/locacao": "locacao",
 };
+
+export const TENANT_OPERATION_KEYS: TenantModuleKey[] = [
+  "comercial",
+  "captacao",
+  "imoveisUsados",
+  "locacao",
+];
+
+const OPERATION_DEFAULTS: Record<
+  "comercial" | "captacao" | "imoveisUsados" | "locacao",
+  boolean
+> = {
+  comercial: true,
+  captacao: false,
+  imoveisUsados: false,
+  locacao: false,
+};
+
+export function isTenantOperationKey(
+  key: string,
+): key is "comercial" | "captacao" | "imoveisUsados" | "locacao" {
+  return TENANT_OPERATION_KEYS.includes(key as TenantModuleKey);
+}
+
+export function isTenantOperationEnabled(
+  modules: Record<string, boolean> | null | undefined,
+  key: "comercial" | "captacao" | "imoveisUsados" | "locacao",
+): boolean {
+  if (typeof modules?.[key] === "boolean") return modules[key] === true;
+  return OPERATION_DEFAULTS[key];
+}
 
 export function defaultModulesRecord(
   enabled = true,
 ): Record<TenantModuleKey, boolean> {
   return Object.fromEntries(
-    ALL_TENANT_MODULE_KEYS.map((key) => [key, enabled]),
+    ALL_TENANT_MODULE_KEYS.map((key) => {
+      if (isTenantOperationKey(key)) return [key, OPERATION_DEFAULTS[key]];
+      return [key, enabled];
+    }),
   ) as Record<TenantModuleKey, boolean>;
 }
 
@@ -267,6 +321,10 @@ export function normalizeModulesForPlano(
   if (plano === "solo") {
     const next = defaultModulesRecord(false);
     for (const key of SOLO_ENABLED) next[key] = true;
+    next.comercial = true;
+    for (const key of TENANT_OPERATION_KEYS) {
+      if (key !== "comercial") next[key] = modules[key] === true;
+    }
     return next;
   }
 
@@ -292,6 +350,10 @@ export function normalizeModulesForPlano(
     } else if (adminOn) {
       next.financeiro = false;
     }
+  }
+
+  for (const key of TENANT_OPERATION_KEYS) {
+    if (typeof next[key] !== "boolean") next[key] = OPERATION_DEFAULTS[key];
   }
 
   return next;

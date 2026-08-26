@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { AuthUser, TenantBranding } from "@/lib/auth";
 import { initAppearance } from "@/lib/appearance";
+import { isTenantOperationEnabled, isTenantOperationKey } from "@/lib/tenant-modules";
 
 /** Logo padrão Zone Connection (fundo transparente). */
 export const DEFAULT_TENANT_LOGO = "/LozoZone.png";
@@ -76,7 +77,12 @@ export function TenantThemeProvider({
       logoUrl: resolveLogoUrl(tenant),
       homePath: "/dashboard",
       modules,
-      isModuleEnabled: (key: string) => modules[key] !== false,
+      isModuleEnabled: (key: string) => {
+        if (isTenantOperationKey(key)) {
+          return isTenantOperationEnabled(modules, key);
+        }
+        return modules[key] !== false;
+      },
     };
   }, [tenant]);
 
