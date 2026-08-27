@@ -110,6 +110,7 @@ export const IMOVEIS_CAMPOS = [
   { id: "vagas", label: "Vagas", grupo: "ficha" },
   { id: "metragem", label: "Metragem", grupo: "ficha" },
   { id: "valor", label: "A partir de", grupo: "ficha" },
+  { id: "renda", label: "Renda a partir de", grupo: "ficha" },
 ] as const;
 
 export type ImoveisCampo = (typeof IMOVEIS_CAMPOS)[number]["id"];
