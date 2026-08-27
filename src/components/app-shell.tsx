@@ -2,6 +2,7 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   Home,
   LayoutDashboard,
+  Store,
   Users,
   Kanban,
   Calendar,
@@ -251,6 +252,16 @@ const NAV_SECTIONS: {
           { to: "/captacao/captacoes", label: "Captações", icon: Kanban },
           { to: "/captacao/proprietarios", label: "Proprietários", icon: Users },
           { to: "/captacao/imoveis", label: "Imóveis", icon: Building2 },
+        ],
+      },
+      {
+        id: "imoveis-usados",
+        label: "Venda de Usados",
+        icon: Store,
+        children: [
+          { to: "/imoveis-usados/visao-geral", label: "Visão geral", icon: LayoutDashboard },
+          { to: "/imoveis-usados/vendas", label: "Imóveis", icon: Building2 },
+          { to: "/imoveis-usados/interessados", label: "Interessados", icon: Users },
         ],
       },
       { to: "/treinamento", label: "Treinamento", icon: GraduationCap },

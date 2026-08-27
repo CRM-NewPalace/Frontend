@@ -143,12 +143,12 @@ export const ROUTE_MODULE_KEY: Record<string, TenantModuleKey> = {
   "/locacao": "locacao",
 };
 
-export const TENANT_OPERATION_KEYS: TenantModuleKey[] = [
+export const TENANT_OPERATION_KEYS = [
   "comercial",
   "captacao",
   "imoveisUsados",
   "locacao",
-];
+] as const;
 
 const OPERATION_DEFAULTS: Record<
   "comercial" | "captacao" | "imoveisUsados" | "locacao",
@@ -163,7 +163,7 @@ const OPERATION_DEFAULTS: Record<
 export function isTenantOperationKey(
   key: string,
 ): key is "comercial" | "captacao" | "imoveisUsados" | "locacao" {
-  return TENANT_OPERATION_KEYS.includes(key as TenantModuleKey);
+  return (TENANT_OPERATION_KEYS as readonly string[]).includes(key);
 }
 
 export function isTenantOperationEnabled(

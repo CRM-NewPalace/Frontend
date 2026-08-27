@@ -33,6 +33,7 @@ import { Route as AppFunilClientesRouteImport } from './routes/_app.funil-client
 import { Route as AppGuiaRouteImport } from './routes/_app.guia'
 import { Route as AppGuiaSistemaRouteImport } from './routes/_app.guia-sistema'
 import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
+import { Route as AppImoveisUsadosRouteImport } from './routes/_app.imoveis-usados'
 import { Route as AppLeadsRouteImport } from './routes/_app.leads'
 import { Route as AppLeadsPerdidosRouteImport } from './routes/_app.leads-perdidos'
 import { Route as AppMetasRouteImport } from './routes/_app.metas'
@@ -65,9 +66,13 @@ import { Route as AppFinanceiroDespesasRouteImport } from './routes/_app.finance
 import { Route as AppFinanceiroFluxoCaixaRouteImport } from './routes/_app.financeiro.fluxo-caixa'
 import { Route as AppFinanceiroMovimentacaoRouteImport } from './routes/_app.financeiro.movimentacao'
 import { Route as AppFinanceiroVisaoGeralRouteImport } from './routes/_app.financeiro.visao-geral'
+import { Route as AppImoveisUsadosInteressadosRouteImport } from './routes/_app.imoveis-usados.interessados'
+import { Route as AppImoveisUsadosVendasRouteImport } from './routes/_app.imoveis-usados.vendas'
+import { Route as AppImoveisUsadosVisaoGeralRouteImport } from './routes/_app.imoveis-usados.visao-geral'
 import { Route as AppCaptacaoCaptacoesIdRouteImport } from './routes/_app.captacao.captacoes.$id'
 import { Route as AppCaptacaoImoveisIdRouteImport } from './routes/_app.captacao.imoveis.$id'
 import { Route as AppCaptacaoProprietariosIdRouteImport } from './routes/_app.captacao.proprietarios.$id'
+import { Route as AppImoveisUsadosVendasIdRouteImport } from './routes/_app.imoveis-usados.vendas.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -186,6 +191,11 @@ const AppGuiaSistemaRoute = AppGuiaSistemaRouteImport.update({
 const AppImoveisRoute = AppImoveisRouteImport.update({
   id: '/imoveis',
   path: '/imoveis',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisUsadosRoute = AppImoveisUsadosRouteImport.update({
+  id: '/imoveis-usados',
+  path: '/imoveis-usados',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLeadsRoute = AppLeadsRouteImport.update({
@@ -356,6 +366,23 @@ const AppFinanceiroVisaoGeralRoute = AppFinanceiroVisaoGeralRouteImport.update({
   path: '/visao-geral',
   getParentRoute: () => AppFinanceiroRoute,
 } as any)
+const AppImoveisUsadosInteressadosRoute =
+  AppImoveisUsadosInteressadosRouteImport.update({
+    id: '/interessados',
+    path: '/interessados',
+    getParentRoute: () => AppImoveisUsadosRoute,
+  } as any)
+const AppImoveisUsadosVendasRoute = AppImoveisUsadosVendasRouteImport.update({
+  id: '/vendas',
+  path: '/vendas',
+  getParentRoute: () => AppImoveisUsadosRoute,
+} as any)
+const AppImoveisUsadosVisaoGeralRoute =
+  AppImoveisUsadosVisaoGeralRouteImport.update({
+    id: '/visao-geral',
+    path: '/visao-geral',
+    getParentRoute: () => AppImoveisUsadosRoute,
+  } as any)
 const AppCaptacaoCaptacoesIdRoute = AppCaptacaoCaptacoesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -371,6 +398,12 @@ const AppCaptacaoProprietariosIdRoute =
     id: '/$id',
     path: '/$id',
     getParentRoute: () => AppCaptacaoProprietariosRoute,
+  } as any)
+const AppImoveisUsadosVendasIdRoute =
+  AppImoveisUsadosVendasIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AppImoveisUsadosVendasRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -397,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/guia': typeof AppGuiaRoute
   '/guia-sistema': typeof AppGuiaSistemaRoute
   '/imoveis': typeof AppImoveisRoute
+  '/imoveis-usados': typeof AppImoveisUsadosRouteWithChildren
   '/leads': typeof AppLeadsRoute
   '/leads-perdidos': typeof AppLeadsPerdidosRoute
   '/metas': typeof AppMetasRoute
@@ -429,9 +463,13 @@ export interface FileRoutesByFullPath {
   '/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
+  '/imoveis-usados/interessados': typeof AppImoveisUsadosInteressadosRoute
+  '/imoveis-usados/vendas': typeof AppImoveisUsadosVendasRouteWithChildren
+  '/imoveis-usados/visao-geral': typeof AppImoveisUsadosVisaoGeralRoute
   '/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
   '/captacao/imoveis/$id': typeof AppCaptacaoImoveisIdRoute
   '/captacao/proprietarios/$id': typeof AppCaptacaoProprietariosIdRoute
+  '/imoveis-usados/vendas/$id': typeof AppImoveisUsadosVendasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -457,6 +495,7 @@ export interface FileRoutesByTo {
   '/guia': typeof AppGuiaRoute
   '/guia-sistema': typeof AppGuiaSistemaRoute
   '/imoveis': typeof AppImoveisRoute
+  '/imoveis-usados': typeof AppImoveisUsadosRouteWithChildren
   '/leads': typeof AppLeadsRoute
   '/leads-perdidos': typeof AppLeadsPerdidosRoute
   '/metas': typeof AppMetasRoute
@@ -489,9 +528,13 @@ export interface FileRoutesByTo {
   '/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
+  '/imoveis-usados/interessados': typeof AppImoveisUsadosInteressadosRoute
+  '/imoveis-usados/vendas': typeof AppImoveisUsadosVendasRouteWithChildren
+  '/imoveis-usados/visao-geral': typeof AppImoveisUsadosVisaoGeralRoute
   '/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
   '/captacao/imoveis/$id': typeof AppCaptacaoImoveisIdRoute
   '/captacao/proprietarios/$id': typeof AppCaptacaoProprietariosIdRoute
+  '/imoveis-usados/vendas/$id': typeof AppImoveisUsadosVendasIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -519,6 +562,7 @@ export interface FileRoutesById {
   '/_app/guia': typeof AppGuiaRoute
   '/_app/guia-sistema': typeof AppGuiaSistemaRoute
   '/_app/imoveis': typeof AppImoveisRoute
+  '/_app/imoveis-usados': typeof AppImoveisUsadosRouteWithChildren
   '/_app/leads': typeof AppLeadsRoute
   '/_app/leads-perdidos': typeof AppLeadsPerdidosRoute
   '/_app/metas': typeof AppMetasRoute
@@ -551,9 +595,13 @@ export interface FileRoutesById {
   '/_app/financeiro/fluxo-caixa': typeof AppFinanceiroFluxoCaixaRoute
   '/_app/financeiro/movimentacao': typeof AppFinanceiroMovimentacaoRoute
   '/_app/financeiro/visao-geral': typeof AppFinanceiroVisaoGeralRoute
+  '/_app/imoveis-usados/interessados': typeof AppImoveisUsadosInteressadosRoute
+  '/_app/imoveis-usados/vendas': typeof AppImoveisUsadosVendasRouteWithChildren
+  '/_app/imoveis-usados/visao-geral': typeof AppImoveisUsadosVisaoGeralRoute
   '/_app/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
   '/_app/captacao/imoveis/$id': typeof AppCaptacaoImoveisIdRoute
   '/_app/captacao/proprietarios/$id': typeof AppCaptacaoProprietariosIdRoute
+  '/_app/imoveis-usados/vendas/$id': typeof AppImoveisUsadosVendasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -581,6 +629,7 @@ export interface FileRouteTypes {
     | '/guia'
     | '/guia-sistema'
     | '/imoveis'
+    | '/imoveis-usados'
     | '/leads'
     | '/leads-perdidos'
     | '/metas'
@@ -613,9 +662,13 @@ export interface FileRouteTypes {
     | '/financeiro/fluxo-caixa'
     | '/financeiro/movimentacao'
     | '/financeiro/visao-geral'
+    | '/imoveis-usados/interessados'
+    | '/imoveis-usados/vendas'
+    | '/imoveis-usados/visao-geral'
     | '/captacao/captacoes/$id'
     | '/captacao/imoveis/$id'
     | '/captacao/proprietarios/$id'
+    | '/imoveis-usados/vendas/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -641,6 +694,7 @@ export interface FileRouteTypes {
     | '/guia'
     | '/guia-sistema'
     | '/imoveis'
+    | '/imoveis-usados'
     | '/leads'
     | '/leads-perdidos'
     | '/metas'
@@ -673,9 +727,13 @@ export interface FileRouteTypes {
     | '/financeiro/fluxo-caixa'
     | '/financeiro/movimentacao'
     | '/financeiro/visao-geral'
+    | '/imoveis-usados/interessados'
+    | '/imoveis-usados/vendas'
+    | '/imoveis-usados/visao-geral'
     | '/captacao/captacoes/$id'
     | '/captacao/imoveis/$id'
     | '/captacao/proprietarios/$id'
+    | '/imoveis-usados/vendas/$id'
   id:
     | '__root__'
     | '/'
@@ -702,6 +760,7 @@ export interface FileRouteTypes {
     | '/_app/guia'
     | '/_app/guia-sistema'
     | '/_app/imoveis'
+    | '/_app/imoveis-usados'
     | '/_app/leads'
     | '/_app/leads-perdidos'
     | '/_app/metas'
@@ -734,9 +793,13 @@ export interface FileRouteTypes {
     | '/_app/financeiro/fluxo-caixa'
     | '/_app/financeiro/movimentacao'
     | '/_app/financeiro/visao-geral'
+    | '/_app/imoveis-usados/interessados'
+    | '/_app/imoveis-usados/vendas'
+    | '/_app/imoveis-usados/visao-geral'
     | '/_app/captacao/captacoes/$id'
     | '/_app/captacao/imoveis/$id'
     | '/_app/captacao/proprietarios/$id'
+    | '/_app/imoveis-usados/vendas/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -919,6 +982,13 @@ declare module '@tanstack/react-router' {
       path: '/imoveis'
       fullPath: '/imoveis'
       preLoaderRoute: typeof AppImoveisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/imoveis-usados': {
+      id: '/_app/imoveis-usados'
+      path: '/imoveis-usados'
+      fullPath: '/imoveis-usados'
+      preLoaderRoute: typeof AppImoveisUsadosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/leads': {
@@ -1145,6 +1215,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinanceiroVisaoGeralRouteImport
       parentRoute: typeof AppFinanceiroRoute
     }
+    '/_app/imoveis-usados/interessados': {
+      id: '/_app/imoveis-usados/interessados'
+      path: '/interessados'
+      fullPath: '/imoveis-usados/interessados'
+      preLoaderRoute: typeof AppImoveisUsadosInteressadosRouteImport
+      parentRoute: typeof AppImoveisUsadosRoute
+    }
+    '/_app/imoveis-usados/vendas': {
+      id: '/_app/imoveis-usados/vendas'
+      path: '/vendas'
+      fullPath: '/imoveis-usados/vendas'
+      preLoaderRoute: typeof AppImoveisUsadosVendasRouteImport
+      parentRoute: typeof AppImoveisUsadosRoute
+    }
+    '/_app/imoveis-usados/visao-geral': {
+      id: '/_app/imoveis-usados/visao-geral'
+      path: '/visao-geral'
+      fullPath: '/imoveis-usados/visao-geral'
+      preLoaderRoute: typeof AppImoveisUsadosVisaoGeralRouteImport
+      parentRoute: typeof AppImoveisUsadosRoute
+    }
     '/_app/captacao/captacoes/$id': {
       id: '/_app/captacao/captacoes/$id'
       path: '/$id'
@@ -1165,6 +1256,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/captacao/proprietarios/$id'
       preLoaderRoute: typeof AppCaptacaoProprietariosIdRouteImport
       parentRoute: typeof AppCaptacaoProprietariosRoute
+    }
+    '/_app/imoveis-usados/vendas/$id': {
+      id: '/_app/imoveis-usados/vendas/$id'
+      path: '/$id'
+      fullPath: '/imoveis-usados/vendas/$id'
+      preLoaderRoute: typeof AppImoveisUsadosVendasIdRouteImport
+      parentRoute: typeof AppImoveisUsadosVendasRoute
     }
   }
 }
@@ -1258,6 +1356,35 @@ const AppFinanceiroRouteWithChildren = AppFinanceiroRoute._addFileChildren(
   AppFinanceiroRouteChildren,
 )
 
+interface AppImoveisUsadosVendasRouteChildren {
+  AppImoveisUsadosVendasIdRoute: typeof AppImoveisUsadosVendasIdRoute
+}
+
+const AppImoveisUsadosVendasRouteChildren: AppImoveisUsadosVendasRouteChildren =
+  {
+    AppImoveisUsadosVendasIdRoute: AppImoveisUsadosVendasIdRoute,
+  }
+
+const AppImoveisUsadosVendasRouteWithChildren =
+  AppImoveisUsadosVendasRoute._addFileChildren(
+    AppImoveisUsadosVendasRouteChildren,
+  )
+
+interface AppImoveisUsadosRouteChildren {
+  AppImoveisUsadosInteressadosRoute: typeof AppImoveisUsadosInteressadosRoute
+  AppImoveisUsadosVendasRoute: typeof AppImoveisUsadosVendasRouteWithChildren
+  AppImoveisUsadosVisaoGeralRoute: typeof AppImoveisUsadosVisaoGeralRoute
+}
+
+const AppImoveisUsadosRouteChildren: AppImoveisUsadosRouteChildren = {
+  AppImoveisUsadosInteressadosRoute: AppImoveisUsadosInteressadosRoute,
+  AppImoveisUsadosVendasRoute: AppImoveisUsadosVendasRouteWithChildren,
+  AppImoveisUsadosVisaoGeralRoute: AppImoveisUsadosVisaoGeralRoute,
+}
+
+const AppImoveisUsadosRouteWithChildren =
+  AppImoveisUsadosRoute._addFileChildren(AppImoveisUsadosRouteChildren)
+
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppAtrasosRoute: typeof AppAtrasosRoute
@@ -1277,6 +1404,7 @@ interface AppRouteChildren {
   AppGuiaRoute: typeof AppGuiaRoute
   AppGuiaSistemaRoute: typeof AppGuiaSistemaRoute
   AppImoveisRoute: typeof AppImoveisRoute
+  AppImoveisUsadosRoute: typeof AppImoveisUsadosRouteWithChildren
   AppLeadsRoute: typeof AppLeadsRoute
   AppLeadsPerdidosRoute: typeof AppLeadsPerdidosRoute
   AppMetasRoute: typeof AppMetasRoute
@@ -1311,6 +1439,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGuiaRoute: AppGuiaRoute,
   AppGuiaSistemaRoute: AppGuiaSistemaRoute,
   AppImoveisRoute: AppImoveisRoute,
+  AppImoveisUsadosRoute: AppImoveisUsadosRouteWithChildren,
   AppLeadsRoute: AppLeadsRoute,
   AppLeadsPerdidosRoute: AppLeadsPerdidosRoute,
   AppMetasRoute: AppMetasRoute,
