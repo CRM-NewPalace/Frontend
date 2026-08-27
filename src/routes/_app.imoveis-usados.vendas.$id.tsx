@@ -23,6 +23,21 @@ import {
   createContratoUsado,
   createDocumentoUsado,
   concluirFechamentoUsado,
+  concluirPosVendaUsado,
+  createChaveUsado,
+  createPosVendaPendencia,
+  devolverChaveUsado,
+  entregarChaveComprador,
+  fetchChaveHistorico,
+  fetchChavesUsado,
+  fetchPosVendaUsado,
+  iniciarPosVendaUsado,
+  perderChaveUsado,
+  retirarChaveUsado,
+  updatePosVendaPendencia,
+  CHAVE_LOCALIZACAO_LABEL,
+  CHAVE_STATUS_LABEL,
+  POS_VENDA_STATUS_LABEL,
   feedbackVisitaUsado,
   fetchFechamentoUsado,
   fetchInteressadosUsado,
@@ -58,6 +73,9 @@ import {
   type DocumentoUsadoFornecedor,
   type DocumentoUsadoStatus,
   type FechamentoUsado,
+  type ImovelChave,
+  type ImovelChaveMovimento,
+  type PosVendaUsado,
   type InteresseUsadoStatus,
   type InteressadoUsado,
   type NegociacaoOrigem,
@@ -90,6 +108,8 @@ const TABS = [
   { id: "fechamento", label: "Fechamento" },
   { id: "documentacao", label: "Documentação" },
   { id: "contrato", label: "Contrato" },
+  { id: "chaves", label: "Chaves" },
+  { id: "pos-venda", label: "Pós-venda" },
   { id: "historico", label: "Histórico" },
 ] as const;
 
@@ -186,11 +206,19 @@ function VendaUsadoDetalhePage() {
     fornecedor: "comprador" as DocumentoUsadoFornecedor,
   });
   const [contratoObs, setContratoObs] = useState("");
+  const [chaves, setChaves] = useState<ImovelChave[]>([]);
+  const [posVenda, setPosVenda] = useState<PosVendaUsado | null>(null);
+  const [chaveHist, setChaveHist] = useState<ImovelChaveMovimento[] | null>(null);
+  const [chaveForm, setChaveForm] = useState({
+    identificacao: "Chave principal",
+    quantidade: "1",
+  });
+  const [novaPendencia, setNovaPendencia] = useState("");
 
   async function load() {
     setLoading(true);
     try {
-      const [venda, list, users, match, all, vis, props, fecha] =
+      const [venda, list, users, match, all, vis, props, fecha, keys, pos] =
         await Promise.all([
         fetchVendaUsado(id),
         fetchFunis("venda_usados"),
@@ -200,6 +228,8 @@ function VendaUsadoDetalhePage() {
         fetchVisitasUsado(id),
         fetchPropostasUsado(id),
         fetchFechamentoUsado(id),
+        fetchChavesUsado(id),
+        fetchPosVendaUsado(id),
       ]);
       setItem(venda);
       setFunis(list);
@@ -209,6 +239,8 @@ function VendaUsadoDetalhePage() {
       setVisitas(vis);
       setPropostas(props);
       setFechamento(fecha);
+      setChaves(keys);
+      setPosVenda(pos);
       setContratoObs(fecha?.contrato?.observacoes ?? "");
       setPreco(
         venda.precoVenda != null ? formatMoneyInput(venda.precoVenda) : "",
@@ -1315,6 +1347,377 @@ function VendaUsadoDetalhePage() {
                     </Button>
                   ) : null}
                 </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {tab === "chaves" ? (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Cadastrar chave</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2 text-sm">
+              <Input
+                className="max-w-xs"
+                value={chaveForm.identificacao}
+                onChange={(e) =>
+                  setChaveForm({ ...chaveForm, identificacao: e.target.value })
+                }
+                placeholder="Identificação"
+              />
+              <Input
+                className="w-24"
+                type="number"
+                min={1}
+                value={chaveForm.quantidade}
+                onChange={(e) =>
+                  setChaveForm({ ...chaveForm, quantidade: e.target.value })
+                }
+              />
+              <Button
+                size="sm"
+                onClick={() => {
+                  void createChaveUsado(id, {
+                    identificacao: chaveForm.identificacao,
+                    quantidade: Number(chaveForm.quantidade) || 1,
+                  })
+                    .then(() => {
+                      toast.success("Chave cadastrada.");
+                      return load();
+                    })
+                    .catch((err) =>
+                      toast.error(
+                        err instanceof ApiError
+                          ? err.message
+                          : "Não foi possível cadastrar.",
+                      ),
+                    );
+                }}
+              >
+                Cadastrar
+              </Button>
+            </CardContent>
+          </Card>
+          {chaves.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma chave cadastrada.</p>
+          ) : (
+            chaves.map((c) => (
+              <Card key={c.id}>
+                <CardContent className="space-y-2 pt-4 text-sm">
+                  <p className="font-medium">{c.identificacao}</p>
+                  <p>
+                    Quantidade: {c.quantidade} · Status: {CHAVE_STATUS_LABEL[c.status]}
+                  </p>
+                  <p>
+                    Localização: {CHAVE_LOCALIZACAO_LABEL[c.localizacaoAtual]}
+                    {c.responsavelAtual ? ` · Com: ${c.responsavelAtual.name}` : ""}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {c.status !== "perdida" && c.status !== "inativa" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            void retirarChaveUsado(id, c.id, {
+                              quantidade: 1,
+                              motivo: "Visita ao imóvel",
+                            })
+                              .then(() => {
+                                toast.success("Chave retirada.");
+                                return load();
+                              })
+                              .catch((err) =>
+                                toast.error(
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : "Não foi possível retirar.",
+                                ),
+                              )
+                          }
+                        >
+                          Retirar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            void devolverChaveUsado(id, c.id, { quantidade: 1 })
+                              .then(() => {
+                                toast.success("Chave devolvida.");
+                                return load();
+                              })
+                              .catch((err) =>
+                                toast.error(
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : "Não foi possível devolver.",
+                                ),
+                              )
+                          }
+                        >
+                          Devolver
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            void entregarChaveComprador(id, c.id, { quantidade: 1 })
+                              .then(() => {
+                                toast.success("Entrega ao comprador registrada.");
+                                return load();
+                              })
+                              .catch((err) =>
+                                toast.error(
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : "Não foi possível registrar.",
+                                ),
+                              )
+                          }
+                        >
+                          Entregar ao comprador
+                        </Button>
+                      </>
+                    ) : null}
+                    {c.status !== "perdida" ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          void perderChaveUsado(id, c.id)
+                            .then(() => {
+                              toast.success("Chave marcada como perdida.");
+                              return load();
+                            })
+                            .catch((err) =>
+                              toast.error(
+                                err instanceof ApiError
+                                  ? err.message
+                                  : "Não foi possível marcar.",
+                              ),
+                            )
+                        }
+                      >
+                        Marcar como perdida
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        void fetchChaveHistorico(id, c.id)
+                          .then(setChaveHist)
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível carregar o histórico.",
+                            ),
+                          )
+                      }
+                    >
+                      Histórico
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+          {chaveHist ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Histórico das chaves</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm">
+                  {chaveHist.map((m) => (
+                    <li key={m.id}>
+                      {new Date(m.createdAt).toLocaleString("pt-BR")} ·{" "}
+                      {m.responsavel?.name ?? "—"} · {m.tipo} {m.quantidade}x
+                      {m.motivo ? ` · ${m.motivo}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === "pos-venda" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Pós-venda</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {!posVenda ? (
+              <>
+                <p className="text-muted-foreground">
+                  O pós-venda só pode ser iniciado depois da venda concluída.
+                </p>
+                <Button
+                  size="sm"
+                  disabled={item.status !== "vendido"}
+                  onClick={() =>
+                    void iniciarPosVendaUsado(id)
+                      .then(() => {
+                        toast.success("Pós-venda iniciado.");
+                        return load();
+                      })
+                      .catch((err) =>
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Não foi possível iniciar.",
+                        ),
+                      )
+                  }
+                >
+                  Iniciar pós-venda
+                </Button>
+              </>
+            ) : (
+              <>
+                <p>
+                  Status:{" "}
+                  <span className="font-medium">
+                    {POS_VENDA_STATUS_LABEL[posVenda.status]}
+                  </span>
+                </p>
+                <p>Responsável: {posVenda.responsavel.name}</p>
+                <p>
+                  Comprador: {posVenda.interessado.nome} · Proprietário:{" "}
+                  {posVenda.proprietario.nome}
+                </p>
+                <p>
+                  Pendências: {posVenda.resumo.concluidas} de {posVenda.resumo.total}{" "}
+                  concluídas
+                </p>
+                <div className="space-y-2">
+                  {posVenda.pendencias.map((p) => (
+                    <div
+                      key={p.id}
+                      className={`rounded-lg border p-3 ${p.atrasada ? "border-destructive" : ""}`}
+                    >
+                      <p>
+                        {p.status === "concluida"
+                          ? "✓"
+                          : p.status === "cancelada"
+                            ? "○"
+                            : "⚠"}{" "}
+                        {p.titulo}
+                        {p.obrigatoria ? " (obrigatória)" : ""}
+                        {p.atrasada ? " — atrasada" : ""}
+                      </p>
+                      {p.prazo ? (
+                        <p className="text-xs text-muted-foreground">
+                          Prazo: {new Date(p.prazo).toLocaleDateString("pt-BR")}
+                        </p>
+                      ) : null}
+                      {p.status !== "concluida" &&
+                      p.status !== "cancelada" &&
+                      posVenda.status !== "concluido" &&
+                      posVenda.status !== "cancelado" ? (
+                        <div className="mt-2 flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              void updatePosVendaPendencia(id, p.id, {
+                                status: "concluida",
+                              })
+                                .then(() => load())
+                                .catch((err) =>
+                                  toast.error(
+                                    err instanceof ApiError
+                                      ? err.message
+                                      : "Não foi possível concluir.",
+                                  ),
+                                )
+                            }
+                          >
+                            Concluir
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              void updatePosVendaPendencia(id, p.id, {
+                                status: "cancelada",
+                              })
+                                .then(() => load())
+                                .catch((err) =>
+                                  toast.error(
+                                    err instanceof ApiError
+                                      ? err.message
+                                      : "Não foi possível cancelar.",
+                                  ),
+                                )
+                            }
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {posVenda.status !== "concluido" && posVenda.status !== "cancelado" ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Input
+                      placeholder="Nova pendência"
+                      value={novaPendencia}
+                      onChange={(e) => setNovaPendencia(e.target.value)}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!novaPendencia.trim()}
+                      onClick={() =>
+                        void createPosVendaPendencia(id, {
+                          titulo: novaPendencia,
+                          obrigatoria: false,
+                        })
+                          .then(() => {
+                            setNovaPendencia("");
+                            toast.success("Pendência adicionada.");
+                            return load();
+                          })
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível adicionar.",
+                            ),
+                          )
+                      }
+                    >
+                      Adicionar pendência
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        void concluirPosVendaUsado(id)
+                          .then(() => {
+                            toast.success("Pós-venda concluído.");
+                            return load();
+                          })
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível concluir.",
+                            ),
+                          )
+                      }
+                    >
+                      Concluir pós-venda
+                    </Button>
+                  </div>
+                ) : null}
               </>
             )}
           </CardContent>

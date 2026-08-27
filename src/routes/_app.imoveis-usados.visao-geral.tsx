@@ -5,7 +5,7 @@ import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { fetchUsadosResumo } from "@/lib/imoveis-usados-api";
-import { Building2, Calendar, ClipboardCheck, FileSignature, FileText, Loader2, Plus, Store, Users } from "lucide-react";
+import { AlertTriangle, Building2, Calendar, ClipboardCheck, FileSignature, FileText, KeyRound, Loader2, Plus, Store, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/imoveis-usados/visao-geral")({
@@ -26,6 +26,11 @@ function UsadosVisaoGeralPage() {
     fechamentosAndamento: number;
     documentacaoPendente: number;
     contratosAguardandoAssinatura: number;
+    posVendasAndamento: number;
+    posVendasPendentes: number;
+    pendenciasAtrasadas: number;
+    chavesRetiradas: number;
+    chavesPerdidas: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -160,6 +165,41 @@ function UsadosVisaoGeralPage() {
             value={resumo.vendidos}
             tone="emerald"
             icon={Building2}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Pós-vendas em andamento"
+            value={resumo.posVendasAndamento}
+            tone="blue"
+            icon={ClipboardCheck}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Pós-vendas pendentes"
+            value={resumo.posVendasPendentes}
+            tone="orange"
+            icon={ClipboardCheck}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Pendências atrasadas"
+            value={resumo.pendenciasAtrasadas}
+            tone="orange"
+            icon={AlertTriangle}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Chaves retiradas"
+            value={resumo.chavesRetiradas}
+            tone="teal"
+            icon={KeyRound}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Chaves perdidas"
+            value={resumo.chavesPerdidas}
+            tone="orange"
+            icon={KeyRound}
             format="number"
           />
         </div>

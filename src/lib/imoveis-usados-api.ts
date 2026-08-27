@@ -114,6 +114,11 @@ export function fetchUsadosResumo() {
     fechamentosAndamento: number;
     documentacaoPendente: number;
     contratosAguardandoAssinatura: number;
+    posVendasAndamento: number;
+    posVendasPendentes: number;
+    pendenciasAtrasadas: number;
+    chavesRetiradas: number;
+    chavesPerdidas: number;
   }>("/imoveis-usados/resumo");
 }
 
@@ -552,6 +557,232 @@ export function updateContratoUsado(
 ) {
   return apiFetch<ContratoUsado>(
     `/imoveis-usados/${vendaId}/fechamento/contrato`,
+    { method: "PATCH", body },
+  );
+}
+
+export type ImovelChaveStatus =
+  | "disponivel"
+  | "retirada"
+  | "devolvida"
+  | "perdida"
+  | "inativa";
+
+export type ImovelChaveLocalizacao =
+  | "imobiliaria"
+  | "corretor"
+  | "proprietario"
+  | "comprador"
+  | "portaria"
+  | "caixa"
+  | "outro";
+
+export const CHAVE_STATUS_LABEL: Record<ImovelChaveStatus, string> = {
+  disponivel: "Disponível",
+  retirada: "Retirada",
+  devolvida: "Devolvida",
+  perdida: "Perdida",
+  inativa: "Inativa",
+};
+
+export const CHAVE_LOCALIZACAO_LABEL: Record<ImovelChaveLocalizacao, string> = {
+  imobiliaria: "Imobiliária",
+  corretor: "Corretor",
+  proprietario: "Proprietário",
+  comprador: "Comprador",
+  portaria: "Portaria",
+  caixa: "Caixa de chaves",
+  outro: "Outro",
+};
+
+export type ImovelChave = {
+  id: string;
+  identificacao: string;
+  quantidade: number;
+  quantidadeRetirada: number;
+  status: ImovelChaveStatus;
+  localizacaoAtual: ImovelChaveLocalizacao;
+  observacoes: string;
+  responsavelAtual?: { id: string; name: string } | null;
+};
+
+export type ImovelChaveMovimento = {
+  id: string;
+  tipo: string;
+  quantidade: number;
+  motivo: string;
+  observacao: string;
+  createdAt: string;
+  responsavel?: { id: string; name: string } | null;
+};
+
+export type PosVendaStatus =
+  | "pendente"
+  | "em_andamento"
+  | "aguardando_pendencia"
+  | "concluido"
+  | "cancelado";
+
+export type PosVendaPendenciaStatus =
+  | "pendente"
+  | "em_andamento"
+  | "concluida"
+  | "cancelada";
+
+export const POS_VENDA_STATUS_LABEL: Record<PosVendaStatus, string> = {
+  pendente: "Pendente",
+  em_andamento: "Em andamento",
+  aguardando_pendencia: "Aguardando pendência",
+  concluido: "Concluído",
+  cancelado: "Cancelado",
+};
+
+export type PosVendaPendencia = {
+  id: string;
+  titulo: string;
+  descricao: string;
+  status: PosVendaPendenciaStatus;
+  obrigatoria: boolean;
+  prazo: string | null;
+  observacao: string;
+  atrasada: boolean;
+  responsavel?: { id: string; name: string } | null;
+};
+
+export type PosVendaUsado = {
+  id: string;
+  status: PosVendaStatus;
+  interessado: { id: string; nome: string };
+  proprietario: { id: string; nome: string };
+  responsavel: { id: string; name: string };
+  pendencias: PosVendaPendencia[];
+  resumo: { total: number; concluidas: number; abertas: number; atrasadas: number };
+};
+
+export function fetchChavesUsado(vendaId: string) {
+  return apiFetch<ImovelChave[]>(`/imoveis-usados/${vendaId}/chaves`);
+}
+
+export function createChaveUsado(vendaId: string, body: Record<string, unknown>) {
+  return apiFetch<ImovelChave>(`/imoveis-usados/${vendaId}/chaves`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function updateChaveUsado(
+  vendaId: string,
+  chaveId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<ImovelChave>(`/imoveis-usados/${vendaId}/chaves/${chaveId}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function retirarChaveUsado(
+  vendaId: string,
+  chaveId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<ImovelChave>(
+    `/imoveis-usados/${vendaId}/chaves/${chaveId}/retirar`,
+    { method: "POST", body },
+  );
+}
+
+export function devolverChaveUsado(
+  vendaId: string,
+  chaveId: string,
+  body: Record<string, unknown> = {},
+) {
+  return apiFetch<ImovelChave>(
+    `/imoveis-usados/${vendaId}/chaves/${chaveId}/devolver`,
+    { method: "POST", body },
+  );
+}
+
+export function perderChaveUsado(
+  vendaId: string,
+  chaveId: string,
+  body: Record<string, unknown> = {},
+) {
+  return apiFetch<ImovelChave>(
+    `/imoveis-usados/${vendaId}/chaves/${chaveId}/perder`,
+    { method: "POST", body },
+  );
+}
+
+export function entregarChaveComprador(
+  vendaId: string,
+  chaveId: string,
+  body: Record<string, unknown> = {},
+) {
+  return apiFetch<ImovelChave>(
+    `/imoveis-usados/${vendaId}/chaves/${chaveId}/entregar-comprador`,
+    { method: "POST", body },
+  );
+}
+
+export function fetchChaveHistorico(vendaId: string, chaveId: string) {
+  return apiFetch<ImovelChaveMovimento[]>(
+    `/imoveis-usados/${vendaId}/chaves/${chaveId}/historico`,
+  );
+}
+
+export async function fetchPosVendaUsado(vendaId: string) {
+  try {
+    return await apiFetch<PosVendaUsado>(`/imoveis-usados/${vendaId}/pos-venda`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export function iniciarPosVendaUsado(
+  vendaId: string,
+  body: Record<string, unknown> = {},
+) {
+  return apiFetch<PosVendaUsado>(`/imoveis-usados/${vendaId}/pos-venda`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function updatePosVendaUsado(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<PosVendaUsado>(`/imoveis-usados/${vendaId}/pos-venda`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function concluirPosVendaUsado(vendaId: string) {
+  return apiFetch<PosVendaUsado>(`/imoveis-usados/${vendaId}/pos-venda/concluir`, {
+    method: "POST",
+  });
+}
+
+export function createPosVendaPendencia(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<PosVendaPendencia>(
+    `/imoveis-usados/${vendaId}/pos-venda/pendencias`,
+    { method: "POST", body },
+  );
+}
+
+export function updatePosVendaPendencia(
+  vendaId: string,
+  pendenciaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<PosVendaPendencia>(
+    `/imoveis-usados/${vendaId}/pos-venda/pendencias/${pendenciaId}`,
     { method: "PATCH", body },
   );
 }
