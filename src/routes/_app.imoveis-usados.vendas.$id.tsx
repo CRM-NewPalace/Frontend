@@ -12,10 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ApiError } from "@/lib/api";
-import { CAPTACAO_IMOVEL_TIPO_LABEL } from "@/lib/captacao-api";
+import {
+  FormDialogActions,
+  FormDialogBody,
+  FormDialogShell,
+} from "@/components/form-dialog";
+import { ImovelFichaFields } from "@/components/imovel-ficha-fields";
+import { fichaToPayload, imovelToFicha } from "@/lib/imovel-ficha";
+import { ImovelFichaVisao } from "@/components/imovel-ficha-visao";
 import { fetchFunis, type Funil } from "@/lib/funis-api";
-import { cn } from "@/lib/utils";
+import { PillTabs } from "@/components/operacao-ui";
 import {
   addNegociacaoMovimento,
   createPropostaUsado,
@@ -62,6 +68,7 @@ import {
   updateFechamentoUsado,
   updatePropostaUsado,
   updateVendaUsado,
+  updateVendaUsadoImovel,
   updateVinculo,
   updateVisitaUsado,
   VENDA_STATUS_LABEL,
@@ -87,12 +94,17 @@ import {
   type VisitaUsadoInteresse,
   type VisitaUsadoStatus,
 } from "@/lib/imoveis-usados-api";
+import { ApiError } from "@/lib/api";
+import {
+  deleteCaptacaoImovelFoto,
+  uploadCaptacaoImovelFoto,
+} from "@/lib/captacao-api";
 import {
   formatMoneyInput,
   maskMoneyInput,
   parseOptionalMoneyInput,
 } from "@/lib/money-input";
-import { Loader2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/imoveis-usados/vendas/$id")({
@@ -214,6 +226,10 @@ function VendaUsadoDetalhePage() {
     quantidade: "1",
   });
   const [novaPendencia, setNovaPendencia] = useState("");
+  const [fichaOpen, setFichaOpen] = useState(false);
+  const [ficha, setFicha] = useState(imovelToFicha({}));
+  const [fichaSaving, setFichaSaving] = useState(false);
+  const [fotoBusy, setFotoBusy] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -371,42 +387,35 @@ function VendaUsadoDetalhePage() {
         title={im.titulo}
         description={`${formatBrl(item.precoVenda)} · ${VENDA_STATUS_LABEL[item.status]} · ${item.responsavel.name}`}
       />
-      <nav className="mb-4 flex flex-wrap gap-1 rounded-xl border bg-card p-1">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm",
-              tab === t.id
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <PillTabs
+        items={[...TABS]}
+        value={tab}
+        onChange={(id) => setTab(id as TabId)}
+      />
 
       {tab === "informacoes" ? (
+        <div className="grid gap-4">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Informações</CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setFicha(imovelToFicha(im));
+                setFichaOpen(true);
+              }}
+            >
+              Editar ficha
+            </Button>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>Tipo: {CAPTACAO_IMOVEL_TIPO_LABEL[im.tipo]}</p>
             <p>
               Endereço: {im.logradouro}, {im.numero}
               {im.complemento ? ` — ${im.complemento}` : ""}
             </p>
             <p>
               {im.bairro} · {im.cidade}/{im.estado}
-            </p>
-            <p>Área: {im.area ?? "—"} m²</p>
-            <p>
-              Quartos: {im.quartos ?? "—"} · Banheiros: {im.banheiros ?? "—"} ·
-              Vagas: {im.vagas ?? "—"}
             </p>
             <p>Preço: {formatBrl(item.precoVenda)}</p>
             <p>
@@ -425,6 +434,22 @@ function VendaUsadoDetalhePage() {
             </p>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <ImovelFichaVisao imovel={im} />
+          </CardContent>
+        </Card>
+        {im.descricao ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Descrição do anúncio</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm">{im.descricao}</p>
+            </CardContent>
+          </Card>
+        ) : null}
+        </div>
       ) : null}
 
       {tab === "comercializacao" ? (
@@ -2288,6 +2313,95 @@ function VendaUsadoDetalhePage() {
           ) : null}
         </DialogContent>
       </Dialog>
+      <FormDialogShell
+        open={fichaOpen}
+        onOpenChange={setFichaOpen}
+        className="max-w-3xl"
+        icon={<Building2 className="h-5 w-5" />}
+        title="Ficha do imóvel"
+        description="Mesma ficha da captação. Vale para novas visualizações, sem reescrever o histórico."
+      >
+        <FormDialogBody>
+          <ImovelFichaFields
+            resetKey={`${fichaOpen}-${id}`}
+            value={ficha}
+            onChange={setFicha}
+            foto={{
+              url: item.imovel.fotoUrl ?? null,
+              busy: fotoBusy,
+              onAdd: (file) => {
+                setFotoBusy(true);
+                void uploadCaptacaoImovelFoto(item.imovel.id, file)
+                  .then((next) => {
+                    setItem({
+                      ...item,
+                      imovel: { ...item.imovel, ...next },
+                    });
+                    toast.success("Foto atualizada.");
+                  })
+                  .catch((err) => {
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Não foi possível enviar a foto.",
+                    );
+                  })
+                  .finally(() => setFotoBusy(false));
+              },
+              onRemove: () => {
+                setFotoBusy(true);
+                void deleteCaptacaoImovelFoto(item.imovel.id)
+                  .then((next) => {
+                    setItem({
+                      ...item,
+                      imovel: { ...item.imovel, ...next },
+                    });
+                    toast.success("Foto removida.");
+                  })
+                  .catch((err) => {
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Não foi possível remover a foto.",
+                    );
+                  })
+                  .finally(() => setFotoBusy(false));
+              },
+            }}
+          />
+        </FormDialogBody>
+        <FormDialogActions>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setFichaOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            disabled={fichaSaving}
+            onClick={() => {
+              setFichaSaving(true);
+              void updateVendaUsadoImovel(id, fichaToPayload(ficha))
+                .then((next) => {
+                  setItem(next);
+                  setFichaOpen(false);
+                  toast.success("Ficha atualizada.");
+                })
+                .catch((err) => {
+                  toast.error(
+                    err instanceof ApiError
+                      ? err.message
+                      : "Não foi possível salvar a ficha.",
+                  );
+                })
+                .finally(() => setFichaSaving(false));
+            }}
+          >
+            {fichaSaving ? "Salvando…" : "Salvar"}
+          </Button>
+        </FormDialogActions>
+      </FormDialogShell>
     </>
   );
 }

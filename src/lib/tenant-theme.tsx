@@ -3,9 +3,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
   type ReactNode,
 } from "react";
 import type { AuthUser, TenantBranding } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { initAppearance } from "@/lib/appearance";
 import { isTenantOperationEnabled, isTenantOperationKey } from "@/lib/tenant-modules";
 
@@ -67,7 +69,20 @@ export function TenantThemeProvider({
   user: AuthUser | null;
   children: ReactNode;
 }) {
-  const tenant = user?.role === "super_admin" ? null : (user?.tenant ?? null);
+  const [liveUser, setLiveUser] = useState<AuthUser | null>(user);
+
+  useEffect(() => {
+    setLiveUser(getSession() ?? user);
+  }, [user]);
+
+  useEffect(() => {
+    const sync = () => setLiveUser(getSession() ?? user);
+    window.addEventListener("crm-session-updated", sync);
+    return () => window.removeEventListener("crm-session-updated", sync);
+  }, [user]);
+
+  const tenant =
+    liveUser?.role === "super_admin" ? null : (liveUser?.tenant ?? null);
 
   const value = useMemo<TenantThemeContextValue>(() => {
     const modules = normalizeModules(tenant?.modules ?? null);

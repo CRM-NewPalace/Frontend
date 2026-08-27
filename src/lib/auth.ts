@@ -142,6 +142,17 @@ function notifySessionUpdated() {
   window.dispatchEvent(new Event("crm-session-updated"));
 }
 
+/** Atualiza `tenant.modules` na sessão sem esperar outro /auth/me. */
+export function patchSessionTenantModules(modules: Record<string, boolean>) {
+  const current = getSession();
+  if (!current?.tenant) return;
+  sessionCache.setUser({
+    ...current,
+    tenant: { ...current.tenant, modules },
+  });
+  notifySessionUpdated();
+}
+
 export async function fetchMe(): Promise<AuthUser> {
   const user = await apiFetch<AuthUser>("/auth/me");
   sessionCache.setUser(user);
@@ -161,7 +172,8 @@ function revalidateSessionInBackground(): void {
       writeValidatedAt(0);
       if (
         typeof window !== "undefined" &&
-        !window.location.pathname.startsWith("/login")
+        !window.location.pathname.startsWith("/login") &&
+        !window.location.pathname.startsWith("/portal")
       ) {
         window.location.assign("/login");
       }

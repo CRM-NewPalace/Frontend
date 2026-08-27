@@ -35,7 +35,8 @@ export function setTheme(theme: Theme) {
     path === "/demonstracao" ||
     path === "/termos" ||
     path === "/privacidade" ||
-    path.startsWith("/produtos/");
+    path.startsWith("/produtos/") ||
+    path.startsWith("/portal");
   if (!isPublic) {
     applyTheme(theme);
     initAppearance();

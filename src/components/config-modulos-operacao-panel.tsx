@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { Building2, Home, KeyRound, Landmark } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
-import { fetchMe, getSession } from "@/lib/auth";
+import { fetchMe, getSession, patchSessionTenantModules } from "@/lib/auth";
 import {
   fetchTenantOperationModules,
   updateTenantOperationModules,
@@ -50,6 +51,7 @@ const CARDS: Array<{
 ];
 
 export function ConfigModulosOperacaoPanel() {
+  const router = useRouter();
   const [ops, setOps] = useState<TenantOperationModules | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -82,7 +84,9 @@ export function ConfigModulosOperacaoPanel() {
     try {
       const data = await updateTenantOperationModules({ [key]: next });
       setOps(data.operations);
+      patchSessionTenantModules(data.modules);
       await fetchMe();
+      await router.invalidate();
       toast.success(
         next
           ? "Operação ativada. Os funis já cadastrados continuam disponíveis."

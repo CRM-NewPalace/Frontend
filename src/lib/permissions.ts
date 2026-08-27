@@ -208,11 +208,18 @@ export function canAccessRoute(
   }
 
   const permKey = moduleForPath(path);
-  if (permKey && isTenantOperationKey(permKey)) {
-    if (role === "admin" || role === "super_admin") {
-      return isTenantOperationEnabled(modules, permKey);
+    if (permKey && isTenantOperationKey(permKey)) {
+      if (!isTenantOperationEnabled(modules, permKey)) return false;
+      if (
+        role === "admin" ||
+        role === "super_admin" ||
+        role === "gerente" ||
+        role === "corretor" ||
+        role === "treinee"
+      ) {
+        return true;
+      }
     }
-  }
   if (permKey && role !== "super_admin") {
     const effective = effectivePermissions(role, userPermissions, plano);
     if (permKey === "comissao") {

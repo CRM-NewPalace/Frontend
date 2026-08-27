@@ -28,6 +28,8 @@ export type GuiaGroup = {
   kicker: string;
   description: string;
   image: string;
+  /** Se true, o índice mostra o grupo mesmo sem o módulo ligado no tenant. */
+  alwaysShow?: boolean;
   topics: GuiaTopic[];
 };
 
@@ -381,6 +383,145 @@ export const GUIA_GROUPS: GuiaGroup[] = [
             title: "Buscar material",
             detail:
               "A busca filtra pasta e link pelo título/URL.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "imoveis-terceiros",
+    label: "Captação e usados",
+    kicker: "Imóvel de proprietário",
+    alwaysShow: true,
+    description:
+      "Outra operação, paralela ao CRM de lançamentos: captar imóvel usado, disponibilizar para venda e acompanhar até chaves e pós-venda. O proprietário pode ver o andamento no Portal.",
+    image: "/guia/operacao.png",
+    topics: [
+      {
+        id: "modulos-operacao",
+        title: "Como aparecer no menu",
+        href: "/configuracoes",
+        who: "Só o admin da imobiliária liga ou desliga. Comercial, Captação e Usados são operações independentes.",
+        summary:
+          "Captação e Venda de Usados não entram no menu enquanto estiverem desligados. Isso não apaga dados: só esconde as pastas Operação → Captação e Operação → Venda de Usados. Locação ainda não tem telas.",
+        actions: [
+          {
+            title: "Abrir Configurações → Módulos",
+            detail:
+              "Em Gestão → Configurações, escolha Módulos (operações imobiliárias). Comercial fica sempre ligado. Ative Captação de Imóveis e/ou Venda de Imóveis Usados e salve. Recarregue se o menu não atualizar na hora.",
+          },
+          {
+            title: "Criar os funis certos",
+            detail:
+              "Em Configurações → Funis existem três tipos: Comercial (leads), Captação e Venda de usados. Cada tipo tem o próprio funil ativo. Sem funil ativo daquele tipo, o quadro fica vazio e o cadastro recusa a operação.",
+          },
+        ],
+        tips: [
+          "O guia desta pasta continua visível mesmo com o módulo desligado — para você saber o que liga.",
+          "Permissões de usuário podem ocultar o módulo para um papel mesmo com a operação ligada no tenant.",
+        ],
+      },
+      {
+        id: "captacao-visao",
+        title: "Captação — visão geral e funil",
+        href: "/captacao/visao-geral",
+        who: "Time comercial com a operação Captação ligada. Gestão vê o consolidado; corretor atende os processos.",
+        summary:
+          "Não é captação de lead. Aqui o processo é o imóvel de um proprietário: cadastro, avaliação, exclusividade e etapas até o imóvel estar captado e pronto para a venda de usados.",
+        actions: [
+          {
+            title: "Ler os KPIs",
+            detail:
+              "Proprietários, imóveis, captações, captações ativas e imóveis já captados. Os cards abrem a lista correspondente. Ativas = etapas que não são perda nem venda.",
+          },
+          {
+            title: "Ver volume por etapa",
+            detail:
+              "O gráfico de barras replica todas as etapas do funil de Captação ativo, inclusive as zeradas. Ver funil leva ao kanban.",
+          },
+          {
+            title: "Trabalhar no funil",
+            detail:
+              "Em Captação → Funil, cada coluna é uma etapa. Arraste o card (imóvel + proprietário) para avançar. Clique para a ficha da captação.",
+          },
+        ],
+        how: [
+          "Cadastre o proprietário.",
+          "Cadastre o imóvel ligado a ele.",
+          "Abra uma captação (origem, valores, responsável, exclusividade).",
+          "Ande no funil até captar. Aí o imóvel pode ir para Venda de Usados.",
+        ],
+      },
+      {
+        id: "captacao-cadastros",
+        title: "Proprietários, imóveis e captações",
+        href: "/captacao/captacoes",
+        who: "Quem opera a captação. A ficha do proprietário também controla o Portal.",
+        summary:
+          "Três listas: pessoas donas do imóvel, o cadastro físico (endereço, tipo, áreas, texto de anúncio e lazer) e o processo comercial de captação com histórico e etapa.",
+        actions: [
+          {
+            title: "Ficha do imóvel",
+            detail:
+              "Além de endereço e cômodos, cole a descrição de anúncio e marque o que a unidade e o condomínio têm (rooftop, academia, portaria 24h…). A mesma ficha aparece na venda de usados e no portal.",
+          },
+          {
+            title: "Nova captação",
+            detail:
+              "Escolha proprietário, imóvel, responsável, origem e valores pretendido/avaliação. A etapa inicial vem do funil de Captação ativo.",
+          },
+          {
+            title: "Acesso ao Portal",
+            detail:
+              "Na ficha do proprietário, ative o acesso. Ele entra em /portal/login com o e-mail cadastrado. É só leitura: visitas, propostas, documentação, contrato e chaves — sem financeiro do CRM.",
+          },
+        ],
+        tips: [
+          "Um imóvel só entra em Venda de Usados se já tiver captação.",
+        ],
+      },
+      {
+        id: "usados-visao",
+        title: "Venda de usados — visão geral e funil",
+        href: "/imoveis-usados/visao-geral",
+        who: "Time com a operação Venda de Imóveis Usados ligada.",
+        summary:
+          "Estoque (disponível, reservado, vendido), comercialização (visitas e propostas), fechamento, pós-venda e chaves. O funil próprio não mistura com o funil de leads.",
+        actions: [
+          {
+            title: "Ler o painel",
+            detail:
+              "O gráfico por etapa usa o funil de Venda de usados. Abaixo vêm KPIs de estoque, visitas, propostas, documentação, contratos, pós-venda e chaves.",
+          },
+          {
+            title: "Kanban da venda",
+            detail:
+              "Em Venda de Usados → Funil, arraste o imóvel entre etapas. O card mostra título, proprietário, status de estoque e preço.",
+          },
+          {
+            title: "Disponibilizar um captado",
+            detail:
+              "Em Imóveis, cadastre a venda a partir de um imóvel já captado: responsável, funil e preço (sugestão da avaliação). A descrição e o lazer da ficha podem ser editados na aba Informações.",
+          },
+        ],
+        how: [
+          "Captação concluída → disponibilizar na venda de usados.",
+          "Interessados, visitas e propostas na ficha da venda.",
+          "Fechamento: documentação, contrato, chaves e pós-venda.",
+        ],
+      },
+      {
+        id: "usados-interessados",
+        title: "Interessados",
+        href: "/imoveis-usados/interessados",
+        who: "Comercial da venda de usados.",
+        summary:
+          "Compradores de usado (não são o lead de lançamento). Perfil de busca (tipo, cidade, faixa) e vínculo com imóveis da carteira.",
+        actions: [
+          {
+            title: "Cadastrar interessado",
+            detail:
+              "Nome, contato e filtros de busca. Depois vincule a um ou mais imóveis em venda e registre o interesse.",
           },
         ],
       },
@@ -754,12 +895,17 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/equipes",
         who: "Admin monta. Gerente vê a própria.",
         summary:
-          "Time com um gerente. Pool da equipe, recorte do gerente, ranking e metas de equipe saem daqui.",
+          "Time com um gerente. Pool da equipe, recorte do gerente, ranking, metas e o funil de cada operação saem daqui.",
         actions: [
           {
             title: "Criar equipe",
             detail:
               "Nome + gerente. Encaixe corretores. Um corretor em uma equipe por vez, conforme a regra da imobiliária.",
+          },
+          {
+            title: "Funis da equipe",
+            detail:
+              "Admin escolhe, por operação (Comercial, Captação, Venda de usados), qual funil ativo o time usa nas novas operações. Sem vínculo, vale o funil ativo da imobiliária. Operações antigas não mudam de funil.",
           },
           {
             title: "Kanban de equipes",
@@ -812,7 +958,12 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Funis",
             detail:
-              "Crie etapas, cores e papéis (inicial / análise / venda / perdido). Ative um funil. Dá para reinstalar etapas padrão.",
+              "Três tipos: Comercial (leads), Captação e Venda de usados. Crie etapas, cores e papéis. Só um funil fica ativo por tipo. Em Equipes, o admin vincula cada time a um funil por operação. Sem o funil do tipo, Captação e Usados não andam.",
+          },
+          {
+            title: "Módulos de operação",
+            detail:
+              "Captação de Imóveis e Venda de Imóveis Usados nascem desligados. Ligue em Configurações → Módulos para aparecerem no menu Operação. Locação ainda não tem telas.",
           },
           {
             title: "Catálogos",
@@ -1060,6 +1211,14 @@ export const GUIA_JOURNEY = [
   { n: "3", title: "Analisa", text: "Documentação + parecer do analista." },
   { n: "4", title: "Propõe", text: "Proposta fecha a composição." },
   { n: "5", title: "Vende", text: "Status 2 Vendido → ranking, meta, comissão." },
+] as const;
+
+export const GUIA_JOURNEY_USADOS = [
+  { n: "1", title: "Captar", text: "Proprietário, imóvel e funil de captação." },
+  { n: "2", title: "Disponibilizar", text: "Imóvel captado entra na venda de usados." },
+  { n: "3", title: "Negociar", text: "Interessados, visitas e propostas." },
+  { n: "4", title: "Fechar", text: "Documentação, contrato e chaves." },
+  { n: "5", title: "Pós-venda", text: "Pendências e portal do proprietário." },
 ] as const;
 
 export function findGuiaTopic(id: string): {

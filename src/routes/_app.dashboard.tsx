@@ -17,12 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { FunnelBarChart } from "@/components/funnel-bar-chart";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { canAccessRoute, isCorretorLike } from "@/lib/permissions";
@@ -35,15 +30,6 @@ import {
   type DashboardAdmin,
   type DashboardCorretor,
 } from "@/lib/dashboard-api";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  XAxis,
-  YAxis,
-} from "recharts";
 import {
   AlertTriangle,
   Banknote,
@@ -70,10 +56,6 @@ import { Progress } from "@/components/ui/progress";
 import { SOFT_BTN } from "@/lib/soft-btn";
 import { cn } from "@/lib/utils";
 
-const chartConfig = {
-  total: { label: "Leads", color: "hsl(var(--primary))" },
-} satisfies ChartConfig;
-
 function buildFunnelChartData(
   funil: { etapa: string; total: number }[],
   funnelStages: FunnelStage[],
@@ -96,68 +78,6 @@ function buildFunnelChartData(
       fill: "hsl(var(--primary))",
     }));
   return [...fromFunil, ...extras];
-}
-
-function FunnelBarChart({
-  data,
-}: {
-  data: { etapa: string; total: number; fill?: string }[];
-}) {
-  if (data.length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-muted-foreground">
-        Nenhum lead ativo no funil.
-      </p>
-    );
-  }
-  return (
-    <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
-      <ChartContainer
-        config={chartConfig}
-        className="aspect-auto! h-72 w-full min-w-120"
-      >
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ left: 4, right: 40, top: 4, bottom: 0 }}
-        >
-          <CartesianGrid horizontal={false} />
-          <XAxis
-            type="number"
-            allowDecimals={false}
-            domain={[
-              0,
-              (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1),
-            ]}
-          />
-          <YAxis
-            dataKey="etapa"
-            type="category"
-            width={136}
-            tickLine={false}
-            axisLine={false}
-            interval={0}
-            tick={{ fontSize: 11 }}
-          />
-          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-          <Bar dataKey="total" radius={4}>
-            {data.map((entry, index) => (
-              <Cell
-                key={`${entry.etapa}-${index}`}
-                fill={entry.fill ?? "hsl(var(--primary))"}
-              />
-            ))}
-            <LabelList
-              dataKey="total"
-              position="right"
-              className="fill-foreground"
-              offset={8}
-            />
-          </Bar>
-        </BarChart>
-      </ChartContainer>
-    </div>
-  );
 }
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -780,7 +700,10 @@ function DashboardAdminView() {
           description="Leads ativos nas etapas do funil de vendas."
           action={<PanelLink to="/funil">Ver funil</PanelLink>}
         >
-          <FunnelBarChart data={funnelData} />
+          <FunnelBarChart
+            data={funnelData}
+            emptyLabel="Nenhum lead ativo no funil."
+          />
         </DashboardPanel>
 
         <DashboardPanel
@@ -1496,7 +1419,10 @@ function DashboardCorretorView() {
             )
           }
         >
-          <FunnelBarChart data={funnelData} />
+          <FunnelBarChart
+            data={funnelData}
+            emptyLabel="Nenhum lead ativo no funil."
+          />
         </DashboardPanel>
         <DashboardPanel title="Status das análises">
           <div className="space-y-3">

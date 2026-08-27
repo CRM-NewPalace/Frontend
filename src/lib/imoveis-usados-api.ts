@@ -54,16 +54,44 @@ export type VendaUsadoVinculo = {
   interessado: InteressadoUsado;
 };
 
+export type UsadosResumo = {
+  disponiveis: number;
+  reservados: number;
+  vendidos: number;
+  interessados: number;
+  visitasAgendadas: number;
+  visitasRealizadas: number;
+  propostasRecebidas: number;
+  propostasEmNegociacao: number;
+  propostasAceitas: number;
+  fechamentosAndamento: number;
+  documentacaoPendente: number;
+  contratosAguardandoAssinatura: number;
+  posVendasAndamento: number;
+  posVendasPendentes: number;
+  pendenciasAtrasadas: number;
+  chavesRetiradas: number;
+  chavesPerdidas: number;
+  porEtapa: Array<{
+    funilEtapaId: string;
+    label: string;
+    papel: string | null;
+    color: string | null;
+    total: number;
+  }>;
+};
+
 export type VendaUsado = {
   id: string;
   status: VendaUsadoStatus;
   precoVenda: number | null;
+  funilEtapaId: string;
   dataDisponibilizacao: string;
   observacoes: string;
   imovel: Imovel & { proprietario?: { id: string; nome: string } };
   responsavel: { id: string; name: string };
   funil: { id: string; name: string };
-  funilEtapa: { id: string; label: string };
+  funilEtapa: { id: string; label: string; color?: string };
   _count?: { vinculos: number };
   vinculos?: VendaUsadoVinculo[];
   historicos?: Array<{
@@ -100,26 +128,18 @@ export function updateVendaUsado(id: string, body: Record<string, unknown>) {
   return apiFetch<VendaUsado>(`/imoveis-usados/${id}`, { method: "PATCH", body });
 }
 
+export function updateVendaUsadoImovel(
+  id: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<VendaUsado>(`/imoveis-usados/${id}/imovel`, {
+    method: "PATCH",
+    body,
+  });
+}
+
 export function fetchUsadosResumo() {
-  return apiFetch<{
-    disponiveis: number;
-    reservados: number;
-    vendidos: number;
-    interessados: number;
-    visitasAgendadas: number;
-    visitasRealizadas: number;
-    propostasRecebidas: number;
-    propostasEmNegociacao: number;
-    propostasAceitas: number;
-    fechamentosAndamento: number;
-    documentacaoPendente: number;
-    contratosAguardandoAssinatura: number;
-    posVendasAndamento: number;
-    posVendasPendentes: number;
-    pendenciasAtrasadas: number;
-    chavesRetiradas: number;
-    chavesPerdidas: number;
-  }>("/imoveis-usados/resumo");
+  return apiFetch<UsadosResumo>("/imoveis-usados/resumo");
 }
 
 export function fetchUsadosResponsaveis() {

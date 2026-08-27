@@ -235,7 +235,11 @@ async function requestWithAuth(
   if (!response.ok) {
     if (response.status === 401 && !skipAuth) {
       sessionCache.clear();
-      if (isBrowser() && !window.location.pathname.startsWith("/login")) {
+      if (
+        isBrowser() &&
+        !window.location.pathname.startsWith("/login") &&
+        !window.location.pathname.startsWith("/portal")
+      ) {
         window.location.assign("/login");
       }
     }

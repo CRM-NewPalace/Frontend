@@ -30,6 +30,7 @@ import {
   formatBrl,
   type InteressadoUsado,
 } from "@/lib/imoveis-usados-api";
+import { TableFrame } from "@/components/operacao-ui";
 import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -142,6 +143,7 @@ function InteressadosUsadoPage() {
           Carregando…
         </div>
       ) : (
+        <TableFrame>
         <Table>
           <TableHeader>
             <TableRow>
@@ -178,6 +180,7 @@ function InteressadosUsadoPage() {
             )}
           </TableBody>
         </Table>
+        </TableFrame>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">

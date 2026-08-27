@@ -2,13 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OverviewFunnelPanel,
+  funnelBarsFromFunil,
+} from "@/components/funnel-bar-chart";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import {
   fetchCaptacaoResumo,
   type CaptacaoResumo,
 } from "@/lib/captacao-api";
+import { fetchFunilAtivo, type Funil } from "@/lib/funis-api";
+import { SOFT_BTN } from "@/lib/soft-btn";
+import { cn } from "@/lib/utils";
 import { Building2, Home, Kanban, Loader2, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,11 +24,18 @@ export const Route = createFileRoute("/_app/captacao/visao-geral")({
 
 function CaptacaoVisaoGeralPage() {
   const [resumo, setResumo] = useState<CaptacaoResumo | null>(null);
+  const [funil, setFunil] = useState<Funil | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetchCaptacaoResumo()
-      .then(setResumo)
+    void Promise.all([
+      fetchCaptacaoResumo(),
+      fetchFunilAtivo("captacao").catch(() => null),
+    ])
+      .then(([nextResumo, nextFunil]) => {
+        setResumo(nextResumo);
+        setFunil(nextFunil);
+      })
       .catch((err) => {
         toast.error(
           err instanceof ApiError
@@ -49,19 +62,19 @@ function CaptacaoVisaoGeralPage() {
             <Button asChild size="sm">
               <Link to="/captacao/captacoes">
                 <Plus className="mr-1 h-4 w-4" />
-                Captações
+                Nova captação
               </Link>
             </Button>
           </div>
         }
       />
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground py-10">
+        <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Carregando…
         </div>
       ) : resumo ? (
-        <div className="space-y-4">
+        <div className="space-y-8">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <FinanceKpiCard
               label="Proprietários"
@@ -69,6 +82,7 @@ function CaptacaoVisaoGeralPage() {
               tone="blue"
               icon={Users}
               format="number"
+              href="/captacao/proprietarios"
             />
             <FinanceKpiCard
               label="Imóveis"
@@ -76,6 +90,7 @@ function CaptacaoVisaoGeralPage() {
               tone="teal"
               icon={Building2}
               format="number"
+              href="/captacao/imoveis"
             />
             <FinanceKpiCard
               label="Captações"
@@ -83,6 +98,7 @@ function CaptacaoVisaoGeralPage() {
               tone="violet"
               icon={Kanban}
               format="number"
+              href="/captacao/captacoes"
             />
             <FinanceKpiCard
               label="Captações ativas"
@@ -90,6 +106,7 @@ function CaptacaoVisaoGeralPage() {
               tone="orange"
               icon={Home}
               format="number"
+              href="/captacao/funil"
             />
             <FinanceKpiCard
               label="Imóveis captados"
@@ -97,32 +114,25 @@ function CaptacaoVisaoGeralPage() {
               tone="emerald"
               icon={Home}
               format="number"
+              href="/imoveis-usados/vendas"
             />
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Captações por etapa</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {resumo.porEtapa.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma captação no funil ainda.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {resumo.porEtapa.map((row) => (
-                    <li
-                      key={row.funilEtapaId}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span>{row.label}</span>
-                      <span className="font-medium">{row.total}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+          <OverviewFunnelPanel
+            title="Funil de captação"
+            description="Todas as etapas do funil ativo, com o volume em cada uma."
+            action={
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className={cn("h-8 text-xs", SOFT_BTN)}
+              >
+                <Link to="/captacao/funil">Ver funil</Link>
+              </Button>
+            }
+            data={funnelBarsFromFunil(funil, resumo.porEtapa)}
+            emptyLabel="Não há funil de Captação ativo com etapas."
+          />
         </div>
       ) : null}
     </>

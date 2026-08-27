@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError } from "@/lib/api";
 import {
+  deleteCaptacao,
   fetchCaptacao,
   fetchCaptacaoResponsaveis,
   formatBrl,
@@ -15,8 +16,9 @@ import {
   type CaptacaoResponsavel,
 } from "@/lib/captacao-api";
 import { fetchFunis, type Funil } from "@/lib/funis-api";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { formatMoneyInput, maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/captacao/captacoes/$id")({
@@ -25,11 +27,14 @@ export const Route = createFileRoute("/_app/captacao/captacoes/$id")({
 
 function CaptacaoDetalhePage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const [item, setItem] = useState<Captacao | null>(null);
   const [funis, setFunis] = useState<Funil[]>([]);
   const [responsaveis, setResponsaveis] = useState<CaptacaoResponsavel[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [valorPretendido, setValorPretendido] = useState("");
   const [valorAvaliacao, setValorAvaliacao] = useState("");
 
@@ -97,6 +102,17 @@ function CaptacaoDetalhePage() {
       <PageHeader
         title="Captação"
         description={`${item.proprietario.nome} · ${item.imovel.titulo}`}
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" />
+            Excluir
+          </Button>
+        }
       />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
@@ -245,6 +261,29 @@ function CaptacaoDetalhePage() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDeleteDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Excluir captação?"
+        description="O processo sai do funil. O imóvel e o proprietário permanecem cadastrados."
+        loading={deleting}
+        onConfirm={() => {
+          setDeleting(true);
+          void deleteCaptacao(item.id)
+            .then(() => {
+              toast.success("Captação excluída.");
+              void navigate({ to: "/captacao/captacoes" });
+            })
+            .catch((err) => {
+              toast.error(
+                err instanceof ApiError
+                  ? err.message
+                  : "Não foi possível excluir.",
+              );
+            })
+            .finally(() => setDeleting(false));
+        }}
+      />
     </>
   );
 }

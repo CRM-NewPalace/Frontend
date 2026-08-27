@@ -2,10 +2,30 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
+import {
+  OverviewFunnelPanel,
+  funnelBarsFromFunil,
+} from "@/components/funnel-bar-chart";
+import { OperationSection } from "@/components/operacao-ui";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
-import { fetchUsadosResumo } from "@/lib/imoveis-usados-api";
-import { AlertTriangle, Building2, Calendar, ClipboardCheck, FileSignature, FileText, KeyRound, Loader2, Plus, Store, Users } from "lucide-react";
+import { fetchUsadosResumo, type UsadosResumo } from "@/lib/imoveis-usados-api";
+import { fetchFunilAtivo, type Funil } from "@/lib/funis-api";
+import { SOFT_BTN } from "@/lib/soft-btn";
+import { cn } from "@/lib/utils";
+import {
+  AlertTriangle,
+  Building2,
+  Calendar,
+  ClipboardCheck,
+  FileSignature,
+  FileText,
+  KeyRound,
+  Loader2,
+  Plus,
+  Store,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/imoveis-usados/visao-geral")({
@@ -13,30 +33,19 @@ export const Route = createFileRoute("/_app/imoveis-usados/visao-geral")({
 });
 
 function UsadosVisaoGeralPage() {
-  const [resumo, setResumo] = useState<{
-    disponiveis: number;
-    reservados: number;
-    vendidos: number;
-    interessados: number;
-    visitasAgendadas: number;
-    visitasRealizadas: number;
-    propostasRecebidas: number;
-    propostasEmNegociacao: number;
-    propostasAceitas: number;
-    fechamentosAndamento: number;
-    documentacaoPendente: number;
-    contratosAguardandoAssinatura: number;
-    posVendasAndamento: number;
-    posVendasPendentes: number;
-    pendenciasAtrasadas: number;
-    chavesRetiradas: number;
-    chavesPerdidas: number;
-  } | null>(null);
+  const [resumo, setResumo] = useState<UsadosResumo | null>(null);
+  const [funil, setFunil] = useState<Funil | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetchUsadosResumo()
-      .then(setResumo)
+    void Promise.all([
+      fetchUsadosResumo(),
+      fetchFunilAtivo("venda_usados").catch(() => null),
+    ])
+      .then(([nextResumo, nextFunil]) => {
+        setResumo(nextResumo);
+        setFunil(nextFunil);
+      })
       .catch((err) => {
         toast.error(
           err instanceof ApiError
@@ -51,7 +60,7 @@ function UsadosVisaoGeralPage() {
     <>
       <PageHeader
         title="Venda de Usados"
-        description="Disponibilize imóveis captados e relacione interessados."
+        description="Disponibilize imóveis captados e acompanhe a comercialização até a pós-venda."
         actions={
           <div className="flex gap-2">
             <Button asChild variant="outline" size="sm">
@@ -75,133 +84,162 @@ function UsadosVisaoGeralPage() {
           Carregando…
         </div>
       ) : resumo ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <FinanceKpiCard
-            label="Imóveis disponíveis"
-            value={resumo.disponiveis}
-            tone="emerald"
-            icon={Store}
-            format="number"
+        <div className="space-y-8">
+          <OverviewFunnelPanel
+            title="Funil de venda de usados"
+            description="Todas as etapas do funil ativo, com o volume em cada uma."
+            action={
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className={cn("h-8 text-xs", SOFT_BTN)}
+              >
+                <Link to="/imoveis-usados/funil">Ver funil</Link>
+              </Button>
+            }
+            data={funnelBarsFromFunil(funil, resumo.porEtapa ?? [])}
+            emptyLabel="Não há funil de Venda de usados ativo com etapas."
           />
-          <FinanceKpiCard
-            label="Imóveis reservados"
-            value={resumo.reservados}
-            tone="orange"
-            icon={Building2}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Imóveis vendidos"
-            value={resumo.vendidos}
-            tone="blue"
-            icon={Building2}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Interessados"
-            value={resumo.interessados}
-            tone="violet"
-            icon={Users}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Visitas agendadas"
-            value={resumo.visitasAgendadas}
-            tone="teal"
-            icon={Calendar}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Visitas realizadas"
-            value={resumo.visitasRealizadas}
-            tone="emerald"
-            icon={Calendar}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Propostas recebidas"
-            value={resumo.propostasRecebidas}
-            tone="blue"
-            icon={FileText}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Propostas em negociação"
-            value={resumo.propostasEmNegociacao}
-            tone="orange"
-            icon={FileText}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Propostas aceitas"
-            value={resumo.propostasAceitas}
-            tone="violet"
-            icon={FileText}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Fechamentos em andamento"
-            value={resumo.fechamentosAndamento}
-            tone="orange"
-            icon={ClipboardCheck}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Documentação pendente"
-            value={resumo.documentacaoPendente}
-            tone="orange"
-            icon={ClipboardCheck}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Contratos aguardando assinatura"
-            value={resumo.contratosAguardandoAssinatura}
-            tone="teal"
-            icon={FileSignature}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Vendas concluídas"
-            value={resumo.vendidos}
-            tone="emerald"
-            icon={Building2}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Pós-vendas em andamento"
-            value={resumo.posVendasAndamento}
-            tone="blue"
-            icon={ClipboardCheck}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Pós-vendas pendentes"
-            value={resumo.posVendasPendentes}
-            tone="orange"
-            icon={ClipboardCheck}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Pendências atrasadas"
-            value={resumo.pendenciasAtrasadas}
-            tone="orange"
-            icon={AlertTriangle}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Chaves retiradas"
-            value={resumo.chavesRetiradas}
-            tone="teal"
-            icon={KeyRound}
-            format="number"
-          />
-          <FinanceKpiCard
-            label="Chaves perdidas"
-            value={resumo.chavesPerdidas}
-            tone="orange"
-            icon={KeyRound}
-            format="number"
-          />
+          <OperationSection title="Estoque" description="Situação dos imóveis em venda.">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <FinanceKpiCard
+                label="Disponíveis"
+                value={resumo.disponiveis}
+                tone="emerald"
+                icon={Store}
+                format="number"
+                href="/imoveis-usados/vendas"
+              />
+              <FinanceKpiCard
+                label="Reservados"
+                value={resumo.reservados}
+                tone="orange"
+                icon={Building2}
+                format="number"
+                href="/imoveis-usados/vendas"
+              />
+              <FinanceKpiCard
+                label="Vendidos"
+                value={resumo.vendidos}
+                tone="blue"
+                icon={Building2}
+                format="number"
+                href="/imoveis-usados/vendas"
+              />
+              <FinanceKpiCard
+                label="Interessados"
+                value={resumo.interessados}
+                tone="violet"
+                icon={Users}
+                format="number"
+                href="/imoveis-usados/interessados"
+              />
+            </div>
+          </OperationSection>
+          <OperationSection title="Comercialização" description="Visitas e propostas em andamento.">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <FinanceKpiCard
+                label="Visitas agendadas"
+                value={resumo.visitasAgendadas}
+                tone="teal"
+                icon={Calendar}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Visitas realizadas"
+                value={resumo.visitasRealizadas}
+                tone="emerald"
+                icon={Calendar}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Propostas recebidas"
+                value={resumo.propostasRecebidas}
+                tone="blue"
+                icon={FileText}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Em negociação"
+                value={resumo.propostasEmNegociacao}
+                tone="orange"
+                icon={FileText}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Propostas aceitas"
+                value={resumo.propostasAceitas}
+                tone="violet"
+                icon={FileText}
+                format="number"
+              />
+            </div>
+          </OperationSection>
+          <OperationSection title="Fechamento" description="Documentação e contratos.">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <FinanceKpiCard
+                label="Fechamentos em andamento"
+                value={resumo.fechamentosAndamento}
+                tone="orange"
+                icon={ClipboardCheck}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Documentação pendente"
+                value={resumo.documentacaoPendente}
+                tone="orange"
+                icon={ClipboardCheck}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Aguardando assinatura"
+                value={resumo.contratosAguardandoAssinatura}
+                tone="teal"
+                icon={FileSignature}
+                format="number"
+              />
+            </div>
+          </OperationSection>
+          <OperationSection title="Pós-venda e chaves">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <FinanceKpiCard
+                label="Pós-vendas em andamento"
+                value={resumo.posVendasAndamento}
+                tone="blue"
+                icon={ClipboardCheck}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Pós-vendas pendentes"
+                value={resumo.posVendasPendentes}
+                tone="orange"
+                icon={ClipboardCheck}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Pendências atrasadas"
+                value={resumo.pendenciasAtrasadas}
+                tone="red"
+                icon={AlertTriangle}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Chaves retiradas"
+                value={resumo.chavesRetiradas}
+                tone="teal"
+                icon={KeyRound}
+                format="number"
+              />
+              <FinanceKpiCard
+                label="Chaves perdidas"
+                value={resumo.chavesPerdidas}
+                tone="orange"
+                icon={KeyRound}
+                format="number"
+              />
+            </div>
+          </OperationSection>
         </div>
       ) : null}
     </>

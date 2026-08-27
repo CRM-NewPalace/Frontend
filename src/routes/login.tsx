@@ -387,6 +387,15 @@ function LoginPage() {
             </form>
 
             <p className="mt-6 text-center text-sm text-text-muted">
+              Proprietário de imóvel?{" "}
+              <Link
+                to="/portal/login"
+                className="font-medium text-brand-accent transition-colors hover:text-brand-dark"
+              >
+                Acessar o portal
+              </Link>
+            </p>
+            <p className="mt-2 text-center text-sm text-text-muted">
               Ainda não tem conta?{" "}
               <a
                 href={getWhatsAppUrl(

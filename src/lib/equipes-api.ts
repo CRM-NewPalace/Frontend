@@ -9,6 +9,19 @@ export type EquipeMember = {
   status: UserStatus;
 };
 
+export type EquipeFunilResumo = {
+  id: string;
+  name: string;
+  tipo: "comercial" | "captacao" | "venda_usados";
+  ativo: boolean;
+};
+
+export type EquipeFunisMap = {
+  comercial: EquipeFunilResumo | null;
+  captacao: EquipeFunilResumo | null;
+  venda_usados: EquipeFunilResumo | null;
+};
+
 export type Equipe = {
   id: string;
   name: string;
@@ -18,6 +31,7 @@ export type Equipe = {
   updatedAt: string;
   gerente: EquipeMember;
   membros: EquipeMember[];
+  funis?: EquipeFunisMap;
   /** Leads da equipe (pool + atribuídos aos corretores). */
   leadsCount?: number;
   /** Leads no pool aguardando distribuição aos corretores. */
@@ -89,4 +103,18 @@ export async function updateEquipe(
 
 export async function deleteEquipe(id: string): Promise<void> {
   await apiFetch<{ ok: boolean }>(`/equipes/${id}`, { method: "DELETE" });
+}
+
+export async function putEquipeFunis(
+  id: string,
+  body: {
+    comercial: string | null;
+    captacao: string | null;
+    venda_usados: string | null;
+  },
+): Promise<EquipeFunisMap> {
+  return apiFetch<EquipeFunisMap>(`/equipes/${id}/funis`, {
+    method: "PUT",
+    body,
+  });
 }
