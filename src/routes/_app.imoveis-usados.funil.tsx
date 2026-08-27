@@ -95,7 +95,7 @@ function UsadosFunilPage() {
         description="Arraste os imóveis entre as etapas do funil ativo."
         actions={
           <Button asChild size="sm">
-            <Link to="/imoveis-usados/vendas">
+            <Link to="/imoveis">
               <Plus className="mr-1 h-4 w-4" />
               Imóveis
             </Link>

@@ -386,6 +386,11 @@ function VendaUsadoDetalhePage() {
       <PageHeader
         title={im.titulo}
         description={`${formatBrl(item.precoVenda)} · ${VENDA_STATUS_LABEL[item.status]} · ${item.responsavel.name}`}
+        actions={
+          <Button asChild size="sm" variant="outline">
+            <Link to="/imoveis">Voltar ao catálogo</Link>
+          </Button>
+        }
       />
       <PillTabs
         items={[...TABS]}

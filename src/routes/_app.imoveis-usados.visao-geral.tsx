@@ -70,7 +70,7 @@ function UsadosVisaoGeralPage() {
               </Link>
             </Button>
             <Button asChild size="sm">
-              <Link to="/imoveis-usados/vendas">
+              <Link to="/imoveis">
                 <Plus className="mr-1 h-4 w-4" />
                 Imóveis
               </Link>
@@ -109,7 +109,7 @@ function UsadosVisaoGeralPage() {
                 tone="emerald"
                 icon={Store}
                 format="number"
-                href="/imoveis-usados/vendas"
+                href="/imoveis"
               />
               <FinanceKpiCard
                 label="Reservados"
@@ -117,7 +117,7 @@ function UsadosVisaoGeralPage() {
                 tone="orange"
                 icon={Building2}
                 format="number"
-                href="/imoveis-usados/vendas"
+                href="/imoveis"
               />
               <FinanceKpiCard
                 label="Vendidos"
@@ -125,7 +125,7 @@ function UsadosVisaoGeralPage() {
                 tone="blue"
                 icon={Building2}
                 format="number"
-                href="/imoveis-usados/vendas"
+                href="/imoveis"
               />
               <FinanceKpiCard
                 label="Interessados"

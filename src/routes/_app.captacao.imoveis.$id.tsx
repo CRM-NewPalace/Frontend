@@ -68,7 +68,7 @@ function ImovelDetalhePage() {
           Não foi possível abrir este imóvel.
         </p>
         <Button asChild variant="outline" size="sm">
-          <Link to="/captacao/imoveis">Voltar à lista</Link>
+          <Link to="/imoveis">Voltar à lista</Link>
         </Button>
       </div>
     );
@@ -81,6 +81,9 @@ function ImovelDetalhePage() {
         description={`${CAPTACAO_IMOVEL_TIPO_LABEL[item.tipo]} · ${item.cidade || "sem cidade"}`}
         actions={
           <div className="flex gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/imoveis">Voltar ao catálogo</Link>
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -257,7 +260,7 @@ function ImovelDetalhePage() {
           void deleteCaptacaoImovel(item.id)
             .then(() => {
               toast.success("Imóvel excluído.");
-              void navigate({ to: "/captacao/imoveis" });
+              void navigate({ to: "/imoveis" });
             })
             .catch((err) => {
               toast.error(

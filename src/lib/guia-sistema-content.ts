@@ -447,7 +447,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         ],
         how: [
           "Cadastre o proprietário.",
-          "Cadastre o imóvel ligado a ele.",
+          "Em Catálogo → Imóveis, cadastre a unidade ligada a ele.",
           "Abra uma captação (origem, valores, responsável, exclusividade).",
           "Ande no funil até captar. Aí o imóvel pode ir para Venda de Usados.",
         ],
@@ -458,12 +458,12 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/captacao/captacoes",
         who: "Quem opera a captação. A ficha do proprietário também controla o Portal.",
         summary:
-          "Três listas: pessoas donas do imóvel, o cadastro físico (endereço, tipo, áreas, texto de anúncio e lazer) e o processo comercial de captação com histórico e etapa.",
+          "Proprietários e captações ficam em Captação. O cadastro físico do imóvel (endereço, tipo, áreas, anúncio e lazer) fica em Catálogo → Imóveis, na seção Captação e usados.",
         actions: [
           {
             title: "Ficha do imóvel",
             detail:
-              "Além de endereço e cômodos, cole a descrição de anúncio e marque o que a unidade e o condomínio têm (rooftop, academia, portaria 24h…). A mesma ficha aparece na venda de usados e no portal.",
+              "Em Catálogo → Imóveis, além de endereço e cômodos, cole a descrição de anúncio e marque o que a unidade e o condomínio têm. A mesma ficha aparece na venda de usados e no portal. Marque Disponibilizar na venda de usados para abrir o estoque.",
           },
           {
             title: "Nova captação",
@@ -501,7 +501,7 @@ export const GUIA_GROUPS: GuiaGroup[] = [
           {
             title: "Disponibilizar um captado",
             detail:
-              "Em Imóveis, cadastre a venda a partir de um imóvel já captado: responsável, funil e preço (sugestão da avaliação). A descrição e o lazer da ficha podem ser editados na aba Informações.",
+              "Em Catálogo → Imóveis, edite a unidade captada e marque Disponibilizar na venda de usados: responsável, funil e preço (sugestão da avaliação).",
           },
         ],
         how: [
@@ -720,12 +720,12 @@ export const GUIA_GROUPS: GuiaGroup[] = [
         href: "/imoveis",
         who: "Consulta no atendimento. Pode ser oculto do menu em Configurações se o time não usa tabela de unidades.",
         summary:
-          "Unidades do catálogo (empreendimento, tipologia, valores). Construtoras continua no menu mesmo se Imóveis estiver oculto.",
+          "Lançamentos (empreendimentos) e unidades de captação/usados no mesmo catálogo. Construtoras continua no menu mesmo se Imóveis estiver oculto.",
         actions: [
           {
-            title: "Consultar e cadastrar unidade",
+            title: "Consultar e cadastrar",
             detail:
-              "Ligue a unidade ao empreendimento. Use na conversa; proposta e documentação ainda pedem o empreendimento.",
+              "Novo imóvel pergunta se é lançamento (construtora, torres, plantas) ou captação/usado (ficha do proprietário). A busca vale para os dois tipos.",
           },
           {
             title: "Ocultar do menu",

@@ -90,7 +90,7 @@ function CaptacaoVisaoGeralPage() {
               tone="teal"
               icon={Building2}
               format="number"
-              href="/captacao/imoveis"
+              href="/imoveis"
             />
             <FinanceKpiCard
               label="Captações"
@@ -114,7 +114,7 @@ function CaptacaoVisaoGeralPage() {
               tone="emerald"
               icon={Home}
               format="number"
-              href="/imoveis-usados/vendas"
+              href="/imoveis"
             />
           </div>
           <OverviewFunnelPanel

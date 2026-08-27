@@ -110,6 +110,7 @@ import {
   assertImageFile,
   ImageUploadField,
 } from "@/components/image-upload-field";
+import { CatalogUnidadeImoveis } from "@/components/catalog-unidade-imoveis";
 import {
   Building2,
   Car,
@@ -125,6 +126,7 @@ import {
   MapPin,
   Tag,
   Layers,
+  Home,
   CircleDot,
   CalendarClock,
   FileText,
@@ -305,8 +307,10 @@ function formatPrevisao(iso: string | null | undefined) {
 
 export function ImoveisPage({
   embedded = false,
+  proprietarioId,
 }: {
   embedded?: boolean;
+  proprietarioId?: string;
 } = {}) {
   const user = getSession();
   const isAdmin = user?.role === "admin";
@@ -334,6 +338,8 @@ export function ImoveisPage({
   const [rendaAte, setRendaAte] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
   const [vista, setVista] = useImoveisVista();
+  const [kindPickOpen, setKindPickOpen] = useState(false);
+  const [unidadeCreateTick, setUnidadeCreateTick] = useState(0);
   const { show: showCampo } = useImoveisCamposVisiveis();
   const [catalogoLocalidades, setCatalogoLocalidades] = useState<Localidade[]>(
     [],
@@ -431,12 +437,18 @@ export function ImoveisPage({
   }
 
   async function openQuickCreate() {
+    setKindPickOpen(false);
     setEditingId(null);
     setForm(emptyEmpreendimentoForm());
     setFormTab("identidade");
     resetImageState();
     setQuickOpen(true);
     await loadCatalogos();
+  }
+
+  function openUnidadeCreate() {
+    setKindPickOpen(false);
+    setUnidadeCreateTick((n) => n + 1);
   }
 
   async function openEdit(item: Empreendimento) {
@@ -1044,14 +1056,16 @@ export function ImoveisPage({
           <div>
             <h2 className="text-base font-semibold">Cadastro de imóveis</h2>
             <p className="text-sm text-muted-foreground">
-              Empreendimentos desta imobiliária.
+              Lançamentos desta imobiliária.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {gerarPdfButton}
             {canCreate ? (
               <Button
-                onClick={() => void openQuickCreate()}
+                onClick={() =>
+                  embedded ? void openQuickCreate() : setKindPickOpen(true)
+                }
                 className={IMOVEIS_GRADIENT_BTN}
                 style={IMOVEIS_GRADIENT_STYLE}
               >
@@ -1064,13 +1078,13 @@ export function ImoveisPage({
       ) : (
         <PageHeader
           title="Imóveis"
-          description="Cadastre e gerencie os empreendimentos desta imobiliária."
+          description="Cadastre lançamentos e unidades de captação/usados."
           actions={
             <div className="flex flex-wrap items-center gap-2">
               {gerarPdfButton}
               {canCreate ? (
                 <Button
-                  onClick={() => void openQuickCreate()}
+                  onClick={() => setKindPickOpen(true)}
                   className={IMOVEIS_GRADIENT_BTN}
                   style={IMOVEIS_GRADIENT_STYLE}
                 >
@@ -1264,6 +1278,10 @@ export function ImoveisPage({
         </div>
       </div>
 
+      {!embedded ? (
+        <h2 className="mb-3 mt-2 text-base font-semibold">Lançamentos</h2>
+      ) : null}
+
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -1286,7 +1304,9 @@ export function ImoveisPage({
               <Button
                 className={`mt-2 ${IMOVEIS_GRADIENT_BTN}`}
                 style={IMOVEIS_GRADIENT_STYLE}
-                onClick={() => void openQuickCreate()}
+                onClick={() =>
+                  embedded ? void openQuickCreate() : setKindPickOpen(true)
+                }
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Novo imóvel
@@ -1680,6 +1700,53 @@ export function ImoveisPage({
           ))}
         </div>
       )}
+
+      {!embedded ? (
+        <CatalogUnidadeImoveis
+          search={search}
+          vista={vista}
+          proprietarioId={proprietarioId}
+          createTick={unidadeCreateTick}
+        />
+      ) : null}
+
+      <Dialog open={kindPickOpen} onOpenChange={setKindPickOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo imóvel</DialogTitle>
+            <DialogDescription>
+              Lançamentos usam o cadastro de empreendimento. Captação e usados
+              usam a ficha da unidade (endereço, cômodos, anúncio e venda).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col items-start gap-1 py-4 text-left"
+              onClick={() => void openQuickCreate()}
+            >
+              <Building2 className="h-5 w-5 text-primary" />
+              <span className="font-medium">Lançamento</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                Construtora, torres, plantas e tags.
+              </span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col items-start gap-1 py-4 text-left"
+              onClick={openUnidadeCreate}
+            >
+              <Home className="h-5 w-5 text-primary" />
+              <span className="font-medium">Captação / usado</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                Ficha, fotos, proprietário e venda de usados.
+              </span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <FormDialogShell
         open={matchesOpen}

@@ -183,7 +183,7 @@ function ProprietarioDetalhePage() {
               Excluir
             </Button>
             <Button asChild size="sm">
-              <Link to="/captacao/imoveis" search={{ proprietarioId: item.id }}>
+              <Link to="/imoveis" search={{ proprietarioId: item.id }}>
                 Cadastrar imóvel
               </Link>
             </Button>

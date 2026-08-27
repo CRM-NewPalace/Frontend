@@ -252,7 +252,6 @@ const NAV_SECTIONS: {
           { to: "/captacao/funil", label: "Funil", icon: Kanban },
           { to: "/captacao/captacoes", label: "Captações", icon: ClipboardList },
           { to: "/captacao/proprietarios", label: "Proprietários", icon: Users },
-          { to: "/captacao/imoveis", label: "Imóveis", icon: Building2 },
         ],
       },
       {
@@ -262,7 +261,6 @@ const NAV_SECTIONS: {
         children: [
           { to: "/imoveis-usados/visao-geral", label: "Visão geral", icon: LayoutDashboard },
           { to: "/imoveis-usados/funil", label: "Funil", icon: Kanban },
-          { to: "/imoveis-usados/vendas", label: "Imóveis", icon: Building2 },
           { to: "/imoveis-usados/interessados", label: "Interessados", icon: Users },
         ],
       },
