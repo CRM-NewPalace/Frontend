@@ -20,7 +20,11 @@ import {
   addNegociacaoMovimento,
   createPropostaUsado,
   createVisitaUsado,
+  createContratoUsado,
+  createDocumentoUsado,
+  concluirFechamentoUsado,
   feedbackVisitaUsado,
+  fetchFechamentoUsado,
   fetchInteressadosUsado,
   fetchMatching,
   fetchPropostasUsado,
@@ -28,10 +32,19 @@ import {
   fetchVendaUsado,
   fetchVisitasUsado,
   formatBrl,
+  iniciarFechamentoUsado,
   INTERESSE_STATUS_LABEL,
   NEGOCIACAO_ORIGEM_LABEL,
   PROPOSTA_STATUS_LABEL,
+  CONTRATO_STATUS_LABEL,
+  DOCUMENTO_CATEGORIA_LABEL,
+  DOCUMENTO_FORNECEDOR_LABEL,
+  DOCUMENTO_STATUS_LABEL,
+  FECHAMENTO_STATUS_LABEL,
   removerVinculo,
+  updateContratoUsado,
+  updateDocumentoUsado,
+  updateFechamentoUsado,
   updatePropostaUsado,
   updateVendaUsado,
   updateVinculo,
@@ -40,6 +53,11 @@ import {
   VISITA_INTERESSE_LABEL,
   VISITA_STATUS_LABEL,
   vincularInteressado,
+  type DocumentoUsado,
+  type DocumentoUsadoCategoria,
+  type DocumentoUsadoFornecedor,
+  type DocumentoUsadoStatus,
+  type FechamentoUsado,
   type InteresseUsadoStatus,
   type InteressadoUsado,
   type NegociacaoOrigem,
@@ -69,6 +87,9 @@ const TABS = [
   { id: "interessados", label: "Interessados" },
   { id: "visitas", label: "Visitas" },
   { id: "propostas", label: "Propostas" },
+  { id: "fechamento", label: "Fechamento" },
+  { id: "documentacao", label: "Documentação" },
+  { id: "contrato", label: "Contrato" },
   { id: "historico", label: "Histórico" },
 ] as const;
 
@@ -117,6 +138,7 @@ function VendaUsadoDetalhePage() {
   const [todos, setTodos] = useState<InteressadoUsado[]>([]);
   const [visitas, setVisitas] = useState<VisitaUsado[]>([]);
   const [propostas, setPropostas] = useState<PropostaUsado[]>([]);
+  const [fechamento, setFechamento] = useState<FechamentoUsado | null>(null);
   const [propostaAberta, setPropostaAberta] = useState<PropostaUsado | null>(
     null,
   );
@@ -154,11 +176,22 @@ function VendaUsadoDetalhePage() {
     origem: "corretor" as NegociacaoOrigem,
     observacoes: "",
   });
+  const [iniciarOpen, setIniciarOpen] = useState(false);
+  const [iniciarPropostaId, setIniciarPropostaId] = useState("");
+  const [docObs, setDocObs] = useState<Record<string, string>>({});
+  const [novoDoc, setNovoDoc] = useState({
+    categoria: "comprador" as DocumentoUsadoCategoria,
+    tipo: "complementar",
+    nome: "",
+    fornecedor: "comprador" as DocumentoUsadoFornecedor,
+  });
+  const [contratoObs, setContratoObs] = useState("");
 
   async function load() {
     setLoading(true);
     try {
-      const [venda, list, users, match, all, vis, props] = await Promise.all([
+      const [venda, list, users, match, all, vis, props, fecha] =
+        await Promise.all([
         fetchVendaUsado(id),
         fetchFunis("venda_usados"),
         fetchUsadosResponsaveis(),
@@ -166,6 +199,7 @@ function VendaUsadoDetalhePage() {
         fetchInteressadosUsado(),
         fetchVisitasUsado(id),
         fetchPropostasUsado(id),
+        fetchFechamentoUsado(id),
       ]);
       setItem(venda);
       setFunis(list);
@@ -174,6 +208,8 @@ function VendaUsadoDetalhePage() {
       setTodos(all);
       setVisitas(vis);
       setPropostas(props);
+      setFechamento(fecha);
+      setContratoObs(fecha?.contrato?.observacoes ?? "");
       setPreco(
         venda.precoVenda != null ? formatMoneyInput(venda.precoVenda) : "",
       );
@@ -240,6 +276,50 @@ function VendaUsadoDetalhePage() {
         err instanceof ApiError ? err.message : "Não foi possível atualizar.",
       );
     }
+  }
+
+  const aceitas = propostas.filter((p) => p.status === "aceita");
+  const fechamentoAberto =
+    fechamento &&
+    fechamento.status !== "concluido" &&
+    fechamento.status !== "cancelado";
+  const categorias: DocumentoUsadoCategoria[] = [
+    "comprador",
+    "proprietario",
+    "imovel",
+    "venda",
+  ];
+
+  async function refreshFechamento() {
+    const [fecha, venda] = await Promise.all([
+      fetchFechamentoUsado(id),
+      fetchVendaUsado(id),
+    ]);
+    setFechamento(fecha);
+    setItem(venda);
+    if (fecha?.contrato) setContratoObs(fecha.contrato.observacoes);
+  }
+
+  async function markDoc(documentoId: string, status: DocumentoUsadoStatus) {
+    try {
+      await updateDocumentoUsado(id, documentoId, {
+        status,
+        observacao: docObs[documentoId],
+      });
+      toast.success("Documento atualizado.");
+      await refreshFechamento();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível atualizar.",
+      );
+    }
+  }
+
+  function docMark(status: DocumentoUsadoStatus) {
+    if (status === "aprovado") return "✓";
+    if (status === "recusado") return "✗";
+    if (status === "pendente") return "○";
+    return "⚠";
   }
 
   if (loading || !item) {
@@ -774,6 +854,473 @@ function VendaUsadoDetalhePage() {
         </div>
       ) : null}
 
+      {tab === "fechamento" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Fechamento</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {!fechamento || fechamento.status === "cancelado" ? (
+              <p className="text-muted-foreground">
+                {fechamento?.status === "cancelado"
+                  ? "O fechamento anterior foi cancelado. Uma proposta aceita é necessária para iniciar novamente."
+                  : "A venda só é concluída pelo fechamento. Inicie após aceitar uma proposta."}
+              </p>
+            ) : (
+              <>
+                <p>
+                  Status:{" "}
+                  <span className="font-medium">
+                    {FECHAMENTO_STATUS_LABEL[fechamento.status]}
+                  </span>
+                </p>
+                <p>Comprador: {fechamento.interessado.nome}</p>
+                <p>Proposta: {formatBrl(fechamento.proposta.valor)}</p>
+                <p>Responsável: {fechamento.responsavel.name}</p>
+                <p>
+                  Documentação: {fechamento.documentacao.aprovados}/
+                  {fechamento.documentacao.obrigatorios} obrigatórios
+                  aprovados
+                </p>
+                <p>
+                  Contrato:{" "}
+                  {fechamento.contrato
+                    ? CONTRATO_STATUS_LABEL[fechamento.contrato.status]
+                    : "Não criado"}
+                </p>
+              </>
+            )}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {!fechamentoAberto ? (
+                <Button
+                  size="sm"
+                  disabled={!aceitas.length}
+                  onClick={() => {
+                    setIniciarPropostaId(aceitas[0]?.id ?? "");
+                    setIniciarOpen(true);
+                  }}
+                >
+                  Iniciar fechamento
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setTab("documentacao")}
+                  >
+                    Continuar fechamento
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      void updateFechamentoUsado(id, { status: "cancelado" })
+                        .then(() => {
+                          toast.success("Fechamento cancelado.");
+                          return refreshFechamento();
+                        })
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof ApiError
+                              ? err.message
+                              : "Não foi possível cancelar.",
+                          ),
+                        );
+                    }}
+                  >
+                    Cancelar fechamento
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      void concluirFechamentoUsado(id)
+                        .then(() => {
+                          toast.success("Venda concluída.");
+                          return load();
+                        })
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof ApiError
+                              ? err.message
+                              : "Não foi possível concluir.",
+                          ),
+                        );
+                    }}
+                  >
+                    Concluir venda
+                  </Button>
+                </>
+              )}
+            </div>
+            {!aceitas.length && !fechamentoAberto ? (
+              <p className="text-xs text-muted-foreground">
+                Aceite uma proposta na aba Propostas para iniciar o fechamento.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {tab === "documentacao" ? (
+        <div className="space-y-4">
+          {!fechamentoAberto ? (
+            <Card>
+              <CardContent className="py-6 text-sm text-muted-foreground">
+                Inicie o fechamento para controlar o checklist de documentos.
+                Os arquivos ficam fora do CRM.
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {categorias.map((cat) => {
+                const items = (fechamento?.documentos ?? []).filter(
+                  (d) => d.categoria === cat,
+                );
+                if (!items.length) return null;
+                return (
+                  <Card key={cat}>
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {DOCUMENTO_CATEGORIA_LABEL[cat]}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {items.map((d) => (
+                        <DocumentoItem
+                          key={d.id}
+                          doc={d}
+                          obs={docObs[d.id] ?? d.observacao}
+                          onObs={(value) =>
+                            setDocObs((prev) => ({ ...prev, [d.id]: value }))
+                          }
+                          mark={docMark(d.status)}
+                          onStatus={(status) => void markDoc(d.id, status)}
+                          onSaveObs={() =>
+                            void updateDocumentoUsado(id, d.id, {
+                              observacao: docObs[d.id] ?? d.observacao,
+                            })
+                              .then(() => {
+                                toast.success("Observação salva.");
+                                return refreshFechamento();
+                              })
+                              .catch((err) =>
+                                toast.error(
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : "Não foi possível salvar.",
+                                ),
+                              )
+                          }
+                        />
+                      ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Adicionar item</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-2 sm:grid-cols-2 text-sm">
+                  <select
+                    className="h-9 rounded-md border bg-background px-3"
+                    value={novoDoc.categoria}
+                    onChange={(e) =>
+                      setNovoDoc({
+                        ...novoDoc,
+                        categoria: e.target.value as DocumentoUsadoCategoria,
+                      })
+                    }
+                  >
+                    {categorias.map((c) => (
+                      <option key={c} value={c}>
+                        {DOCUMENTO_CATEGORIA_LABEL[c]}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="h-9 rounded-md border bg-background px-3"
+                    value={novoDoc.fornecedor}
+                    onChange={(e) =>
+                      setNovoDoc({
+                        ...novoDoc,
+                        fornecedor: e.target.value as DocumentoUsadoFornecedor,
+                      })
+                    }
+                  >
+                    {(
+                      Object.keys(
+                        DOCUMENTO_FORNECEDOR_LABEL,
+                      ) as DocumentoUsadoFornecedor[]
+                    ).map((k) => (
+                      <option key={k} value={k}>
+                        {DOCUMENTO_FORNECEDOR_LABEL[k]}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    placeholder="Nome do documento"
+                    value={novoDoc.nome}
+                    onChange={(e) =>
+                      setNovoDoc({ ...novoDoc, nome: e.target.value })
+                    }
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!novoDoc.nome.trim()}
+                    onClick={() => {
+                      void createDocumentoUsado(id, {
+                        categoria: novoDoc.categoria,
+                        tipo: "complementar",
+                        nome: novoDoc.nome,
+                        fornecedor: novoDoc.fornecedor,
+                        obrigatorio: false,
+                      })
+                        .then(() => {
+                          toast.success("Item adicionado.");
+                          setNovoDoc({ ...novoDoc, nome: "" });
+                          return refreshFechamento();
+                        })
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof ApiError
+                              ? err.message
+                              : "Não foi possível adicionar.",
+                          ),
+                        );
+                    }}
+                  >
+                    Adicionar
+                  </Button>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {tab === "contrato" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Contrato</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {!fechamentoAberto ? (
+              <p className="text-muted-foreground">
+                Inicie o fechamento para controlar o contrato. O arquivo do
+                contrato não é armazenado no CRM.
+              </p>
+            ) : !fechamento?.contrato ? (
+              <>
+                <p className="text-muted-foreground">
+                  Nenhum contrato criado. O CRM controla apenas número, datas e
+                  status.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    void createContratoUsado(id)
+                      .then(() => {
+                        toast.success("Contrato criado.");
+                        return refreshFechamento();
+                      })
+                      .catch((err) =>
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Não foi possível criar.",
+                        ),
+                      );
+                  }}
+                >
+                  Criar contrato
+                </Button>
+              </>
+            ) : (
+              <>
+                <p>
+                  Contrato Nº:{" "}
+                  <span className="font-medium">{fechamento.contrato.numero}</span>
+                </p>
+                <p>
+                  Status: {CONTRATO_STATUS_LABEL[fechamento.contrato.status]}
+                </p>
+                <p>
+                  Criado em:{" "}
+                  {new Date(fechamento.contrato.dataCriacao).toLocaleString(
+                    "pt-BR",
+                  )}
+                </p>
+                <p>
+                  Data de envio:{" "}
+                  {fechamento.contrato.dataEnvio
+                    ? new Date(fechamento.contrato.dataEnvio).toLocaleString(
+                        "pt-BR",
+                      )
+                    : "—"}
+                </p>
+                <p>
+                  Assinatura:{" "}
+                  {fechamento.contrato.dataAssinatura
+                    ? `${new Date(fechamento.contrato.dataAssinatura).toLocaleString("pt-BR")}${
+                        fechamento.contrato.assinadoPor
+                          ? ` · ${fechamento.contrato.assinadoPor.name}`
+                          : ""
+                      }`
+                    : "—"}
+                </p>
+                <div>
+                  <Label>Observações</Label>
+                  <Input
+                    className="mt-1"
+                    value={contratoObs}
+                    onChange={(e) => setContratoObs(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {fechamento.contrato.status === "rascunho" ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        void updateContratoUsado(id, {
+                          status: "em_elaboracao",
+                          observacoes: contratoObs,
+                        })
+                          .then(() => {
+                            toast.success("Contrato em elaboração.");
+                            return refreshFechamento();
+                          })
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível atualizar.",
+                            ),
+                          )
+                      }
+                    >
+                      Em elaboração
+                    </Button>
+                  ) : null}
+                  {fechamento.contrato.status === "em_elaboracao" ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        void updateContratoUsado(id, {
+                          status: "enviado",
+                          observacoes: contratoObs,
+                        })
+                          .then(() => {
+                            toast.success("Contrato enviado.");
+                            return refreshFechamento();
+                          })
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível enviar.",
+                            ),
+                          )
+                      }
+                    >
+                      Enviar
+                    </Button>
+                  ) : null}
+                  {fechamento.contrato.status === "enviado" ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        void updateContratoUsado(id, {
+                          status: "aguardando_assinatura",
+                        })
+                          .then(() => {
+                            toast.success("Aguardando assinatura.");
+                            return refreshFechamento();
+                          })
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível atualizar.",
+                            ),
+                          )
+                      }
+                    >
+                      Aguardando assinatura
+                    </Button>
+                  ) : null}
+                  {fechamento.contrato.status === "aguardando_assinatura" ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        void updateContratoUsado(id, { status: "assinado" })
+                          .then(() => {
+                            toast.success("Assinatura registrada.");
+                            return refreshFechamento();
+                          })
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível registrar.",
+                            ),
+                          )
+                      }
+                    >
+                      Marcar como assinado
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      void updateContratoUsado(id, { observacoes: contratoObs })
+                        .then(() => {
+                          toast.success("Contrato atualizado.");
+                          return refreshFechamento();
+                        })
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof ApiError
+                              ? err.message
+                              : "Não foi possível salvar.",
+                          ),
+                        )
+                    }
+                  >
+                    Salvar observações
+                  </Button>
+                  {fechamento.contrato.status !== "assinado" &&
+                  fechamento.contrato.status !== "cancelado" ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        void updateContratoUsado(id, { status: "cancelado" })
+                          .then(() => {
+                            toast.success("Contrato cancelado.");
+                            return refreshFechamento();
+                          })
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof ApiError
+                                ? err.message
+                                : "Não foi possível cancelar.",
+                            ),
+                          )
+                      }
+                    >
+                      Cancelar
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {tab === "historico" ? (
         <Card>
           <CardHeader>
@@ -798,6 +1345,56 @@ function VendaUsadoDetalhePage() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Dialog open={iniciarOpen} onOpenChange={setIniciarOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Iniciar fechamento</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2 text-sm">
+            <p className="text-muted-foreground">
+              Selecione a proposta aceita. O imóvel não será marcado como
+              vendido nesta etapa.
+            </p>
+            <select
+              className="h-9 rounded-md border bg-background px-3"
+              value={iniciarPropostaId}
+              onChange={(e) => setIniciarPropostaId(e.target.value)}
+            >
+              {aceitas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.interessado.nome} · {formatBrl(p.valorAtual ?? p.valor)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={!iniciarPropostaId}
+              onClick={() => {
+                void iniciarFechamentoUsado(id, {
+                  propostaId: iniciarPropostaId,
+                  responsavelId: item.responsavel.id,
+                })
+                  .then(() => {
+                    toast.success("Fechamento iniciado.");
+                    setIniciarOpen(false);
+                    return load();
+                  })
+                  .catch((err) =>
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Não foi possível iniciar.",
+                    ),
+                  );
+              }}
+            >
+              Iniciar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={visitaOpen} onOpenChange={setVisitaOpen}>
         <DialogContent>
@@ -1289,6 +1886,85 @@ function VendaUsadoDetalhePage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function DocumentoItem({
+  doc,
+  obs,
+  onObs,
+  mark,
+  onStatus,
+  onSaveObs,
+}: {
+  doc: DocumentoUsado;
+  obs: string;
+  onObs: (value: string) => void;
+  mark: string;
+  onStatus: (status: DocumentoUsadoStatus) => void;
+  onSaveObs: () => void;
+}) {
+  const data =
+    doc.dataAnalise ?? doc.dataRecebimento ?? doc.dataSolicitacao;
+  return (
+    <div className="rounded-lg border p-3 text-sm">
+      <p className="font-medium">
+        {mark} {doc.nome}
+        {doc.obrigatorio ? "" : " (opcional)"}
+      </p>
+      <p className="text-muted-foreground">
+        Responsável: {DOCUMENTO_FORNECEDOR_LABEL[doc.fornecedor]} ·{" "}
+        {DOCUMENTO_STATUS_LABEL[doc.status]}
+        {doc.analista ? ` · Análise: ${doc.analista.name}` : ""}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {new Date(data).toLocaleString("pt-BR")}
+      </p>
+      <Input
+        className="mt-2"
+        placeholder="Observação"
+        value={obs}
+        onChange={(e) => onObs(e.target.value)}
+      />
+      <div className="mt-2 flex flex-wrap gap-1">
+        {doc.status === "pendente" ? (
+          <Button size="sm" variant="outline" onClick={() => onStatus("recebido")}>
+            Marcar como recebido
+          </Button>
+        ) : null}
+        {doc.status === "recebido" || doc.status === "recusado" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onStatus(doc.status === "recusado" ? "recebido" : "em_analise")}
+          >
+            {doc.status === "recusado" ? "Recebido novamente" : "Enviar para análise"}
+          </Button>
+        ) : null}
+        {doc.status === "em_analise" ? (
+          <>
+            <Button size="sm" variant="outline" onClick={() => onStatus("aprovado")}>
+              Aprovar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onStatus("recusado")}>
+              Recusar
+            </Button>
+          </>
+        ) : null}
+        {doc.status === "aprovado" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onStatus("em_analise")}
+          >
+            Reanalisar
+          </Button>
+        ) : null}
+        <Button size="sm" variant="ghost" onClick={onSaveObs}>
+          Salvar observação
+        </Button>
+      </div>
+    </div>
   );
 }
 

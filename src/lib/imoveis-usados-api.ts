@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import type { CaptacaoImovelTipo, Imovel } from "@/lib/captacao-api";
 import { formatBrl } from "@/lib/captacao-api";
 
@@ -111,6 +111,9 @@ export function fetchUsadosResumo() {
     propostasRecebidas: number;
     propostasEmNegociacao: number;
     propostasAceitas: number;
+    fechamentosAndamento: number;
+    documentacaoPendente: number;
+    contratosAguardandoAssinatura: number;
   }>("/imoveis-usados/resumo");
 }
 
@@ -351,6 +354,205 @@ export function addNegociacaoMovimento(
   return apiFetch<PropostaUsado>(
     `/imoveis-usados/${vendaId}/propostas/${propostaId}/negociacao`,
     { method: "POST", body },
+  );
+}
+
+export type FechamentoUsadoStatus =
+  | "iniciado"
+  | "documentacao_pendente"
+  | "documentacao_em_analise"
+  | "contrato_em_elaboracao"
+  | "contrato_enviado"
+  | "aguardando_assinatura"
+  | "concluido"
+  | "cancelado";
+
+export type DocumentoUsadoStatus =
+  | "pendente"
+  | "recebido"
+  | "em_analise"
+  | "aprovado"
+  | "recusado";
+
+export type DocumentoUsadoCategoria =
+  | "comprador"
+  | "proprietario"
+  | "imovel"
+  | "venda";
+
+export type DocumentoUsadoFornecedor =
+  | "comprador"
+  | "proprietario"
+  | "imobiliaria";
+
+export type ContratoUsadoStatus =
+  | "rascunho"
+  | "em_elaboracao"
+  | "enviado"
+  | "aguardando_assinatura"
+  | "assinado"
+  | "cancelado";
+
+export const FECHAMENTO_STATUS_LABEL: Record<FechamentoUsadoStatus, string> = {
+  iniciado: "Iniciado",
+  documentacao_pendente: "Documentação pendente",
+  documentacao_em_analise: "Documentação em análise",
+  contrato_em_elaboracao: "Contrato em elaboração",
+  contrato_enviado: "Contrato enviado",
+  aguardando_assinatura: "Aguardando assinatura",
+  concluido: "Concluído",
+  cancelado: "Cancelado",
+};
+
+export const DOCUMENTO_STATUS_LABEL: Record<DocumentoUsadoStatus, string> = {
+  pendente: "Pendente",
+  recebido: "Recebido",
+  em_analise: "Em análise",
+  aprovado: "Aprovado",
+  recusado: "Recusado",
+};
+
+export const DOCUMENTO_CATEGORIA_LABEL: Record<DocumentoUsadoCategoria, string> =
+  {
+    comprador: "Comprador",
+    proprietario: "Proprietário",
+    imovel: "Imóvel",
+    venda: "Venda",
+  };
+
+export const DOCUMENTO_FORNECEDOR_LABEL: Record<
+  DocumentoUsadoFornecedor,
+  string
+> = {
+  comprador: "Comprador",
+  proprietario: "Proprietário",
+  imobiliaria: "Imobiliária",
+};
+
+export const CONTRATO_STATUS_LABEL: Record<ContratoUsadoStatus, string> = {
+  rascunho: "Rascunho",
+  em_elaboracao: "Em elaboração",
+  enviado: "Enviado",
+  aguardando_assinatura: "Aguardando assinatura",
+  assinado: "Assinado",
+  cancelado: "Cancelado",
+};
+
+export type DocumentoUsado = {
+  id: string;
+  categoria: DocumentoUsadoCategoria;
+  tipo: string;
+  nome: string;
+  obrigatorio: boolean;
+  fornecedor: DocumentoUsadoFornecedor;
+  status: DocumentoUsadoStatus;
+  observacao: string;
+  dataSolicitacao: string;
+  dataRecebimento: string | null;
+  dataAnalise: string | null;
+  analista?: { id: string; name: string } | null;
+};
+
+export type ContratoUsado = {
+  id: string;
+  numero: string;
+  status: ContratoUsadoStatus;
+  observacoes: string;
+  dataCriacao: string;
+  dataEnvio: string | null;
+  dataAssinatura: string | null;
+  assinadoPor?: { id: string; name: string } | null;
+};
+
+export type FechamentoUsado = {
+  id: string;
+  status: FechamentoUsadoStatus;
+  observacoes: string;
+  propostaId: string;
+  interessado: { id: string; nome: string };
+  responsavel: { id: string; name: string };
+  proposta: { id: string; status: string; valor: number | null };
+  documentos: DocumentoUsado[];
+  contrato: ContratoUsado | null;
+  documentacao: { aprovados: number; obrigatorios: number; total: number };
+};
+
+export async function fetchFechamentoUsado(vendaId: string) {
+  try {
+    return await apiFetch<FechamentoUsado>(
+      `/imoveis-usados/${vendaId}/fechamento`,
+    );
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export function iniciarFechamentoUsado(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<FechamentoUsado>(`/imoveis-usados/${vendaId}/fechamento`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function updateFechamentoUsado(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<FechamentoUsado>(`/imoveis-usados/${vendaId}/fechamento`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function concluirFechamentoUsado(vendaId: string) {
+  return apiFetch<FechamentoUsado>(
+    `/imoveis-usados/${vendaId}/fechamento/concluir`,
+    { method: "POST" },
+  );
+}
+
+export function createDocumentoUsado(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<DocumentoUsado>(
+    `/imoveis-usados/${vendaId}/fechamento/documentos`,
+    { method: "POST", body },
+  );
+}
+
+export function updateDocumentoUsado(
+  vendaId: string,
+  documentoId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<DocumentoUsado>(
+    `/imoveis-usados/${vendaId}/fechamento/documentos/${documentoId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function createContratoUsado(
+  vendaId: string,
+  body: Record<string, unknown> = {},
+) {
+  return apiFetch<ContratoUsado>(
+    `/imoveis-usados/${vendaId}/fechamento/contrato`,
+    { method: "POST", body },
+  );
+}
+
+export function updateContratoUsado(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<ContratoUsado>(
+    `/imoveis-usados/${vendaId}/fechamento/contrato`,
+    { method: "PATCH", body },
   );
 }
 

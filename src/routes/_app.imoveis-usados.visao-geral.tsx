@@ -5,7 +5,7 @@ import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { fetchUsadosResumo } from "@/lib/imoveis-usados-api";
-import { Building2, Calendar, FileText, Loader2, Plus, Store, Users } from "lucide-react";
+import { Building2, Calendar, ClipboardCheck, FileSignature, FileText, Loader2, Plus, Store, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/imoveis-usados/visao-geral")({
@@ -23,6 +23,9 @@ function UsadosVisaoGeralPage() {
     propostasRecebidas: number;
     propostasEmNegociacao: number;
     propostasAceitas: number;
+    fechamentosAndamento: number;
+    documentacaoPendente: number;
+    contratosAguardandoAssinatura: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -129,6 +132,34 @@ function UsadosVisaoGeralPage() {
             value={resumo.propostasAceitas}
             tone="violet"
             icon={FileText}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Fechamentos em andamento"
+            value={resumo.fechamentosAndamento}
+            tone="orange"
+            icon={ClipboardCheck}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Documentação pendente"
+            value={resumo.documentacaoPendente}
+            tone="orange"
+            icon={ClipboardCheck}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Contratos aguardando assinatura"
+            value={resumo.contratosAguardandoAssinatura}
+            tone="teal"
+            icon={FileSignature}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Vendas concluídas"
+            value={resumo.vendidos}
+            tone="emerald"
+            icon={Building2}
             format="number"
           />
         </div>
