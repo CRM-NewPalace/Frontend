@@ -1,31 +1,55 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ApiError } from "@/lib/api";
-import {
-  CAPTACAO_IMOVEL_TIPO_LABEL,
-} from "@/lib/captacao-api";
+import { CAPTACAO_IMOVEL_TIPO_LABEL } from "@/lib/captacao-api";
 import { fetchFunis, type Funil } from "@/lib/funis-api";
+import { cn } from "@/lib/utils";
 import {
+  addNegociacaoMovimento,
+  createPropostaUsado,
+  createVisitaUsado,
+  feedbackVisitaUsado,
   fetchInteressadosUsado,
   fetchMatching,
+  fetchPropostasUsado,
   fetchUsadosResponsaveis,
   fetchVendaUsado,
+  fetchVisitasUsado,
   formatBrl,
   INTERESSE_STATUS_LABEL,
+  NEGOCIACAO_ORIGEM_LABEL,
+  PROPOSTA_STATUS_LABEL,
   removerVinculo,
+  updatePropostaUsado,
   updateVendaUsado,
   updateVinculo,
+  updateVisitaUsado,
   VENDA_STATUS_LABEL,
+  VISITA_INTERESSE_LABEL,
+  VISITA_STATUS_LABEL,
   vincularInteressado,
   type InteresseUsadoStatus,
   type InteressadoUsado,
+  type NegociacaoOrigem,
+  type PropostaUsado,
+  type PropostaUsadoStatus,
   type VendaUsado,
   type VendaUsadoStatus,
+  type VisitaUsado,
+  type VisitaUsadoInteresse,
+  type VisitaUsadoStatus,
 } from "@/lib/imoveis-usados-api";
 import {
   formatMoneyInput,
@@ -38,6 +62,17 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_app/imoveis-usados/vendas/$id")({
   component: VendaUsadoDetalhePage,
 });
+
+const TABS = [
+  { id: "informacoes", label: "Informações" },
+  { id: "comercializacao", label: "Comercialização" },
+  { id: "interessados", label: "Interessados" },
+  { id: "visitas", label: "Visitas" },
+  { id: "propostas", label: "Propostas" },
+  { id: "historico", label: "Histórico" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 const STATUS_OPTS: VendaUsadoStatus[] = [
   "disponivel",
@@ -54,8 +89,25 @@ const INTERESSE_OPTS: InteresseUsadoStatus[] = [
   "descartado",
 ];
 
+const PROPOSTA_OPTS: PropostaUsadoStatus[] = [
+  "rascunho",
+  "enviada",
+  "em_analise",
+  "aceita",
+  "recusada",
+  "cancelada",
+];
+
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function VendaUsadoDetalhePage() {
   const { id } = Route.useParams();
+  const [tab, setTab] = useState<TabId>("informacoes");
   const [item, setItem] = useState<VendaUsado | null>(null);
   const [funis, setFunis] = useState<Funil[]>([]);
   const [responsaveis, setResponsaveis] = useState<
@@ -63,26 +115,65 @@ function VendaUsadoDetalhePage() {
   >([]);
   const [matching, setMatching] = useState<InteressadoUsado[]>([]);
   const [todos, setTodos] = useState<InteressadoUsado[]>([]);
+  const [visitas, setVisitas] = useState<VisitaUsado[]>([]);
+  const [propostas, setPropostas] = useState<PropostaUsado[]>([]);
+  const [propostaAberta, setPropostaAberta] = useState<PropostaUsado | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preco, setPreco] = useState("");
   const [addId, setAddId] = useState("");
+  const [visitaOpen, setVisitaOpen] = useState(false);
+  const [propostaOpen, setPropostaOpen] = useState(false);
+  const [feedbackId, setFeedbackId] = useState<string | null>(null);
+  const [visitaForm, setVisitaForm] = useState({
+    interessadoId: "",
+    responsavelId: "",
+    dataHora: "",
+    observacoes: "",
+  });
+  const [propostaForm, setPropostaForm] = useState({
+    interessadoId: "",
+    responsavelId: "",
+    valor: "",
+    entrada: "",
+    valorFinanciamento: "",
+    observacoes: "",
+  });
+  const [feedbackForm, setFeedbackForm] = useState({
+    avaliacao: "4",
+    interesse: "interessado" as VisitaUsadoInteresse,
+    comentarios: "",
+    observacoes: "",
+  });
+  const [contraForm, setContraForm] = useState({
+    valor: "",
+    entrada: "",
+    valorFinanciamento: "",
+    origem: "corretor" as NegociacaoOrigem,
+    observacoes: "",
+  });
 
   async function load() {
     setLoading(true);
     try {
-      const [venda, list, users, match, all] = await Promise.all([
+      const [venda, list, users, match, all, vis, props] = await Promise.all([
         fetchVendaUsado(id),
         fetchFunis("venda_usados"),
         fetchUsadosResponsaveis(),
         fetchMatching(id),
         fetchInteressadosUsado(),
+        fetchVisitasUsado(id),
+        fetchPropostasUsado(id),
       ]);
       setItem(venda);
       setFunis(list);
       setResponsaveis(users);
       setMatching(match);
       setTodos(all);
+      setVisitas(vis);
+      setPropostas(props);
       setPreco(
         venda.precoVenda != null ? formatMoneyInput(venda.precoVenda) : "",
       );
@@ -105,6 +196,22 @@ function VendaUsadoDetalhePage() {
     [];
   const linkedIds = new Set((item?.vinculos ?? []).map((v) => v.interessado.id));
   const disponiveis = todos.filter((i) => !linkedIds.has(i.id));
+  const vinculados = item?.vinculos ?? [];
+
+  const proximas = useMemo(
+    () =>
+      visitas.filter(
+        (v) => v.status === "agendada" || v.status === "confirmada",
+      ),
+    [visitas],
+  );
+  const historicoVisitas = useMemo(
+    () =>
+      visitas.filter(
+        (v) => v.status !== "agendada" && v.status !== "confirmada",
+      ),
+    [visitas],
+  );
 
   async function patch(body: Record<string, unknown>, ok: string) {
     setSaving(true);
@@ -118,6 +225,20 @@ function VendaUsadoDetalhePage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function setVisitaStatus(visitaId: string, status: VisitaUsadoStatus) {
+    try {
+      const updated = await updateVisitaUsado(id, visitaId, { status });
+      setVisitas((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
+      toast.success("Visita atualizada.");
+      const venda = await fetchVendaUsado(id);
+      setItem(venda);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Não foi possível atualizar.",
+      );
     }
   }
 
@@ -135,154 +256,173 @@ function VendaUsadoDetalhePage() {
   return (
     <>
       <PageHeader
-        title="Venda de usado"
-        description={`${im.titulo} · ${im.proprietario?.nome ?? ""}`}
+        title={im.titulo}
+        description={`${formatBrl(item.precoVenda)} · ${VENDA_STATUS_LABEL[item.status]} · ${item.responsavel.name}`}
       />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <nav className="mb-4 flex flex-wrap gap-1 rounded-xl border bg-card p-1">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-sm",
+              tab === t.id
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "informacoes" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Informações</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>Tipo: {CAPTACAO_IMOVEL_TIPO_LABEL[im.tipo]}</p>
+            <p>
+              Endereço: {im.logradouro}, {im.numero}
+              {im.complemento ? ` — ${im.complemento}` : ""}
+            </p>
+            <p>
+              {im.bairro} · {im.cidade}/{im.estado}
+            </p>
+            <p>Área: {im.area ?? "—"} m²</p>
+            <p>
+              Quartos: {im.quartos ?? "—"} · Banheiros: {im.banheiros ?? "—"} ·
+              Vagas: {im.vagas ?? "—"}
+            </p>
+            <p>Preço: {formatBrl(item.precoVenda)}</p>
+            <p>
+              Proprietário:{" "}
+              {im.proprietarioId ? (
+                <Link
+                  to="/captacao/proprietarios/$id"
+                  params={{ id: im.proprietarioId }}
+                  className="hover:underline"
+                >
+                  {im.proprietario?.nome ?? "—"}
+                </Link>
+              ) : (
+                im.proprietario?.nome ?? "—"
+              )}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {tab === "comercializacao" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Comercialização</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm max-w-lg">
+            <div>
+              <Label>Status</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={item.status}
+                disabled={saving}
+                onChange={(e) =>
+                  void patch({ status: e.target.value }, "Status atualizado.")
+                }
+              >
+                {STATUS_OPTS.map((s) => (
+                  <option key={s} value={s}>
+                    {VENDA_STATUS_LABEL[s]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Responsável</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={item.responsavel.id}
+                disabled={saving}
+                onChange={(e) =>
+                  void patch(
+                    { responsavelId: e.target.value },
+                    "Responsável atualizado.",
+                  )
+                }
+              >
+                {responsaveis.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Preço de venda</Label>
+              <Input
+                inputMode="numeric"
+                placeholder="0,00"
+                value={preco}
+                onChange={(e) => setPreco(maskMoneyInput(e.target.value))}
+              />
+              <Button
+                className="mt-2"
+                size="sm"
+                disabled={saving}
+                onClick={() =>
+                  void patch(
+                    { precoVenda: parseOptionalMoneyInput(preco) },
+                    "Preço atualizado.",
+                  )
+                }
+              >
+                Salvar preço
+              </Button>
+            </div>
+            <p>Funil: {item.funil.name}</p>
+            <div>
+              <Label>Etapa atual</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={item.funilEtapa.id}
+                disabled={saving}
+                onChange={(e) =>
+                  void patch(
+                    { funilEtapaId: e.target.value },
+                    "Etapa atualizada.",
+                  )
+                }
+              >
+                {etapas.map((etapa) => (
+                  <option key={etapa.id} value={etapa.id}>
+                    {etapa.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-muted-foreground">
+              Disponibilizado em{" "}
+              {new Date(item.dataDisponibilizacao).toLocaleDateString("pt-BR")}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {tab === "interessados" ? (
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Informações</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p>Tipo: {CAPTACAO_IMOVEL_TIPO_LABEL[im.tipo]}</p>
-              <p>
-                Endereço: {im.logradouro}, {im.numero}
-                {im.complemento ? ` — ${im.complemento}` : ""}
-              </p>
-              <p>
-                {im.bairro} · {im.cidade}/{im.estado}
-              </p>
-              <p>Área: {im.area ?? "—"} m²</p>
-              <p>
-                Quartos: {im.quartos ?? "—"} · Banheiros: {im.banheiros ?? "—"} ·
-                Vagas: {im.vagas ?? "—"}
-              </p>
-              <p>Preço de venda: {formatBrl(item.precoVenda)}</p>
-              <p>
-                Proprietário:{" "}
-                {im.proprietarioId ? (
-                  <Link
-                    to="/captacao/proprietarios/$id"
-                    params={{ id: im.proprietarioId }}
-                    className="hover:underline"
-                  >
-                    {im.proprietario?.nome ?? "—"}
-                  </Link>
-                ) : (
-                  im.proprietario?.nome ?? "—"
-                )}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Comercialização</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <Label>Status</Label>
-                <select
-                  className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={item.status}
-                  disabled={saving}
-                  onChange={(e) =>
-                    void patch(
-                      { status: e.target.value },
-                      "Status atualizado.",
-                    )
-                  }
-                >
-                  {STATUS_OPTS.map((s) => (
-                    <option key={s} value={s}>
-                      {VENDA_STATUS_LABEL[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Responsável</Label>
-                <select
-                  className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={item.responsavel.id}
-                  disabled={saving}
-                  onChange={(e) =>
-                    void patch(
-                      { responsavelId: e.target.value },
-                      "Responsável atualizado.",
-                    )
-                  }
-                >
-                  {responsaveis.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Preço de venda</Label>
-                <Input
-                  inputMode="numeric"
-                  placeholder="0,00"
-                  value={preco}
-                  onChange={(e) => setPreco(maskMoneyInput(e.target.value))}
-                />
-                <Button
-                  className="mt-2"
-                  size="sm"
-                  disabled={saving}
-                  onClick={() =>
-                    void patch(
-                      { precoVenda: parseOptionalMoneyInput(preco) },
-                      "Preço atualizado.",
-                    )
-                  }
-                >
-                  Salvar preço
-                </Button>
-              </div>
-              <p>Funil: {item.funil.name}</p>
-              <div>
-                <Label>Etapa atual</Label>
-                <select
-                  className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={item.funilEtapa.id}
-                  disabled={saving}
-                  onChange={(e) =>
-                    void patch(
-                      { funilEtapaId: e.target.value },
-                      "Etapa atualizada.",
-                    )
-                  }
-                >
-                  {etapas.map((etapa) => (
-                    <option key={etapa.id} value={etapa.id}>
-                      {etapa.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p className="text-muted-foreground">
-                Disponibilizado em{" "}
-                {new Date(item.dataDisponibilizacao).toLocaleDateString("pt-BR")}
-              </p>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Interessados</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {(item.vinculos ?? []).length === 0 ? (
+              {vinculados.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum interessado vinculado.
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {item.vinculos!.map((v) => (
+                  {vinculados.map((v) => (
                     <li key={v.id} className="rounded-lg border p-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium">{v.interessado.nome}</span>
@@ -401,7 +541,6 @@ function VendaUsadoDetalhePage() {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Possíveis interessados</CardTitle>
@@ -409,8 +548,7 @@ function VendaUsadoDetalhePage() {
             <CardContent>
               {matching.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nenhum perfil compatível ainda (tipo, cidade, faixa de preço e
-                  características).
+                  Nenhum perfil compatível ainda.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -423,9 +561,7 @@ function VendaUsadoDetalhePage() {
                         <p className="font-medium">{i.nome}</p>
                         <p className="text-muted-foreground">
                           {formatBrl(i.precoMin)} — {formatBrl(i.precoMax)}
-                          {i.quartosMin != null ? ` · ${i.quartosMin} quartos` : ""}
                           {i.cidade ? ` · ${i.cidade}` : ""}
-                          {i.bairros ? ` · ${i.bairros}` : ""}
                         </p>
                       </div>
                       <Button
@@ -456,7 +592,189 @@ function VendaUsadoDetalhePage() {
             </CardContent>
           </Card>
         </div>
+      ) : null}
 
+      {tab === "visitas" ? (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                setVisitaForm({
+                  interessadoId: vinculados[0]?.interessado.id ?? todos[0]?.id ?? "",
+                  responsavelId: item.responsavel.id,
+                  dataHora: toLocalInput(new Date().toISOString()),
+                  observacoes: "",
+                });
+                setVisitaOpen(true);
+              }}
+            >
+              Agendar visita
+            </Button>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Próximas visitas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {proximas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma visita agendada.</p>
+              ) : (
+                proximas.map((v) => (
+                  <VisitaCard
+                    key={v.id}
+                    visita={v}
+                    onStatus={(s) => void setVisitaStatus(v.id, s)}
+                    onFeedback={() => {
+                      setFeedbackId(v.id);
+                      setFeedbackForm({
+                        avaliacao: "4",
+                        interesse: "interessado",
+                        comentarios: "",
+                        observacoes: "",
+                      });
+                    }}
+                  />
+                ))
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Histórico</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {historicoVisitas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sem visitas encerradas.</p>
+              ) : (
+                historicoVisitas.map((v) => (
+                  <VisitaCard
+                    key={v.id}
+                    visita={v}
+                    onStatus={(s) => void setVisitaStatus(v.id, s)}
+                    onFeedback={() => {
+                      setFeedbackId(v.id);
+                      setFeedbackForm({
+                        avaliacao: String(v.feedbackAvaliacao ?? 4),
+                        interesse: v.feedbackInteresse ?? "interessado",
+                        comentarios: v.feedbackComentarios,
+                        observacoes: v.feedbackObservacoes,
+                      });
+                    }}
+                  />
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {tab === "propostas" ? (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                setPropostaForm({
+                  interessadoId: vinculados[0]?.interessado.id ?? "",
+                  responsavelId: item.responsavel.id,
+                  valor: item.precoVenda != null ? formatMoneyInput(item.precoVenda) : "",
+                  entrada: "",
+                  valorFinanciamento: "",
+                  observacoes: "",
+                });
+                setPropostaOpen(true);
+              }}
+            >
+              Nova proposta
+            </Button>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Propostas recebidas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {propostas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma proposta ainda.</p>
+              ) : (
+                propostas.map((p) => (
+                  <div key={p.id} className="rounded-lg border p-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{p.interessado.nome}</p>
+                        <p>
+                          {formatBrl(p.valorAtual ?? p.valor)} ·{" "}
+                          {PROPOSTA_STATUS_LABEL[p.status]}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <select
+                          className="h-8 rounded-md border bg-background px-2 text-xs"
+                          value={p.status}
+                          onChange={(e) => {
+                            void updatePropostaUsado(id, p.id, {
+                              status: e.target.value,
+                            })
+                              .then((updated) => {
+                                setPropostas((prev) =>
+                                  prev.map((x) =>
+                                    x.id === updated.id ? updated : x,
+                                  ),
+                                );
+                                toast.success("Status da proposta atualizado.");
+                                return fetchVendaUsado(id).then(setItem);
+                              })
+                              .catch((err) =>
+                                toast.error(
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : "Não foi possível atualizar.",
+                                ),
+                              );
+                          }}
+                        >
+                          {PROPOSTA_OPTS.map((s) => (
+                            <option key={s} value={s}>
+                              {PROPOSTA_STATUS_LABEL[s]}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setPropostaAberta(p);
+                            setContraForm({
+                              valor:
+                                p.valorAtual != null
+                                  ? formatMoneyInput(p.valorAtual)
+                                  : formatMoneyInput(p.valor),
+                              entrada:
+                                p.entrada != null
+                                  ? formatMoneyInput(p.entrada)
+                                  : "",
+                              valorFinanciamento:
+                                p.valorFinanciamento != null
+                                  ? formatMoneyInput(p.valorFinanciamento)
+                                  : "",
+                              origem: "corretor",
+                              observacoes: "",
+                            });
+                          }}
+                        >
+                          Abrir negociação
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {tab === "historico" ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Histórico</CardTitle>
@@ -479,7 +797,553 @@ function VendaUsadoDetalhePage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      ) : null}
+
+      <Dialog open={visitaOpen} onOpenChange={setVisitaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agendar visita</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div>
+              <Label>Interessado</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={visitaForm.interessadoId}
+                onChange={(e) =>
+                  setVisitaForm({ ...visitaForm, interessadoId: e.target.value })
+                }
+              >
+                <option value="">Selecione</option>
+                {vinculados.map((v) => (
+                  <option key={v.interessado.id} value={v.interessado.id}>
+                    {v.interessado.nome}
+                  </option>
+                ))}
+                {todos
+                  .filter((i) => !linkedIds.has(i.id))
+                  .map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.nome} (vincular)
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div>
+              <Label>Responsável</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={visitaForm.responsavelId}
+                onChange={(e) =>
+                  setVisitaForm({ ...visitaForm, responsavelId: e.target.value })
+                }
+              >
+                {responsaveis.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Data e horário</Label>
+              <Input
+                type="datetime-local"
+                value={visitaForm.dataHora}
+                onChange={(e) =>
+                  setVisitaForm({ ...visitaForm, dataHora: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Input
+                value={visitaForm.observacoes}
+                onChange={(e) =>
+                  setVisitaForm({ ...visitaForm, observacoes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={saving || !visitaForm.interessadoId}
+              onClick={() => {
+                setSaving(true);
+                void createVisitaUsado(id, {
+                  interessadoId: visitaForm.interessadoId,
+                  responsavelId: visitaForm.responsavelId,
+                  dataHora: new Date(visitaForm.dataHora).toISOString(),
+                  observacoes: visitaForm.observacoes,
+                })
+                  .then(() => {
+                    toast.success("Visita agendada.");
+                    setVisitaOpen(false);
+                    return load();
+                  })
+                  .catch((err) =>
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Não foi possível agendar.",
+                    ),
+                  )
+                  .finally(() => setSaving(false));
+              }}
+            >
+              Agendar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(feedbackId)} onOpenChange={() => setFeedbackId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Feedback da visita</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div>
+              <Label>Avaliação</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={feedbackForm.avaliacao}
+                onChange={(e) =>
+                  setFeedbackForm({ ...feedbackForm, avaliacao: e.target.value })
+                }
+              >
+                <option value="1">1 — Muito ruim</option>
+                <option value="2">2 — Ruim</option>
+                <option value="3">3 — Regular</option>
+                <option value="4">4 — Boa</option>
+                <option value="5">5 — Excelente</option>
+              </select>
+            </div>
+            <div>
+              <Label>Interesse</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={feedbackForm.interesse}
+                onChange={(e) =>
+                  setFeedbackForm({
+                    ...feedbackForm,
+                    interesse: e.target.value as VisitaUsadoInteresse,
+                  })
+                }
+              >
+                {(Object.keys(VISITA_INTERESSE_LABEL) as VisitaUsadoInteresse[]).map(
+                  (k) => (
+                    <option key={k} value={k}>
+                      {VISITA_INTERESSE_LABEL[k]}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+            <div>
+              <Label>Comentários</Label>
+              <Input
+                value={feedbackForm.comentarios}
+                onChange={(e) =>
+                  setFeedbackForm({
+                    ...feedbackForm,
+                    comentarios: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Input
+                value={feedbackForm.observacoes}
+                onChange={(e) =>
+                  setFeedbackForm({
+                    ...feedbackForm,
+                    observacoes: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={!feedbackId}
+              onClick={() => {
+                if (!feedbackId) return;
+                void feedbackVisitaUsado(id, feedbackId, {
+                  avaliacao: Number(feedbackForm.avaliacao),
+                  interesse: feedbackForm.interesse,
+                  comentarios: feedbackForm.comentarios,
+                  observacoes: feedbackForm.observacoes,
+                })
+                  .then((updated) => {
+                    setVisitas((prev) =>
+                      prev.map((v) => (v.id === updated.id ? updated : v)),
+                    );
+                    toast.success("Feedback registrado.");
+                    setFeedbackId(null);
+                    return fetchVendaUsado(id).then(setItem);
+                  })
+                  .catch((err) =>
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Não foi possível registrar o feedback.",
+                    ),
+                  );
+              }}
+            >
+              Salvar feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={propostaOpen} onOpenChange={setPropostaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova proposta</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div>
+              <Label>Interessado</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={propostaForm.interessadoId}
+                onChange={(e) =>
+                  setPropostaForm({
+                    ...propostaForm,
+                    interessadoId: e.target.value,
+                  })
+                }
+              >
+                <option value="">Selecione</option>
+                {vinculados.map((v) => (
+                  <option key={v.interessado.id} value={v.interessado.id}>
+                    {v.interessado.nome}
+                  </option>
+                ))}
+                {todos
+                  .filter((i) => !linkedIds.has(i.id))
+                  .map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.nome} (vincular)
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div>
+              <Label>Responsável</Label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={propostaForm.responsavelId}
+                onChange={(e) =>
+                  setPropostaForm({
+                    ...propostaForm,
+                    responsavelId: e.target.value,
+                  })
+                }
+              >
+                {responsaveis.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Valor</Label>
+              <Input
+                inputMode="numeric"
+                value={propostaForm.valor}
+                onChange={(e) =>
+                  setPropostaForm({
+                    ...propostaForm,
+                    valor: maskMoneyInput(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Entrada</Label>
+                <Input
+                  inputMode="numeric"
+                  value={propostaForm.entrada}
+                  onChange={(e) =>
+                    setPropostaForm({
+                      ...propostaForm,
+                      entrada: maskMoneyInput(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Financiamento</Label>
+                <Input
+                  inputMode="numeric"
+                  value={propostaForm.valorFinanciamento}
+                  onChange={(e) =>
+                    setPropostaForm({
+                      ...propostaForm,
+                      valorFinanciamento: maskMoneyInput(e.target.value),
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Input
+                value={propostaForm.observacoes}
+                onChange={(e) =>
+                  setPropostaForm({
+                    ...propostaForm,
+                    observacoes: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={!propostaForm.interessadoId}
+              onClick={() => {
+                const valor = parseOptionalMoneyInput(propostaForm.valor);
+                if (valor == null || valor <= 0) {
+                  toast.error("Informe um valor maior que zero.");
+                  return;
+                }
+                void createPropostaUsado(id, {
+                  interessadoId: propostaForm.interessadoId,
+                  responsavelId: propostaForm.responsavelId,
+                  valor,
+                  entrada: parseOptionalMoneyInput(propostaForm.entrada) ?? undefined,
+                  valorFinanciamento:
+                    parseOptionalMoneyInput(propostaForm.valorFinanciamento) ??
+                    undefined,
+                  observacoes: propostaForm.observacoes,
+                })
+                  .then(() => {
+                    toast.success("Proposta criada.");
+                    setPropostaOpen(false);
+                    return load();
+                  })
+                  .catch((err) =>
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Não foi possível criar a proposta.",
+                    ),
+                  );
+              }}
+            >
+              Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(propostaAberta)}
+        onOpenChange={() => setPropostaAberta(null)}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Negociação</DialogTitle>
+          </DialogHeader>
+          {propostaAberta ? (
+            <div className="space-y-3 text-sm">
+              <p>Interessado: {propostaAberta.interessado.nome}</p>
+              <p>Responsável: {propostaAberta.responsavel.name}</p>
+              <p>Valor original: {formatBrl(propostaAberta.valor)}</p>
+              <p>Atual: {formatBrl(propostaAberta.valorAtual)}</p>
+              <p>
+                Entrada: {formatBrl(propostaAberta.entrada)} · Financiamento:{" "}
+                {formatBrl(propostaAberta.valorFinanciamento)}
+              </p>
+              <p>Status: {PROPOSTA_STATUS_LABEL[propostaAberta.status]}</p>
+              <p>Observações: {propostaAberta.observacoes || "—"}</p>
+              <div>
+                <p className="mb-2 font-medium">Histórico da negociação</p>
+                <ul className="space-y-2">
+                  {(propostaAberta.negociacao?.movimentos ?? []).map((m, idx) => (
+                    <li key={m.id}>
+                      {idx > 0 ? <p className="text-muted-foreground">↓</p> : null}
+                      <p>
+                        {formatBrl(m.valor)} · {NEGOCIACAO_ORIGEM_LABEL[m.origem]}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.responsavel?.name ?? "—"} ·{" "}
+                        {new Date(m.createdAt).toLocaleString("pt-BR")}
+                        {m.observacoes ? ` · ${m.observacoes}` : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="grid gap-2 border-t pt-3">
+                <Label>Contraproposta</Label>
+                <Input
+                  inputMode="numeric"
+                  value={contraForm.valor}
+                  onChange={(e) =>
+                    setContraForm({
+                      ...contraForm,
+                      valor: maskMoneyInput(e.target.value),
+                    })
+                  }
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Entrada"
+                    inputMode="numeric"
+                    value={contraForm.entrada}
+                    onChange={(e) =>
+                      setContraForm({
+                        ...contraForm,
+                        entrada: maskMoneyInput(e.target.value),
+                      })
+                    }
+                  />
+                  <Input
+                    placeholder="Financiamento"
+                    inputMode="numeric"
+                    value={contraForm.valorFinanciamento}
+                    onChange={(e) =>
+                      setContraForm({
+                        ...contraForm,
+                        valorFinanciamento: maskMoneyInput(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <select
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={contraForm.origem}
+                  onChange={(e) =>
+                    setContraForm({
+                      ...contraForm,
+                      origem: e.target.value as NegociacaoOrigem,
+                    })
+                  }
+                >
+                  {(Object.keys(NEGOCIACAO_ORIGEM_LABEL) as NegociacaoOrigem[]).map(
+                    (k) => (
+                      <option key={k} value={k}>
+                        {NEGOCIACAO_ORIGEM_LABEL[k]}
+                      </option>
+                    ),
+                  )}
+                </select>
+                <Input
+                  placeholder="Motivo"
+                  value={contraForm.observacoes}
+                  onChange={(e) =>
+                    setContraForm({
+                      ...contraForm,
+                      observacoes: e.target.value,
+                    })
+                  }
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const valor = parseOptionalMoneyInput(contraForm.valor);
+                    if (valor == null || valor <= 0) {
+                      toast.error("Informe um valor maior que zero.");
+                      return;
+                    }
+                    void addNegociacaoMovimento(id, propostaAberta.id, {
+                      valor,
+                      entrada:
+                        parseOptionalMoneyInput(contraForm.entrada) ?? undefined,
+                      valorFinanciamento:
+                        parseOptionalMoneyInput(contraForm.valorFinanciamento) ??
+                        undefined,
+                      origem: contraForm.origem,
+                      observacoes: contraForm.observacoes,
+                    })
+                      .then((updated) => {
+                        setPropostaAberta(updated);
+                        setPropostas((prev) =>
+                          prev.map((x) => (x.id === updated.id ? updated : x)),
+                        );
+                        toast.success("Contraproposta registrada.");
+                        return fetchVendaUsado(id).then(setItem);
+                      })
+                      .catch((err) =>
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Não foi possível registrar.",
+                        ),
+                      );
+                  }}
+                >
+                  Registrar contraproposta
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function VisitaCard({
+  visita,
+  onStatus,
+  onFeedback,
+}: {
+  visita: VisitaUsado;
+  onStatus: (status: VisitaUsadoStatus) => void;
+  onFeedback: () => void;
+}) {
+  const when = new Date(visita.dataHora);
+  return (
+    <div className="rounded-lg border p-3 text-sm">
+      <p className="font-medium">
+        {when.toLocaleDateString("pt-BR")} {when.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+      </p>
+      <p>{visita.interessado.nome}</p>
+      <p className="text-muted-foreground">
+        Corretor: {visita.responsavel.name} · {VISITA_STATUS_LABEL[visita.status]}
+      </p>
+      {visita.feedbackAvaliacao != null ? (
+        <p className="mt-1 text-muted-foreground">
+          Feedback: {visita.feedbackAvaliacao}/5
+          {visita.feedbackInteresse
+            ? ` · ${VISITA_INTERESSE_LABEL[visita.feedbackInteresse]}`
+            : ""}
+        </p>
+      ) : null}
+      <div className="mt-2 flex flex-wrap gap-1">
+        {visita.status === "agendada" ? (
+          <Button size="sm" variant="outline" onClick={() => onStatus("confirmada")}>
+            Confirmar
+          </Button>
+        ) : null}
+        {visita.status === "agendada" || visita.status === "confirmada" ? (
+          <>
+            <Button size="sm" variant="outline" onClick={() => onStatus("realizada")}>
+              Realizada
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onStatus("nao_compareceu")}>
+              Não compareceu
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onStatus("cancelada")}>
+              Cancelar
+            </Button>
+          </>
+        ) : null}
+        {visita.status === "realizada" ? (
+          <Button size="sm" variant="outline" onClick={onFeedback}>
+            Feedback
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }

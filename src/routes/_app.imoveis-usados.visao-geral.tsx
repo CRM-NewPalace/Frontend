@@ -5,7 +5,7 @@ import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { fetchUsadosResumo } from "@/lib/imoveis-usados-api";
-import { Building2, Loader2, Plus, Store, Users } from "lucide-react";
+import { Building2, Calendar, FileText, Loader2, Plus, Store, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/imoveis-usados/visao-geral")({
@@ -18,6 +18,11 @@ function UsadosVisaoGeralPage() {
     reservados: number;
     vendidos: number;
     interessados: number;
+    visitasAgendadas: number;
+    visitasRealizadas: number;
+    propostasRecebidas: number;
+    propostasEmNegociacao: number;
+    propostasAceitas: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,7 +67,7 @@ function UsadosVisaoGeralPage() {
           Carregando…
         </div>
       ) : resumo ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <FinanceKpiCard
             label="Imóveis disponíveis"
             value={resumo.disponiveis}
@@ -89,6 +94,41 @@ function UsadosVisaoGeralPage() {
             value={resumo.interessados}
             tone="violet"
             icon={Users}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Visitas agendadas"
+            value={resumo.visitasAgendadas}
+            tone="teal"
+            icon={Calendar}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Visitas realizadas"
+            value={resumo.visitasRealizadas}
+            tone="emerald"
+            icon={Calendar}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Propostas recebidas"
+            value={resumo.propostasRecebidas}
+            tone="blue"
+            icon={FileText}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Propostas em negociação"
+            value={resumo.propostasEmNegociacao}
+            tone="orange"
+            icon={FileText}
+            format="number"
+          />
+          <FinanceKpiCard
+            label="Propostas aceitas"
+            value={resumo.propostasAceitas}
+            tone="violet"
+            icon={FileText}
             format="number"
           />
         </div>

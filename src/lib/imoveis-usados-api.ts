@@ -106,6 +106,11 @@ export function fetchUsadosResumo() {
     reservados: number;
     vendidos: number;
     interessados: number;
+    visitasAgendadas: number;
+    visitasRealizadas: number;
+    propostasRecebidas: number;
+    propostasEmNegociacao: number;
+    propostasAceitas: number;
   }>("/imoveis-usados/resumo");
 }
 
@@ -167,6 +172,185 @@ export function removerVinculo(vendaId: string, vinculoId: string) {
   return apiFetch<VendaUsado>(
     `/imoveis-usados/${vendaId}/interessados/${vinculoId}`,
     { method: "DELETE" },
+  );
+}
+
+export type VisitaUsadoStatus =
+  | "agendada"
+  | "confirmada"
+  | "realizada"
+  | "cancelada"
+  | "nao_compareceu";
+
+export type VisitaUsadoInteresse =
+  | "muito_interessado"
+  | "interessado"
+  | "pouco_interessado"
+  | "sem_interesse";
+
+export type PropostaUsadoStatus =
+  | "rascunho"
+  | "enviada"
+  | "em_analise"
+  | "aceita"
+  | "recusada"
+  | "cancelada";
+
+export type NegociacaoOrigem =
+  | "interessado"
+  | "proprietario"
+  | "corretor"
+  | "outro";
+
+export const VISITA_STATUS_LABEL: Record<VisitaUsadoStatus, string> = {
+  agendada: "Agendada",
+  confirmada: "Confirmada",
+  realizada: "Realizada",
+  cancelada: "Cancelada",
+  nao_compareceu: "Não compareceu",
+};
+
+export const VISITA_INTERESSE_LABEL: Record<VisitaUsadoInteresse, string> = {
+  muito_interessado: "Muito interessado",
+  interessado: "Interessado",
+  pouco_interessado: "Pouco interessado",
+  sem_interesse: "Sem interesse",
+};
+
+export const PROPOSTA_STATUS_LABEL: Record<PropostaUsadoStatus, string> = {
+  rascunho: "Rascunho",
+  enviada: "Enviada",
+  em_analise: "Em análise",
+  aceita: "Aceita",
+  recusada: "Recusada",
+  cancelada: "Cancelada",
+};
+
+export const NEGOCIACAO_ORIGEM_LABEL: Record<NegociacaoOrigem, string> = {
+  interessado: "Interessado",
+  proprietario: "Proprietário",
+  corretor: "Corretor",
+  outro: "Outro",
+};
+
+export type VisitaUsado = {
+  id: string;
+  dataHora: string;
+  status: VisitaUsadoStatus;
+  observacoes: string;
+  feedbackAvaliacao: number | null;
+  feedbackInteresse: VisitaUsadoInteresse | null;
+  feedbackComentarios: string;
+  feedbackObservacoes: string;
+  feedbackAt: string | null;
+  interessado: { id: string; nome: string };
+  responsavel: { id: string; name: string };
+};
+
+export type NegociacaoMovimento = {
+  id: string;
+  valor: number;
+  entrada: number | null;
+  valorFinanciamento: number | null;
+  observacoes: string;
+  origem: NegociacaoOrigem;
+  createdAt: string;
+  responsavel?: { id: string; name: string } | null;
+};
+
+export type PropostaUsado = {
+  id: string;
+  valor: number;
+  valorAtual: number | null;
+  entrada: number | null;
+  valorFinanciamento: number | null;
+  observacoes: string;
+  status: PropostaUsadoStatus;
+  createdAt: string;
+  interessado: { id: string; nome: string };
+  responsavel: { id: string; name: string };
+  negociacao: {
+    id: string;
+    status: string;
+    movimentos: NegociacaoMovimento[];
+  } | null;
+};
+
+export function fetchVisitasUsado(vendaId: string) {
+  return apiFetch<VisitaUsado[]>(`/imoveis-usados/${vendaId}/visitas`);
+}
+
+export function createVisitaUsado(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<VisitaUsado>(`/imoveis-usados/${vendaId}/visitas`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function updateVisitaUsado(
+  vendaId: string,
+  visitaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<VisitaUsado>(
+    `/imoveis-usados/${vendaId}/visitas/${visitaId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function feedbackVisitaUsado(
+  vendaId: string,
+  visitaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<VisitaUsado>(
+    `/imoveis-usados/${vendaId}/visitas/${visitaId}/feedback`,
+    { method: "POST", body },
+  );
+}
+
+export function fetchPropostasUsado(vendaId: string) {
+  return apiFetch<PropostaUsado[]>(`/imoveis-usados/${vendaId}/propostas`);
+}
+
+export function createPropostaUsado(
+  vendaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<PropostaUsado>(`/imoveis-usados/${vendaId}/propostas`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function fetchPropostaUsado(vendaId: string, propostaId: string) {
+  return apiFetch<PropostaUsado>(
+    `/imoveis-usados/${vendaId}/propostas/${propostaId}`,
+  );
+}
+
+export function updatePropostaUsado(
+  vendaId: string,
+  propostaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<PropostaUsado>(
+    `/imoveis-usados/${vendaId}/propostas/${propostaId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function addNegociacaoMovimento(
+  vendaId: string,
+  propostaId: string,
+  body: Record<string, unknown>,
+) {
+  return apiFetch<PropostaUsado>(
+    `/imoveis-usados/${vendaId}/propostas/${propostaId}/negociacao`,
+    { method: "POST", body },
   );
 }
 
