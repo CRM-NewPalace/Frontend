@@ -1766,6 +1766,14 @@ function TenantsPage() {
                       ["Notificações", demoResult.counts.notificacoes],
                       ["Treinamento", demoResult.counts.treinamentos],
                       ["Financeiro", demoResult.counts.financeiro],
+                      ["Proprietários", demoResult.counts.proprietarios ?? 0],
+                      ["Imóveis (captação)", demoResult.counts.imoveis ?? 0],
+                      ["Captações", demoResult.counts.captacoes ?? 0],
+                      [
+                        "Interessados (usados)",
+                        demoResult.counts.interessadosUsados ?? 0,
+                      ],
+                      ["Vendas de usados", demoResult.counts.vendasUsados ?? 0],
                     ] as [string, number][]
                   ).map(([label, value]) => (
                     <div
@@ -1793,6 +1801,13 @@ function TenantsPage() {
                     <code className="font-semibold">
                       {demoResult.senhaPadrao}
                     </code>
+                    {(demoResult.counts.proprietarios ?? 0) > 0 ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Portal do proprietário: Lúcia Andrade, Eliane Costa e
+                        Marina Freitas entram com o e-mail cadastrado e a mesma
+                        senha.
+                      </p>
+                    ) : null}
                   </div>
                   {demoResult.usuariosExtrasLiberados > 0 && (
                     <p className="text-xs text-muted-foreground">

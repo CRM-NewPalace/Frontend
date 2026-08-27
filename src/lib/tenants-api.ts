@@ -136,6 +136,11 @@ export type DemoDataCounts = {
   notificacoes: number;
   treinamentos: number;
   financeiro: number;
+  proprietarios: number;
+  imoveis: number;
+  captacoes: number;
+  interessadosUsados: number;
+  vendasUsados: number;
 };
 
 export type PopulateDemoDataResult = {
