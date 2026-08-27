@@ -946,7 +946,7 @@ export function ImoveisPage({
         (!construtoraId || item.construtoraId === construtoraId) &&
         (rendaFiltro == null ||
           (item.rendaAPartirDe != null &&
-            item.rendaAPartirDe >= rendaFiltro)) &&
+            item.rendaAPartirDe <= rendaFiltro)) &&
         (!somenteLitoral || empreendimentoHasLitoral(item))
       );
     });
