@@ -134,6 +134,7 @@ import {
   Palette,
   Search,
   Users,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SOFT_BTN, SOFT_BTN_ACTIVE } from "@/lib/soft-btn";
@@ -239,6 +240,7 @@ type EmpreendimentoForm = {
   quartos: string;
   vagas: string;
   valorReferencia: string;
+  rendaAPartirDe: string;
   observacao: string;
 };
 
@@ -261,6 +263,7 @@ function emptyEmpreendimentoForm(): EmpreendimentoForm {
     quartos: "",
     vagas: "",
     valorReferencia: "",
+    rendaAPartirDe: "",
     observacao: "",
   };
 }
@@ -286,6 +289,10 @@ function formFromEmpreendimento(item: Empreendimento): EmpreendimentoForm {
     valorReferencia:
       item.valorReferencia != null
         ? formatMoneyInput(item.valorReferencia)
+        : "",
+    rendaAPartirDe:
+      item.rendaAPartirDe != null
+        ? formatMoneyInput(item.rendaAPartirDe)
         : "",
     observacao: item.observacao ?? "",
   };
@@ -335,7 +342,7 @@ export function ImoveisPage({
   const [localidade, setLocalidade] = useState("");
   const [quartos, setQuartos] = useState("");
   const [construtoraId, setConstrutoraId] = useState("");
-  const [rendaAte, setRendaAte] = useState("");
+  const [rendaAPartirDe, setRendaAPartirDe] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
   const [vista, setVista] = useImoveisVista();
   const [kindPickOpen, setKindPickOpen] = useState(false);
@@ -536,6 +543,9 @@ export function ImoveisPage({
       const valorParsed = parseOptionalMoneyInput(form.valorReferencia);
       const valorReferencia =
         valorParsed != null ? Math.round(valorParsed) : null;
+      const rendaParsed = parseOptionalMoneyInput(form.rendaAPartirDe);
+      const rendaAPartirDe =
+        rendaParsed != null ? Math.round(rendaParsed) : null;
       const payload = {
         nome: form.nome.trim(),
         construtoraId,
@@ -551,6 +561,7 @@ export function ImoveisPage({
         quartos: Number.isFinite(quartos) ? quartos : null,
         vagas: Number.isFinite(vagas) ? vagas : null,
         valorReferencia,
+        rendaAPartirDe,
       };
 
       if (editingId) {
@@ -575,6 +586,9 @@ export function ImoveisPage({
           ...(payload.vagas != null ? { vagas: payload.vagas } : {}),
           ...(payload.valorReferencia != null
             ? { valorReferencia: payload.valorReferencia }
+            : {}),
+          ...(payload.rendaAPartirDe != null
+            ? { rendaAPartirDe: payload.rendaAPartirDe }
             : {}),
         });
         try {
@@ -895,9 +909,9 @@ export function ImoveisPage({
     [items],
   );
   const rendaFiltro = useMemo(() => {
-    const limite = parseOptionalMoneyInput(rendaAte);
-    return limite != null && limite > 0 ? limite : null;
-  }, [rendaAte]);
+    const minimo = parseOptionalMoneyInput(rendaAPartirDe);
+    return minimo != null && minimo > 0 ? minimo : null;
+  }, [rendaAPartirDe]);
 
   const hasActiveFilters = Boolean(
     localidade || quartos || construtoraId || rendaFiltro != null || somenteLitoral,
@@ -908,7 +922,7 @@ export function ImoveisPage({
     setLocalidade("");
     setQuartos("");
     setConstrutoraId("");
-    setRendaAte("");
+    setRendaAPartirDe("");
     setSomenteLitoral(false);
   }
 
@@ -931,8 +945,8 @@ export function ImoveisPage({
         (!quartos || item.quartos === Number(quartos)) &&
         (!construtoraId || item.construtoraId === construtoraId) &&
         (rendaFiltro == null ||
-          (item.valorReferencia != null &&
-            item.valorReferencia <= rendaFiltro)) &&
+          (item.rendaAPartirDe != null &&
+            item.rendaAPartirDe >= rendaFiltro)) &&
         (!somenteLitoral || empreendimentoHasLitoral(item))
       );
     });
@@ -1025,7 +1039,7 @@ export function ImoveisPage({
       localidadePdf ? `Localidade: ${localidadePdf}` : "",
       quartos ? `${quartos} quarto${quartos === "1" ? "" : "s"}` : "",
       construtoraPdf ? `Construtora: ${construtoraPdf}` : "",
-      rendaFiltro != null ? `Renda até ${rendaAte}` : "",
+      rendaFiltro != null ? `Renda a partir de ${rendaAPartirDe}` : "",
       somenteLitoral ? "Somente litoral" : "",
     ].filter(Boolean);
     exportEmpreendimentosToPdf(pdfItems, {
@@ -1226,21 +1240,21 @@ export function ImoveisPage({
           </div>
           <div>
             <Label
-              htmlFor="filtro-renda-ate"
+              htmlFor="filtro-renda-apartir"
               className={FILTER_LABEL}
             >
-              Renda até
+              Renda a partir de
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-primary/70">
                 R$
               </span>
               <Input
-                id="filtro-renda-ate"
+                id="filtro-renda-apartir"
                 inputMode="numeric"
-                value={rendaAte}
+                value={rendaAPartirDe}
                 onChange={(event) =>
-                  setRendaAte(maskMoneyInput(event.target.value))
+                  setRendaAPartirDe(maskMoneyInput(event.target.value))
                 }
                 placeholder="Ex.: 1.800,00"
                 className={cn("pl-9", FILTER_CONTROL)}
@@ -1357,6 +1371,11 @@ export function ImoveisPage({
                     A partir de
                   </ImoveisTableHead>
                 ) : null}
+                {showCampo("renda") ? (
+                  <ImoveisTableHead className="text-right">
+                    Renda a partir de
+                  </ImoveisTableHead>
+                ) : null}
                 <ImoveisTableHead className="w-28 text-right">
                   Ações
                 </ImoveisTableHead>
@@ -1468,6 +1487,17 @@ export function ImoveisPage({
                         {item.valorReferencia != null ? (
                           <span className="inline-flex rounded-md bg-linear-to-r from-primary/15 to-cyan-400/20 px-2 py-0.5 font-semibold tabular-nums tracking-tight text-primary">
                             {brl(item.valorReferencia)}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                    ) : null}
+                    {showCampo("renda") ? (
+                      <TableCell className="text-right">
+                        {item.rendaAPartirDe != null ? (
+                          <span className="inline-flex tabular-nums text-sm font-medium">
+                            {brl(item.rendaAPartirDe)}
                           </span>
                         ) : (
                           "—"
@@ -1692,6 +1722,12 @@ export function ImoveisPage({
                   {showCampo("valor") && item.valorReferencia != null && (
                     <span className="inline-flex items-center gap-1 font-medium text-foreground">
                       A partir de {brl(item.valorReferencia)}
+                    </span>
+                  )}
+                  {showCampo("renda") && item.rendaAPartirDe != null && (
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                      <Wallet className="w-3.5 h-3.5" />
+                      Renda a partir de {brl(item.rendaAPartirDe)}
                     </span>
                   )}
                 </div>
@@ -2495,6 +2531,30 @@ export function ImoveisPage({
                 <p className="text-xs text-muted-foreground">
                   Valor inicial do empreendimento. Aparece na tabela como “A
                   partir de”.
+                </p>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="imovel-renda">Renda a partir de (R$)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                    R$
+                  </span>
+                  <Input
+                    id="imovel-renda"
+                    inputMode="numeric"
+                    value={form.rendaAPartirDe}
+                    onChange={(event) =>
+                      setField(
+                        "rendaAPartirDe",
+                        maskMoneyInput(event.target.value),
+                      )
+                    }
+                    placeholder="Ex.: 40.000,00"
+                    className="pl-9"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Renda mínima sugerida. Aparece no card e no filtro de renda.
                 </p>
               </div>
             </div>

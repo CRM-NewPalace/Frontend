@@ -33,6 +33,7 @@ export type Empreendimento = {
   banheiros: number | null;
   vagas: number | null;
   valorReferencia: number | null;
+  rendaAPartirDe: number | null;
   areaM2: number | null;
   externalUrl: string | null;
   imagemUrl: string | null;
@@ -61,6 +62,7 @@ export type CreateEmpreendimentoInput = {
   banheiros?: number | null;
   vagas?: number | null;
   valorReferencia?: number | null;
+  rendaAPartirDe?: number | null;
   areaM2?: number | null;
 };
 
@@ -80,6 +82,7 @@ export type UpdateEmpreendimentoInput = {
   banheiros?: number | null;
   vagas?: number | null;
   valorReferencia?: number | null;
+  rendaAPartirDe?: number | null;
   areaM2?: number | null;
   externalUrl?: string | null;
   ativo?: boolean;

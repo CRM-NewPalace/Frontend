@@ -91,6 +91,7 @@ function tableRow(item: Empreendimento, ordem: PdfOrdemImoveis): string[] {
     item.quartos != null ? String(item.quartos) : "—",
     item.areaM2 != null ? `${item.areaM2} m²` : "—",
     item.valorReferencia != null ? brl(item.valorReferencia) : "—",
+    item.rendaAPartirDe != null ? brl(item.rendaAPartirDe) : "—",
   ];
   if (ordem === "construtora") row.splice(1, 1);
   if (ordem === "localidade") row.splice(2, 1);
@@ -107,6 +108,7 @@ function tableHead(ordem: PdfOrdemImoveis): string[] {
     "Quartos",
     "Metragem",
     "A partir de",
+    "Renda a partir de",
   ];
   if (ordem === "construtora") head.splice(1, 1);
   if (ordem === "localidade") head.splice(2, 1);
