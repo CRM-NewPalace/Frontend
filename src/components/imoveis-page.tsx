@@ -342,7 +342,8 @@ export function ImoveisPage({
   const [localidade, setLocalidade] = useState("");
   const [quartos, setQuartos] = useState("");
   const [construtoraId, setConstrutoraId] = useState("");
-  const [rendaAPartirDe, setRendaAPartirDe] = useState("");
+  const [rendaMinima, setRendaMinima] = useState("");
+  const [rendaMaxima, setRendaMaxima] = useState("");
   const [somenteLitoral, setSomenteLitoral] = useState(false);
   const [vista, setVista] = useImoveisVista();
   const [kindPickOpen, setKindPickOpen] = useState(false);
@@ -908,13 +909,22 @@ export function ImoveisPage({
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [items],
   );
-  const rendaFiltro = useMemo(() => {
-    const minimo = parseOptionalMoneyInput(rendaAPartirDe);
+  const rendaMinFiltro = useMemo(() => {
+    const minimo = parseOptionalMoneyInput(rendaMinima);
     return minimo != null && minimo > 0 ? minimo : null;
-  }, [rendaAPartirDe]);
+  }, [rendaMinima]);
+  const rendaMaxFiltro = useMemo(() => {
+    const maximo = parseOptionalMoneyInput(rendaMaxima);
+    return maximo != null && maximo > 0 ? maximo : null;
+  }, [rendaMaxima]);
 
   const hasActiveFilters = Boolean(
-    localidade || quartos || construtoraId || rendaFiltro != null || somenteLitoral,
+    localidade ||
+      quartos ||
+      construtoraId ||
+      rendaMinFiltro != null ||
+      rendaMaxFiltro != null ||
+      somenteLitoral,
   );
 
   function clearFilters() {
@@ -922,7 +932,8 @@ export function ImoveisPage({
     setLocalidade("");
     setQuartos("");
     setConstrutoraId("");
-    setRendaAPartirDe("");
+    setRendaMinima("");
+    setRendaMaxima("");
     setSomenteLitoral(false);
   }
 
@@ -944,9 +955,11 @@ export function ImoveisPage({
         (!localidade || empreendimentoLocalidadeNome(item) === localidade) &&
         (!quartos || item.quartos === Number(quartos)) &&
         (!construtoraId || item.construtoraId === construtoraId) &&
-        (rendaFiltro == null ||
-          (item.rendaAPartirDe != null &&
-            item.rendaAPartirDe <= rendaFiltro)) &&
+        (rendaMinFiltro == null && rendaMaxFiltro == null
+          ? true
+          : item.rendaAPartirDe != null &&
+            (rendaMinFiltro == null || item.rendaAPartirDe >= rendaMinFiltro) &&
+            (rendaMaxFiltro == null || item.rendaAPartirDe <= rendaMaxFiltro)) &&
         (!somenteLitoral || empreendimentoHasLitoral(item))
       );
     });
@@ -956,7 +969,8 @@ export function ImoveisPage({
     localidade,
     quartos,
     construtoraId,
-    rendaFiltro,
+    rendaMinFiltro,
+    rendaMaxFiltro,
     somenteLitoral,
   ]);
 
@@ -1039,7 +1053,8 @@ export function ImoveisPage({
       localidadePdf ? `Localidade: ${localidadePdf}` : "",
       quartos ? `${quartos} quarto${quartos === "1" ? "" : "s"}` : "",
       construtoraPdf ? `Construtora: ${construtoraPdf}` : "",
-      rendaFiltro != null ? `Renda a partir de ${rendaAPartirDe}` : "",
+      rendaMinFiltro != null ? `Renda mínima ${rendaMinima}` : "",
+      rendaMaxFiltro != null ? `Renda máxima ${rendaMaxima}` : "",
       somenteLitoral ? "Somente litoral" : "",
     ].filter(Boolean);
     exportEmpreendimentosToPdf(pdfItems, {
@@ -1162,7 +1177,7 @@ export function ImoveisPage({
             </div>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
           <div>
             <Label className={FILTER_LABEL}>Ordenar</Label>
             <TableSortSelect
@@ -1239,24 +1254,41 @@ export function ImoveisPage({
             </Select>
           </div>
           <div>
-            <Label
-              htmlFor="filtro-renda-apartir"
-              className={FILTER_LABEL}
-            >
-              Renda a partir de
+            <Label htmlFor="filtro-renda-min" className={FILTER_LABEL}>
+              Renda mínima
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-primary/70">
                 R$
               </span>
               <Input
-                id="filtro-renda-apartir"
+                id="filtro-renda-min"
                 inputMode="numeric"
-                value={rendaAPartirDe}
+                value={rendaMinima}
                 onChange={(event) =>
-                  setRendaAPartirDe(maskMoneyInput(event.target.value))
+                  setRendaMinima(maskMoneyInput(event.target.value))
                 }
-                placeholder="Ex.: 1.800,00"
+                placeholder="Ex.: 3.000,00"
+                className={cn("pl-9", FILTER_CONTROL)}
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="filtro-renda-max" className={FILTER_LABEL}>
+              Renda máxima
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-primary/70">
+                R$
+              </span>
+              <Input
+                id="filtro-renda-max"
+                inputMode="numeric"
+                value={rendaMaxima}
+                onChange={(event) =>
+                  setRendaMaxima(maskMoneyInput(event.target.value))
+                }
+                placeholder="Ex.: 20.000,00"
                 className={cn("pl-9", FILTER_CONTROL)}
               />
             </div>
