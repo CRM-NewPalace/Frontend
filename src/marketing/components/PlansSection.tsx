@@ -3,19 +3,11 @@ import { HiCheck, HiStar, HiUsers } from "react-icons/hi2";
 import { getWhatsAppUrl } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
-interface ContractTerm {
-  duration: string;
-  discount: string;
-  price: string;
-  bestValue?: boolean;
-}
-
 interface PlanTheme {
   header: string;
   medal: string;
   accent: string;
   priceCard: string;
-  contractBest: string;
 }
 
 interface PlanOption {
@@ -31,7 +23,8 @@ interface Plan {
   users: string;
   setupFee: string;
   monthlyFee: string;
-  contractTerms: ContractTerm[];
+  setupFeeOld?: string;
+  monthlyFeeOld?: string;
   theme: PlanTheme;
   featured?: boolean;
   highlights?: boolean;
@@ -47,29 +40,14 @@ const PLANS: Plan[] = [
     name: "Solo",
     audience: "Ideal para corretores autônomos",
     users: "1 usuário + 1 extra",
-    setupFee: "R$ 490,00",
-    monthlyFee: "R$ 297,00/mensal",
+    setupFee: "R$ 149,99",
+    monthlyFee: "R$ 99,99/mês",
     theme: {
       header: "from-sky-50 via-cyan-50/80 to-white",
       medal: "bg-sky-100 ring-sky-200/80",
       accent: "text-sky-700",
       priceCard: "border-sky-100 bg-sky-50/60",
-      contractBest: "border-sky-300 bg-sky-50 ring-sky-200/60",
     },
-    contractTerms: [
-      { duration: "3 meses", discount: "Sem desconto", price: "R$ 297,00/mês" },
-      {
-        duration: "6 meses",
-        discount: "10% de desconto",
-        price: "R$ 267,30/mês",
-      },
-      {
-        duration: "12 meses",
-        discount: "25% de desconto",
-        price: "R$ 222,75/mês",
-        bestValue: true,
-      },
-    ],
     features: [
       "CRM do corretor (leads, agenda, clientes e imóveis)",
       "Propostas, documentação e contratos",
@@ -84,29 +62,16 @@ const PLANS: Plan[] = [
     name: "Bronze",
     audience: "Ideal para pequenas imobiliárias",
     users: "Até 5 usuários",
-    setupFee: "R$ 790,00",
-    monthlyFee: "R$ 497,00/mensal",
+    setupFee: "R$ 449,99",
+    monthlyFee: "R$ 299,99/mês",
+    setupFeeOld: "R$ 790,00",
+    monthlyFeeOld: "R$ 497,00",
     theme: {
       header: "from-amber-50 via-orange-50/80 to-white",
       medal: "bg-amber-100 ring-amber-200/80",
       accent: "text-amber-700",
       priceCard: "border-amber-100 bg-amber-50/60",
-      contractBest: "border-amber-300 bg-amber-50 ring-amber-200/60",
     },
-    contractTerms: [
-      { duration: "3 meses", discount: "Sem desconto", price: "R$ 497,00/mês" },
-      {
-        duration: "6 meses",
-        discount: "10% de desconto",
-        price: "R$ 447,30/mês",
-      },
-      {
-        duration: "12 meses",
-        discount: "25% de desconto",
-        price: "R$ 372,75/mês",
-        bestValue: true,
-      },
-    ],
     features: [
       "CRM básico",
       "Cadastro de imóveis",
@@ -118,31 +83,18 @@ const PLANS: Plan[] = [
     id: "prata",
     medal: "🥈",
     name: "Prata",
-    audience: "Escolha entre Financeiro ou Administrativo",
+    audience: "Financeiro ou Administrativo",
     users: "Até 15 usuários",
-    setupFee: "R$ 1.490,00",
-    monthlyFee: "R$ 997,00/mensal",
+    setupFee: "R$ 899,99",
+    monthlyFee: "R$ 499,99/mês",
+    setupFeeOld: "R$ 1.490,00",
+    monthlyFeeOld: "R$ 997,00",
     theme: {
       header: "from-slate-100 via-zinc-50/90 to-white",
       medal: "bg-slate-200 ring-slate-300/70",
       accent: "text-slate-600",
       priceCard: "border-slate-200 bg-slate-50/80",
-      contractBest: "border-slate-300 bg-slate-100 ring-slate-300/60",
     },
-    contractTerms: [
-      { duration: "3 meses", discount: "Sem desconto", price: "R$ 997,00/mês" },
-      {
-        duration: "6 meses",
-        discount: "10% de desconto",
-        price: "R$ 897,30/mês",
-      },
-      {
-        duration: "12 meses",
-        discount: "25% de desconto",
-        price: "R$ 747,75/mês",
-        bestValue: true,
-      },
-    ],
     features: [
       "Tudo do plano Bronze",
       "Usuário adicional: R$ 25,00 por usuário/mês",
@@ -175,36 +127,18 @@ const PLANS: Plan[] = [
     id: "ouro",
     medal: "🥇",
     name: "Ouro",
-    audience: "Gestão completa: Financeiro e Administrativo juntos",
+    audience: "Financeiro e Administrativo juntos",
     users: "Até 30 usuários",
-    setupFee: "R$ 1.490,00",
-    monthlyFee: "R$ 1.649,00/mensal",
+    setupFee: "R$ 899,99",
+    monthlyFee: "R$ 749,99/mês",
+    setupFeeOld: "R$ 1.490,00",
+    monthlyFeeOld: "R$ 1.649,00",
     theme: {
       header: "from-brand-accent/15 via-cyan-50/80 to-white",
       medal: "bg-brand-accent/15 ring-brand-accent/30",
       accent: "text-brand-accent",
       priceCard: "border-brand-accent/20 bg-brand-accent/5",
-      contractBest:
-        "border-brand-accent/40 bg-brand-accent/10 ring-brand-accent/25",
     },
-    contractTerms: [
-      {
-        duration: "3 meses",
-        discount: "Sem desconto",
-        price: "R$ 1.649,00/mês",
-      },
-      {
-        duration: "6 meses",
-        discount: "20% de desconto",
-        price: "R$ 1.319,20/mês",
-      },
-      {
-        duration: "12 meses",
-        discount: "40% de desconto",
-        price: "R$ 989,40/mês",
-        bestValue: true,
-      },
-    ],
     featured: true,
     highlights: true,
     features: [
@@ -217,93 +151,50 @@ const PLANS: Plan[] = [
   },
 ];
 
+function PlanPriceValue({ value }: { value: string }) {
+  const suffix = "/mês";
+  const index = value.indexOf(suffix);
+  const amount = index === -1 ? value : value.slice(0, index);
+
+  return (
+    <span className="inline-flex max-w-full items-baseline gap-0.5 whitespace-nowrap text-sm font-bold leading-tight text-brand-dark sm:text-lg">
+      {amount}
+      {index !== -1 ? (
+        <span className="text-[10px] font-medium tracking-wide text-text-muted sm:text-[11px]">
+          {suffix}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function PlanPriceCard({
   label,
   value,
+  oldValue,
   className,
 }: {
   label: string;
   value: string;
+  oldValue?: string;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "flex min-h-20 flex-col justify-center gap-1.5 rounded-xl border px-3 py-3",
+        "flex min-h-[4.75rem] flex-col justify-center gap-1 overflow-visible rounded-xl border px-3 py-3",
         className,
       )}
     >
       <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
         {label}
       </span>
-      <span className="text-base font-bold leading-tight text-brand-dark sm:text-lg">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function PlanContractTermCard({
-  term,
-  theme,
-  fullWidth = false,
-}: {
-  term: ContractTerm;
-  theme: PlanTheme;
-  fullWidth?: boolean;
-}) {
-  if (fullWidth) {
-    return (
-      <div
-        className={cn(
-          "relative flex min-h-20 items-center gap-4 rounded-xl border px-4 py-3",
-          term.bestValue
-            ? cn("ring-1", theme.contractBest)
-            : "border-border bg-white/80",
-        )}
-      >
-        {term.bestValue && (
-          <span className="absolute -top-2 left-4 whitespace-nowrap rounded-full bg-brand-dark px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-            Melhor valor
-          </span>
-        )}
-
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="text-sm font-bold text-brand-dark">
-            {term.duration}
-          </span>
-          <span className="text-xs leading-tight text-text-muted">
-            {term.discount}
-          </span>
-        </div>
-
-        <div className="h-10 w-px shrink-0 bg-border" aria-hidden />
-
-        <span className="shrink-0 text-right text-base font-bold leading-tight text-brand-dark sm:text-lg">
-          {term.price}
+      {oldValue ? (
+        <span className="text-[11px] font-medium leading-none text-text-muted/80 line-through">
+          {oldValue}
         </span>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "relative flex min-h-24 flex-col justify-center gap-1.5 rounded-xl border px-2.5 py-3 text-center sm:px-3",
-        term.bestValue
-          ? cn("ring-1", theme.contractBest)
-          : "border-border bg-white/80",
-      )}
-    >
-      <span className="text-xs font-bold text-brand-dark sm:text-sm">
-        {term.duration}
-      </span>
-      <span className="text-xs leading-tight text-text-muted">
-        {term.discount}
-      </span>
-      <span className="text-sm font-bold leading-tight text-brand-dark sm:text-base">
-        {term.price}
-      </span>
+      ) : null}
+      <PlanPriceValue value={value} />
     </div>
   );
 }
@@ -379,7 +270,7 @@ function PlanCard({ plan }: { plan: Plan }) {
     >
       <div
         className={cn(
-          "relative border-b border-border/60 bg-linear-to-br px-5 pb-5 pt-6 sm:px-6",
+          "relative overflow-hidden rounded-t-3xl border-b border-border/60 bg-linear-to-br px-5 pb-5 pt-6 sm:px-6",
           plan.theme.header,
         )}
       >
@@ -411,7 +302,7 @@ function PlanCard({ plan }: { plan: Plan }) {
             <h3 className="mt-1 text-xl font-bold leading-tight text-brand-dark sm:text-2xl">
               {plan.name}
             </h3>
-            <p className="mt-1.5 text-xs leading-relaxed text-text-muted sm:text-sm">
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-text-muted sm:text-sm">
               {plan.audience}
             </p>
           </div>
@@ -429,15 +320,17 @@ function PlanCard({ plan }: { plan: Plan }) {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid shrink-0 grid-cols-1 gap-2.5 min-[400px]:grid-cols-2">
           <PlanPriceCard
             label="Implantação"
             value={plan.setupFee}
+            oldValue={plan.setupFeeOld}
             className={plan.theme.priceCard}
           />
           <PlanPriceCard
             label="Mensalidade"
             value={plan.monthlyFee}
+            oldValue={plan.monthlyFeeOld}
             className={plan.theme.priceCard}
           />
         </div>
@@ -473,28 +366,7 @@ function PlanCard({ plan }: { plan: Plan }) {
         </div>
       </div>
 
-      <div className="mt-auto border-t border-border/70 bg-surface-muted/40 p-5 sm:p-6">
-        <p className="mb-3 text-sm font-bold text-brand-dark">
-          Condições contratuais
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {plan.contractTerms.slice(0, 2).map((term) => (
-            <PlanContractTermCard
-              key={term.duration}
-              term={term}
-              theme={plan.theme}
-            />
-          ))}
-          <div className="col-span-2">
-            <PlanContractTermCard
-              key={plan.contractTerms[2].duration}
-              term={plan.contractTerms[2]}
-              theme={plan.theme}
-              fullWidth
-            />
-          </div>
-        </div>
-
+      <div className="mt-auto rounded-b-3xl border-t border-border/70 bg-surface-muted/40 p-5 sm:p-6">
         <a
           href={getWhatsAppUrl(
             `Olá! Tenho interesse no plano ${plan.name} da Zone Connection.`,
@@ -502,7 +374,7 @@ function PlanCard({ plan }: { plan: Plan }) {
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            "mt-4 block w-full rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-all duration-200",
+            "block w-full rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-all duration-200",
             plan.featured
               ? "bg-brand-cta text-white shadow-md hover:shadow-lg hover:brightness-105"
               : "border-2 border-brand-dark bg-white text-brand-dark hover:bg-brand-dark hover:text-white",
