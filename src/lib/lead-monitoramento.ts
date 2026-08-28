@@ -180,7 +180,7 @@ function formatDurationPt(ms: number): string {
   return parts.join(" ");
 }
 
-/** Recalcula o alerta de inatividade com o período atual do funil. */
+/** Recalcula inatividade e prazo da etapa a partir da última movimentação. */
 export function applyInatividadeThreshold(
   mon: LeadMonitoramento,
   valor: number,
@@ -188,15 +188,52 @@ export function applyInatividadeThreshold(
   now = Date.now(),
 ): LeadMonitoramento {
   const thresholdMs = inatividadeToMs(valor, unidade);
-  const last = mon.lastMovementAt
-    ? new Date(mon.lastMovementAt).getTime()
-    : Number.NaN;
+  const last = latestMovementMs(mon);
   const idleMs = Number.isFinite(last)
     ? Math.max(0, now - last)
     : mon.tempoSemMovimentacaoMs;
   const isIdle = thresholdMs > 0 && idleMs >= thresholdMs;
 
-  const problemas = mon.problemas.filter((p) => p.tipo !== "sem_movimentacao");
+  const problemas = mon.problemas.filter(
+    (p) =>
+      p.tipo !== "sem_movimentacao" &&
+      p.tipo !== "prazo_ultrapassado" &&
+      p.tipo !== "prazo_proximo",
+  );
+
+  let prazoDueAt = mon.prazoDueAt;
+  let tempoRestanteMs = mon.tempoRestanteMs;
+  let tempoRestanteLabel = mon.tempoRestanteLabel;
+  let tempoAtrasoMs = mon.tempoAtrasoMs;
+  let tempoAtrasoLabel = mon.tempoAtrasoLabel;
+
+  const cfg = mon.prazoConfigurado;
+  if (cfg && Number.isFinite(last)) {
+    const due = last + inatividadeToMs(cfg.valor, cfg.unidade);
+    prazoDueAt = new Date(due).toISOString();
+    if (due > now) {
+      tempoRestanteMs = due - now;
+      tempoRestanteLabel = formatDurationPt(tempoRestanteMs);
+      tempoAtrasoMs = null;
+      tempoAtrasoLabel = null;
+    } else {
+      tempoAtrasoMs = now - due;
+      tempoAtrasoLabel = formatDurationPt(tempoAtrasoMs);
+      tempoRestanteMs = null;
+      tempoRestanteLabel = null;
+      problemas.push({
+        tipo: "prazo_ultrapassado",
+        titulo: "Prazo da etapa ultrapassado",
+        detalhe: `Atrasado há ${tempoAtrasoLabel}.`,
+      });
+    }
+  } else {
+    const overdue = mon.problemas.find((p) => p.tipo === "prazo_ultrapassado");
+    const near = mon.problemas.find((p) => p.tipo === "prazo_proximo");
+    if (overdue) problemas.push(overdue);
+    if (near) problemas.push(near);
+  }
+
   if (isIdle) {
     problemas.push({
       tipo: "sem_movimentacao",
@@ -230,9 +267,33 @@ export function applyInatividadeThreshold(
     problemas,
     nivel,
     visual,
+    prazoDueAt,
+    tempoRestanteMs,
+    tempoRestanteLabel,
+    tempoAtrasoMs,
+    tempoAtrasoLabel,
     tempoSemMovimentacaoMs: idleMs,
     tempoSemMovimentacaoLabel: formatDurationPt(idleMs),
     inatividadeThresholdMs: thresholdMs,
     inatividadeConfig: { valor, unidade },
   };
+}
+
+function latestMovementMs(mon: LeadMonitoramento): number {
+  const stamps = [
+    mon.lastMovementAt,
+    mon.lastTriagemAt,
+    mon.lastAtividadeAt,
+    mon.lastTarefaAt,
+    mon.lastStageChangeAt,
+    mon.stageEnteredAt,
+  ];
+  let latest = Number.NaN;
+  for (const iso of stamps) {
+    if (!iso) continue;
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) continue;
+    if (!Number.isFinite(latest) || t > latest) latest = t;
+  }
+  return latest;
 }
