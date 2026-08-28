@@ -194,7 +194,7 @@ export function applyInatividadeThreshold(
   const idleMs = Number.isFinite(last)
     ? Math.max(0, now - last)
     : mon.tempoSemMovimentacaoMs;
-  const isIdle = idleMs >= thresholdMs;
+  const isIdle = thresholdMs > 0 && idleMs >= thresholdMs;
 
   const problemas = mon.problemas.filter((p) => p.tipo !== "sem_movimentacao");
   if (isIdle) {
