@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { LeadMonitoramento } from "@/lib/lead-monitoramento";
 
 export type PessoaTipo = "fisica" | "juridica";
 
@@ -195,6 +196,7 @@ export type Captacao = {
     papel: string | null;
   };
   historicos?: CaptacaoHistorico[];
+  monitoramento?: LeadMonitoramento | null;
 };
 
 export type CaptacaoResumo = {

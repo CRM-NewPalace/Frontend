@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { Building2, Home, KeyRound, Landmark } from "lucide-react";
+import { Building2, Home, KeyRound, Landmark, UserCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,10 @@ import {
   updateTenantOperationModules,
   type TenantOperationModules,
 } from "@/lib/tenant-company-api";
+import {
+  getHideClientesFromSidebar,
+  setHideClientesFromSidebar,
+} from "@/lib/clientes-nav-prefs";
 import { toast } from "sonner";
 
 const CARDS: Array<{
@@ -53,9 +57,14 @@ const CARDS: Array<{
 export function ConfigModulosOperacaoPanel() {
   const router = useRouter();
   const [ops, setOps] = useState<TenantOperationModules | null>(null);
+  const [hideClientes, setHideClientes] = useState(() =>
+    getHideClientesFromSidebar(),
+  );
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const isAdmin = getSession()?.role === "admin";
+  const session = getSession();
+  const isAdmin = session?.role === "admin";
+  const isSolo = session?.tenant?.plano === "solo";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,6 +110,16 @@ export function ConfigModulosOperacaoPanel() {
     } finally {
       setSavingKey(null);
     }
+  }
+
+  function toggleHideClientes(checked: boolean) {
+    setHideClientes(checked);
+    setHideClientesFromSidebar(checked);
+    toast.success(
+      checked
+        ? "Clientes e Funil de Clientes ocultos do menu."
+        : "Clientes e Funil de Clientes voltaram ao menu.",
+    );
   }
 
   return (
@@ -167,6 +186,37 @@ export function ConfigModulosOperacaoPanel() {
             </Card>
           );
         })}
+        {!isSolo ? (
+          <Card>
+            <CardHeader className="flex-row items-start gap-3 space-y-0">
+              <div className="rounded-lg border bg-muted/40 p-2">
+                <UserCircle2 className="h-5 w-5 text-brand-accent" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-base">
+                  Clientes e Funil de Clientes
+                </CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Só oculta do menu. As telas continuam acessíveis se alguém
+                  abrir o endereço.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Ocultar do menu</p>
+                <p className="text-xs text-muted-foreground">
+                  Some Clientes e Funil de Clientes da barra lateral.
+                </p>
+              </div>
+              <Switch
+                checked={hideClientes}
+                onCheckedChange={toggleHideClientes}
+                aria-label="Ocultar Clientes e Funil de Clientes do menu"
+              />
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );

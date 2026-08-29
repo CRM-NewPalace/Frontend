@@ -103,6 +103,12 @@ import {
   type FunilTarefaPrompt,
 } from "@/components/funil-tarefa-dialog";
 import {
+  LeadAtividadeDialog,
+  type LeadAtividadePrompt,
+} from "@/components/lead-atividade-dialog";
+import { fetchLeadById, mapApiLead } from "@/lib/leads-api";
+import { useTenantTheme } from "@/lib/tenant-theme";
+import {
   assumirAnalise,
   fetchAnalises,
   updateAnalise,
@@ -134,6 +140,7 @@ import {
   Phone,
   ChevronLeft,
   ChevronRight,
+  CalendarClock,
   ClipboardList,
   Loader2,
   Plus,
@@ -212,6 +219,8 @@ export function ComercialFunilBoard({
   const canSeeTeam = user ? canViewTeamData(user.role) : false;
   const isCorretor = !canSeeTeam;
   const canWriteTriagem = roleCanWriteTriagem(user?.role);
+  const { isModuleEnabled } = useTenantTheme();
+  const canAgenda = isModuleEnabled("agenda");
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isGerente = user?.role === "gerente";
   const isManager = canSeeTeam;
@@ -521,6 +530,8 @@ export function ComercialFunilBoard({
   const [tarefaPrompt, setTarefaPrompt] = useState<FunilTarefaPrompt | null>(
     null,
   );
+  const [atividadePrompt, setAtividadePrompt] =
+    useState<LeadAtividadePrompt | null>(null);
 
   /** Consulta a triagem sem sair do quadro. */
   const [triagemLead, setTriagemLead] = useState<Lead | null>(null);
@@ -635,6 +646,39 @@ export function ComercialFunilBoard({
     setManualTriagem(null);
     setManualTriagemTexto("");
     setManualTriagemSaving(false);
+  }
+
+  function openAtividade(lead: Lead) {
+    if (!canWriteTriagem || !canAgenda) return;
+    const stageName =
+      funnelStages.find((s) => s.id === lead.stage)?.name ?? lead.stage;
+    setAtividadePrompt({
+      leadId: lead.id,
+      leadNome: lead.nome,
+      stage: lead.stage,
+      stageName,
+    });
+  }
+
+  async function afterAtividadeCreated(leadId: string) {
+    try {
+      const mapped = mapApiLead(await fetchLeadById(leadId));
+      const next =
+        funilAtivo && mapped.monitoramento
+          ? {
+              ...mapped,
+              monitoramento: applyInatividadeThreshold(
+                mapped.monitoramento,
+                funilAtivo.inatividadeValor,
+                funilAtivo.inatividadeUnidade,
+              ),
+            }
+          : mapped;
+      applyLead(next);
+      setDetailLead((cur) => (cur?.id === leadId ? next : cur));
+    } catch {
+      void refreshLeads({ silent: true });
+    }
   }
 
   async function saveManualTriagem() {
@@ -1582,6 +1626,11 @@ export function ComercialFunilBoard({
               )
             : undefined
         }
+        onAddAtividade={
+          canWriteTriagem && canAgenda && detailLead
+            ? () => openAtividade(detailLead)
+            : undefined
+        }
         monitoramentoSlot={
           detailLead ? (
             <LeadFunilAlerta
@@ -1595,33 +1644,50 @@ export function ComercialFunilBoard({
         }
         footer={
           detailLead ? (
-            <FormDialogActions>
-              <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:[&_button]:w-full">
+            <div className="shrink-0 space-y-2.5 border-t bg-muted/30 px-4 py-3 sm:px-6 sm:py-4">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
                   variant="outline"
+                  className={cn("w-full", !canWriteTriagem && "sm:col-span-2")}
                   onClick={() => {
                     const lead = detailLead;
                     setDetailLead(null);
                     setTriagemLead(lead);
                   }}
                 >
-                  <ClipboardList className="w-4 h-4 mr-1" />
+                  <ClipboardList className="mr-1 h-4 w-4" />
                   Ver triagem
                 </Button>
-                {canWriteTriagem && (
+                {canWriteTriagem ? (
                   <Button
                     type="button"
                     variant="outline"
+                    className="w-full"
                     onClick={() => openManualTriagem(detailLead)}
                   >
-                    <ClipboardList className="w-4 h-4 mr-1" />
+                    <ClipboardList className="mr-1 h-4 w-4" />
                     Registrar histórico
                   </Button>
-                )}
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    Etapa:
+                ) : null}
+                {canWriteTriagem &&
+                canAgenda &&
+                detailLead.monitoramento?.visual !== "vermelho" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:col-span-2"
+                    onClick={() => openAtividade(detailLead)}
+                  >
+                    <CalendarClock className="mr-1 h-4 w-4" />
+                    Adicionar atividade
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex flex-col gap-2 border-t border-border/60 pt-2.5 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                    Etapa
                   </span>
                   <Select
                     value={detailLead.stage}
@@ -1640,14 +1706,15 @@ export function ComercialFunilBoard({
                   </Select>
                 </div>
                 <Button
-                  variant="outline"
-                  className="text-destructive hover:text-destructive"
+                  type="button"
+                  variant="ghost"
+                  className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive sm:px-3"
                   onClick={openLostFromDetail}
                 >
                   Dar perda
                 </Button>
               </div>
-            </FormDialogActions>
+            </div>
           ) : null
         }
       />
@@ -1720,6 +1787,12 @@ export function ComercialFunilBoard({
         onCreated={() => {
           void refreshLeads({ silent: true });
         }}
+      />
+
+      <LeadAtividadeDialog
+        prompt={atividadePrompt}
+        onClose={() => setAtividadePrompt(null)}
+        onCreated={(leadId) => afterAtividadeCreated(leadId)}
       />
 
       <Dialog

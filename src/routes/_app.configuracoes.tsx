@@ -219,7 +219,10 @@ function ColorSwatchPicker({
 function CatalogItemBadge({ item }: { item: CatalogItem }) {
   return (
     <Badge
-      className={catalogColorBadgeClass(item.color)}
+      className={catalogColorBadgeClass(
+        item.color,
+        "!h-auto min-h-6 !w-auto max-w-full flex-1 whitespace-normal break-words leading-snug",
+      )}
       style={catalogColorBadgeStyle(item.color)}
       title={item.label}
     >
@@ -245,7 +248,7 @@ function CatalogKindCard({
 }) {
   return (
     <Card className="min-w-0">
-      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 pb-3">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
         <CardTitle className="text-sm">{title}</CardTitle>
         <Button
           size="sm"
@@ -265,11 +268,11 @@ function CatalogKindCard({
             Nenhum item cadastrado.
           </p>
         ) : (
-          <div className="divide-y rounded-lg border">
+          <div className="divide-y overflow-hidden rounded-lg border">
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted/40"
+                className="flex min-w-0 items-center gap-2 px-2 py-1.5 hover:bg-muted/40"
               >
                 <CatalogItemBadge item={item} />
                 <div className="ml-auto flex shrink-0 items-center">
@@ -937,12 +940,7 @@ function Config() {
                   Opções do formulário de leads.
                 </p>
               </div>
-              <div
-                className={cn(
-                  "grid gap-4 md:grid-cols-2",
-                  showMotivos ? "xl:grid-cols-4" : "xl:grid-cols-3",
-                )}
-              >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17.5rem),1fr))]">
                 {(
                   [
                     ["origens", "Origens"],

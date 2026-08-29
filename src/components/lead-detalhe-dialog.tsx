@@ -171,10 +171,12 @@ function LinkAcao({
 function MonitoramentoCard({
   lead,
   inatividadeFallback,
+  onAddAtividade,
   children,
 }: {
   lead: Lead;
   inatividadeFallback?: string;
+  onAddAtividade?: () => void;
   children?: ReactNode;
 }) {
   const mon = lead.monitoramento;
@@ -324,6 +326,18 @@ function MonitoramentoCard({
         </dl>
 
         {children}
+
+        {onAddAtividade && isRed ? (
+          <Button
+            type="button"
+            size="sm"
+            className="w-full"
+            onClick={onAddAtividade}
+          >
+            <CalendarClock className="mr-1.5 h-3.5 w-3.5" />
+            Adicionar atividade
+          </Button>
+        ) : null}
       </div>
     </section>
   );
@@ -343,6 +357,7 @@ export function LeadDetalheDialog({
   inatividadeFallback,
   monitoramentoSlot,
   footer,
+  onAddAtividade,
 }: {
   lead: Lead | null;
   open: boolean;
@@ -356,6 +371,7 @@ export function LeadDetalheDialog({
   /** Ação de monitoramento (histórico de prazos / adiar). */
   monitoramentoSlot?: ReactNode;
   footer?: ReactNode;
+  onAddAtividade?: () => void;
 }) {
   const { funnelStages, colorByLabel } = useCatalog();
   const stage = funnelStages.find((item) => item.id === lead?.stage);
@@ -495,11 +511,6 @@ export function LeadDetalheDialog({
                   WhatsApp
                 </Button>
                 <LinkAcao
-                  href={temTelefone ? `tel:+${telefoneDigits}` : null}
-                  icon={Phone}
-                  label="Ligar"
-                />
-                <LinkAcao
                   href={email ? `mailto:${email}` : null}
                   icon={Mail}
                   label="E-mail"
@@ -523,6 +534,7 @@ export function LeadDetalheDialog({
                 <MonitoramentoCard
                   lead={lead}
                   inatividadeFallback={inatividadeFallback}
+                  onAddAtividade={onAddAtividade}
                 >
                   {monitoramentoSlot}
                 </MonitoramentoCard>

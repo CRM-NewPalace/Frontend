@@ -50,6 +50,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSession, sendHeartbeat, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import { useHideImoveisFromSidebar } from "@/lib/imoveis-nav-prefs";
+import { useHideClientesFromSidebar } from "@/lib/clientes-nav-prefs";
 import { useTenantTheme } from "@/lib/tenant-theme";
 import { GuiaTourHost } from "@/components/guia-tour";
 import { ModuloAjudaButton } from "@/components/modulo-ajuda";
@@ -344,6 +345,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const { brandName, logoUrl, modules } = useTenantTheme();
   const hideImoveisFromSidebar = useHideImoveisFromSidebar();
+  const hideClientesFromSidebar = useHideClientesFromSidebar();
   const plano = user?.tenant?.plano ?? null;
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
@@ -708,6 +710,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               if (item.to === "/imoveis" && hideImoveisFromSidebar) {
                 return null;
               }
+              if (
+                hideClientesFromSidebar &&
+                (item.to === "/clientes" || item.to === "/funil-clientes")
+              ) {
+                return null;
+              }
               return canAccessRoute(
                 user.role,
                 item.to,
@@ -722,7 +730,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         };
       })
       .filter((section) => section.items.length > 0);
-  }, [user, modules, plano, hideImoveisFromSidebar]);
+  }, [user, modules, plano, hideImoveisFromSidebar, hideClientesFromSidebar]);
 
   useEffect(() => {
     const active = navSections.find((section) =>

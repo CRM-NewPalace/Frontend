@@ -1,6 +1,7 @@
 import { apiFetch, ApiError } from "@/lib/api";
 import type { CaptacaoImovelTipo, Imovel } from "@/lib/captacao-api";
 import { formatBrl } from "@/lib/captacao-api";
+import type { LeadMonitoramento } from "@/lib/lead-monitoramento";
 
 export type VendaUsadoStatus =
   | "disponivel"
@@ -100,6 +101,7 @@ export type VendaUsado = {
     createdAt: string;
     autor?: { name: string } | null;
   }>;
+  monitoramento?: LeadMonitoramento | null;
 };
 
 function qs(params?: Record<string, string | undefined>) {

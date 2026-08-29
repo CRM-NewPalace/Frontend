@@ -3,6 +3,7 @@ import { MarketingNav } from "@/marketing/components/MarketingNav";
 import { JsonLd } from "@/marketing/components/JsonLd";
 import { ChallengesSection } from "@/marketing/home/ChallengesSection";
 import { CTASection } from "@/marketing/home/CTASection";
+import { FeatureHighlights } from "@/marketing/home/FeatureHighlights";
 import { HeroSection } from "@/marketing/home/HeroSection";
 import { HomeBackground } from "@/marketing/home/HomeBackground";
 import { TimelineSection } from "@/marketing/home/TimelineSection";
@@ -17,6 +18,7 @@ export default function Home() {
       <main className="relative z-0">
         <HeroSection />
         <ChallengesSection />
+        <FeatureHighlights />
         <TimelineSection />
         <CTASection />
       </main>

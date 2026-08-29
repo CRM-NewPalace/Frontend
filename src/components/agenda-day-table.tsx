@@ -97,7 +97,10 @@ type Slot =
 
 function buildDaySlots(day: Date, items: Agendamento[]): Slot[] {
   const dayItems = items
-    .filter((item) => sameDay(new Date(item.startsAt), day))
+    .filter(
+      (item) =>
+        sameDay(new Date(item.startsAt), day) && item.status !== "cancelado",
+    )
     .sort(
       (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );

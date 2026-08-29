@@ -119,6 +119,30 @@ export const MOTIVO_SEM_MOVIMENTACAO_LABEL: Record<
   sem_tarefa: "Sem tarefa",
 };
 
+export function matchesMonitoramentoFiltro(
+  mon: LeadMonitoramento | null | undefined,
+  filtro: MonitoramentoFiltro,
+): boolean {
+  if (filtro === "todos") return true;
+  if (!mon) return false;
+  if (filtro === "sem_movimentacao") {
+    return mon.problemas.some((p) => p.tipo === "sem_movimentacao");
+  }
+  if (filtro === "em_atraso") {
+    return mon.problemas.some(
+      (p) => p.tipo === "prazo_ultrapassado" || p.tipo === "tarefa_atrasada",
+    );
+  }
+  if (filtro === "proximo_vencimento") {
+    return mon.problemas.some((p) => p.tipo === "prazo_proximo");
+  }
+  return (
+    Boolean(mon.prazoDueAt) &&
+    mon.visual === "none" &&
+    !mon.problemas.some((p) => p.tipo === "prazo_ultrapassado")
+  );
+}
+
 export const MONITORAMENTO_FILTRO_OPTIONS: Array<{
   value: MonitoramentoFiltro;
   label: string;
