@@ -26,7 +26,7 @@ import {
   type VendaUsado,
 } from "@/lib/imoveis-usados-api";
 import {
-  applyInatividadeThreshold,
+  applyOperacaoFunilThreshold,
   matchesMonitoramentoFiltro,
   MONITORAMENTO_FILTRO_OPTIONS,
   type MonitoramentoFiltro,
@@ -101,17 +101,7 @@ function UsadosFunilPage() {
 
   const decoratedItems = useMemo(() => {
     if (!funil) return items;
-    return items.map((item) => {
-      if (!item.monitoramento) return item;
-      return {
-        ...item,
-        monitoramento: applyInatividadeThreshold(
-          item.monitoramento,
-          funil.inatividadeValor,
-          funil.inatividadeUnidade,
-        ),
-      };
-    });
+    return items.map((item) => applyOperacaoFunilThreshold(item, funil));
   }, [funil, items]);
 
   const visibleItems = useMemo(

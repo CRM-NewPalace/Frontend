@@ -26,7 +26,7 @@ import {
 import { BRAND_GRADIENT_BTN, BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 import { fetchFunilAtivo, type Funil } from "@/lib/funis-api";
 import {
-  applyInatividadeThreshold,
+  applyOperacaoFunilThreshold,
   matchesMonitoramentoFiltro,
   MONITORAMENTO_FILTRO_OPTIONS,
   type MonitoramentoFiltro,
@@ -90,17 +90,7 @@ function CaptacaoFunilPage() {
 
   const decoratedItems = useMemo(() => {
     if (!funil) return items;
-    return items.map((item) => {
-      if (!item.monitoramento) return item;
-      return {
-        ...item,
-        monitoramento: applyInatividadeThreshold(
-          item.monitoramento,
-          funil.inatividadeValor,
-          funil.inatividadeUnidade,
-        ),
-      };
-    });
+    return items.map((item) => applyOperacaoFunilThreshold(item, funil));
   }, [funil, items]);
 
   const visibleItems = useMemo(
