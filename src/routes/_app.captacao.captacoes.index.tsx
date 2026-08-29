@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -23,6 +32,7 @@ import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { useCatalog } from "@/lib/catalog-store";
 import {
+  CAPTACAO_IMOVEL_TIPO_LABEL,
   CAPTACAO_ORIGENS_PADRAO,
   createCaptacao,
   deleteCaptacao,
@@ -36,21 +46,79 @@ import {
   type Imovel,
   type Proprietario,
 } from "@/lib/captacao-api";
-import { FILTER_BAR_SHELL, FILTER_CONTROL } from "@/lib/filter-bar";
-import { StatusChip, TableFrame } from "@/components/operacao-ui";
+import {
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+  STATUS_CHIP_CLASS,
+} from "@/lib/catalog-colors";
+import {
+  FILTER_BAR_STACK,
+  FILTER_CONTROL,
+  FILTER_LABEL,
+  FILTER_SEARCH_ICON,
+  FILTER_VISTA_BTN,
+  FILTER_VISTA_BTN_ACTIVE,
+  FILTER_VISTA_WRAP,
+} from "@/lib/filter-bar";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
-import { ImovelFotoThumb } from "@/components/imovel-foto-thumb";
-import { RowIconButton, TableRowActions } from "@/components/table-row-actions";
+import { BRAND_GRADIENT_BTN, BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
 import { maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
-import { Eye, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Building2,
+  Eye,
+  LayoutGrid,
+  LayoutList,
+  Loader2,
+  MapPin,
+  Pencil,
+  Plus,
+  Ruler,
+  Search,
+  Trash2,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/captacao/captacoes/")({
   component: CaptacoesPage,
 });
 
+type Vista = "cards" | "tabela";
+const VISTA_KEY = "captacoes.vista";
+const TABLE_CHIP =
+  "h-5 w-auto max-w-[8.5rem] min-w-0 shrink rounded-full border-transparent px-2 py-0 text-[10px] font-medium leading-5 shadow-none";
+
+function getVista(): Vista {
+  try {
+    return localStorage.getItem(VISTA_KEY) === "tabela" ? "tabela" : "cards";
+  } catch {
+    return "cards";
+  }
+}
+
+function TableHeadCell({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <TableHead
+      style={{ backgroundColor: "transparent" }}
+      className={cn(
+        "h-11 bg-transparent text-[11px] font-semibold uppercase tracking-wider text-white/90",
+        className,
+      )}
+    >
+      {children}
+    </TableHead>
+  );
+}
+
 function CaptacoesPage() {
-  const { origens } = useCatalog();
+  const { origens, colorByLabel } = useCatalog();
   const origemOpcoes = origens.length ? origens : [...CAPTACAO_ORIGENS_PADRAO];
   const [items, setItems] = useState<Captacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +129,8 @@ function CaptacoesPage() {
   const [proprietarios, setProprietarios] = useState<Proprietario[]>([]);
   const [imoveis, setImoveis] = useState<Imovel[]>([]);
   const [responsaveis, setResponsaveis] = useState<CaptacaoResponsavel[]>([]);
+  const [search, setSearch] = useState("");
+  const [vista, setVistaState] = useState<Vista>(() => getVista());
   const [filtros, setFiltros] = useState({
     origem: "",
     exclusividade: "",
@@ -81,6 +151,34 @@ function CaptacoesPage() {
     () => imoveis.filter((i) => i.proprietarioId === form.proprietarioId),
     [imoveis, form.proprietarioId],
   );
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => {
+      const hay = [
+        item.proprietario.nome,
+        item.imovel.titulo,
+        item.imovel.cidade,
+        item.imovel.bairro,
+        item.responsavel.name,
+        item.origem,
+        item.funilEtapa.label,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [items, search]);
+
+  function setVista(next: Vista) {
+    setVistaState(next);
+    try {
+      localStorage.setItem(VISTA_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -178,143 +276,445 @@ function CaptacoesPage() {
         title="Captações"
         description="Processos no funil de Captação. A etapa inicial vem do funil ativo."
         actions={
-          <Button size="sm" onClick={() => void openCreate()}>
+          <Button
+            size="sm"
+            onClick={() => void openCreate()}
+            className={cn("h-8 rounded-full", BRAND_GRADIENT_BTN)}
+            style={BRAND_GRADIENT_STYLE}
+          >
             <Plus className="mr-1 h-4 w-4" />
             Nova captação
           </Button>
         }
       />
-      <div className={FILTER_BAR_SHELL}>
-        <Input
-          className={FILTER_CONTROL}
-          placeholder="Cidade"
-          value={filtros.cidade}
-          onChange={(e) => setFiltros({ ...filtros, cidade: e.target.value })}
-        />
-        <Input
-          className={FILTER_CONTROL}
-          placeholder="Origem"
-          value={filtros.origem}
-          onChange={(e) => setFiltros({ ...filtros, origem: e.target.value })}
-        />
-        <select
-          className={`h-9 rounded-md border px-2 text-sm ${FILTER_CONTROL}`}
-          value={filtros.exclusividade}
-          onChange={(e) =>
-            setFiltros({ ...filtros, exclusividade: e.target.value })
-          }
-        >
-          <option value="">Exclusividade</option>
-          <option value="sim">Sim</option>
-          <option value="nao">Não</option>
-        </select>
-        <Button variant="outline" onClick={() => void load()}>
-          Filtrar
-        </Button>
+
+      <div className={FILTER_BAR_STACK}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="buscar-captacao" className={FILTER_LABEL}>
+              Buscar
+            </Label>
+            <div className="relative">
+              <Search className={FILTER_SEARCH_ICON} />
+              <Input
+                id="buscar-captacao"
+                placeholder="Proprietário, imóvel ou cidade…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={cn("pl-9", FILTER_CONTROL)}
+              />
+            </div>
+          </div>
+          <div>
+            <Label className={FILTER_LABEL}>Exibir</Label>
+            <div className={FILTER_VISTA_WRAP}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  FILTER_VISTA_BTN,
+                  vista === "cards" && FILTER_VISTA_BTN_ACTIVE,
+                )}
+                title="Ver cards"
+                onClick={() => setVista("cards")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="ml-1.5">Cards</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  FILTER_VISTA_BTN,
+                  vista === "tabela" && FILTER_VISTA_BTN_ACTIVE,
+                )}
+                title="Ver tabela"
+                onClick={() => setVista("tabela")}
+              >
+                <LayoutList className="h-4 w-4" />
+                <span className="ml-1.5">Tabela</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <Label className={FILTER_LABEL}>Cidade</Label>
+            <Input
+              className={FILTER_CONTROL}
+              placeholder="Todas"
+              value={filtros.cidade}
+              onChange={(e) => setFiltros({ ...filtros, cidade: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label className={FILTER_LABEL}>Origem</Label>
+            <Input
+              className={FILTER_CONTROL}
+              placeholder="Todas"
+              value={filtros.origem}
+              onChange={(e) => setFiltros({ ...filtros, origem: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label className={FILTER_LABEL}>Exclusividade</Label>
+            <Select
+              value={filtros.exclusividade || "__all__"}
+              onValueChange={(value) =>
+                setFiltros({
+                  ...filtros,
+                  exclusividade: value === "__all__" ? "" : value,
+                })
+              }
+            >
+              <SelectTrigger className={FILTER_CONTROL}>
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas</SelectItem>
+                <SelectItem value="sim">Sim</SelectItem>
+                <SelectItem value="nao">Não</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-end">
+            <Button
+              variant="outline"
+              className={cn("w-full", FILTER_CONTROL)}
+              onClick={() => void load()}
+            >
+              Filtrar
+            </Button>
+          </div>
+        </div>
       </div>
+
       {loading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           Carregando…
         </div>
-      ) : (
-        <TableFrame>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Proprietário</TableHead>
-              <TableHead>Imóvel</TableHead>
-              <TableHead>Responsável</TableHead>
-              <TableHead>Origem</TableHead>
-              <TableHead>Exclusividade</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead>Etapa</TableHead>
-              <TableHead className="w-[120px] text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-muted-foreground">
-                  Nenhuma captação.
-                </TableCell>
+      ) : visible.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
+            <Building2 className="h-8 w-8 opacity-40" />
+            <p className="max-w-sm text-center">
+              {items.length === 0
+                ? "Nenhuma captação cadastrada. Use “Nova captação” para começar."
+                : "Nenhuma captação encontrada para a busca ou os filtros."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : vista === "tabela" ? (
+        <Card className="overflow-hidden border-primary/15 shadow-sm shadow-primary/5">
+          <Table className="[&_th]:px-3.5 [&_td]:px-3.5 [&_td]:py-2.5">
+            <TableHeader
+              style={{
+                backgroundColor: "transparent",
+                backgroundImage: BRAND_GRADIENT_STYLE.backgroundImage,
+              }}
+              className="text-white"
+            >
+              <TableRow className="hover:bg-transparent">
+                <TableHeadCell>Proprietário</TableHeadCell>
+                <TableHeadCell>Imóvel</TableHeadCell>
+                <TableHeadCell>Responsável</TableHeadCell>
+                <TableHeadCell>Origem</TableHeadCell>
+                <TableHeadCell>Exclusividade</TableHeadCell>
+                <TableHeadCell className="text-right">Valor</TableHeadCell>
+                <TableHeadCell>Etapa</TableHeadCell>
+                <TableHeadCell className="w-28 text-right">Ações</TableHeadCell>
               </TableRow>
-            ) : (
-              items.map((item) => (
-                <TableRow key={item.id}>
+            </TableHeader>
+            <TableBody>
+              {visible.map((item, index) => (
+                <TableRow
+                  key={item.id}
+                  className={cn(
+                    "group border-border/50 hover:bg-primary/10",
+                    index % 2 === 0
+                      ? "bg-linear-to-r from-primary/10 via-primary/4 to-transparent"
+                      : "bg-linear-to-r from-primary/[0.04] to-transparent",
+                  )}
+                >
                   <TableCell>
-                    <Link
-                      to="/captacao/proprietarios/$id"
-                      params={{ id: item.proprietario.id }}
-                      className="hover:underline"
-                    >
-                      {item.proprietario.nome}
-                    </Link>
+                    <div className="flex min-w-40 items-start gap-2.5">
+                      <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-linear-to-b from-[#0e6f8a] to-primary shadow-sm shadow-primary/25" />
+                      <Link
+                        to="/captacao/proprietarios/$id"
+                        params={{ id: item.proprietario.id }}
+                        className="truncate font-semibold leading-snug tracking-tight hover:underline"
+                      >
+                        {item.proprietario.nome}
+                      </Link>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Link
                       to="/captacao/imoveis/$id"
                       params={{ id: item.imovel.id }}
-                      className="flex items-center gap-2 hover:underline"
+                      className="min-w-0 hover:underline"
                     >
-                      <ImovelFotoThumb src={item.imovel.fotoUrl} alt="" />
-                      <span>{item.imovel.titulo}</span>
+                      <p className="truncate font-medium">{item.imovel.titulo}</p>
+                      {item.imovel.cidade ? (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {item.imovel.cidade}
+                        </p>
+                      ) : null}
                     </Link>
                   </TableCell>
-                  <TableCell>{item.responsavel.name}</TableCell>
-                  <TableCell>{item.origem || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {item.responsavel.name}
+                  </TableCell>
+                  <TableCell>
+                    {item.origem ? (
+                      <Badge
+                        className={cn(
+                          STATUS_CHIP_CLASS,
+                          TABLE_CHIP,
+                          catalogColorBadgeClass(
+                            colorByLabel("origem", item.origem),
+                          ),
+                        )}
+                        style={catalogColorBadgeStyle(
+                          colorByLabel("origem", item.origem),
+                        )}
+                        title={item.origem}
+                      >
+                        {item.origem}
+                      </Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     {item.exclusividade ? (
-                      <StatusChip tone="teal">Sim</StatusChip>
+                      <Badge className={cn(STATUS_CHIP_CLASS, TABLE_CHIP, "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300")}>
+                        Sim
+                      </Badge>
                     ) : (
                       <span className="text-muted-foreground">Não</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatBrl(item.valorPretendido)}
+                    {item.valorPretendido != null ? (
+                      <span className="inline-flex rounded-md bg-linear-to-r from-primary/15 to-cyan-400/20 px-2 py-0.5 font-semibold tabular-nums tracking-tight text-primary">
+                        {formatBrl(item.valorPretendido)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Link
-                      to="/captacao/captacoes/$id"
-                      params={{ id: item.id }}
-                      className="hover:underline"
+                    <Badge
+                      className={cn(
+                        STATUS_CHIP_CLASS,
+                        TABLE_CHIP,
+                        catalogColorBadgeClass(item.funilEtapa.color),
+                      )}
+                      style={catalogColorBadgeStyle(item.funilEtapa.color)}
+                      title={item.funilEtapa.label}
                     >
                       {item.funilEtapa.label}
-                    </Link>
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <TableRowActions>
-                      <RowIconButton title="Ver detalhes" asChild>
+                    <div className="inline-flex rounded-lg border border-primary/20 bg-linear-to-br from-primary/10 to-cyan-400/10 p-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
+                        title="Ver detalhes"
+                        asChild
+                      >
                         <Link
                           to="/captacao/captacoes/$id"
                           params={{ id: item.id }}
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Link>
-                      </RowIconButton>
-                      <RowIconButton title="Editar" asChild>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 hover:bg-primary/10"
+                        title="Editar"
+                        asChild
+                      >
                         <Link
                           to="/captacao/captacoes/$id"
                           params={{ id: item.id }}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Link>
-                      </RowIconButton>
-                      <RowIconButton
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 hover:bg-destructive/10"
                         title="Excluir"
-                        destructive
                         onClick={() => setPendingDelete(item)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </RowIconButton>
-                    </TableRowActions>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        </TableFrame>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((item) => (
+            <Card
+              key={item.id}
+              className="group overflow-hidden transition-shadow hover:shadow-lg"
+            >
+              <div className="relative h-40 overflow-hidden bg-linear-to-br from-primary/25 via-primary/10 to-muted">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Building2 className="h-10 w-10 text-primary/35" />
+                </div>
+                {item.imovel.fotoUrl ? (
+                  <img
+                    src={item.imovel.fotoUrl}
+                    alt=""
+                    className="relative h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : null}
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/60 to-transparent" />
+                {item.imovel.cidade ? (
+                  <Badge className="absolute bottom-3 right-3 border-white/20 bg-black/45 text-white hover:bg-black/55">
+                    {item.imovel.cidade}
+                  </Badge>
+                ) : null}
+              </div>
+              <CardHeader className="pb-2 pt-4">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-base leading-snug">
+                    {item.imovel.titulo}
+                  </CardTitle>
+                  <div className="flex shrink-0 gap-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Ver detalhes"
+                      asChild
+                    >
+                      <Link
+                        to="/captacao/captacoes/$id"
+                        params={{ id: item.id }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Editar"
+                      asChild
+                    >
+                      <Link
+                        to="/captacao/captacoes/$id"
+                        params={{ id: item.id }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Excluir"
+                      onClick={() => setPendingDelete(item)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {item.proprietario.nome}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge
+                    className={cn(
+                      STATUS_CHIP_CLASS,
+                      catalogColorBadgeClass(item.funilEtapa.color),
+                    )}
+                    style={catalogColorBadgeStyle(item.funilEtapa.color)}
+                    title={item.funilEtapa.label}
+                  >
+                    {item.funilEtapa.label}
+                  </Badge>
+                  {item.origem ? (
+                    <Badge
+                      className={cn(
+                        STATUS_CHIP_CLASS,
+                        catalogColorBadgeClass(
+                          colorByLabel("origem", item.origem),
+                        ),
+                      )}
+                      style={catalogColorBadgeStyle(
+                        colorByLabel("origem", item.origem),
+                      )}
+                      title={item.origem}
+                    >
+                      {item.origem}
+                    </Badge>
+                  ) : null}
+                  {item.exclusividade ? (
+                    <Badge className={cn(STATUS_CHIP_CLASS, "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300")}>
+                      Exclusividade
+                    </Badge>
+                  ) : null}
+                  <Badge
+                    className={cn(STATUS_CHIP_CLASS, "bg-sky-500/15 text-sky-700 dark:text-sky-300")}
+                    title={CAPTACAO_IMOVEL_TIPO_LABEL[item.imovel.tipo]}
+                  >
+                    {CAPTACAO_IMOVEL_TIPO_LABEL[item.imovel.tipo]}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <User className="h-3.5 w-3.5" />
+                    {item.responsavel.name.split(" ")[0]}
+                  </span>
+                  {item.imovel.area != null ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Ruler className="h-3.5 w-3.5" />
+                      {item.imovel.area} m²
+                    </span>
+                  ) : null}
+                  {item.imovel.bairro ? (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {item.imovel.bairro}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-sm font-semibold text-primary">
+                  {formatBrl(item.valorPretendido ?? item.valorAvaliacao)}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

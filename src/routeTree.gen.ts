@@ -75,6 +75,7 @@ import { Route as AppImoveisUsadosFunilRouteImport } from './routes/_app.imoveis
 import { Route as AppImoveisUsadosInteressadosRouteImport } from './routes/_app.imoveis-usados.interessados'
 import { Route as AppImoveisUsadosVendasRouteImport } from './routes/_app.imoveis-usados.vendas'
 import { Route as AppImoveisUsadosVisaoGeralRouteImport } from './routes/_app.imoveis-usados.visao-geral'
+import { Route as AppImoveisIdRouteImport } from './routes/_app.imoveis_.$id'
 import { Route as PortalImoveisIndexRouteImport } from './routes/portal.imoveis.index'
 import { Route as PortalImoveisIdRouteImport } from './routes/portal.imoveis.$id'
 import { Route as AppCaptacaoCaptacoesIndexRouteImport } from './routes/_app.captacao.captacoes.index'
@@ -425,6 +426,11 @@ const AppImoveisUsadosVisaoGeralRoute =
     path: '/visao-geral',
     getParentRoute: () => AppImoveisUsadosRoute,
   } as any)
+const AppImoveisIdRoute = AppImoveisIdRouteImport.update({
+  id: '/imoveis_/$id',
+  path: '/imoveis/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const PortalImoveisIndexRoute = PortalImoveisIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -547,6 +553,7 @@ export interface FileRoutesByFullPath {
   '/imoveis-usados/interessados': typeof AppImoveisUsadosInteressadosRoute
   '/imoveis-usados/vendas': typeof AppImoveisUsadosVendasRouteWithChildren
   '/imoveis-usados/visao-geral': typeof AppImoveisUsadosVisaoGeralRoute
+  '/imoveis/$id': typeof AppImoveisIdRoute
   '/portal/imoveis/$id': typeof PortalImoveisIdRoute
   '/portal/imoveis/': typeof PortalImoveisIndexRoute
   '/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
@@ -618,6 +625,7 @@ export interface FileRoutesByTo {
   '/imoveis-usados/funil': typeof AppImoveisUsadosFunilRoute
   '/imoveis-usados/interessados': typeof AppImoveisUsadosInteressadosRoute
   '/imoveis-usados/visao-geral': typeof AppImoveisUsadosVisaoGeralRoute
+  '/imoveis/$id': typeof AppImoveisIdRoute
   '/portal/imoveis/$id': typeof PortalImoveisIdRoute
   '/portal/imoveis': typeof PortalImoveisIndexRoute
   '/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
@@ -697,6 +705,7 @@ export interface FileRoutesById {
   '/_app/imoveis-usados/interessados': typeof AppImoveisUsadosInteressadosRoute
   '/_app/imoveis-usados/vendas': typeof AppImoveisUsadosVendasRouteWithChildren
   '/_app/imoveis-usados/visao-geral': typeof AppImoveisUsadosVisaoGeralRoute
+  '/_app/imoveis_/$id': typeof AppImoveisIdRoute
   '/portal/imoveis/$id': typeof PortalImoveisIdRoute
   '/portal/imoveis/': typeof PortalImoveisIndexRoute
   '/_app/captacao/captacoes/$id': typeof AppCaptacaoCaptacoesIdRoute
@@ -776,6 +785,7 @@ export interface FileRouteTypes {
     | '/imoveis-usados/interessados'
     | '/imoveis-usados/vendas'
     | '/imoveis-usados/visao-geral'
+    | '/imoveis/$id'
     | '/portal/imoveis/$id'
     | '/portal/imoveis/'
     | '/captacao/captacoes/$id'
@@ -847,6 +857,7 @@ export interface FileRouteTypes {
     | '/imoveis-usados/funil'
     | '/imoveis-usados/interessados'
     | '/imoveis-usados/visao-geral'
+    | '/imoveis/$id'
     | '/portal/imoveis/$id'
     | '/portal/imoveis'
     | '/captacao/captacoes/$id'
@@ -925,6 +936,7 @@ export interface FileRouteTypes {
     | '/_app/imoveis-usados/interessados'
     | '/_app/imoveis-usados/vendas'
     | '/_app/imoveis-usados/visao-geral'
+    | '/_app/imoveis_/$id'
     | '/portal/imoveis/$id'
     | '/portal/imoveis/'
     | '/_app/captacao/captacoes/$id'
@@ -1414,6 +1426,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisUsadosVisaoGeralRouteImport
       parentRoute: typeof AppImoveisUsadosRoute
     }
+    '/_app/imoveis_/$id': {
+      id: '/_app/imoveis_/$id'
+      path: '/imoveis/$id'
+      fullPath: '/imoveis/$id'
+      preLoaderRoute: typeof AppImoveisIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/portal/imoveis/': {
       id: '/portal/imoveis/'
       path: '/'
@@ -1650,6 +1669,7 @@ interface AppRouteChildren {
   AppTriagemRoute: typeof AppTriagemRoute
   AppUsuariosRoute: typeof AppUsuariosRoute
   AppVendasRoute: typeof AppVendasRoute
+  AppImoveisIdRoute: typeof AppImoveisIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1685,6 +1705,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTriagemRoute: AppTriagemRoute,
   AppUsuariosRoute: AppUsuariosRoute,
   AppVendasRoute: AppVendasRoute,
+  AppImoveisIdRoute: AppImoveisIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

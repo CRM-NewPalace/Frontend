@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +113,12 @@ import {
 } from "@/components/image-upload-field";
 import { CatalogUnidadeImoveis } from "@/components/catalog-unidade-imoveis";
 import {
+  CAPTACAO_IMOVEL_TIPO_LABEL,
+  fetchCaptacaoImoveis,
+  formatBrl,
+  type Imovel,
+} from "@/lib/captacao-api";
+import {
   Building2,
   Car,
   LayoutGrid,
@@ -129,6 +136,7 @@ import {
   Home,
   CircleDot,
   CalendarClock,
+  Eye,
   FileText,
   StickyNote,
   Palette,
@@ -335,6 +343,7 @@ export function ImoveisPage({
   const tagOptions = catalog.empreendimento_tag;
 
   const [items, setItems] = useState<Empreendimento[]>([]);
+  const [captacaoImoveis, setCaptacaoImoveis] = useState<Imovel[]>([]);
   const [construtoras, setConstrutoras] = useState<Construtora[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -348,6 +357,14 @@ export function ImoveisPage({
   const [vista, setVista] = useImoveisVista();
   const [kindPickOpen, setKindPickOpen] = useState(false);
   const [unidadeCreateTick, setUnidadeCreateTick] = useState(0);
+  const [unidadeEditRequest, setUnidadeEditRequest] = useState<{
+    id: string;
+    tick: number;
+  } | null>(null);
+  const [unidadeDeleteRequest, setUnidadeDeleteRequest] = useState<{
+    id: string;
+    tick: number;
+  } | null>(null);
   const { show: showCampo } = useImoveisCamposVisiveis();
   const [catalogoLocalidades, setCatalogoLocalidades] = useState<Localidade[]>(
     [],
@@ -401,10 +418,30 @@ export function ImoveisPage({
     }
   }
 
+  const loadCaptacaoImoveis = useCallback(async () => {
+    if (embedded) {
+      setCaptacaoImoveis([]);
+      return;
+    }
+    try {
+      setCaptacaoImoveis(
+        await fetchCaptacaoImoveis(
+          proprietarioId ? { proprietarioId } : undefined,
+        ),
+      );
+    } catch {
+      setCaptacaoImoveis([]);
+    }
+  }, [embedded, proprietarioId]);
+
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await fetchEmpreendimentos({ ativo: true }));
+      const [lancamentos] = await Promise.all([
+        fetchEmpreendimentos({ ativo: true }),
+        loadCaptacaoImoveis(),
+      ]);
+      setItems(lancamentos);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -414,7 +451,7 @@ export function ImoveisPage({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadCaptacaoImoveis]);
 
   useEffect(() => {
     void loadItems();
@@ -1012,6 +1049,30 @@ export function ImoveisPage({
     [filtered, sort],
   );
 
+  const captacaoFiltered = useMemo(() => {
+    if (embedded) return [];
+    const q = search.trim().toLocaleLowerCase("pt-BR");
+    return captacaoImoveis.filter((item) => {
+      if (proprietarioId && item.proprietarioId !== proprietarioId) return false;
+      if (quartos && item.quartos !== Number(quartos)) return false;
+      if (!q) return true;
+      const hay = [
+        item.titulo,
+        item.cidade,
+        item.bairro,
+        item.logradouro,
+        item.proprietario?.nome,
+        CAPTACAO_IMOVEL_TIPO_LABEL[item.tipo],
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("pt-BR");
+      return hay.includes(q);
+    });
+  }, [embedded, captacaoImoveis, proprietarioId, quartos, search]);
+
+  const catalogEmpty = sorted.length === 0 && captacaoFiltered.length === 0;
+
   function openPdfDialog() {
     if (sorted.length === 0) {
       toast.error("Nenhum empreendimento para gerar o PDF.");
@@ -1325,7 +1386,7 @@ export function ImoveisPage({
       </div>
 
       {!embedded ? (
-        <h2 className="mb-3 mt-2 text-base font-semibold">Lançamentos</h2>
+        <h2 className="mb-3 mt-2 text-base font-semibold">Catálogo</h2>
       ) : null}
 
       {loading ? (
@@ -1333,20 +1394,20 @@ export function ImoveisPage({
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           Carregando…
         </div>
-      ) : sorted.length === 0 ? (
+      ) : catalogEmpty ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
             <Building2 className="w-8 h-8 opacity-40" />
             <p className="text-center max-w-sm">
-              {items.length === 0
+              {items.length === 0 && captacaoImoveis.length === 0
                 ? canCreate
-                  ? "Nenhum empreendimento cadastrado. Use “Novo imóvel” para começar."
-                  : "Nenhum empreendimento cadastrado ainda."
+                  ? "Nenhum imóvel no catálogo. Use “Novo imóvel” para começar."
+                  : "Nenhum imóvel no catálogo ainda."
                 : hasActiveFilters
-                  ? "Nenhum empreendimento encontrado para os filtros selecionados."
+                  ? "Nenhum imóvel encontrado para os filtros selecionados."
                   : "Nenhum resultado para a busca."}
             </p>
-            {items.length === 0 && canCreate && (
+            {items.length === 0 && captacaoImoveis.length === 0 && canCreate && (
               <Button
                 className={`mt-2 ${IMOVEIS_GRADIENT_BTN}`}
                 style={IMOVEIS_GRADIENT_STYLE}
@@ -1428,9 +1489,13 @@ export function ImoveisPage({
                       <div className="flex min-w-40 items-start gap-2.5">
                         <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-linear-to-b from-[#0e6f8a] to-primary shadow-sm shadow-primary/25" />
                         <div className="min-w-0">
-                          <p className="truncate font-semibold leading-snug tracking-tight text-foreground">
+                          <Link
+                            to="/imoveis/$id"
+                            params={{ id: item.id }}
+                            className="truncate font-semibold leading-snug tracking-tight hover:underline"
+                          >
                             {item.nome}
-                          </p>
+                          </Link>
                           {showCampo("endereco") && item.endereco ? (
                             <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">
                               {item.endereco}
@@ -1576,6 +1641,143 @@ export function ImoveisPage({
                     </TableCell>
                   </TableRow>
               ))}
+              {captacaoFiltered.map((item, index) => (
+                <TableRow
+                  key={`cap-${item.id}`}
+                  className={cn(
+                    "group border-border/50 hover:bg-primary/10",
+                    (sorted.length + index) % 2 === 0
+                      ? "bg-linear-to-r from-primary/10 via-primary/4 to-transparent"
+                      : "bg-linear-to-r from-primary/[0.04] to-transparent",
+                  )}
+                >
+                  <TableCell>
+                    <div className="flex min-w-40 items-start gap-2.5">
+                      <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-linear-to-b from-[#0e6f8a] to-primary shadow-sm shadow-primary/25" />
+                      <div className="min-w-0">
+                        <Link
+                          to="/captacao/imoveis/$id"
+                          params={{ id: item.id }}
+                          className="truncate font-semibold leading-snug tracking-tight hover:underline"
+                        >
+                          {item.titulo}
+                        </Link>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {item.proprietario?.nome ?? "Captação"}
+                          {item.cidade ? ` · ${item.cidade}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  {showCampo("construtora") ? (
+                    <TableCell>
+                      <Badge className={cn(STATUS_CHIP_CLASS, IMOVEIS_TABLE_CHIP)}>
+                        Captação
+                      </Badge>
+                    </TableCell>
+                  ) : null}
+                  {showCampo("localidade") ? (
+                    <TableCell className="text-sm text-muted-foreground">
+                      {item.cidade || "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("tipo") ||
+                  showCampo("status") ||
+                  showCampo("tags") ? (
+                    <TableCell>
+                      <Badge
+                        className={cn(STATUS_CHIP_CLASS, IMOVEIS_TABLE_CHIP)}
+                      >
+                        {CAPTACAO_IMOVEL_TIPO_LABEL[item.tipo]}
+                      </Badge>
+                    </TableCell>
+                  ) : null}
+                  {showCampo("previsao") ? (
+                    <TableCell className="text-sm text-muted-foreground">
+                      —
+                    </TableCell>
+                  ) : null}
+                  {showCampo("quartos") ? (
+                    <TableCell className="text-center tabular-nums text-sm text-muted-foreground">
+                      {item.quartos != null ? item.quartos : "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("metragem") ? (
+                    <TableCell className="whitespace-nowrap tabular-nums text-sm text-muted-foreground">
+                      {item.area != null ? `${item.area} m²` : "—"}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("valor") ? (
+                    <TableCell className="text-right">
+                      {item.valor != null ? (
+                        <span className="inline-flex rounded-md bg-linear-to-r from-primary/15 to-cyan-400/20 px-2 py-0.5 font-semibold tabular-nums tracking-tight text-primary">
+                          {formatBrl(item.valor)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  ) : null}
+                  {showCampo("renda") ? (
+                    <TableCell className="text-right text-muted-foreground">
+                      —
+                    </TableCell>
+                  ) : null}
+                  <TableCell className="text-right">
+                    <div className="inline-flex rounded-lg border border-primary/20 bg-linear-to-br from-primary/10 to-cyan-400/10 p-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-primary hover:bg-primary/10"
+                        asChild
+                      >
+                        <Link
+                          to="/captacao/imoveis/$id"
+                          params={{ id: item.id }}
+                          title="Ver detalhes"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                      {canManage ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 hover:bg-primary/10"
+                          title="Editar"
+                          onClick={() =>
+                            setUnidadeEditRequest({
+                              id: item.id,
+                              tick: Date.now(),
+                            })
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
+                      {canDelete ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 hover:bg-destructive/10"
+                          title="Excluir"
+                          onClick={() =>
+                            setUnidadeDeleteRequest({
+                              id: item.id,
+                              tick: Date.now(),
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </Card>
@@ -1586,7 +1788,11 @@ export function ImoveisPage({
               key={item.id}
               className="group overflow-hidden transition-shadow hover:shadow-lg"
             >
-              <div className="relative h-40 overflow-hidden bg-linear-to-br from-primary/25 via-primary/10 to-muted">
+              <Link
+                to="/imoveis/$id"
+                params={{ id: item.id }}
+                className="relative block h-40 overflow-hidden bg-linear-to-br from-primary/25 via-primary/10 to-muted"
+              >
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Building2 className="h-10 w-10 text-primary/35" />
                 </div>
@@ -1623,11 +1829,17 @@ export function ImoveisPage({
                     {empreendimentoLocalidadeNome(item)}
                   </Badge>
                 ) : null}
-              </div>
+              </Link>
               <CardHeader className="pb-2 pt-4">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base leading-snug">
-                    {item.nome}
+                    <Link
+                      to="/imoveis/$id"
+                      params={{ id: item.id }}
+                      className="hover:underline"
+                    >
+                      {item.nome}
+                    </Link>
                   </CardTitle>
                   <div className="flex shrink-0 gap-0.5">
                     <Button
@@ -1766,15 +1978,111 @@ export function ImoveisPage({
               </CardContent>
             </Card>
           ))}
+          {captacaoFiltered.map((item) => (
+            <Card
+              key={`cap-${item.id}`}
+              className="group overflow-hidden transition-shadow hover:shadow-lg"
+            >
+              <Link
+                to="/captacao/imoveis/$id"
+                params={{ id: item.id }}
+                className="relative block h-40 overflow-hidden bg-linear-to-br from-primary/25 via-primary/10 to-muted"
+              >
+                {item.fotoUrl ? (
+                  <img
+                    src={item.fotoUrl}
+                    alt={item.titulo}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <Building2 className="h-10 w-10 text-primary/35" />
+                  </div>
+                )}
+                <Badge className="absolute bottom-3 right-3 border-white/20 bg-black/45 text-white hover:bg-black/55">
+                  Captação
+                </Badge>
+              </Link>
+              <CardHeader className="pb-2 pt-4">
+                <div className="flex items-start justify-between gap-2">
+                <CardTitle className="text-base leading-snug">
+                  <Link
+                    to="/captacao/imoveis/$id"
+                    params={{ id: item.id }}
+                    className="hover:underline"
+                  >
+                    {item.titulo}
+                  </Link>
+                </CardTitle>
+                  <div className="flex shrink-0 gap-0.5">
+                  {canManage ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Editar"
+                      onClick={() =>
+                        setUnidadeEditRequest({
+                          id: item.id,
+                          tick: Date.now(),
+                        })
+                      }
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                  {canDelete ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Excluir"
+                      onClick={() =>
+                        setUnidadeDeleteRequest({
+                          id: item.id,
+                          tick: Date.now(),
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  ) : null}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {item.proprietario?.nome ?? "Sem proprietário"}
+                  {item.cidade ? ` · ${item.cidade}` : ""}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge className={STATUS_CHIP_CLASS}>
+                    {CAPTACAO_IMOVEL_TIPO_LABEL[item.tipo]}
+                  </Badge>
+                </div>
+                {item.valor != null ? (
+                  <p className="text-sm font-medium">
+                    {formatBrl(item.valor)}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
       {!embedded ? (
         <CatalogUnidadeImoveis
+          hideList
           search={search}
           vista={vista}
           proprietarioId={proprietarioId}
           createTick={unidadeCreateTick}
+          editRequest={unidadeEditRequest}
+          deleteRequest={unidadeDeleteRequest}
+          onChanged={() => void loadCaptacaoImoveis()}
         />
       ) : null}
 

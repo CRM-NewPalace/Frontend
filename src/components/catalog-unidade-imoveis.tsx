@@ -81,11 +81,19 @@ export function CatalogUnidadeImoveis({
   vista = "cards",
   proprietarioId,
   createTick = 0,
+  editRequest,
+  deleteRequest,
+  hideList = false,
+  onChanged,
 }: {
   search?: string;
   vista?: "cards" | "tabela";
   proprietarioId?: string;
   createTick?: number;
+  editRequest?: { id: string; tick: number } | null;
+  deleteRequest?: { id: string; tick: number } | null;
+  hideList?: boolean;
+  onChanged?: () => void;
 }) {
   const me = getSession();
   const [items, setItems] = useState<Imovel[]>([]);
@@ -186,6 +194,19 @@ export function CatalogUnidadeImoveis({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createTick]);
 
+  useEffect(() => {
+    if (!editRequest?.id || editRequest.tick <= 0) return;
+    const item = items.find((imovel) => imovel.id === editRequest.id);
+    if (item) openEdit(item);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequest?.tick, editRequest?.id, items]);
+
+  useEffect(() => {
+    if (!deleteRequest?.id || deleteRequest.tick <= 0) return;
+    const item = items.find((imovel) => imovel.id === deleteRequest.id);
+    if (item) setPendingDelete(item);
+  }, [deleteRequest?.tick, deleteRequest?.id, items]);
+
   function clearPendingFoto() {
     setPendingFoto(null);
     setPendingPreview((current) => {
@@ -276,6 +297,7 @@ export function CatalogUnidadeImoveis({
       clearPendingFoto();
       setOpen(false);
       await load();
+      onChanged?.();
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível salvar.",
@@ -293,6 +315,7 @@ export function CatalogUnidadeImoveis({
       toast.success("Imóvel excluído.");
       setPendingDelete(null);
       await load();
+      onChanged?.();
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível excluir.",
@@ -302,7 +325,7 @@ export function CatalogUnidadeImoveis({
     }
   }
 
-  if (loading && items.length === 0) {
+  if (!hideList && loading && items.length === 0) {
     return (
       <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -312,7 +335,8 @@ export function CatalogUnidadeImoveis({
   }
 
   return (
-    <div className="mt-8 space-y-3">
+    <div className={hideList ? "" : "mt-8 space-y-3"}>
+      {hideList ? null : (
       <div>
         <h2 className="text-base font-semibold">Captação e usados</h2>
         <p className="text-sm text-muted-foreground">
@@ -320,8 +344,8 @@ export function CatalogUnidadeImoveis({
           usados.
         </p>
       </div>
-
-      {filtered.length === 0 ? (
+      )}
+      {hideList ? null : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Nenhum imóvel de captação neste recorte.
         </p>
