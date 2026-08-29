@@ -52,6 +52,7 @@ export type ConfigSearch = {
   secao?: ConfigSecao;
   item?: ConfigItem;
   google?: string;
+  meta?: string;
 };
 
 export function parseConfigSecao(value: unknown): ConfigSecao | undefined {
@@ -77,10 +78,15 @@ export function parseConfigSearch(
     typeof search.google === "string" && search.google.trim()
       ? search.google.trim()
       : undefined;
+  const meta =
+    typeof search.meta === "string" && search.meta.trim()
+      ? search.meta.trim()
+      : undefined;
   return {
     ...(secao ? { secao } : {}),
     ...(item ? { item } : {}),
     ...(google ? { google } : {}),
+    ...(meta ? { meta } : {}),
   };
 }
 

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api";
 import {
   disconnectGoogleCalendar,
@@ -8,10 +10,305 @@ import {
   googleCalendarConnectHref,
   type GoogleCalendarStatus,
 } from "@/lib/google-calendar-api";
-import { CalendarDays, Loader2, RefreshCw, Unplug } from "lucide-react";
+import {
+  completeMetaOAuth,
+  disconnectMetaOAuth,
+  fetchMetaOAuthAssets,
+  fetchMetaOAuthStatus,
+  metaOAuthConnectHref,
+  type MetaOAuthAssets,
+  type MetaOAuthStatus,
+} from "@/lib/meta-oauth-api";
+import { CalendarDays, Loader2, RefreshCw, Share2, Unplug } from "lucide-react";
 import { toast } from "sonner";
 
-export function ConfigConexoesPanel() {
+type Props = {
+  selectingMeta?: boolean;
+};
+
+export function ConfigConexoesPanel({ selectingMeta = false }: Props) {
+  return (
+    <div className="space-y-4">
+      <MetaConexoesCard selectingMeta={selectingMeta} />
+      <GoogleConexoesCard />
+    </div>
+  );
+}
+
+function MetaConexoesCard({ selectingMeta }: { selectingMeta: boolean }) {
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<MetaOAuthStatus | null>(null);
+  const [assets, setAssets] = useState<MetaOAuthAssets | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [pageId, setPageId] = useState("");
+  const [adAccountId, setAdAccountId] = useState("");
+  const [manageOpen, setManageOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchMetaOAuthStatus()
+      .then((next) => {
+        if (!cancelled) setStatus(next);
+      })
+      .catch(() => {
+        if (!cancelled) setStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectingMeta) return;
+    let cancelled = false;
+    setBusy(true);
+    void fetchMetaOAuthAssets()
+      .then((next) => {
+        if (cancelled) return;
+        setAssets(next);
+        setPageId(next.pages[0]?.id ?? "");
+        setAdAccountId(next.adAccounts[0]?.id ?? "");
+      })
+      .catch((err) => {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível listar as Páginas do Facebook.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectingMeta]);
+
+  const clearMetaQuery = useCallback(() => {
+    void navigate({
+      to: "/configuracoes",
+      search: { secao: "conta", item: "conexoes" },
+      replace: true,
+    });
+  }, [navigate]);
+
+  async function handleComplete() {
+    if (!pageId) {
+      toast.error("Selecione uma Página do Facebook.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const next = await completeMetaOAuth({
+        pageId,
+        ...(adAccountId ? { adAccountId } : {}),
+      });
+      setStatus(next);
+      setAssets(null);
+      toast.success("Facebook conectado. Os leads das campanhas entram no CRM.");
+      clearMetaQuery();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível concluir a conexão.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const handleDisconnect = useCallback(
+    async (thenConnect = false) => {
+      setBusy(true);
+      try {
+        await disconnectMetaOAuth();
+        setStatus({
+          configured: true,
+          connected: false,
+          pageName: null,
+          pageId: null,
+          adAccountName: null,
+        });
+        setManageOpen(false);
+        if (thenConnect) {
+          window.location.assign(metaOAuthConnectHref());
+          return;
+        }
+        toast.success("Facebook desconectado.");
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível desconectar o Facebook.",
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Facebook e Instagram</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Receba automaticamente os leads do Meta Ads no CRM. Você só autoriza a
+          conta — não precisa configurar webhook, token ou ID de Página.
+        </p>
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Verificando conexão…
+          </div>
+        ) : !status?.configured ? (
+          <p className="text-sm text-muted-foreground">
+            A integração Facebook não está disponível neste ambiente.
+          </p>
+        ) : selectingMeta ? (
+          <div className="space-y-4">
+            <p className="text-sm">
+              Escolha a Página e a conta de anúncios que vão enviar leads.
+            </p>
+            {assets && assets.pages.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma Página foi autorizada. Conecte de novo e marque as
+                Páginas no Facebook.
+              </p>
+            ) : null}
+            {assets && assets.pages.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="meta-page">Página</Label>
+                  <select
+                    id="meta-page"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={pageId}
+                    onChange={(e) => setPageId(e.target.value)}
+                  >
+                    {assets.pages.map((page) => (
+                      <option key={page.id} value={page.id}>
+                        {page.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="meta-ad">Conta de anúncios</Label>
+                  <select
+                    id="meta-ad"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={adAccountId}
+                    onChange={(e) => setAdAccountId(e.target.value)}
+                  >
+                    <option value="">Nenhuma</option>
+                    {assets.adAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                disabled={busy || !pageId}
+                onClick={() => void handleComplete()}
+              >
+                {busy ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : null}
+                Concluir conexão
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={clearMetaQuery}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : status.connected ? (
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  Conectado
+                </p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {status.pageName ?? "Página do Facebook"}
+                  {status.adAccountName ? ` · ${status.adAccountName}` : ""}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => setManageOpen((open) => !open)}
+              >
+                Gerenciar conexão
+              </Button>
+            </div>
+            {manageOpen ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void handleDisconnect(true)}
+                >
+                  <RefreshCw className="mr-1.5 h-4 w-4" />
+                  Reconectar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  disabled={busy}
+                  onClick={() => void handleDisconnect(false)}
+                >
+                  <Unplug className="mr-1.5 h-4 w-4" />
+                  Desconectar
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Conecte sua conta para importar automaticamente os leads das suas
+              campanhas.
+            </p>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                window.location.assign(metaOAuthConnectHref());
+              }}
+            >
+              <Share2 className="mr-1.5 h-4 w-4" />
+              Conectar Facebook
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GoogleConexoesCard() {
   const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);

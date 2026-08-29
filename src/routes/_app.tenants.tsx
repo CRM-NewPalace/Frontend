@@ -1426,7 +1426,7 @@ function TenantsPage() {
                           <div className="flex items-center gap-2">
                             <Share2 className="h-4 w-4 shrink-0 text-blue-600" />
                             <span className="truncate font-medium">
-                              {connection.pageId}
+                              {connection.pageName ?? connection.pageId}
                             </span>
                             <Badge
                               variant={
@@ -1438,7 +1438,11 @@ function TenantsPage() {
                             </Badge>
                           </div>
                           <p className="truncate text-xs text-muted-foreground">
+                            {connection.pageName ? `${connection.pageId} · ` : ""}
                             Token {connection.pageAccessToken}
+                            {connection.adAccountName
+                              ? ` · ${connection.adAccountName}`
+                              : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 gap-1">

@@ -366,7 +366,7 @@ function Config() {
     () => defaultConfigSelection(navFlags, modules),
     [navFlags, modules],
   );
-  const selection = search.google
+  const selection = search.google || search.meta
     ? { secao: "conta" as const, item: "conexoes" as const }
     : resolveConfigSelection(
         search.secao,
@@ -525,6 +525,27 @@ function Config() {
       });
       return;
     }
+    if (search.meta === "denied") {
+      toast.error("Conexão com o Facebook cancelada.");
+      void navigate({
+        to: "/configuracoes",
+        search: { secao: "conta", item: "conexoes" },
+        replace: true,
+      });
+      return;
+    }
+    if (search.meta === "error") {
+      toast.error("Não foi possível conectar o Facebook.");
+      void navigate({
+        to: "/configuracoes",
+        search: { secao: "conta", item: "conexoes" },
+        replace: true,
+      });
+      return;
+    }
+    if (search.meta === "select") {
+      return;
+    }
     if (search.secao !== selection.secao || search.item !== selection.item) {
       void navigate({
         to: "/configuracoes",
@@ -532,7 +553,7 @@ function Config() {
         replace: true,
       });
     }
-  }, [search.google, search.secao, search.item, selection.secao, selection.item, navigate]);
+  }, [search.google, search.meta, search.secao, search.item, selection.secao, selection.item, navigate]);
 
   async function handleRemoveItem(item: CatalogItem) {
     try {
@@ -593,7 +614,9 @@ function Config() {
           />
         ) : null}
 
-        {selection.item === "conexoes" ? <ConfigConexoesPanel /> : null}
+        {selection.item === "conexoes" ? (
+          <ConfigConexoesPanel selectingMeta={search.meta === "select"} />
+        ) : null}
 
         {selection.item === "empresa" ? <ConfigEmpresaPanel /> : null}
 

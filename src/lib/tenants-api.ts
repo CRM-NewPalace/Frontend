@@ -44,6 +44,9 @@ export type TenantMetaConnection = {
   tenantId: string;
   pageId: string;
   pageAccessToken: string;
+  pageName?: string | null;
+  adAccountId?: string | null;
+  adAccountName?: string | null;
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
