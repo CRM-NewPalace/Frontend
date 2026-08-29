@@ -169,10 +169,6 @@ function MetaConexoesCard({ selectingMeta }: { selectingMeta: boolean }) {
             <Loader2 className="h-4 w-4 animate-spin" />
             Verificando conexão…
           </div>
-        ) : !status?.configured ? (
-          <p className="text-sm text-muted-foreground">
-            A integração Facebook não está disponível neste ambiente.
-          </p>
         ) : selectingMeta ? (
           <div className="space-y-4">
             <p className="text-sm">
