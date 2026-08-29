@@ -11,7 +11,7 @@ import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
 function apiProxyTarget() {
   const raw =
     process.env.API_PROXY_TARGET ??
-    "https://api-zoneconnection-backendzoneconnection-0163c0-179-198-111-97.sslip.io";
+    "http://api-staging-zoneconnection.179.198.111.97.sslip.io";
   return raw.replace(/\/api\/?$/, "");
 }
 
@@ -60,14 +60,17 @@ const lovableConfig = defineLovableConfig({
       tsconfigPaths: true,
     },
     server: {
+      host: "127.0.0.1",
+      port: 8080,
       open: true,
-      // Proxy evita CORS e o atraso ~3s do Windows (localhost → IPv6 timeout → IPv4).
-      // O browser fala com a mesma origem; o Vite encaminha para o Nest.
-      // API_PROXY_TARGET = origem do backend (sem /api no final).
+      // Proxy evita CORS. Timeout evita a aba ficar em “Esperando localhost…”
+      // se o staging não responder. host 127.0.0.1 evita o atraso de IPv6 no Windows.
       proxy: {
         "/api": {
           target: apiProxyTarget(),
           changeOrigin: true,
+          timeout: 15_000,
+          proxyTimeout: 15_000,
         },
       },
     },
@@ -83,6 +86,11 @@ export default async function defineConfig(
     resolve: {
       ...config.resolve,
       tsconfigPaths: true,
+    },
+    server: {
+      ...config.server,
+      host: "127.0.0.1",
+      port: 8080,
     },
     plugins: withoutTsconfigPathsPlugin(config.plugins),
   };

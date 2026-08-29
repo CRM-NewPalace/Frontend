@@ -3,6 +3,8 @@ import {
   ROUTE_MODULE_KEY,
   isFinanceiroPathAllowed,
   isSoloPathAllowed,
+  isTenantOperationEnabled,
+  isTenantOperationKey,
   type TenantPlano,
 } from "@/lib/tenant-modules";
 import {
@@ -196,10 +198,28 @@ export function canAccessRoute(
     const tenantKey = Object.entries(ROUTE_MODULE_KEY).find(
       ([route]) => path === route || path.startsWith(`${route}/`),
     )?.[1];
-    if (tenantKey && modules[tenantKey] === false) return false;
+    if (tenantKey) {
+      if (isTenantOperationKey(tenantKey)) {
+        if (!isTenantOperationEnabled(modules, tenantKey)) return false;
+      } else if (modules[tenantKey] === false) {
+        return false;
+      }
+    }
   }
 
   const permKey = moduleForPath(path);
+    if (permKey && isTenantOperationKey(permKey)) {
+      if (!isTenantOperationEnabled(modules, permKey)) return false;
+      if (
+        role === "admin" ||
+        role === "super_admin" ||
+        role === "gerente" ||
+        role === "corretor" ||
+        role === "treinee"
+      ) {
+        return true;
+      }
+    }
   if (permKey && role !== "super_admin") {
     const effective = effectivePermissions(role, userPermissions, plano);
     if (permKey === "comissao") {

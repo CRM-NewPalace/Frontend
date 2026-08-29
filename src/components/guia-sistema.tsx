@@ -24,6 +24,7 @@ import {
   findGuiaTopic,
   GUIA_GROUPS,
   GUIA_JOURNEY,
+  GUIA_JOURNEY_USADOS,
   type GuiaFormula,
   type GuiaTopic,
 } from "@/lib/guia-sistema-content";
@@ -102,30 +103,57 @@ function JourneyPage() {
       <Card>
         <CardContent className="space-y-4 p-5 sm:p-6">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Captação vive em Leads e Funil. Carteira em Clientes. O fechamento
-            é a ficha de Documentação: o analista dá o parecer (Status 1) e o
-            comercial marca a venda (Status 2). Vendido alimenta ranking,
-            metas, taxa de conversão e comissão.
+            Há duas operações. A de lançamentos vive em Leads e Funil: o
+            fechamento é a ficha de Documentação (parecer do analista e Status 2
+            Vendido). A de imóvel usado vive em Captação e Venda de Usados —
+            ligue esses módulos em Configurações se não aparecerem no menu.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            No índice ao lado, abra a pasta (Operação, Fechamento…) e clique no
-            módulo. A página deste guia troca aqui — você não sai do CRM.
+            No índice ao lado, abra a pasta (Operação, Captação e usados,
+            Fechamento…) e clique no módulo. A página deste guia troca aqui —
+            você não sai do CRM.
           </p>
-          <div className="grid gap-2 sm:grid-cols-5">
-            {GUIA_JOURNEY.map((item) => (
-              <div
-                key={item.n}
-                className="rounded-xl border border-border/70 bg-background p-3"
-              >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-accent/15 text-[11px] font-bold text-brand-accent">
-                  {item.n}
-                </span>
-                <p className="mt-2 text-sm font-semibold">{item.title}</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  {item.text}
-                </p>
-              </div>
-            ))}
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-accent">
+              Lançamentos — do lead à comissão
+            </p>
+            <div className="grid gap-2 sm:grid-cols-5">
+              {GUIA_JOURNEY.map((item) => (
+                <div
+                  key={`lead-${item.n}`}
+                  className="rounded-xl border border-border/70 bg-background p-3"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-accent/15 text-[11px] font-bold text-brand-accent">
+                    {item.n}
+                  </span>
+                  <p className="mt-2 text-sm font-semibold">{item.title}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-accent">
+              Usados — do proprietário à pós-venda
+            </p>
+            <div className="grid gap-2 sm:grid-cols-5">
+              {GUIA_JOURNEY_USADOS.map((item) => (
+                <div
+                  key={`usado-${item.n}`}
+                  className="rounded-xl border border-border/70 bg-background p-3"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-accent/15 text-[11px] font-bold text-brand-accent">
+                    {item.n}
+                  </span>
+                  <p className="mt-2 text-sm font-semibold">{item.title}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -308,12 +336,14 @@ export function GuiaSistemaPage({
   const [query, setQuery] = useState("");
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     operacao: true,
+    "imoveis-terceiros": true,
   });
 
   const filtered = useMemo(() => {
     const byAccess = GUIA_GROUPS.map((group) => ({
       ...group,
       topics: group.topics.filter((topic) => {
+        if (group.alwaysShow) return true;
         if (!topic.href || !user) return true;
         return canAccessRoute(
           user.role,

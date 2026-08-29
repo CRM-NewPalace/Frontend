@@ -161,6 +161,10 @@ export async function fetchLeadAssignees(): Promise<LeadAssignee[]> {
   return apiFetch<LeadAssignee[]>("/leads/assignees");
 }
 
+export async function fetchLeadById(id: string): Promise<ApiLead> {
+  return apiFetch<ApiLead>(`/leads/${id}`);
+}
+
 export async function fetchLeads(params?: {
   search?: string;
   tipo?: ContatoTipo;

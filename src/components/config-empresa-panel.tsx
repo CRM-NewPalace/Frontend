@@ -13,7 +13,6 @@ import { formatPhone } from "@/lib/phone";
 import { formatCpfCnpj } from "@/lib/utils";
 import { Building2, Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
-import { ConfigCreciPanel } from "@/components/config-creci-panel";
 
 type FormState = {
   name: string;
@@ -271,25 +270,6 @@ export function ConfigEmpresaPanel() {
             <p className="text-xs text-muted-foreground">{copy.readOnly}</p>
           )}
         </form>
-
-        {isSolo ? (
-          <div className="mt-6 space-y-3 border-t pt-6">
-            <div className="text-sm font-medium">Meu CRECI</div>
-            <ConfigCreciPanel
-              compact
-              solo
-              onSaved={async (updated) => {
-                const creci = updated.creci?.trim() ?? "";
-                setField("creci", creci);
-                try {
-                  await updateTenantCompany({ creci });
-                } catch {
-                  // Cadastro pessoal já salvou; contrato pode sincronizar depois.
-                }
-              }}
-            />
-          </div>
-        ) : null}
       </CardContent>
     </Card>
   );

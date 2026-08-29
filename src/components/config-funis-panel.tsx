@@ -50,6 +50,11 @@ import {
   deleteFunil,
   deleteFunilEtapa,
   fetchFunis,
+  FUNIL_PADRAO_ETAPAS_COUNT,
+  FUNIL_TIPO_LABEL,
+  FUNIL_TIPOS,
+  funilTipoOf,
+  parseFunilTipo,
   installFunilEtapasPadrao,
   recoverFunilEtapas,
   updateFunil,
@@ -57,6 +62,7 @@ import {
   type Funil,
   type FunilEtapa,
   type FunilEtapaPapel,
+  type FunilTipo,
 } from "@/lib/funis-api";
 import {
   Check,
@@ -74,6 +80,9 @@ import {
 } from "@/lib/lead-monitoramento";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getSession } from "@/lib/auth";
+import { isTenantOperationEnabled } from "@/lib/tenant-modules";
 
 const PAPEL_OPTIONS: Array<{
   value: FunilEtapaPapel | "";
@@ -93,6 +102,30 @@ const PAPEL_BADGE_LABEL: Record<FunilEtapaPapel, string> = {
   perdido: "Perdido",
 };
 
+type FiltroFunil = FunilTipo | "sem_tipo";
+
+function funilTipoVisivel(
+  tipo: FunilTipo,
+  modules: Record<string, boolean> | null | undefined,
+): boolean {
+  if (tipo === "comercial") {
+    return isTenantOperationEnabled(modules, "comercial");
+  }
+  if (tipo === "captacao") {
+    return isTenantOperationEnabled(modules, "captacao");
+  }
+  if (tipo === "venda_usados") {
+    return isTenantOperationEnabled(modules, "imoveisUsados");
+  }
+  return true;
+}
+
+function funilNoFiltro(funil: Funil, filtro: FiltroFunil): boolean {
+  const tipo = funilTipoOf(funil);
+  if (filtro === "sem_tipo") return tipo === null;
+  return tipo === filtro;
+}
+
 function resolveEtapaPapel(etapa: FunilEtapa): FunilEtapaPapel | null {
   if (etapa.papel) return etapa.papel;
   if (etapa.slug === "novo") return "inicial";
@@ -103,7 +136,13 @@ function resolveEtapaPapel(etapa: FunilEtapa): FunilEtapaPapel | null {
 }
 
 function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof ApiError ? err.message : fallback;
+  if (err instanceof ApiError) {
+    if (/tipo should not exist/i.test(err.message)) {
+      return "A API ainda está na versão antiga e recusa o campo tipo. Publique o Backend com a branch developer (e rode a migration de funil) e tente de novo.";
+    }
+    return err.message;
+  }
+  return fallback;
 }
 
 function ColorSwatchPicker({
@@ -159,6 +198,7 @@ export function ConfigFunisPanel() {
   const { refresh: refreshCatalog, applyFunnelEtapas } = useCatalog();
   const { refresh: refreshLeads } = useLeads();
   const [funis, setFunis] = useState<Funil[]>([]);
+  const [tipoFiltro, setTipoFiltro] = useState<FiltroFunil>("comercial");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -168,6 +208,7 @@ export function ConfigFunisPanel() {
   const [createPadrao, setCreatePadrao] = useState(true);
   const [createCustomStages, setCreateCustomStages] = useState("");
   const [createAtivar, setCreateAtivar] = useState(false);
+  const [createTipo, setCreateTipo] = useState<FunilTipo>("comercial");
 
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -189,8 +230,20 @@ export function ConfigFunisPanel() {
   const [deleteEtapa, setDeleteEtapa] = useState<FunilEtapa | null>(null);
   const [confirmDefaults, setConfirmDefaults] = useState(false);
 
-  const selected = funis.find((f) => f.id === selectedId) ?? null;
+  const tenantModules = getSession()?.tenant?.modules ?? null;
+  const tiposVisiveis = FUNIL_TIPOS.filter(
+    (t) =>
+      funilTipoVisivel(t, tenantModules) ||
+      funis.some((f) => funilTipoOf(f) === t),
+  );
+  const funisDoTipo = funis.filter((f) => funilNoFiltro(f, tipoFiltro));
+  const funisSemTipo = funis.filter((f) => funilTipoOf(f) === null);
+  const selected = funisDoTipo.find((f) => f.id === selectedId) ?? null;
   const activeEtapas = (selected?.etapas ?? []).filter((e) => e.active);
+  const funisParaVincular =
+    tipoFiltro === "sem_tipo"
+      ? []
+      : funis.filter((f) => !funilNoFiltro(f, tipoFiltro));
 
   useEffect(() => {
     if (!selected) return;
@@ -204,15 +257,16 @@ export function ConfigFunisPanel() {
       const list = await fetchFunis();
       setFunis(list);
       setSelectedId((prev) => {
-        if (prev && list.some((f) => f.id === prev)) return prev;
-        return list.find((f) => f.ativo)?.id ?? list[0]?.id ?? null;
+        const ofTipo = list.filter((f) => funilNoFiltro(f, tipoFiltro));
+        if (prev && ofTipo.some((f) => f.id === prev)) return prev;
+        return ofTipo.find((f) => f.ativo)?.id ?? ofTipo[0]?.id ?? null;
       });
     } catch (err) {
       toast.error(errorMessage(err, "Não foi possível carregar os funis."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tipoFiltro]);
 
   useEffect(() => {
     void load();
@@ -222,7 +276,12 @@ export function ConfigFunisPanel() {
     setFunis((prev) => {
       const without = prev.filter((f) => f.id !== updated.id);
       const next = [...without, updated].map((f) =>
-        updated.ativo && f.id !== updated.id ? { ...f, ativo: false } : f,
+        updated.ativo &&
+          f.id !== updated.id &&
+          funilTipoOf(f) !== null &&
+          funilTipoOf(f) === funilTipoOf(updated)
+          ? { ...f, ativo: false }
+          : f,
       );
       return next.sort(
         (a, b) =>
@@ -230,7 +289,9 @@ export function ConfigFunisPanel() {
       );
     });
     setSelectedId(updated.id);
-    applyFunnelEtapas(updated.etapas);
+    if (funilTipoOf(updated) === "comercial") {
+      applyFunnelEtapas(updated.etapas);
+    }
     await refreshCatalog();
   }
 
@@ -257,6 +318,7 @@ export function ConfigFunisPanel() {
       }
       const created = await createFunil({
         name,
+        tipo: createTipo,
         usarPadrao: createPadrao,
         etapas,
         ativar: createAtivar,
@@ -267,9 +329,28 @@ export function ConfigFunisPanel() {
       setCreatePadrao(true);
       setCreateCustomStages("");
       setCreateAtivar(false);
+      setTipoFiltro(parseFunilTipo(created.tipo) ?? createTipo);
       await afterMutation(created);
       await load();
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const list = await fetchFunis().catch(() => funis);
+        setFunis(list);
+        const existing = list.find(
+          (f) => f.name.trim().toLowerCase() === name.toLowerCase(),
+        );
+        if (existing) {
+          setTipoFiltro(funilTipoOf(existing) ?? createTipo);
+          setSelectedId(existing.id);
+          setCreateOpen(false);
+          toast.message(
+            `O funil "${existing.name}" já existe. Ele está na aba ${
+              FUNIL_TIPO_LABEL[funilTipoOf(existing) ?? createTipo]
+            }.`,
+          );
+          return;
+        }
+      }
       toast.error(errorMessage(err, "Não foi possível criar o funil."));
     } finally {
       setSaving(false);
@@ -313,6 +394,25 @@ export function ConfigFunisPanel() {
     } catch (err) {
       toast.error(
         errorMessage(err, "Não foi possível salvar o período de inatividade."),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleVincularTipo(funil: Funil, tipo: FunilTipo) {
+    setSaving(true);
+    try {
+      const updated = await updateFunil(funil.id, { tipo });
+      toast.success(
+        `Funil "${updated.name}" vinculado a ${FUNIL_TIPO_LABEL[tipo]}.`,
+      );
+      setTipoFiltro(tipo);
+      await afterMutation(updated);
+      await load();
+    } catch (err) {
+      toast.error(
+        errorMessage(err, "Não foi possível vincular o funil a este tipo."),
       );
     } finally {
       setSaving(false);
@@ -471,28 +571,101 @@ export function ConfigFunisPanel() {
             <div>
               <CardTitle className="text-base">Funis</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                Passe o cursor para ver as etapas. Ative o funil em uso no
-                kanban.
+                Passe o cursor para ver as etapas. Ative o funil em uso neste
+                tipo de operação. O kanban comercial usa só o tipo Comercial.
               </p>
             </div>
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setCreateTipo(
+                  tipoFiltro === "sem_tipo" ? "comercial" : tipoFiltro,
+                );
+                setCreateOpen(true);
+              }}
+            >
               <Plus className="w-4 h-4 mr-1" />
               Novo funil
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
+            <Tabs
+              value={tipoFiltro}
+              onValueChange={(v) => setTipoFiltro(v as FiltroFunil)}
+            >
+              <TabsList className="w-full h-auto flex-wrap justify-start">
+                {tiposVisiveis.map((tipo) => (
+                  <TabsTrigger key={tipo} value={tipo} className="text-xs">
+                    {FUNIL_TIPO_LABEL[tipo]}
+                    {!funilTipoVisivel(tipo, tenantModules) ? " *" : ""}
+                  </TabsTrigger>
+                ))}
+                <TabsTrigger value="sem_tipo" className="text-xs">
+                  Sem tipo
+                  {funisSemTipo.length > 0 ? ` (${funisSemTipo.length})` : ""}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {tiposVisiveis.some((t) => !funilTipoVisivel(t, tenantModules)) ? (
+              <p className="text-xs text-muted-foreground">
+                * Operação desativada em Módulos. O funil permanece cadastrado.
+              </p>
+            ) : null}
             {loading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Carregando…
               </div>
             )}
-            {!loading && funis.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nenhum funil cadastrado.
-              </p>
+            {!loading && funisDoTipo.length === 0 && (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {tipoFiltro === "sem_tipo"
+                    ? "Todos os funis já estão vinculados a um tipo."
+                    : "Nenhum funil cadastrado neste tipo."}
+                </p>
+                {tipoFiltro !== "sem_tipo" && funisParaVincular.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-xs font-medium">
+                      Vincular um funil existente a{" "}
+                      {FUNIL_TIPO_LABEL[tipoFiltro]}
+                    </p>
+                    {funisParaVincular.map((f) => {
+                      const tipoAtual = funilTipoOf(f);
+                      return (
+                        <div
+                          key={f.id}
+                          className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">
+                              {f.name}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {tipoAtual
+                                ? FUNIL_TIPO_LABEL[tipoAtual]
+                                : "Sem tipo"}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={saving}
+                            onClick={() =>
+                              void handleVincularTipo(f, tipoFiltro)
+                            }
+                          >
+                            Vincular
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
-            {funis.map((f) => {
+            {funisDoTipo.map((f) => {
               const etapasAtivas = f.etapas.filter((e) => e.active);
               return (
                 <Tooltip key={f.id}>
@@ -516,6 +689,7 @@ export function ConfigFunisPanel() {
                         )}
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {funilTipoOf(f) === null ? "Sem tipo · " : ""}
                         {etapasAtivas.length} etapa
                         {etapasAtivas.length === 1 ? "" : "s"}
                       </div>
@@ -564,9 +738,15 @@ export function ConfigFunisPanel() {
                 {selected ? selected.name : "Etapas do funil"}
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                {selected?.ativo
-                  ? "Este funil está ativo no kanban e nos novos leads."
-                  : "Edite as etapas ou ative este funil para usá-lo."}
+                {selected
+                  ? funilTipoOf(selected) === null
+                    ? "Este funil ainda não tem tipo. Vincule-o a uma operação para usá-lo no kanban."
+                    : selected.ativo
+                      ? funilTipoOf(selected) === "comercial"
+                        ? "Este funil está ativo no kanban e nos novos leads."
+                        : "Este funil está ativo neste tipo de operação."
+                      : "Edite as etapas ou ative este funil para usá-lo."
+                  : "Edite as etapas ou ative este funil para usá-lo. Selecione um funil à esquerda."}
               </p>
             </div>
             {selected && (
@@ -603,6 +783,7 @@ export function ConfigFunisPanel() {
                   <ListRestart className="w-4 h-4 mr-1" />
                   Etapas padrão
                 </Button>
+                {funilTipoOf(selected) === "comercial" && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -612,6 +793,7 @@ export function ConfigFunisPanel() {
                   <LifeBuoy className="w-4 h-4 mr-1" />
                   Recuperar etapas dos leads
                 </Button>
+                )}
                 <Button size="sm" onClick={openAddEtapa}>
                   <Plus className="w-4 h-4 mr-1" />
                   Nova etapa
@@ -621,7 +803,7 @@ export function ConfigFunisPanel() {
                     size="sm"
                     variant="ghost"
                     className="text-destructive"
-                    disabled={saving || funis.length <= 1}
+                    disabled={saving || funisDoTipo.length <= 1}
                     onClick={() => setDeleteFunilId(selected.id)}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
@@ -636,6 +818,34 @@ export function ConfigFunisPanel() {
               <p className="text-sm text-muted-foreground">
                 Selecione um funil à esquerda.
               </p>
+            )}
+            {selected && (
+              <div className="rounded-lg border border-border/60 p-3 space-y-2">
+                <p className="text-xs font-medium">Tipo de operação</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Funis sem tipo não entram no kanban comercial. Vincule ao tipo
+                  certo; o kanban de vendas usa só Comercial.
+                </p>
+                <select
+                  className="h-8 w-full max-w-xs rounded-md border bg-background px-2 text-sm"
+                  value={funilTipoOf(selected) ?? ""}
+                  disabled={saving}
+                  onChange={(e) => {
+                    const tipo = parseFunilTipo(e.target.value);
+                    if (!tipo) return;
+                    void handleVincularTipo(selected, tipo);
+                  }}
+                >
+                  {funilTipoOf(selected) === null && (
+                    <option value="">Sem tipo — selecione para vincular</option>
+                  )}
+                  {FUNIL_TIPOS.map((tipo) => (
+                    <option key={tipo} value={tipo}>
+                      {FUNIL_TIPO_LABEL[tipo]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
             {selected && (
               <div className="rounded-lg border border-border/60 p-3 space-y-2">
@@ -775,13 +985,29 @@ export function ConfigFunisPanel() {
                   autoFocus
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de operação</Label>
+                <div className="flex flex-col gap-1.5">
+                  {FUNIL_TIPOS.map((tipo) => (
+                    <label key={tipo} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="funil-tipo"
+                        checked={createTipo === tipo}
+                        onChange={() => setCreateTipo(tipo)}
+                      />
+                      {FUNIL_TIPO_LABEL[tipo]}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={createPadrao}
                   onChange={(e) => setCreatePadrao(e.target.checked)}
                 />
-                Usar etapas padrão (11 etapas)
+                Usar etapas padrão ({FUNIL_PADRAO_ETAPAS_COUNT[createTipo]} etapas)
               </label>
               {!createPadrao && (
                 <div className="space-y-1.5">

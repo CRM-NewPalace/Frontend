@@ -1917,7 +1917,7 @@ function BrokerPipeline({
 
   useEffect(() => {
     let active = true;
-    void fetchFunilAtivo()
+    void fetchFunilAtivo("comercial")
       .then((funil) => {
         if (active) {
           setStages(

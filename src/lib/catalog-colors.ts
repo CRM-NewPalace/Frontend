@@ -215,26 +215,26 @@ const CATALOG_BG_SOFT_STOPS: Record<
   "bg-sky-500": { a: "#7dd3fc", b: "#0ea5e9", c: "#0369a1" },
 };
 
-/** Hover mais claro para a linha da lista (não a badge). */
+/** Hover da linha da lista (não a badge). */
 const CATALOG_BG_SURFACE_HOVER: Record<string, string> = {
-  "bg-slate-500": "hover:bg-slate-100",
-  "bg-blue-500": "hover:bg-blue-50",
-  "bg-indigo-500": "hover:bg-indigo-50",
-  "bg-violet-500": "hover:bg-violet-50",
-  "bg-purple-500": "hover:bg-purple-50",
-  "bg-fuchsia-500": "hover:bg-fuchsia-50",
-  "bg-pink-500": "hover:bg-pink-50",
-  "bg-rose-500": "hover:bg-rose-50",
-  "bg-red-500": "hover:bg-red-50",
-  "bg-orange-500": "hover:bg-orange-50",
-  "bg-amber-500": "hover:bg-amber-50",
-  "bg-yellow-400": "hover:bg-yellow-50",
-  "bg-lime-500": "hover:bg-lime-50",
-  "bg-green-500": "hover:bg-green-50",
-  "bg-emerald-500": "hover:bg-emerald-50",
-  "bg-teal-500": "hover:bg-teal-50",
-  "bg-cyan-500": "hover:bg-cyan-50",
-  "bg-sky-500": "hover:bg-sky-50",
+  "bg-slate-500": "hover:bg-slate-100 dark:hover:bg-slate-800/70",
+  "bg-blue-500": "hover:bg-blue-50 dark:hover:bg-blue-950/45",
+  "bg-indigo-500": "hover:bg-indigo-50 dark:hover:bg-indigo-950/45",
+  "bg-violet-500": "hover:bg-violet-50 dark:hover:bg-violet-950/45",
+  "bg-purple-500": "hover:bg-purple-50 dark:hover:bg-purple-950/45",
+  "bg-fuchsia-500": "hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/45",
+  "bg-pink-500": "hover:bg-pink-50 dark:hover:bg-pink-950/45",
+  "bg-rose-500": "hover:bg-rose-50 dark:hover:bg-rose-950/45",
+  "bg-red-500": "hover:bg-red-50 dark:hover:bg-red-950/45",
+  "bg-orange-500": "hover:bg-orange-50 dark:hover:bg-orange-950/45",
+  "bg-amber-500": "hover:bg-amber-50 dark:hover:bg-amber-950/45",
+  "bg-yellow-400": "hover:bg-yellow-50 dark:hover:bg-yellow-950/40",
+  "bg-lime-500": "hover:bg-lime-50 dark:hover:bg-lime-950/40",
+  "bg-green-500": "hover:bg-green-50 dark:hover:bg-green-950/40",
+  "bg-emerald-500": "hover:bg-emerald-50 dark:hover:bg-emerald-950/40",
+  "bg-teal-500": "hover:bg-teal-50 dark:hover:bg-teal-950/40",
+  "bg-cyan-500": "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
+  "bg-sky-500": "hover:bg-sky-50 dark:hover:bg-sky-950/40",
 };
 
 /**
@@ -335,7 +335,8 @@ export function catalogColorSoftSurfaceClass(
   color: string | null | undefined,
 ): string {
   const bg = catalogColorSwatch(color);
-  const hover = CATALOG_BG_SURFACE_HOVER[bg] ?? "hover:bg-slate-100";
+  const hover =
+    CATALOG_BG_SURFACE_HOVER[bg] ?? "hover:bg-slate-100 dark:hover:bg-slate-800/70";
   return ["transition-colors", hover, "hover:[background-image:none]"].join(
     " ",
   );
@@ -351,7 +352,7 @@ export function catalogColorSoftSurfaceStyle(
     : CATALOG_BG_SOFT_STOPS[catalogColorSwatch(normalized)] ??
       CATALOG_BG_SOFT_STOPS["bg-slate-500"];
   return {
-    backgroundImage: `linear-gradient(90deg, color-mix(in oklab, ${stops.b} 28%, white) 0%, color-mix(in oklab, ${stops.a} 18%, white) 55%, white 100%)`,
+    backgroundImage: `linear-gradient(90deg, color-mix(in oklab, ${stops.b} 32%, var(--card)) 0%, color-mix(in oklab, ${stops.a} 20%, var(--card)) 55%, var(--card) 100%)`,
   };
 }
 

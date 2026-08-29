@@ -45,11 +45,20 @@ import {
   fetchEquipeCorretores,
   fetchEquipeGerentes,
   fetchEquipes,
+  putEquipeFunis,
   updateEquipe,
   type Equipe,
+  type EquipeFunisMap,
   type EquipeMember,
   type EquipeOptionUser,
 } from "@/lib/equipes-api";
+import {
+  fetchFunis,
+  FUNIL_TIPO_LABEL,
+  FUNIL_TIPOS,
+  type Funil,
+  type FunilTipo,
+} from "@/lib/funis-api";
 import { resetUserPassword } from "@/lib/users-api";
 import {
   Network,
@@ -65,6 +74,7 @@ import {
   Check,
   Shield,
   ChevronDown,
+  GitFork,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -79,14 +89,38 @@ type FormState = {
   gerenteId: string;
   membroIds: string[];
   status: "ativo" | "inativo";
+  funis: Record<FunilTipo, string>;
 };
+
+const NONE_FUNIL = "__none__";
+
+const emptyFunisForm = (): Record<FunilTipo, string> => ({
+  comercial: "",
+  captacao: "",
+  venda_usados: "",
+});
 
 const emptyForm = (): FormState => ({
   name: "",
   gerenteId: "",
   membroIds: [],
   status: "ativo",
+  funis: emptyFunisForm(),
 });
+
+function funisFromEquipe(equipe: Equipe): Record<FunilTipo, string> {
+  return {
+    comercial: equipe.funis?.comercial?.id ?? "",
+    captacao: equipe.funis?.captacao?.id ?? "",
+    venda_usados: equipe.funis?.venda_usados?.id ?? "",
+  };
+}
+
+function funilCell(map: EquipeFunisMap | undefined, tipo: FunilTipo) {
+  const item = map?.[tipo];
+  if (!item) return "—";
+  return item.ativo ? item.name : `${item.name} (inativo)`;
+}
 
 function initials(name: string) {
   return name
@@ -200,6 +234,7 @@ function EquipesPage() {
   const [corretores, setCorretores] = useState<EquipeOptionUser[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [catalogFunis, setCatalogFunis] = useState<Funil[]>([]);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -229,6 +264,15 @@ function EquipesPage() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    void fetchFunis()
+      .then(setCatalogFunis)
+      .catch(() => {
+        toast.error("Não foi possível carregar os funis para vínculo.");
+      });
+  }, [canManage]);
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -277,6 +321,7 @@ function EquipesPage() {
       gerenteId: equipe.gerenteId,
       membroIds: equipe.membros.map((m) => m.id),
       status: equipe.status,
+      funis: funisFromEquipe(equipe),
     });
     setOpen(true);
     await loadOptions(equipe.id);
@@ -311,14 +356,15 @@ function EquipesPage() {
     }
     setSaving(true);
     try {
+      let equipeId = editingId;
       if (formMode === "create") {
-        await createEquipe({
+        const created = await createEquipe({
           name: form.name.trim(),
           gerenteId: form.gerenteId,
           membroIds: form.membroIds,
           status: form.status,
         });
-        toast.success("Equipe criada.");
+        equipeId = created.id;
       } else if (editingId) {
         await updateEquipe(editingId, {
           name: form.name.trim(),
@@ -326,8 +372,17 @@ function EquipesPage() {
           membroIds: form.membroIds,
           status: form.status,
         });
-        toast.success("Equipe atualizada.");
       }
+      if (equipeId) {
+        await putEquipeFunis(equipeId, {
+          comercial: form.funis.comercial || null,
+          captacao: form.funis.captacao || null,
+          venda_usados: form.funis.venda_usados || null,
+        });
+      }
+      toast.success(
+        formMode === "create" ? "Equipe criada." : "Equipe atualizada.",
+      );
       setOpen(false);
       await loadItems();
     } catch (err) {
@@ -399,7 +454,7 @@ function EquipesPage() {
         title="Equipes"
         description={
           canManage
-            ? "Organize gerentes e corretores por equipe."
+            ? "Organize gerentes, corretores e o funil de cada operação."
             : "Membros da sua equipe — use a chave para gerar senha temporária se alguém esquecer."
         }
         actions={
@@ -435,6 +490,39 @@ function EquipesPage() {
         </div>
       ) : (
         <div className="min-w-0 space-y-3">
+          <div className="min-w-0 overflow-x-auto rounded-2xl border border-border/80 bg-card">
+            <table className="w-full min-w-[36rem] text-left text-sm">
+              <thead className="border-b border-border/60 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">Equipe</th>
+                  {FUNIL_TIPOS.map((tipo) => (
+                    <th key={tipo} className="px-4 py-2.5 font-semibold">
+                      {FUNIL_TIPO_LABEL[tipo]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((eq) => (
+                  <tr
+                    key={`funil-row-${eq.id}`}
+                    className="border-b border-border/40 last:border-0"
+                  >
+                    <td className="px-4 py-2.5 font-medium">{eq.name}</td>
+                    {FUNIL_TIPOS.map((tipo) => (
+                      <td
+                        key={tipo}
+                        className="px-4 py-2.5 text-muted-foreground"
+                      >
+                        {funilCell(eq.funis, tipo)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           {items.map((eq) => {
             const expanded = expandedIds.has(eq.id);
             return (
@@ -560,6 +648,31 @@ function EquipesPage() {
                         </div>
                       )}
                     </div>
+
+                    <div className="min-w-0 space-y-2 lg:col-span-2">
+                      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Funis da equipe
+                      </p>
+                      <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+                        {FUNIL_TIPOS.map((tipo) => (
+                          <div
+                            key={tipo}
+                            className="rounded-xl border border-border/70 px-3 py-2.5"
+                          >
+                            <p className="text-[11px] font-medium text-muted-foreground">
+                              {FUNIL_TIPO_LABEL[tipo]}
+                            </p>
+                            <p className="mt-0.5 text-sm font-medium">
+                              {funilCell(eq.funis, tipo)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="px-1 text-[11px] text-muted-foreground">
+                        Vale para novas operações. Captações e vendas já
+                        criadas permanecem no funil original.
+                      </p>
+                    </div>
                   </div>
                 )}
               </section>
@@ -575,7 +688,7 @@ function EquipesPage() {
             onOpenChange={setOpen}
             icon={<Network className="w-5 h-5" />}
             title={formMode === "create" ? "Nova equipe" : "Editar equipe"}
-            description="Defina o gerente responsável e os corretores da equipe."
+            description="Defina o gerente, os corretores e os funis usados nas novas operações."
             className="max-w-xl"
           >
             <form
@@ -701,6 +814,58 @@ function EquipesPage() {
                       })}
                     </div>
                   )}
+                </FormSection>
+
+                <FormSection
+                  icon={<GitFork className="w-3.5 h-3.5 text-primary" />}
+                  title="Funis da equipe"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Um funil ativo por tipo de operação. Novas captações e
+                    vendas de usados usam essa configuração; o Kanban comercial
+                    continua no funil comercial da imobiliária.
+                  </p>
+                  {FUNIL_TIPOS.map((tipo) => {
+                    const currentId = form.funis[tipo];
+                    const options = catalogFunis.filter(
+                      (f) => f.tipo === tipo && (f.ativo || f.id === currentId),
+                    );
+                    return (
+                      <div key={tipo} className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">
+                          {FUNIL_TIPO_LABEL[tipo]}
+                        </Label>
+                        <Select
+                          value={currentId || NONE_FUNIL}
+                          onValueChange={(v) =>
+                            setForm((p) => ({
+                              ...p,
+                              funis: {
+                                ...p.funis,
+                                [tipo]: v === NONE_FUNIL ? "" : v,
+                              },
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-10 bg-background">
+                            <SelectValue placeholder="Nenhum" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE_FUNIL}>Nenhum</SelectItem>
+                            {options.map((f) => (
+                              <SelectItem
+                                key={f.id}
+                                value={f.id}
+                                disabled={!f.ativo}
+                              >
+                                {f.ativo ? f.name : `${f.name} (inativo)`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
                 </FormSection>
               </FormDialogBody>
 

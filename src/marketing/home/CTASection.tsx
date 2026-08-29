@@ -5,7 +5,7 @@ export function CTASection() {
   return (
     <section
       id="contato"
-      className="px-6 py-20 lg:px-12 lg:pt-28 lg:pb-32"
+      className="px-6 pt-6 pb-14 lg:px-12 lg:pt-8 lg:pb-16"
       aria-labelledby="cta-title"
     >
       <div className="mx-auto max-w-7xl">

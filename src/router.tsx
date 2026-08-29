@@ -16,11 +16,10 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    // Preload no hover/touch — troca de módulo fica quase instantânea.
-    // (#7759 corrigido nas versões atuais do router-core.)
-    defaultPreload: "intent",
-    defaultPreloadStaleTime: 30_000,
-    // Não segura a tela anterior esperando pendingMs (padrão do TanStack = 1000ms).
+    // Sem preload no hover: o intent disparava dezenas de rotas pesadas
+    // (funil, leads, dashboard) e quebrava com match undefined no router.
+    // A troca de módulo fica no clique, com o chunk em cache depois da 1ª visita.
+    defaultPreload: false,
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
   });

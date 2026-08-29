@@ -60,6 +60,7 @@ import {
   MapPin,
   Wallet,
   Sparkles,
+  CalendarClock,
   Eye,
   Pencil,
   Trash2,
@@ -91,7 +92,11 @@ import {
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
 import { getSession } from "@/lib/auth";
-import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
+import {
+  canViewTeamData,
+  canWriteTriagem as roleCanWriteTriagem,
+  isCorretorLike,
+} from "@/lib/permissions";
 import { canUserAction } from "@/lib/user-permissions";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
@@ -103,7 +108,7 @@ import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import { importLeads } from "@/lib/leads-api";
+import { importLeads, fetchLeadById, mapApiLead } from "@/lib/leads-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
   downloadImportTemplate,
@@ -130,6 +135,11 @@ import {
   FormSection,
 } from "@/components/form-dialog";
 import { LeadDetalheDialog } from "@/components/lead-detalhe-dialog";
+import {
+  LeadAtividadeDialog,
+  type LeadAtividadePrompt,
+} from "@/components/lead-atividade-dialog";
+import { useTenantTheme } from "@/lib/tenant-theme";
 import { ApiError } from "@/lib/api";
 import { SOFT_BTN } from "@/lib/soft-btn";
 import {
@@ -301,6 +311,9 @@ function LeadsPage() {
     ? canUserAction(user.role, user.permissions, "leads.delete")
     : false;
   const isCorretor = !canSeeTeam && !canViewOthers;
+  const canWriteTriagem = roleCanWriteTriagem(user?.role);
+  const { isModuleEnabled } = useTenantTheme();
+  const canAgenda = isModuleEnabled("agenda");
   const canDistribuir = user?.role === "admin" || user?.role === "gerente";
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
@@ -312,6 +325,7 @@ function LeadsPage() {
     addLead,
     updateLead,
     markLeadLost,
+    applyLead,
     loading,
     assignees,
     refresh,
@@ -374,6 +388,8 @@ function LeadsPage() {
   const [bulkMotivo, setBulkMotivo] = useState("");
   const [bulkMotivoOutro, setBulkMotivoOutro] = useState("");
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  const [atividadePrompt, setAtividadePrompt] =
+    useState<LeadAtividadePrompt | null>(null);
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
@@ -1042,6 +1058,28 @@ function LeadsPage() {
       );
     } else {
       toast.error(`${ok} excluído(s), ${fail} com erro.`);
+    }
+  }
+
+  function openAtividade(lead: Lead) {
+    if (!canWriteTriagem || !canAgenda) return;
+    const stageName =
+      funnelStages.find((s) => s.id === lead.stage)?.name ?? lead.stage;
+    setAtividadePrompt({
+      leadId: lead.id,
+      leadNome: lead.nome,
+      stage: lead.stage,
+      stageName,
+    });
+  }
+
+  async function afterAtividadeCreated(leadId: string) {
+    try {
+      const next = mapApiLead(await fetchLeadById(leadId));
+      applyLead(next);
+      setDetailLead((cur) => (cur?.id === leadId ? next : cur));
+    } catch {
+      void refresh();
     }
   }
 
@@ -1766,9 +1804,27 @@ function LeadsPage() {
           detailLead &&
           isLeadCarteiraPropria(detailLead, user?.id),
         )}
+        onAddAtividade={
+          canWriteTriagem && canAgenda && detailLead
+            ? () => openAtividade(detailLead)
+            : undefined
+        }
         footer={
           detailLead ? (
             <FormDialogActions>
+              {canWriteTriagem &&
+              canAgenda &&
+              detailLead.monitoramento?.visual !== "vermelho" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => openAtividade(detailLead)}
+                >
+                  <CalendarClock className="w-4 h-4" />
+                  Adicionar atividade
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 className="flex-1 sm:flex-none"
@@ -1789,6 +1845,12 @@ function LeadsPage() {
             </FormDialogActions>
           ) : null
         }
+      />
+
+      <LeadAtividadeDialog
+        prompt={atividadePrompt}
+        onClose={() => setAtividadePrompt(null)}
+        onCreated={(leadId) => afterAtividadeCreated(leadId)}
       />
 
       <AlertDialog

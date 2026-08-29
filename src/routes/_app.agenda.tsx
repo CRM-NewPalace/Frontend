@@ -374,7 +374,11 @@ function AgendaPage() {
     if (!search.google) return;
     void navigate({
       to: "/configuracoes",
-      search: { google: search.google },
+      search: {
+        google: search.google,
+        secao: "conta",
+        item: "conexoes",
+      },
       replace: true,
     });
   }, [search.google, navigate]);
@@ -547,6 +551,14 @@ function AgendaPage() {
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  const visibleAgendaItems = useMemo(
+    () =>
+      filterStatus === "cancelado"
+        ? items
+        : items.filter((item) => item.status !== "cancelado"),
+    [items, filterStatus],
+  );
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -938,10 +950,12 @@ function AgendaPage() {
     if (item.status !== "agendado") return;
     setCancelingId(item.id);
     try {
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
       await updateAgendamento(item.id, { status: "cancelado" });
       toast.success("Compromisso cancelado.");
       await loadItems();
     } catch (err) {
+      await loadItems();
       toast.error(
         err instanceof ApiError
           ? err.message
@@ -1412,7 +1426,7 @@ function AgendaPage() {
           {layoutMode === "tabela" ? (
             <AgendaDayTable
               day={selectedDay}
-              items={items}
+              items={visibleAgendaItems}
               loading={loading}
               showCorretor={isManager}
               currentUserRole={user?.role}
@@ -1429,7 +1443,7 @@ function AgendaPage() {
             <AgendaBoard
               view={view}
               anchor={selectedDay}
-              items={items}
+              items={visibleAgendaItems}
               loading={loading}
               onSelectDay={handleSelectDay}
               onCreateAt={openCreate}

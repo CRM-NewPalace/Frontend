@@ -1,6 +1,8 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
+  Home,
   LayoutDashboard,
+  Store,
   Users,
   Kanban,
   Calendar,
@@ -48,6 +50,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSession, sendHeartbeat, signOut, type AuthUser } from "@/lib/auth";
 import { canAccessRoute } from "@/lib/permissions";
 import { useHideImoveisFromSidebar } from "@/lib/imoveis-nav-prefs";
+import { useHideClientesFromSidebar } from "@/lib/clientes-nav-prefs";
 import { useTenantTheme } from "@/lib/tenant-theme";
 import { GuiaTourHost } from "@/components/guia-tour";
 import { ModuloAjudaButton } from "@/components/modulo-ajuda";
@@ -241,6 +244,27 @@ const NAV_SECTIONS: {
       { to: "/funil-clientes", label: "Funil de Clientes", icon: Kanban },
       { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
       { to: "/clientes-perdidos", label: "Perda de cliente", icon: UserX },
+      {
+        id: "captacao",
+        label: "Captação",
+        icon: Home,
+        children: [
+          { to: "/captacao/visao-geral", label: "Visão geral", icon: LayoutDashboard },
+          { to: "/captacao/funil", label: "Funil", icon: Kanban },
+          { to: "/captacao/captacoes", label: "Captações", icon: ClipboardList },
+          { to: "/captacao/proprietarios", label: "Proprietários", icon: Users },
+        ],
+      },
+      {
+        id: "imoveis-usados",
+        label: "Venda de Usados",
+        icon: Store,
+        children: [
+          { to: "/imoveis-usados/visao-geral", label: "Visão geral", icon: LayoutDashboard },
+          { to: "/imoveis-usados/funil", label: "Funil", icon: Kanban },
+          { to: "/imoveis-usados/interessados", label: "Interessados", icon: Users },
+        ],
+      },
       { to: "/treinamento", label: "Treinamento", icon: GraduationCap },
     ],
   },
@@ -321,6 +345,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const { brandName, logoUrl, modules } = useTenantTheme();
   const hideImoveisFromSidebar = useHideImoveisFromSidebar();
+  const hideClientesFromSidebar = useHideClientesFromSidebar();
   const plano = user?.tenant?.plano ?? null;
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operacao: true,
@@ -675,7 +700,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   canAccessRoute(
                     user.role,
                     c.to,
-                    modules,
+                    user.tenant?.modules ?? modules,
                     plano,
                     user.permissions,
                   ),
@@ -685,10 +710,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               if (item.to === "/imoveis" && hideImoveisFromSidebar) {
                 return null;
               }
+              if (
+                hideClientesFromSidebar &&
+                (item.to === "/clientes" || item.to === "/funil-clientes")
+              ) {
+                return null;
+              }
               return canAccessRoute(
                 user.role,
                 item.to,
-                modules,
+                user.tenant?.modules ?? modules,
                 plano,
                 user.permissions,
               )
@@ -699,7 +730,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         };
       })
       .filter((section) => section.items.length > 0);
-  }, [user, modules, plano, hideImoveisFromSidebar]);
+  }, [user, modules, plano, hideImoveisFromSidebar, hideClientesFromSidebar]);
 
   useEffect(() => {
     const active = navSections.find((section) =>
@@ -822,6 +853,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={section.id}
                 to={standaloneLeaf.to}
+                preload={false}
                 onClick={onNavigate}
                 title={collapsedView ? section.label : undefined}
                 className={cn(
@@ -919,6 +951,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                   <Link
                                     key={child.to}
                                     to={child.to}
+                                    preload={false}
                                     onClick={onNavigate}
                                     className={cn(
                                       "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
@@ -949,6 +982,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <Link
                         key={item.to}
                         to={item.to}
+                        preload={false}
                         onClick={onNavigate}
                         className={cn(
                           "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",

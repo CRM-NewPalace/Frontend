@@ -64,7 +64,7 @@ const PRODUCTS = [
 ] as const;
 
 const linkClass =
-  "mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-brand-accent transition-all hover:gap-2.5 hover:text-white";
+  "mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-brand-accent transition-all hover:gap-2.5 hover:text-brand-dark";
 
 export function ChallengesSection() {
   return (
@@ -121,14 +121,14 @@ export function ChallengesSection() {
             const Icon = product.icon;
             return (
               <ScrollReveal key={product.title} delay={0.08 + index * 0.08}>
-                <article className="flex h-full flex-col rounded-2xl border border-brand-dark/40 bg-brand-dark p-7 shadow-md transition-all hover:-translate-y-1 hover:border-brand-accent/40 hover:shadow-lg">
-                  <div className="mb-5 grid h-11 w-11 place-items-center rounded-xl border border-white/15 bg-white/10 text-brand-accent">
+                <article className="flex h-full flex-col rounded-3xl border border-black/5 bg-white p-7 shadow-[0_16px_40px_-24px_rgba(5,54,71,0.35)] transition-all hover:-translate-y-1 hover:shadow-[0_22px_50px_-22px_rgba(5,54,71,0.4)]">
+                  <div className="mb-5 grid h-11 w-11 place-items-center rounded-2xl bg-brand-accent/10 text-brand-accent">
                     <Icon size={20} strokeWidth={1.75} />
                   </div>
-                  <h3 className="mb-3 text-lg font-semibold text-white">
+                  <h3 className="mb-3 text-lg font-semibold text-brand-dark">
                     {product.title}
                   </h3>
-                  <p className="flex-1 text-[0.975rem] leading-relaxed text-white/70">
+                  <p className="flex-1 text-[0.975rem] leading-relaxed text-text-muted">
                     {product.text}
                   </p>
                   {product.href === PRODUCT_ROUTES.crm ? (

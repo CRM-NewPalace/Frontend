@@ -91,11 +91,21 @@ export const sessionCache = {
 
 function readCookie(name: string): string | null {
   if (!isBrowser()) return null;
-  const match = document.cookie
+  const parts = document.cookie
     .split("; ")
-    .find((row) => row.startsWith(`${name}=`));
-  if (!match) return null;
+    .filter((row) => row.startsWith(`${name}=`));
+  if (parts.length === 0) return null;
+  const match = parts[parts.length - 1]!;
   return decodeURIComponent(match.slice(name.length + 1));
+}
+
+export function expireReadableCsrfCookies() {
+  if (!isBrowser()) return;
+  const expire = `${CSRF_COOKIE}=; max-age=0`;
+  for (const path of ["/", "/api"]) {
+    document.cookie = `${expire}; path=${path}`;
+    document.cookie = `${expire}; path=${path}; secure`;
+  }
 }
 
 /**
@@ -225,7 +235,11 @@ async function requestWithAuth(
   if (!response.ok) {
     if (response.status === 401 && !skipAuth) {
       sessionCache.clear();
-      if (isBrowser() && !window.location.pathname.startsWith("/login")) {
+      if (
+        isBrowser() &&
+        !window.location.pathname.startsWith("/login") &&
+        !window.location.pathname.startsWith("/portal")
+      ) {
         window.location.assign("/login");
       }
     }

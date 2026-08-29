@@ -127,6 +127,10 @@ export async function fetchEmpreendimentoMatches(
   );
 }
 
+export async function fetchEmpreendimento(id: string): Promise<Empreendimento> {
+  return apiFetch<Empreendimento>(`/empreendimentos/${id}`);
+}
+
 export async function fetchEmpreendimentos(params?: {
   construtoraId?: string;
   ativo?: boolean;

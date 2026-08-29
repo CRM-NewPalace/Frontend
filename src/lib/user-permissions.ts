@@ -44,6 +44,24 @@ export const PERMISSION_MODULES = [
     group: "operacao",
   },
   {
+    key: "captacao",
+    label: "Captação de imóveis",
+    routes: ["/captacao"],
+    group: "operacao",
+  },
+  {
+    key: "imoveisUsados",
+    label: "Venda de imóveis usados",
+    routes: ["/imoveis-usados"],
+    group: "operacao",
+  },
+  {
+    key: "locacao",
+    label: "Locação",
+    routes: ["/locacao"],
+    group: "operacao",
+  },
+  {
     key: "documentacao",
     label: "Documentação",
     routes: ["/documentacao"],

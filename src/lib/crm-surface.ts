@@ -13,6 +13,7 @@ const PUBLIC_EXACT = new Set([
 export function isPublicSurfacePath(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;
   if (pathname.startsWith("/produtos/")) return true;
+  if (pathname.startsWith("/portal")) return true;
   return false;
 }
 

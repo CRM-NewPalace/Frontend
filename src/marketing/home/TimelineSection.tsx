@@ -50,7 +50,7 @@ export function TimelineSection() {
 
           {STEPS.map((step, index) => (
             <ScrollReveal key={step.title} delay={index * 0.08}>
-              <li className="relative flex flex-col items-start lg:items-center lg:text-center">
+              <li className="relative flex flex-col items-start rounded-3xl border border-black/5 bg-white p-5 shadow-[0_14px_36px_-24px_rgba(5,54,71,0.32)] lg:items-center lg:p-6 lg:text-center">
                 <span className="relative z-10 grid h-10 w-10 place-items-center rounded-full bg-brand-dark text-sm font-semibold text-white">
                   {index + 1}
                 </span>

@@ -119,6 +119,30 @@ export const MOTIVO_SEM_MOVIMENTACAO_LABEL: Record<
   sem_tarefa: "Sem tarefa",
 };
 
+export function matchesMonitoramentoFiltro(
+  mon: LeadMonitoramento | null | undefined,
+  filtro: MonitoramentoFiltro,
+): boolean {
+  if (filtro === "todos") return true;
+  if (!mon) return false;
+  if (filtro === "sem_movimentacao") {
+    return mon.problemas.some((p) => p.tipo === "sem_movimentacao");
+  }
+  if (filtro === "em_atraso") {
+    return mon.problemas.some(
+      (p) => p.tipo === "prazo_ultrapassado" || p.tipo === "tarefa_atrasada",
+    );
+  }
+  if (filtro === "proximo_vencimento") {
+    return mon.problemas.some((p) => p.tipo === "prazo_proximo");
+  }
+  return (
+    Boolean(mon.prazoDueAt) &&
+    mon.visual === "none" &&
+    !mon.problemas.some((p) => p.tipo === "prazo_ultrapassado")
+  );
+}
+
 export const MONITORAMENTO_FILTRO_OPTIONS: Array<{
   value: MonitoramentoFiltro;
   label: string;
@@ -180,13 +204,20 @@ function formatDurationPt(ms: number): string {
   return parts.join(" ");
 }
 
+export type ApplyInatividadeExtras = {
+  now?: number;
+  prazo?: { valor: number; unidade: PrazoUnidade } | null;
+  alertaPercent?: number;
+};
+
 /** Recalcula inatividade e prazo da etapa a partir da última movimentação. */
 export function applyInatividadeThreshold(
   mon: LeadMonitoramento,
   valor: number,
   unidade: PrazoUnidade,
-  now = Date.now(),
+  extras?: ApplyInatividadeExtras,
 ): LeadMonitoramento {
+  const now = extras?.now ?? Date.now();
   const thresholdMs = inatividadeToMs(valor, unidade);
   const last = latestMovementMs(mon);
   const idleMs = Number.isFinite(last)
@@ -207,15 +238,26 @@ export function applyInatividadeThreshold(
   let tempoAtrasoMs = mon.tempoAtrasoMs;
   let tempoAtrasoLabel = mon.tempoAtrasoLabel;
 
-  const cfg = mon.prazoConfigurado;
+  const cfg =
+    extras?.prazo !== undefined ? extras.prazo : mon.prazoConfigurado;
   if (cfg && Number.isFinite(last)) {
-    const due = last + inatividadeToMs(cfg.valor, cfg.unidade);
+    const prazoMs = inatividadeToMs(cfg.valor, cfg.unidade);
+    const due = last + prazoMs;
     prazoDueAt = new Date(due).toISOString();
     if (due > now) {
       tempoRestanteMs = due - now;
       tempoRestanteLabel = formatDurationPt(tempoRestanteMs);
       tempoAtrasoMs = null;
       tempoAtrasoLabel = null;
+      const alertaPct = Math.min(90, Math.max(1, extras?.alertaPercent ?? 20));
+      const nearAt = due - prazoMs * (alertaPct / 100);
+      if (nearAt <= now) {
+        problemas.push({
+          tipo: "prazo_proximo",
+          titulo: "Prazo próximo do vencimento",
+          detalhe: `Restam ${tempoRestanteLabel} para o prazo da etapa.`,
+        });
+      }
     } else {
       tempoAtrasoMs = now - due;
       tempoAtrasoLabel = formatDurationPt(tempoAtrasoMs);
@@ -276,6 +318,47 @@ export function applyInatividadeThreshold(
     tempoSemMovimentacaoLabel: formatDurationPt(idleMs),
     inatividadeThresholdMs: thresholdMs,
     inatividadeConfig: { valor, unidade },
+    prazoConfigurado: cfg ?? mon.prazoConfigurado,
+  };
+}
+
+export function applyOperacaoFunilThreshold<
+  T extends {
+    funilEtapaId?: string | null;
+    monitoramento?: LeadMonitoramento | null;
+  },
+>(
+  item: T,
+  funil: {
+    inatividadeValor: number;
+    inatividadeUnidade: PrazoUnidade;
+    etapas: Array<{
+      id: string;
+      papel: string | null;
+      prazoValor: number | null;
+      prazoUnidade: PrazoUnidade;
+      alertaAntecedenciaPercent?: number;
+    }>;
+  },
+): T {
+  if (!item.monitoramento) return item;
+  const etapa = funil.etapas.find((row) => row.id === item.funilEtapaId);
+  const terminal = etapa?.papel === "venda" || etapa?.papel === "perdido";
+  const prazo =
+    !terminal && etapa?.prazoValor
+      ? { valor: etapa.prazoValor, unidade: etapa.prazoUnidade }
+      : null;
+  return {
+    ...item,
+    monitoramento: applyInatividadeThreshold(
+      item.monitoramento,
+      funil.inatividadeValor,
+      funil.inatividadeUnidade,
+      {
+        prazo,
+        alertaPercent: etapa?.alertaAntecedenciaPercent,
+      },
+    ),
   };
 }
 

@@ -48,7 +48,6 @@ import {
   deleteMetaConnection,
   deleteOzapConnection,
   deleteTenant,
-  duplicateTenant,
   fetchTenant,
   fetchTenants,
   populateTenantDemoData,
@@ -85,7 +84,6 @@ import {
   Check,
   Copy,
   DatabaseZap,
-  Files,
   KeyRound,
   Link2,
   Loader2,
@@ -178,8 +176,6 @@ function TenantsPage() {
     null,
   );
   const [deletingTenant, setDeletingTenant] = useState(false);
-  const [duplicateTarget, setDuplicateTarget] = useState<Tenant | null>(null);
-  const [duplicatingTenant, setDuplicatingTenant] = useState(false);
   const [demoTarget, setDemoTarget] = useState<Tenant | null>(null);
   const [demoLimparAntes, setDemoLimparAntes] = useState(false);
   const [populatingDemo, setPopulatingDemo] = useState(false);
@@ -507,27 +503,6 @@ function TenantsPage() {
     }
   }
 
-  async function confirmDuplicateTenant() {
-    if (!duplicateTarget) return;
-    setDuplicatingTenant(true);
-    try {
-      const created = await duplicateTenant(duplicateTarget.id);
-      toast.success(
-        `Cópia criada: ${created.name} (${created.slug}). Sem vínculo com o original.`,
-      );
-      setDuplicateTarget(null);
-      await loadItems();
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Falha ao duplicar o tenant.",
-      );
-    } finally {
-      setDuplicatingTenant(false);
-    }
-  }
-
   async function confirmPopulateDemo() {
     if (!demoTarget) return;
     setPopulatingDemo(true);
@@ -797,16 +772,6 @@ function TenantsPage() {
                           onClick={() => void openEdit(item)}
                         >
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title="Duplicar tenant"
-                          disabled={duplicatingTenant}
-                          onClick={() => setDuplicateTarget(item)}
-                        >
-                          <Files className="h-4 w-4" />
                         </Button>
                         <Button
                           type="button"
@@ -1192,16 +1157,23 @@ function TenantsPage() {
                                 <label
                                   key={mod.key}
                                   className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
-                                    lockedOff || soloLocked
+                                    lockedOff ||
+                                    (soloLocked && group.id !== "operacoes")
                                       ? "opacity-60 bg-muted/40"
                                       : "bg-background"
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={form.modules[mod.key] !== false}
+                                    checked={
+                                      group.id === "operacoes"
+                                        ? form.modules[mod.key] === true
+                                        : form.modules[mod.key] !== false
+                                    }
                                     disabled={
-                                      lockedOff || bronzeLocked || soloLocked
+                                      lockedOff ||
+                                      bronzeLocked ||
+                                      (soloLocked && group.id !== "operacoes")
                                     }
                                     onChange={(e) =>
                                       setForm((prev) => {
@@ -1454,7 +1426,7 @@ function TenantsPage() {
                           <div className="flex items-center gap-2">
                             <Share2 className="h-4 w-4 shrink-0 text-blue-600" />
                             <span className="truncate font-medium">
-                              {connection.pageId}
+                              {connection.pageName ?? connection.pageId}
                             </span>
                             <Badge
                               variant={
@@ -1466,7 +1438,11 @@ function TenantsPage() {
                             </Badge>
                           </div>
                           <p className="truncate text-xs text-muted-foreground">
+                            {connection.pageName ? `${connection.pageId} · ` : ""}
                             Token {connection.pageAccessToken}
+                            {connection.adAccountName
+                              ? ` · ${connection.adAccountName}`
+                              : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 gap-1">
@@ -1701,42 +1677,6 @@ function TenantsPage() {
       </AlertDialog>
 
       <AlertDialog
-        open={Boolean(duplicateTarget)}
-        onOpenChange={(open) =>
-          !open && !duplicatingTenant && setDuplicateTarget(null)
-        }
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Duplicar tenant?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cria uma imobiliária nova e independente a partir de{" "}
-              <strong>{duplicateTarget?.name}</strong> (
-              <code>{duplicateTarget?.slug}</code>
-              ). Usuários, leads, imóveis, funil, agenda e financeiro
-              operacional são copiados com IDs novos — nada fica ligado ao
-              original. Conexões Meta/OZap e contratos da plataforma não entram
-              na cópia (são exclusivos do tenant de origem).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={duplicatingTenant}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={duplicatingTenant}
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmDuplicateTenant();
-              }}
-            >
-              {duplicatingTenant ? "Duplicando…" : "Duplicar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog
         open={Boolean(demoTarget)}
         onOpenChange={(open) => !open && !populatingDemo && setDemoTarget(null)}
       >
@@ -1830,6 +1770,14 @@ function TenantsPage() {
                       ["Notificações", demoResult.counts.notificacoes],
                       ["Treinamento", demoResult.counts.treinamentos],
                       ["Financeiro", demoResult.counts.financeiro],
+                      ["Proprietários", demoResult.counts.proprietarios ?? 0],
+                      ["Imóveis (captação)", demoResult.counts.imoveis ?? 0],
+                      ["Captações", demoResult.counts.captacoes ?? 0],
+                      [
+                        "Interessados (usados)",
+                        demoResult.counts.interessadosUsados ?? 0,
+                      ],
+                      ["Vendas de usados", demoResult.counts.vendasUsados ?? 0],
                     ] as [string, number][]
                   ).map(([label, value]) => (
                     <div
@@ -1857,6 +1805,13 @@ function TenantsPage() {
                     <code className="font-semibold">
                       {demoResult.senhaPadrao}
                     </code>
+                    {(demoResult.counts.proprietarios ?? 0) > 0 ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Portal do proprietário: Lúcia Andrade, Eliane Costa e
+                        Marina Freitas entram com o e-mail cadastrado e a mesma
+                        senha.
+                      </p>
+                    ) : null}
                   </div>
                   {demoResult.usuariosExtrasLiberados > 0 && (
                     <p className="text-xs text-muted-foreground">
