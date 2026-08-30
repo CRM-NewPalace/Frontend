@@ -1,11 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError } from "@/lib/api";
-import { formatBrl } from "@/lib/captacao-api";
+import {
+  CAPTACAO_IMOVEL_TIPO_LABEL,
+  CAPTACAO_IMOVEL_TIPOS,
+  formatBrl,
+  type CaptacaoImovelTipo,
+} from "@/lib/captacao-api";
 import { ImovelFichaVisao } from "@/components/imovel-ficha-visao";
 import {
+  cancelarPortalCaptacao,
   fetchPortalChaves,
   fetchPortalContrato,
   fetchPortalDocumentacao,
@@ -16,10 +22,30 @@ import {
   fetchPortalPropostas,
   fetchPortalVisitas,
   registrarPortalAcao,
+  updatePortalImovel,
   PORTAL_SITUACAO_LABEL,
   type PortalImovelDetalhe,
 } from "@/lib/portal-api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { PillTabs, situacaoTone, StatusChip } from "@/components/operacao-ui";
 
@@ -62,6 +88,24 @@ function PortalImovelPage() {
   const [extra, setExtra] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(true);
   const [acaoBusy, setAcaoBusy] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editTipo, setEditTipo] = useState<CaptacaoImovelTipo>("casa");
+  const [editLogradouro, setEditLogradouro] = useState("");
+  const [editNumero, setEditNumero] = useState("");
+  const [editComplemento, setEditComplemento] = useState("");
+  const [editBairro, setEditBairro] = useState("");
+  const [editCidade, setEditCidade] = useState("");
+  const [editEstado, setEditEstado] = useState("");
+  const [editCep, setEditCep] = useState("");
+  const [editValor, setEditValor] = useState("");
+  const [editDescricao, setEditDescricao] = useState("");
+  const [editQuartos, setEditQuartos] = useState("");
+  const [editSuites, setEditSuites] = useState("");
+  const [editBanheiros, setEditBanheiros] = useState("");
+  const [editVagas, setEditVagas] = useState("");
+  const [editArea, setEditArea] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -115,6 +159,9 @@ function PortalImovelPage() {
           <StatusChip tone={situacaoTone(imovel.situacao)}>
             {PORTAL_SITUACAO_LABEL[imovel.situacao]}
           </StatusChip>
+          {imovel.captacao?.canceladoPeloProprietario ? (
+            <StatusChip tone="orange">Cancelado por você</StatusChip>
+          ) : null}
         </div>
         <p className="text-sm text-muted-foreground">
           {formatBrl(imovel.precoVenda ?? imovel.valorPretendido)}
@@ -155,6 +202,47 @@ function PortalImovelPage() {
         >
           Quero falar com o corretor
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setEditTipo(
+              CAPTACAO_IMOVEL_TIPOS.includes(imovel.tipo as CaptacaoImovelTipo)
+                ? (imovel.tipo as CaptacaoImovelTipo)
+                : "casa",
+            );
+            setEditLogradouro(imovel.logradouro);
+            setEditNumero(imovel.numero);
+            setEditComplemento(imovel.complemento);
+            setEditBairro(imovel.bairro);
+            setEditCidade(imovel.cidade);
+            setEditEstado(imovel.estado);
+            setEditCep(imovel.cep);
+            setEditValor(
+              imovel.valorPretendido != null ? String(imovel.valorPretendido) : "",
+            );
+            setEditDescricao(imovel.descricao ?? "");
+            setEditQuartos(imovel.quartos != null ? String(imovel.quartos) : "");
+            setEditSuites(imovel.suites != null ? String(imovel.suites) : "");
+            setEditBanheiros(
+              imovel.banheiros != null ? String(imovel.banheiros) : "",
+            );
+            setEditVagas(imovel.vagas != null ? String(imovel.vagas) : "");
+            setEditArea(imovel.area != null ? String(imovel.area) : "");
+            setEditOpen(true);
+          }}
+        >
+          Editar informações
+        </Button>
+        {imovel.captacao && !imovel.captacao.canceladoPeloProprietario ? (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => setCancelOpen(true)}
+          >
+            Cancelar captação
+          </Button>
+        ) : null}
       </div>
       <PillTabs
         items={TABS.map((label) => ({ id: label, label }))}
@@ -478,6 +566,243 @@ function PortalImovelPage() {
           </CardContent>
         </Card>
       )}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar informações</DialogTitle>
+            <DialogDescription>
+              As alterações ficam visíveis para a imobiliária no funil de captação.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="grid gap-3"
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault();
+              setSaving(true);
+              const parsed = Number(editValor.replace(/\./g, "").replace(",", "."));
+              const num = (raw: string) => {
+                const n = Number(raw.replace(",", "."));
+                return Number.isFinite(n) ? n : undefined;
+              };
+              void updatePortalImovel(id, {
+                tipo: editTipo,
+                cep: editCep.trim() || undefined,
+                logradouro: editLogradouro.trim() || undefined,
+                numero: editNumero.trim() || undefined,
+                complemento: editComplemento.trim() || undefined,
+                bairro: editBairro.trim() || undefined,
+                cidade: editCidade.trim() || undefined,
+                estado: editEstado.trim() || undefined,
+                valorPretendido:
+                  Number.isFinite(parsed) && parsed > 0 ? parsed : undefined,
+                descricao: editDescricao.trim() || undefined,
+                area: num(editArea),
+                quartos: num(editQuartos),
+                suites: num(editSuites),
+                banheiros: num(editBanheiros),
+                vagas: num(editVagas),
+              })
+                .then((updated) => {
+                  setImovel(updated);
+                  setEditOpen(false);
+                  toast.success("Informações atualizadas.");
+                })
+                .catch((err) => {
+                  toast.error(
+                    err instanceof ApiError
+                      ? err.message
+                      : "Não foi possível salvar.",
+                  );
+                })
+                .finally(() => setSaving(false));
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-tipo">Tipo</Label>
+              <select
+                id="edit-tipo"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={editTipo}
+                onChange={(e) => setEditTipo(e.target.value as CaptacaoImovelTipo)}
+              >
+                {CAPTACAO_IMOVEL_TIPOS.map((item) => (
+                  <option key={item} value={item}>
+                    {CAPTACAO_IMOVEL_TIPO_LABEL[item]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="edit-logradouro">Endereço</Label>
+                <Input
+                  id="edit-logradouro"
+                  value={editLogradouro}
+                  onChange={(e) => setEditLogradouro(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-numero">Número</Label>
+                <Input
+                  id="edit-numero"
+                  value={editNumero}
+                  onChange={(e) => setEditNumero(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-complemento">Complemento</Label>
+              <Input
+                id="edit-complemento"
+                value={editComplemento}
+                onChange={(e) => setEditComplemento(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-bairro">Bairro</Label>
+                <Input
+                  id="edit-bairro"
+                  value={editBairro}
+                  onChange={(e) => setEditBairro(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-cidade">Cidade</Label>
+                <Input
+                  id="edit-cidade"
+                  value={editCidade}
+                  onChange={(e) => setEditCidade(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-estado">UF</Label>
+                <Input
+                  id="edit-estado"
+                  maxLength={2}
+                  value={editEstado}
+                  onChange={(e) => setEditEstado(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-cep">CEP</Label>
+                <Input
+                  id="edit-cep"
+                  value={editCep}
+                  onChange={(e) => setEditCep(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-valor">Valor pretendido</Label>
+                <Input
+                  id="edit-valor"
+                  inputMode="decimal"
+                  value={editValor}
+                  onChange={(e) => setEditValor(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-area">Área (m²)</Label>
+                <Input
+                  id="edit-area"
+                  inputMode="decimal"
+                  value={editArea}
+                  onChange={(e) => setEditArea(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-quartos">Quartos</Label>
+                <Input
+                  id="edit-quartos"
+                  inputMode="numeric"
+                  value={editQuartos}
+                  onChange={(e) => setEditQuartos(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-suites">Suítes</Label>
+                <Input
+                  id="edit-suites"
+                  inputMode="numeric"
+                  value={editSuites}
+                  onChange={(e) => setEditSuites(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-banheiros">Banheiros</Label>
+                <Input
+                  id="edit-banheiros"
+                  inputMode="numeric"
+                  value={editBanheiros}
+                  onChange={(e) => setEditBanheiros(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-vagas">Vagas</Label>
+                <Input
+                  id="edit-vagas"
+                  inputMode="numeric"
+                  value={editVagas}
+                  onChange={(e) => setEditVagas(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-descricao">Descrição</Label>
+              <textarea
+                id="edit-descricao"
+                className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={editDescricao}
+                onChange={(e) => setEditDescricao(e.target.value)}
+              />
+            </div>
+            <Button type="submit" disabled={saving} className="bg-[#0f4c5c] hover:bg-[#0c3d4a]">
+              {saving ? "Salvando…" : "Salvar"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar a captação deste imóvel?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A imobiliária verá no funil que você desistiu de anunciar. O corretor
+              poderá entrar em contato ou registrar a perda.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                setSaving(true);
+                void cancelarPortalCaptacao(id)
+                  .then((updated) => {
+                    setImovel(updated);
+                    setCancelOpen(false);
+                    toast.success("Captação cancelada.");
+                  })
+                  .catch((err) => {
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Não foi possível cancelar.",
+                    );
+                  })
+                  .finally(() => setSaving(false));
+              }}
+            >
+              Confirmar cancelamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {tab === "Pós-venda" && (
         <Card className="border-primary/15 shadow-sm">
           <CardHeader>

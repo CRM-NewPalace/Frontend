@@ -469,6 +469,11 @@ function CaptacoesPage() {
                     {item.responsavel.name}
                   </TableCell>
                   <TableCell>
+                    {item.canceladoPeloProprietario ? (
+                      <Badge className="mb-1 bg-red-600 text-white hover:bg-red-600">
+                        Cancelado pelo proprietário
+                      </Badge>
+                    ) : null}
                     {item.sugestaoProprietario ? (
                       <Badge className="mb-1 bg-violet-600 text-white hover:bg-violet-600">
                         Sugestão do proprietário
@@ -667,6 +672,11 @@ function CaptacoesPage() {
                   >
                     {item.funilEtapa.label}
                   </Badge>
+                  {item.canceladoPeloProprietario ? (
+                    <Badge className="bg-red-600 text-white hover:bg-red-600">
+                      Cancelado pelo proprietário
+                    </Badge>
+                  ) : null}
                   {item.sugestaoProprietario ? (
                     <Badge className="bg-violet-600 text-white hover:bg-violet-600">
                       Sugestão do proprietário

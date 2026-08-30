@@ -122,10 +122,14 @@ export function PortalImovelCard({
         <span
           className={cn(
             "absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-            BADGE[imovel.situacao],
+            imovel.canceladoPeloProprietario
+              ? "bg-red-600 text-white"
+              : BADGE[imovel.situacao],
           )}
         >
-          {PORTAL_SITUACAO_LABEL[imovel.situacao]}
+          {imovel.canceladoPeloProprietario
+            ? "Cancelado por você"
+            : PORTAL_SITUACAO_LABEL[imovel.situacao]}
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">

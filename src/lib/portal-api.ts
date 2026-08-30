@@ -184,6 +184,7 @@ export type PortalImovelListItem = {
   interessados: number;
   visitas: number;
   propostas: number;
+  canceladoPeloProprietario?: boolean;
 };
 
 export type PortalContato = {
@@ -256,6 +257,7 @@ export type PortalImovelDetalhe = {
     origem: string;
     exclusividade: boolean;
     responsavel: string;
+    canceladoPeloProprietario?: boolean;
   } | null;
   comercializacao: {
     status: string;
@@ -310,6 +312,39 @@ export function createPortalImovel(body: {
 
 export function fetchPortalImovel(id: string) {
   return portalFetch<PortalImovelDetalhe>(`/portal-proprietario/imoveis/${id}`);
+}
+
+export function updatePortalImovel(
+  id: string,
+  body: {
+    tipo?: string;
+    cep?: string;
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    estado?: string;
+    valorPretendido?: number;
+    descricao?: string;
+    area?: number;
+    quartos?: number;
+    suites?: number;
+    banheiros?: number;
+    vagas?: number;
+  },
+) {
+  return portalFetch<PortalImovelDetalhe>(`/portal-proprietario/imoveis/${id}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function cancelarPortalCaptacao(id: string) {
+  return portalFetch<PortalImovelDetalhe>(
+    `/portal-proprietario/imoveis/${id}/cancelar-captacao`,
+    { method: "POST" },
+  );
 }
 
 export function fetchPortalHistorico(id: string) {

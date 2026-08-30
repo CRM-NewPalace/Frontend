@@ -179,6 +179,8 @@ export type Captacao = {
   responsavelId: string;
   origem: string;
   sugestaoProprietario?: boolean;
+  canceladoPeloProprietario?: boolean;
+  motivoPerda?: string;
   exclusividade: boolean;
   valorPretendido: number | null;
   valorAvaliacao: number | null;

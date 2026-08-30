@@ -218,6 +218,16 @@ export function CaptacaoDetalheDialog({
                     <Badge variant="outline" className={CHIP}>
                       Proprietário
                     </Badge>
+                    {captacao.canceladoPeloProprietario ? (
+                      <Badge className={cn(CHIP, "border-transparent bg-red-600 text-white")}>
+                        Cancelado pelo proprietário
+                      </Badge>
+                    ) : null}
+                    {captacao.sugestaoProprietario ? (
+                      <Badge className={cn(CHIP, "border-transparent bg-violet-600 text-white")}>
+                        Sugestão do proprietário
+                      </Badge>
+                    ) : null}
                     <Badge
                       className={cn(
                         catalogColorBadgeClass(captacao.funilEtapa.color),
