@@ -71,6 +71,19 @@ export function ConfigModulosOperacaoPanel() {
     try {
       const data = await fetchTenantOperationModules();
       setOps(data.operations);
+      const serverHasPref =
+        typeof data.modules?.hideClientesNav === "boolean";
+      const hide = serverHasPref
+        ? data.hideClientesNav === true
+        : getHideClientesFromSidebar();
+      setHideClientes(hide);
+      setHideClientesFromSidebar(hide);
+      if (!serverHasPref && hide && isAdmin) {
+        const saved = await updateTenantOperationModules({
+          hideClientesNav: true,
+        });
+        patchSessionTenantModules(saved.modules);
+      }
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -80,7 +93,7 @@ export function ConfigModulosOperacaoPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     void load();
@@ -112,14 +125,38 @@ export function ConfigModulosOperacaoPanel() {
     }
   }
 
-  function toggleHideClientes(checked: boolean) {
+  async function toggleHideClientes(checked: boolean) {
+    if (!isAdmin) return;
     setHideClientes(checked);
     setHideClientesFromSidebar(checked);
-    toast.success(
-      checked
-        ? "Clientes e Funil de Clientes ocultos do menu."
-        : "Clientes e Funil de Clientes voltaram ao menu.",
-    );
+    setSavingKey("hideClientesNav");
+    try {
+      const data = await updateTenantOperationModules({
+        hideClientesNav: checked,
+      });
+      setOps(data.operations);
+      setHideClientes(data.hideClientesNav === true);
+      setHideClientesFromSidebar(data.hideClientesNav === true);
+      patchSessionTenantModules(data.modules);
+      await fetchMe();
+      await router.invalidate();
+      toast.success(
+        checked
+          ? "Clientes e Funil de Clientes ocultos do menu."
+          : "Clientes e Funil de Clientes voltaram ao menu.",
+      );
+    } catch (err) {
+      const previous = !checked;
+      setHideClientes(previous);
+      setHideClientesFromSidebar(previous);
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível atualizar a visibilidade do menu.",
+      );
+    } finally {
+      setSavingKey(null);
+    }
   }
 
   return (
@@ -211,7 +248,8 @@ export function ConfigModulosOperacaoPanel() {
               </div>
               <Switch
                 checked={hideClientes}
-                onCheckedChange={toggleHideClientes}
+                disabled={!isAdmin || savingKey === "hideClientesNav"}
+                onCheckedChange={(checked) => void toggleHideClientes(checked)}
                 aria-label="Ocultar Clientes e Funil de Clientes do menu"
               />
             </CardContent>
