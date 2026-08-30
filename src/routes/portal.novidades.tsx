@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PortalEmpty, PortalPageTitle } from "@/components/portal-ui";
 import { ApiError } from "@/lib/api";
-import { fetchPortalNovidades, type PortalNovidade } from "@/lib/portal-api";
+import {
+  countNovidadesNaoLidas,
+  fetchPortalNovidades,
+  marcarPortalNovidadesLidas,
+  type PortalNovidade,
+} from "@/lib/portal-api";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/novidades")({
@@ -35,10 +41,32 @@ function PortalNovidadesPage() {
 
   return (
     <div className="space-y-6">
-      <PortalPageTitle
-        title="Novidades"
-        subtitle="O que aconteceu nos seus imóveis nos últimos 14 dias."
-      />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <PortalPageTitle
+          title="Novidades"
+          subtitle="O que aconteceu nos seus imóveis nos últimos 14 dias."
+        />
+        {countNovidadesNaoLidas(items) > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="border-[#0f4c5c]/20 text-[#0f4c5c]"
+            onClick={() => {
+              void marcarPortalNovidadesLidas()
+                .then(setItems)
+                .catch((err) => {
+                  toast.error(
+                    err instanceof ApiError
+                      ? err.message
+                      : "Não foi possível marcar como lidas.",
+                  );
+                });
+            }}
+          >
+            Marcar como lidas
+          </Button>
+        ) : null}
+      </div>
       {items.length === 0 ? (
         <PortalEmpty>Nenhuma novidade no período.</PortalEmpty>
       ) : (
@@ -50,7 +78,10 @@ function PortalNovidadesPage() {
                 params={{ id: item.imovelId }}
                 className="block rounded-2xl border border-slate-100 bg-white p-4 hover:border-[#148ea3]/40"
               >
-                <p className="text-[11px] text-slate-400">
+                <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                  {item.lida !== true ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  ) : null}
                   {new Date(item.createdAt).toLocaleDateString("pt-BR")} · {item.identificacao}
                 </p>
                 <p className="mt-1 text-sm text-slate-700">{item.texto}</p>

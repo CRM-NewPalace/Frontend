@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   Bell,
   Building2,
+  Newspaper,
   ChevronDown,
   FileText,
   Handshake,
@@ -18,7 +19,9 @@ import {
 } from "lucide-react";
 import {
   changePortalPassword,
+  countNovidadesNaoLidas,
   fetchPortalNovidades,
+  marcarPortalNovidadesLidas,
   type PortalNovidade,
   type PortalProprietario,
 } from "@/lib/portal-api";
@@ -39,6 +42,7 @@ import { toast } from "sonner";
 
 const NAV = [
   { to: "/portal", label: "Início", icon: LayoutDashboard, exact: true },
+  { to: "/portal/novidades", label: "Novidades", icon: Newspaper },
   { to: "/portal/imoveis", label: "Meus Imóveis", icon: Home },
   { to: "/portal/propostas", label: "Propostas", icon: ScrollText },
   { to: "/portal/visitas", label: "Visitas", icon: Building2 },
@@ -77,6 +81,7 @@ export function PortalShell({
   const [contaOpen, setContaOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [novidades, setNovidades] = useState<PortalNovidade[]>([]);
+  const naoLidas = countNovidadesNaoLidas(novidades);
   const [senhaAtual, setSenhaAtual] = useState("");
   const [senhaNova, setSenhaNova] = useState("");
   const [senhaBusy, setSenhaBusy] = useState(false);
@@ -120,7 +125,12 @@ export function PortalShell({
             )}
           >
             <item.icon className="h-4 w-4" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.to === "/portal/novidades" && naoLidas > 0 ? (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-400 px-1.5 text-[10px] font-semibold text-[#0f4c5c]">
+                {naoLidas > 9 ? "9+" : naoLidas}
+              </span>
+            ) : null}
           </Link>
         );
       })}
@@ -217,15 +227,15 @@ export function PortalShell({
                   }}
                 >
                   <Bell className="h-5 w-5" />
-                  {novidades.length > 0 ? (
+                  {naoLidas > 0 ? (
                     <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
-                      {Math.min(novidades.length, 9)}
+                      {naoLidas > 9 ? "9+" : naoLidas}
                     </span>
                   ) : null}
                 </button>
                 {notifOpen ? (
                   <div className="absolute right-0 top-11 z-30 w-80 rounded-2xl border border-slate-100 bg-white p-3 shadow-xl">
-                    <div className="mb-2 flex items-center justify-between">
+                    <div className="mb-2 flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold">Novidades</p>
                       <Link
                         to="/portal/novidades"
@@ -235,6 +245,25 @@ export function PortalShell({
                         Ver todas
                       </Link>
                     </div>
+                    {naoLidas > 0 ? (
+                      <button
+                        type="button"
+                        className="mb-2 w-full rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-[#0f4c5c] hover:bg-slate-50"
+                        onClick={() => {
+                          void marcarPortalNovidadesLidas()
+                            .then(setNovidades)
+                            .catch((err) => {
+                              toast.error(
+                                err instanceof ApiError
+                                  ? err.message
+                                  : "Não foi possível marcar como lidas.",
+                              );
+                            });
+                        }}
+                      >
+                        Marcar como lidas
+                      </button>
+                    ) : null}
                     {novidades.slice(0, 5).map((item) => (
                       <Link
                         key={item.id}
@@ -243,10 +272,15 @@ export function PortalShell({
                         className="block rounded-lg px-2 py-2 hover:bg-slate-50"
                         onClick={() => setNotifOpen(false)}
                       >
-                        <p className="text-[11px] text-slate-400">
+                        <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                          {item.lida !== true ? (
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          ) : null}
                           {new Date(item.createdAt).toLocaleDateString("pt-BR")}
                         </p>
-                        <p className="text-sm text-slate-700">{item.texto}</p>
+                        <p className={cn("text-sm", item.lida !== true ? "font-medium text-slate-800" : "text-slate-700")}>
+                          {item.texto}
+                        </p>
                       </Link>
                     ))}
                     {novidades.length === 0 ? (

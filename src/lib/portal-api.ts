@@ -209,7 +209,12 @@ export type PortalNovidade = {
   tipo: string;
   texto: string;
   createdAt: string;
+  lida?: boolean;
 };
+
+export function countNovidadesNaoLidas(items: PortalNovidade[]) {
+  return items.filter((item) => item.lida !== true).length;
+}
 
 export type PortalDashboard = {
   resumo: {
@@ -485,6 +490,12 @@ export function changePortalPassword(senhaAtual: string, senhaNova: string) {
 
 export function fetchPortalNovidades() {
   return portalFetch<PortalNovidade[]>("/portal-proprietario/novidades");
+}
+
+export function marcarPortalNovidadesLidas() {
+  return portalFetch<PortalNovidade[]>("/portal-proprietario/novidades/lidas", {
+    method: "POST",
+  });
 }
 
 export function registrarPortalAcao(
