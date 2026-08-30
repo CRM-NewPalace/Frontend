@@ -23,6 +23,11 @@ import {
 } from "@/lib/captacao-api";
 import { StatusChip } from "@/components/operacao-ui";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import {
+  isPortalPasswordStrong,
+  ProprietarioPortalCredenciaisDialog,
+  ProprietarioPortalFields,
+} from "@/components/proprietario-portal-fields";
 import { digitsOnly, formatCpfCnpj } from "@/lib/utils";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -50,7 +55,13 @@ function ProprietarioDetalhePage() {
     telefone: "",
     email: "",
     observacoes: "",
+    senhaPortal: "",
   });
+  const [credenciais, setCredenciais] = useState<{
+    nome: string;
+    email: string;
+    senha: string;
+  } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -70,6 +81,7 @@ function ProprietarioDetalhePage() {
       const result = await updateProprietarioPortal(id, {
         ativo,
         senha: senhaPortal.trim() || undefined,
+        gerarSenhaTemporaria: ativo && !senhaPortal.trim(),
       });
       setItem((current) =>
         current
@@ -85,6 +97,11 @@ function ProprietarioDetalhePage() {
       setSenhaPortal("");
       if (result.senhaTemporaria) {
         setSenhaGerada(result.senhaTemporaria);
+        setCredenciais({
+          nome: item?.nome ?? "",
+          email: item?.email ?? "",
+          senha: result.senhaTemporaria,
+        });
         toast.success("Acesso ativado. Guarde a senha temporária.");
       } else {
         setSenhaGerada(null);
@@ -110,6 +127,7 @@ function ProprietarioDetalhePage() {
       telefone: item.telefone,
       email: item.email,
       observacoes: item.observacoes,
+      senhaPortal: "",
     });
     setEditOpen(true);
   }
@@ -124,12 +142,51 @@ function ProprietarioDetalhePage() {
       form.cpfCnpj,
       form.tipoPessoa === "juridica" ? 14 : 11,
     );
+    const senha = form.senhaPortal.trim();
+    if (senha && !form.email.trim()) {
+      toast.error("Informe o e-mail para liberar o login no portal.");
+      return;
+    }
+    if (senha && !isPortalPasswordStrong(senha)) {
+      toast.error(
+        "A senha do portal precisa ter 8+ caracteres, com maiúscula, minúscula e número.",
+      );
+      return;
+    }
     setSaving(true);
     try {
-      const next = await updateProprietario(id, { ...form, cpfCnpj: doc });
-      setItem({ ...item!, ...next });
+      const next = await updateProprietario(id, {
+        nome: form.nome,
+        tipoPessoa: form.tipoPessoa,
+        cpfCnpj: doc,
+        telefone: form.telefone,
+        email: form.email,
+        observacoes: form.observacoes,
+      });
+      if (form.email.trim() && senha) {
+        const portal = await updateProprietarioPortal(id, {
+          ativo: true,
+          senha,
+        });
+        setItem({
+          ...item!,
+          ...next,
+          portalAcesso: {
+            ativo: portal.ativo,
+            lastLoginAt: portal.lastLoginAt,
+          },
+        });
+        setCredenciais({
+          nome: next.nome,
+          email: next.email,
+          senha: portal.senhaTemporaria ?? senha,
+        });
+        toast.success("Proprietário atualizado e senha do portal definida.");
+      } else {
+        setItem({ ...item!, ...next });
+        toast.success("Proprietário atualizado.");
+      }
       setEditOpen(false);
-      toast.success("Proprietário atualizado.");
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Não foi possível salvar.",
@@ -252,10 +309,16 @@ function ProprietarioDetalhePage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
-                disabled={portalBusy || portalAtivo}
+                disabled={portalBusy}
                 onClick={() => void togglePortal(true)}
               >
-                {portalBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ativar acesso"}
+                {portalBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : portalAtivo && !senhaPortal.trim() ? (
+                  "Gerar senha temporária"
+                ) : (
+                  "Ativar acesso"
+                )}
               </Button>
               <Button
                 size="sm"
@@ -344,10 +407,15 @@ function ProprietarioDetalhePage() {
               <div>
                 <Label>E-mail</Label>
                 <Input
+                  type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </div>
+              <ProprietarioPortalFields
+                senha={form.senhaPortal}
+                onSenha={(senhaPortal) => setForm({ ...form, senhaPortal })}
+              />
               <div>
                 <Label>Observações</Label>
                 <Input
@@ -388,6 +456,15 @@ function ProprietarioDetalhePage() {
             })
             .finally(() => setDeleting(false));
         }}
+      />
+      <ProprietarioPortalCredenciaisDialog
+        open={credenciais != null}
+        onOpenChange={(next) => {
+          if (!next) setCredenciais(null);
+        }}
+        nome={credenciais?.nome ?? ""}
+        email={credenciais?.email ?? ""}
+        senha={credenciais?.senha ?? ""}
       />
     </>
   );

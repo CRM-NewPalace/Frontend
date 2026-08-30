@@ -25,9 +25,15 @@ import {
   deleteProprietario,
   fetchProprietarios,
   updateProprietario,
+  updateProprietarioPortal,
   type PessoaTipo,
   type Proprietario,
 } from "@/lib/captacao-api";
+import {
+  isPortalPasswordStrong,
+  ProprietarioPortalCredenciaisDialog,
+  ProprietarioPortalFields,
+} from "@/components/proprietario-portal-fields";
 import { FILTER_BAR_SHELL, FILTER_CONTROL } from "@/lib/filter-bar";
 import { TableFrame } from "@/components/operacao-ui";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
@@ -47,6 +53,7 @@ const emptyForm = {
   telefone: "",
   email: "",
   observacoes: "",
+  senhaPortal: "",
 };
 
 function ProprietariosPage() {
@@ -59,6 +66,11 @@ function ProprietariosPage() {
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Proprietario | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [credenciais, setCredenciais] = useState<{
+    nome: string;
+    email: string;
+    senha: string;
+  } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -95,6 +107,7 @@ function ProprietariosPage() {
       telefone: item.telefone,
       email: item.email,
       observacoes: item.observacoes,
+      senhaPortal: "",
     });
     setOpen(true);
   }
@@ -117,14 +130,49 @@ function ProprietariosPage() {
       toast.error("Informe um CNPJ com 14 dígitos.");
       return;
     }
+    const senha = form.senhaPortal.trim();
+    if (senha && !form.email.trim()) {
+      toast.error("Informe o e-mail para liberar o login no portal.");
+      return;
+    }
+    if (senha && !isPortalPasswordStrong(senha)) {
+      toast.error(
+        "A senha do portal precisa ter 8+ caracteres, com maiúscula, minúscula e número.",
+      );
+      return;
+    }
     setSaving(true);
     try {
-      if (editing) {
-        await updateProprietario(editing.id, { ...form, cpfCnpj: doc });
-        toast.success("Proprietário atualizado.");
+      const payload = {
+        nome: form.nome,
+        tipoPessoa: form.tipoPessoa,
+        cpfCnpj: doc,
+        telefone: form.telefone,
+        email: form.email,
+        observacoes: form.observacoes,
+      };
+      const saved = editing
+        ? await updateProprietario(editing.id, payload)
+        : await createProprietario(payload);
+      if (form.email.trim() && senha) {
+        const portal = await updateProprietarioPortal(saved.id, {
+          ativo: true,
+          senha,
+        });
+        setCredenciais({
+          nome: saved.nome,
+          email: saved.email,
+          senha: portal.senhaTemporaria ?? senha,
+        });
+        toast.success(
+          editing
+            ? "Proprietário atualizado e senha do portal definida."
+            : "Proprietário cadastrado. Entregue as credenciais do portal.",
+        );
       } else {
-        await createProprietario({ ...form, cpfCnpj: doc });
-        toast.success("Proprietário cadastrado.");
+        toast.success(
+          editing ? "Proprietário atualizado." : "Proprietário cadastrado.",
+        );
       }
       setOpen(false);
       await load();
@@ -331,10 +379,16 @@ function ProprietariosPage() {
               <div>
                 <Label>E-mail</Label>
                 <Input
+                  type="email"
+                  autoComplete="off"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </div>
+              <ProprietarioPortalFields
+                senha={form.senhaPortal}
+                onSenha={(senhaPortal) => setForm({ ...form, senhaPortal })}
+              />
               <div>
                 <Label>Observações</Label>
                 <Input
@@ -366,6 +420,15 @@ function ProprietariosPage() {
         }
         loading={deleting}
         onConfirm={() => void handleDelete()}
+      />
+      <ProprietarioPortalCredenciaisDialog
+        open={credenciais != null}
+        onOpenChange={(next) => {
+          if (!next) setCredenciais(null);
+        }}
+        nome={credenciais?.nome ?? ""}
+        email={credenciais?.email ?? ""}
+        senha={credenciais?.senha ?? ""}
       />
     </>
   );

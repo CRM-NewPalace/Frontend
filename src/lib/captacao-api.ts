@@ -275,7 +275,7 @@ export function updateProprietario(
 
 export function updateProprietarioPortal(
   id: string,
-  body: { ativo: boolean; senha?: string },
+  body: { ativo: boolean; senha?: string; gerarSenhaTemporaria?: boolean },
 ) {
   return apiFetch<{
     ativo: boolean;
