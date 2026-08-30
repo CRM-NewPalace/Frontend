@@ -546,6 +546,21 @@ function Config() {
     if (search.meta === "select") {
       return;
     }
+    if (search.code || search.orulo === "callback") {
+      if (search.secao !== "conta" || search.item !== "conexoes") {
+        void navigate({
+          to: "/configuracoes",
+          search: {
+            secao: "conta",
+            item: "conexoes",
+            orulo: "callback",
+            code: search.code,
+          },
+          replace: true,
+        });
+      }
+      return;
+    }
     if (search.secao !== selection.secao || search.item !== selection.item) {
       void navigate({
         to: "/configuracoes",
@@ -553,7 +568,7 @@ function Config() {
         replace: true,
       });
     }
-  }, [search.google, search.meta, search.secao, search.item, selection.secao, selection.item, navigate]);
+  }, [search.google, search.meta, search.orulo, search.code, search.secao, search.item, selection.secao, selection.item, navigate]);
 
   async function handleRemoveItem(item: CatalogItem) {
     try {
@@ -615,7 +630,14 @@ function Config() {
         ) : null}
 
         {selection.item === "conexoes" ? (
-          <ConfigConexoesPanel selectingMeta={search.meta === "select"} />
+          <ConfigConexoesPanel
+            selectingMeta={search.meta === "select"}
+            oruloCallbackCode={
+              search.orulo === "callback" || search.code
+                ? search.code
+                : undefined
+            }
+          />
         ) : null}
 
         {selection.item === "empresa" ? <ConfigEmpresaPanel /> : null}

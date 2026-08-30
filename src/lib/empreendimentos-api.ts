@@ -40,6 +40,9 @@ export type Empreendimento = {
   imagens: string[];
   externalKey: string;
   ativo: boolean;
+  oruloBuildingId?: number | null;
+  oruloStatus?: string | null;
+  oruloSyncedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   construtora: { id: string; nome: string; cor: string | null } | null;

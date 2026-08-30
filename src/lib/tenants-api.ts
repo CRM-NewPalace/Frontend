@@ -28,6 +28,7 @@ export type Tenant = {
   iaBotEnabled: boolean;
   hasMetaConnection?: boolean;
   hasOzapConnection?: boolean;
+  hasOruloConnection?: boolean;
   admin: TenantAdminUser | null;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +38,20 @@ export type TenantDetail = Tenant & {
   userCount: number;
   metaConnections: TenantMetaConnection[];
   ozapConnections: TenantOzapConnection[];
+  oruloConnections: TenantOruloConnection[];
+};
+
+export type TenantOruloConnection = {
+  id: string;
+  tenantId: string;
+  clientId: string;
+  ativo: boolean;
+  lastFullSyncAt: string | null;
+  lastReconcileAt: string | null;
+  lastError: string | null;
+  syncing: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type TenantMetaConnection = {

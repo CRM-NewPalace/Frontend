@@ -21,16 +21,32 @@ import {
 } from "@/lib/meta-oauth-api";
 import { CalendarDays, Loader2, RefreshCw, Share2, Unplug } from "lucide-react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { getSession } from "@/lib/auth";
+import {
+  completeOruloOAuth,
+  connectOrulo,
+  disconnectOrulo,
+  fetchOruloOAuthUrl,
+  fetchOruloStatus,
+  syncOrulo,
+  type OruloStatus,
+} from "@/lib/orulo-api";
 
 type Props = {
   selectingMeta?: boolean;
+  oruloCallbackCode?: string;
 };
 
-export function ConfigConexoesPanel({ selectingMeta = false }: Props) {
+export function ConfigConexoesPanel({
+  selectingMeta = false,
+  oruloCallbackCode,
+}: Props) {
   return (
     <div className="space-y-4">
       <MetaConexoesCard selectingMeta={selectingMeta} />
       <GoogleConexoesCard />
+      <OruloConexoesCard callbackCode={oruloCallbackCode} />
     </div>
   );
 }
@@ -414,6 +430,232 @@ function GoogleConexoesCard() {
             <CalendarDays className="mr-1.5 h-4 w-4" />
             Conectar Google Agenda
           </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OruloConexoesCard({ callbackCode }: { callbackCode?: string }) {
+  const user = getSession();
+  const isAdmin = user?.role === "admin";
+  const [status, setStatus] = useState<OruloStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchOruloStatus()
+      .then((next) => {
+        if (!cancelled) setStatus(next);
+      })
+      .catch(() => {
+        if (!cancelled) setStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!callbackCode) return;
+    let cancelled = false;
+    setBusy(true);
+    void completeOruloOAuth(callbackCode)
+      .then(() => {
+        if (!cancelled) toast.success("Órulo autorizada para dados comerciais.");
+      })
+      .catch((err) => {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível concluir a autorização Órulo.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [callbackCode]);
+
+  async function handleConnect(e: React.FormEvent) {
+    e.preventDefault();
+    if (!clientId.trim() || !clientSecret.trim()) {
+      toast.error("Informe Client ID e Secret da Órulo.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await connectOrulo({
+        clientId: clientId.trim(),
+        clientSecret: clientSecret.trim(),
+      });
+      const next = await fetchOruloStatus();
+      setStatus(next);
+      setClientSecret("");
+      toast.success("Órulo conectada. A sincronização do catálogo começou.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível conectar a Órulo.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Órulo — catálogo de imóveis</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Importa empreendimentos do catálogo da Órulo, atualiza via webhook e
+          envia os links de publicação. Dados comerciais do corretor exigem
+          autorização extra (oruloEndUserAuth).
+        </p>
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Verificando conexão…
+          </div>
+        ) : status?.connected ? (
+          <div className="space-y-3">
+            <p className="text-sm">
+              Conectada · Client ID {status.connection?.clientId}
+              {status.connection?.syncing ? " · sincronizando…" : ""}
+            </p>
+            {status.connection?.lastError ? (
+              <p className="text-sm text-destructive">
+                {status.connection.lastError}
+              </p>
+            ) : null}
+            {status.webhookUrl ? (
+              <p className="text-xs text-muted-foreground">
+                URL de webhook para o time da Órulo:{" "}
+                <code className="rounded bg-muted px-1">{status.webhookUrl}</code>
+              </p>
+            ) : null}
+            {status.oauthRedirectUri ? (
+              <p className="text-xs text-muted-foreground">
+                Redirect URI do corretor:{" "}
+                <code className="rounded bg-muted px-1">
+                  {status.oauthRedirectUri}
+                </code>
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  void syncOrulo()
+                    .then(() => toast.success("Sincronização iniciada."))
+                    .catch((err) =>
+                      toast.error(
+                        err instanceof ApiError
+                          ? err.message
+                          : "Falha ao sincronizar.",
+                      ),
+                    );
+                }}
+              >
+                <RefreshCw className="mr-1.5 h-4 w-4" />
+                Sincronizar agora
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  void fetchOruloOAuthUrl()
+                    .then((res) => window.location.assign(res.url))
+                    .catch((err) =>
+                      toast.error(
+                        err instanceof ApiError
+                          ? err.message
+                          : "Falha ao abrir autorização.",
+                      ),
+                    );
+                }}
+              >
+                Autorizar corretor
+              </Button>
+              {isAdmin ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  disabled={busy}
+                  onClick={() => {
+                    setBusy(true);
+                    void disconnectOrulo()
+                      .then(() => {
+                        setStatus({
+                          connected: false,
+                          connection: null,
+                          webhookUrl: status.webhookUrl,
+                          oauthRedirectUri: status.oauthRedirectUri,
+                        });
+                        toast.success("Órulo desconectada.");
+                      })
+                      .catch((err) =>
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Não foi possível desconectar.",
+                        ),
+                      )
+                      .finally(() => setBusy(false));
+                  }}
+                >
+                  <Unplug className="mr-1.5 h-4 w-4" />
+                  Desconectar
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : isAdmin ? (
+          <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => void handleConnect(e)}>
+            <div className="space-y-1.5">
+              <Label htmlFor="orulo-client">Client ID</Label>
+              <Input
+                id="orulo-client"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="orulo-secret">Client Secret</Label>
+              <Input
+                id="orulo-secret"
+                type="password"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={busy}>
+                {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                Conectar Órulo
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Peça ao administrador para cadastrar as credenciais da Órulo.
+          </p>
         )}
       </CardContent>
     </Card>
