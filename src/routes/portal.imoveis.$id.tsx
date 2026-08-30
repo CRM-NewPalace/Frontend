@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { Loader2 } from "lucide-react";
+import { Home, Loader2, MapPin, Ruler, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError } from "@/lib/api";
 import {
@@ -603,15 +603,20 @@ function PortalImovelPage() {
         </Card>
       )}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar informações</DialogTitle>
-            <DialogDescription>
-              As alterações ficam visíveis para a imobiliária no funil de captação.
+        <DialogContent className="flex max-h-[min(92vh,760px)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-2xl border-slate-200 p-0 sm:w-full">
+          <DialogHeader className="shrink-0 border-b border-slate-100 bg-[#f4f8f9] px-6 py-5 pr-12 text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0d7a8c]">
+              Meu imóvel
+            </p>
+            <DialogTitle className="text-xl text-[#12343d]">
+              Editar informações
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              A imobiliária vê estas alterações no funil de captação.
             </DialogDescription>
           </DialogHeader>
           <form
-            className="grid gap-3"
+            className="flex min-h-0 flex-1 flex-col"
             onSubmit={(e: FormEvent) => {
               e.preventDefault();
               setSaving(true);
@@ -653,152 +658,216 @@ function PortalImovelPage() {
                 .finally(() => setSaving(false));
             }}
           >
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-tipo">Tipo</Label>
-              <select
-                id="edit-tipo"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={editTipo}
-                onChange={(e) => setEditTipo(e.target.value as CaptacaoImovelTipo)}
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              <section className="rounded-xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_-18px_rgba(15,76,92,0.4)]">
+                <div className="mb-3 flex items-center gap-2 text-[#0f4c5c]">
+                  <Home className="h-4 w-4" />
+                  <h3 className="text-sm font-semibold">Imóvel e valor</h3>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-tipo" className="text-slate-600">Tipo</Label>
+                    <select
+                      id="edit-tipo"
+                      className="flex h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm"
+                      value={editTipo}
+                      onChange={(e) => setEditTipo(e.target.value as CaptacaoImovelTipo)}
+                    >
+                      {CAPTACAO_IMOVEL_TIPOS.map((item) => (
+                        <option key={item} value={item}>
+                          {CAPTACAO_IMOVEL_TIPO_LABEL[item]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-valor" className="text-slate-600">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Wallet className="h-3.5 w-3.5 text-[#0d7a8c]" />
+                        Valor pretendido
+                      </span>
+                    </Label>
+                    <Input
+                      id="edit-valor"
+                      inputMode="decimal"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editValor}
+                      onChange={(e) => setEditValor(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_-18px_rgba(15,76,92,0.4)]">
+                <div className="mb-3 flex items-center gap-2 text-[#0f4c5c]">
+                  <MapPin className="h-4 w-4" />
+                  <h3 className="text-sm font-semibold">Endereço</h3>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[1fr_7rem]">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-logradouro" className="text-slate-600">Logradouro</Label>
+                    <Input
+                      id="edit-logradouro"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editLogradouro}
+                      onChange={(e) => setEditLogradouro(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-numero" className="text-slate-600">Número</Label>
+                    <Input
+                      id="edit-numero"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editNumero}
+                      onChange={(e) => setEditNumero(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 space-y-1.5">
+                  <Label htmlFor="edit-complemento" className="text-slate-600">Complemento</Label>
+                  <Input
+                    id="edit-complemento"
+                    className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                    placeholder="Apto, bloco, referência"
+                    value={editComplemento}
+                    onChange={(e) => setEditComplemento(e.target.value)}
+                  />
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_4.5rem_7.5rem]">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-bairro" className="text-slate-600">Bairro</Label>
+                    <Input
+                      id="edit-bairro"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editBairro}
+                      onChange={(e) => setEditBairro(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-cidade" className="text-slate-600">Cidade</Label>
+                    <Input
+                      id="edit-cidade"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editCidade}
+                      onChange={(e) => setEditCidade(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-estado" className="text-slate-600">UF</Label>
+                    <Input
+                      id="edit-estado"
+                      maxLength={2}
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50 uppercase"
+                      value={editEstado}
+                      onChange={(e) => setEditEstado(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-cep" className="text-slate-600">CEP</Label>
+                    <Input
+                      id="edit-cep"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editCep}
+                      onChange={(e) => setEditCep(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_-18px_rgba(15,76,92,0.4)]">
+                <div className="mb-3 flex items-center gap-2 text-[#0f4c5c]">
+                  <Ruler className="h-4 w-4" />
+                  <h3 className="text-sm font-semibold">Características</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-area" className="text-slate-600">Área m²</Label>
+                    <Input
+                      id="edit-area"
+                      inputMode="decimal"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editArea}
+                      onChange={(e) => setEditArea(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-quartos" className="text-slate-600">Quartos</Label>
+                    <Input
+                      id="edit-quartos"
+                      inputMode="numeric"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editQuartos}
+                      onChange={(e) => setEditQuartos(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-suites" className="text-slate-600">Suítes</Label>
+                    <Input
+                      id="edit-suites"
+                      inputMode="numeric"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editSuites}
+                      onChange={(e) => setEditSuites(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-banheiros" className="text-slate-600">Banheiros</Label>
+                    <Input
+                      id="edit-banheiros"
+                      inputMode="numeric"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editBanheiros}
+                      onChange={(e) => setEditBanheiros(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-vagas" className="text-slate-600">Vagas</Label>
+                    <Input
+                      id="edit-vagas"
+                      inputMode="numeric"
+                      className="h-10 rounded-lg border-slate-200 bg-slate-50"
+                      value={editVagas}
+                      onChange={(e) => setEditVagas(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 space-y-1.5">
+                  <Label htmlFor="edit-descricao" className="text-slate-600">Descrição</Label>
+                  <textarea
+                    id="edit-descricao"
+                    rows={4}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                    placeholder="Conte o que destaca este imóvel."
+                    value={editDescricao}
+                    onChange={(e) => setEditDescricao(e.target.value)}
+                  />
+                </div>
+              </section>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-[#f4f8f9] px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setEditOpen(false)}
               >
-                {CAPTACAO_IMOVEL_TIPOS.map((item) => (
-                  <option key={item} value={item}>
-                    {CAPTACAO_IMOVEL_TIPO_LABEL[item]}
-                  </option>
-                ))}
-              </select>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="rounded-full bg-[#0f4c5c] px-5 hover:bg-[#0c3d4a]"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    Salvando…
+                  </>
+                ) : (
+                  "Salvar alterações"
+                )}
+              </Button>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="edit-logradouro">Endereço</Label>
-                <Input
-                  id="edit-logradouro"
-                  value={editLogradouro}
-                  onChange={(e) => setEditLogradouro(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-numero">Número</Label>
-                <Input
-                  id="edit-numero"
-                  value={editNumero}
-                  onChange={(e) => setEditNumero(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-complemento">Complemento</Label>
-              <Input
-                id="edit-complemento"
-                value={editComplemento}
-                onChange={(e) => setEditComplemento(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-bairro">Bairro</Label>
-                <Input
-                  id="edit-bairro"
-                  value={editBairro}
-                  onChange={(e) => setEditBairro(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-cidade">Cidade</Label>
-                <Input
-                  id="edit-cidade"
-                  value={editCidade}
-                  onChange={(e) => setEditCidade(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-estado">UF</Label>
-                <Input
-                  id="edit-estado"
-                  maxLength={2}
-                  value={editEstado}
-                  onChange={(e) => setEditEstado(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-cep">CEP</Label>
-                <Input
-                  id="edit-cep"
-                  value={editCep}
-                  onChange={(e) => setEditCep(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-valor">Valor pretendido</Label>
-                <Input
-                  id="edit-valor"
-                  inputMode="decimal"
-                  value={editValor}
-                  onChange={(e) => setEditValor(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-area">Área (m²)</Label>
-                <Input
-                  id="edit-area"
-                  inputMode="decimal"
-                  value={editArea}
-                  onChange={(e) => setEditArea(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-quartos">Quartos</Label>
-                <Input
-                  id="edit-quartos"
-                  inputMode="numeric"
-                  value={editQuartos}
-                  onChange={(e) => setEditQuartos(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-suites">Suítes</Label>
-                <Input
-                  id="edit-suites"
-                  inputMode="numeric"
-                  value={editSuites}
-                  onChange={(e) => setEditSuites(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-banheiros">Banheiros</Label>
-                <Input
-                  id="edit-banheiros"
-                  inputMode="numeric"
-                  value={editBanheiros}
-                  onChange={(e) => setEditBanheiros(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-vagas">Vagas</Label>
-                <Input
-                  id="edit-vagas"
-                  inputMode="numeric"
-                  value={editVagas}
-                  onChange={(e) => setEditVagas(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-descricao">Descrição</Label>
-              <textarea
-                id="edit-descricao"
-                className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={editDescricao}
-                onChange={(e) => setEditDescricao(e.target.value)}
-              />
-            </div>
-            <Button type="submit" disabled={saving} className="bg-[#0f4c5c] hover:bg-[#0c3d4a]">
-              {saving ? "Salvando…" : "Salvar"}
-            </Button>
           </form>
         </DialogContent>
       </Dialog>
