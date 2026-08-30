@@ -853,7 +853,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={section.id}
                 to={standaloneLeaf.to}
-                preload={false}
+                preload="intent"
                 onClick={onNavigate}
                 title={collapsedView ? section.label : undefined}
                 className={cn(
@@ -951,7 +951,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                   <Link
                                     key={child.to}
                                     to={child.to}
-                                    preload={false}
+                                    preload="intent"
                                     onClick={onNavigate}
                                     className={cn(
                                       "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
@@ -982,7 +982,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <Link
                         key={item.to}
                         to={item.to}
-                        preload={false}
+                        preload="intent"
                         onClick={onNavigate}
                         className={cn(
                           "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",

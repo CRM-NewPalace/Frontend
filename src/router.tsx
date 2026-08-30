@@ -5,6 +5,14 @@ import { routeTree } from "./routeTree.gen";
 
 recoverStaleChunks();
 
+function ModulePending() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
+    </div>
+  );
+}
+
 export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -25,7 +33,7 @@ export const getRouter = () => {
     // Padrão do TanStack = 1000ms / 500ms — a tela anterior ficava “presa”.
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
-    defaultPendingComponent: () => null,
+    defaultPendingComponent: ModulePending,
     defaultViewTransition: false,
   });
 
