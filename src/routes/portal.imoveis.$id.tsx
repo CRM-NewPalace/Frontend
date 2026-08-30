@@ -15,9 +15,11 @@ import {
   fetchPortalPosVenda,
   fetchPortalPropostas,
   fetchPortalVisitas,
+  registrarPortalAcao,
   PORTAL_SITUACAO_LABEL,
   type PortalImovelDetalhe,
 } from "@/lib/portal-api";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PillTabs, situacaoTone, StatusChip } from "@/components/operacao-ui";
 
@@ -59,6 +61,7 @@ function PortalImovelPage() {
   const [imovel, setImovel] = useState<PortalImovelDetalhe | null>(null);
   const [extra, setExtra] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(true);
+  const [acaoBusy, setAcaoBusy] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -116,6 +119,42 @@ function PortalImovelPage() {
         <p className="text-sm text-muted-foreground">
           {formatBrl(imovel.precoVenda ?? imovel.valorPretendido)}
         </p>
+        {imovel.proximoPasso ? (
+          <p className="mt-2 text-sm text-foreground/80">{imovel.proximoPasso}</p>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={acaoBusy}
+          onClick={() => {
+            setAcaoBusy(true);
+            void registrarPortalAcao(id, "vi_e_concordo")
+              .then((res) => toast.success(res.texto))
+              .catch((err) => {
+                toast.error(err instanceof ApiError ? err.message : "Não foi possível registrar.");
+              })
+              .finally(() => setAcaoBusy(false));
+          }}
+        >
+          Vi e concordo
+        </Button>
+        <Button
+          type="button"
+          disabled={acaoBusy}
+          onClick={() => {
+            setAcaoBusy(true);
+            void registrarPortalAcao(id, "quero_falar")
+              .then((res) => toast.success(res.texto))
+              .catch((err) => {
+                toast.error(err instanceof ApiError ? err.message : "Não foi possível registrar.");
+              })
+              .finally(() => setAcaoBusy(false));
+          }}
+        >
+          Quero falar com o corretor
+        </Button>
       </div>
       <PillTabs
         items={TABS.map((label) => ({ id: label, label }))}
@@ -137,7 +176,25 @@ function PortalImovelPage() {
             </p>
             <p>Valor pretendido: {formatBrl(imovel.valorPretendido)}</p>
             <p>Avaliação: {formatBrl(imovel.valorAvaliacao)}</p>
-            {imovel.captacao && <p>Responsável: {imovel.captacao.responsavel}</p>}
+            {imovel.contato?.corretor ? (
+              <p>
+                Corretor: {imovel.contato.corretor.nome}
+                {imovel.contato.corretor.telefone
+                  ? ` · ${imovel.contato.corretor.telefone}`
+                  : ""}
+                {imovel.contato.corretor.whatsapp
+                  ? ` · WhatsApp ${imovel.contato.corretor.whatsapp}`
+                  : ""}
+              </p>
+            ) : imovel.captacao ? (
+              <p>Responsável: {imovel.captacao.responsavel}</p>
+            ) : null}
+            {imovel.contato?.imobiliaria.telefone ? (
+              <p>
+                Imobiliária {imovel.contato.imobiliaria.nome}:{" "}
+                {imovel.contato.imobiliaria.telefone}
+              </p>
+            ) : null}
             <ImovelFichaVisao imovel={imovel} />
             {imovel.descricao ? (
               <p className="whitespace-pre-wrap">{imovel.descricao}</p>
@@ -323,17 +380,34 @@ function PortalImovelPage() {
             <CardTitle className="text-base">Documentação</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {((extra.Documentação as Array<{
-              id: string;
-              nome: string;
-              status: string;
-              updatedAt: string;
-            }>) ?? []).map((doc) => (
-              <p key={doc.id}>
-                {doc.status === "aprovado" ? "✓" : "○"} {doc.nome} · {doc.status} ·{" "}
-                {formatDate(doc.updatedAt)}
-              </p>
-            ))}
+            {(() => {
+              const docs =
+                (extra.Documentação as Array<{
+                  id: string;
+                  nome: string;
+                  status: string;
+                  updatedAt: string;
+                }>) ?? [];
+              const pendentes = docs.filter((doc) => doc.status !== "aprovado").length;
+              return (
+                <>
+                  <p className="font-medium text-foreground">
+                    {docs.length === 0
+                      ? "A imobiliária ainda não abriu o checklist de documentação."
+                      : pendentes === 0
+                        ? "Tudo certo: não falta nenhum item do checklist."
+                        : `Faltam ${pendentes} ${pendentes === 1 ? "item" : "itens"} no checklist.`}
+                  </p>
+                  {docs.map((doc) => (
+                    <p key={doc.id}>
+                      {doc.status === "aprovado" ? "✓" : "○"} {doc.nome} ·{" "}
+                      {doc.status === "aprovado" ? "ok" : "pendente"} ·{" "}
+                      {formatDate(doc.updatedAt)}
+                    </p>
+                  ))}
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

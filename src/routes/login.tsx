@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ApiError } from "@/lib/api";
 import { signIn } from "@/lib/auth";
+import { signInPortal } from "@/lib/portal-auth";
 import { getWhatsAppUrl } from "@/lib/env";
 import { defaultRouteForRole } from "@/lib/permissions";
 import { toast } from "sonner";
@@ -209,8 +211,32 @@ function LoginPage() {
       toast.success(`Bem-vindo(a), ${user.name.split(" ")[0]}!`);
       navigate({ to: defaultRouteForRole(user.role, user) });
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        try {
+          const me = await signInPortal(email, password);
+          toast.success(`Olá, ${me.nome.split(" ")[0]}`);
+          navigate({ to: "/portal" });
+          return;
+        } catch (portalError) {
+          if (
+            portalError instanceof ApiError &&
+            (portalError.status === 400 || portalError.status === 403)
+          ) {
+            toast.message("Esta conta é do portal do proprietário.");
+            navigate({
+              to: "/portal/login",
+              search: { email: email.trim() },
+            });
+            return;
+          }
+        }
+      }
       toast.error(
-        error instanceof Error ? error.message : "Não foi possível entrar",
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Não foi possível entrar",
       );
     } finally {
       setLoading(false);
@@ -390,6 +416,7 @@ function LoginPage() {
               Proprietário de imóvel?{" "}
               <Link
                 to="/portal/login"
+                search={email.trim() ? { email: email.trim() } : undefined}
                 className="font-medium text-brand-accent transition-colors hover:text-brand-dark"
               >
                 Acessar o portal

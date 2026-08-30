@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ImovelFotoThumb } from "@/components/imovel-foto-thumb";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/imoveis/")({
   ssr: false,
@@ -87,6 +88,9 @@ function PortalImoveisPage() {
                       {item.endereco}
                       {item.bairro ? ` · ${item.bairro}` : ""}
                     </p>
+                    {item.proximoPasso ? (
+                      <p className="mt-1 text-xs text-foreground/80">{item.proximoPasso}</p>
+                    ) : null}
                   </TableCell>
                   <TableCell>{item.cidade || "—"}</TableCell>
                   <TableCell>{formatBrl(item.valor)}</TableCell>

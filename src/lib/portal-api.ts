@@ -172,14 +172,37 @@ export type PortalImovelListItem = {
   bairro: string;
   cidade: string;
   fotoUrl?: string | null;
+  fotos?: Array<{ id: string; url: string; sortOrder: number }>;
   valor: number | null;
   situacao: PortalSituacao;
+  proximoPasso?: string;
+  temComercializacao?: boolean;
+  contato?: PortalContato;
   statusOperacao: string | null;
   responsavel: string | null;
   dataCaptacao: string;
   interessados: number;
   visitas: number;
   propostas: number;
+};
+
+export type PortalContato = {
+  imobiliaria: { nome: string; telefone: string };
+  corretor: {
+    nome: string;
+    telefone: string | null;
+    whatsapp: string | null;
+  } | null;
+};
+
+export type PortalNovidade = {
+  id: string;
+  imovelId: string;
+  identificacao: string;
+  origem: string;
+  tipo: string;
+  texto: string;
+  createdAt: string;
 };
 
 export type PortalDashboard = {
@@ -191,6 +214,7 @@ export type PortalDashboard = {
     captacao: number;
   };
   imoveis: PortalImovelListItem[];
+  novidades?: PortalNovidade[];
 };
 
 export type PortalImovelDetalhe = {
@@ -216,6 +240,9 @@ export type PortalImovelDetalhe = {
   torres?: number | null;
   descricao?: string;
   fotoUrl?: string | null;
+  fotos?: Array<{ id: string; url: string; sortOrder: number }>;
+  proximoPasso?: string;
+  contato?: PortalContato;
   comodidadesUnidade?: string[];
   comodidadesCondominio?: string[];
   valorPretendido: number | null;
@@ -370,6 +397,27 @@ export function fetchPortalChaves(id: string) {
       }>;
     }>;
   }>(`/portal-proprietario/imoveis/${id}/chaves`);
+}
+
+export function changePortalPassword(senhaAtual: string, senhaNova: string) {
+  return portalFetch<void>("/portal-proprietario/me/senha", {
+    method: "PATCH",
+    body: { senhaAtual, senhaNova },
+  });
+}
+
+export function fetchPortalNovidades() {
+  return portalFetch<PortalNovidade[]>("/portal-proprietario/novidades");
+}
+
+export function registrarPortalAcao(
+  id: string,
+  tipo: "vi_e_concordo" | "quero_falar",
+) {
+  return portalFetch<{ ok: boolean; texto: string }>(
+    `/portal-proprietario/imoveis/${id}/acoes`,
+    { method: "POST", body: { tipo } },
+  );
 }
 
 export function fetchPortalPosVenda(id: string) {

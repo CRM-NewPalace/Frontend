@@ -166,11 +166,11 @@ export function ImovelFichaFields({
   cadastro?: ImovelCadastroFields;
   resetKey?: string;
   foto?: {
-    url: string | null;
-    previewUrl?: string | null;
+    items: Array<{ id?: string; url: string }>;
+    previewUrls?: string[];
     busy?: boolean;
     onAdd: (file: File) => void;
-    onRemove: () => void;
+    onRemove: (index: number, id?: string) => void;
   };
 }) {
   const sections = cadastro ? CADASTRO_SECTIONS : FICHA_SECTIONS;
@@ -320,17 +320,19 @@ export function ImovelFichaFields({
       {section === "foto" && foto ? (
         <FormSection
           icon={<Camera className="h-3.5 w-3.5" />}
-          title="Foto"
-          description="Uma foto de capa do imóvel. Aparece na captação, na lista e no portal."
+          title="Fotos"
+          description="Até 4 fotos. A primeira é a capa na captação, nos usados e no portal."
         >
           <ImageUploadField
-            images={[foto.previewUrl || foto.url].filter(
-              (src): src is string => Boolean(src),
-            )}
-            max={1}
-            label="Foto de capa"
-            hint="JPG, PNG ou WebP. Até 5 MB."
+            images={[
+              ...foto.items.map((item) => item.url),
+              ...(foto.previewUrls ?? []),
+            ]}
+            max={4}
+            label="Fotos do imóvel"
+            hint="JPG, PNG ou WebP. Até 5 MB cada. Capa = primeira foto."
             recommendedSize="1600 × 1200"
+            slotLabels={["Capa", "Foto 2", "Foto 3", "Foto 4"]}
             busy={foto.busy}
             onAdd={(files) => {
               const file = files[0];
@@ -342,7 +344,10 @@ export function ImovelFichaFields({
               }
               foto.onAdd(file);
             }}
-            onRemove={() => foto.onRemove()}
+            onRemove={(index) => {
+              const saved = foto.items[index];
+              foto.onRemove(index, saved?.id);
+            }}
           />
         </FormSection>
       ) : null}

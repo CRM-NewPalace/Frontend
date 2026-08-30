@@ -91,6 +91,28 @@ function PortalDashboardPage() {
           format="number"
         />
       </div>
+      {(data.novidades ?? []).length > 0 ? (
+        <Card className="border-primary/15 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">Novidades</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {data.novidades!.slice(0, 8).map((item) => (
+              <Link
+                key={item.id}
+                to="/portal/imoveis/$id"
+                params={{ id: item.imovelId }}
+                className="block border-l-2 border-primary/30 pl-3 hover:bg-primary/5"
+              >
+                <p className="text-xs text-muted-foreground">
+                  {new Date(item.createdAt).toLocaleDateString("pt-BR")} · {item.identificacao}
+                </p>
+                <p>{item.texto}</p>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2">
         {data.imoveis.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum imóvel vinculado.</p>
@@ -105,11 +127,28 @@ function PortalDashboardPage() {
                   </StatusChip>
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm text-muted-foreground">
+                  {imovel.fotoUrl ? (
+                    <img
+                      src={imovel.fotoUrl}
+                      alt=""
+                      className="mb-2 h-36 w-full rounded-lg object-cover"
+                    />
+                  ) : null}
                   <p className="font-medium text-foreground">{formatBrl(imovel.valor)}</p>
-                  <p>
-                    {imovel.interessados} interessados · {imovel.visitas} visitas ·{" "}
-                    {imovel.propostas} proposta{imovel.propostas === 1 ? "" : "s"}
-                  </p>
+                  {imovel.proximoPasso ? (
+                    <p className="text-foreground/80">{imovel.proximoPasso}</p>
+                  ) : null}
+                  {imovel.temComercializacao ? (
+                    <p>
+                      {imovel.interessados} interessados · {imovel.visitas} visitas ·{" "}
+                      {imovel.propostas} proposta{imovel.propostas === 1 ? "" : "s"}
+                    </p>
+                  ) : (
+                    <p>Ainda em captação — visitas e propostas aparecem quando o imóvel for à venda.</p>
+                  )}
+                  {imovel.contato?.corretor ? (
+                    <p>Corretor: {imovel.contato.corretor.nome}</p>
+                  ) : null}
                 </CardContent>
               </Card>
             </Link>

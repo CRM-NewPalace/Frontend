@@ -98,7 +98,9 @@ export function ProprietarioPortalCredenciaisDialog({
           <DialogTitle>Credenciais do portal</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Anote e entregue a {nome}. A senha só aparece agora.
+          Anote e entregue a {nome}. A senha só aparece agora. O login é em{" "}
+          <span className="font-mono">/portal/login</span>, não no CRM da
+          imobiliária.
         </p>
         <div className="grid gap-3">
           <div>

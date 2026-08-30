@@ -21,6 +21,7 @@ import {
   fetchCaptacaoImoveis,
   fetchProprietarios,
   formatBrl,
+  imovelFotoItens,
   updateCaptacaoImovel,
   uploadCaptacaoImovelFoto,
   type CaptacaoImovelTipo,
@@ -66,6 +67,7 @@ const emptyForm = {
   cidade: "",
   estado: "",
   fotoUrl: "" as string,
+  fotos: [] as Array<{ id: string; url: string; sortOrder: number }>,
   ...emptyImovelFicha(),
 };
 
@@ -115,8 +117,8 @@ export function CatalogUnidadeImoveis({
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Imovel | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [pendingFoto, setPendingFoto] = useState<File | null>(null);
-  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [pendingFotos, setPendingFotos] = useState<File[]>([]);
+  const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [fotoBusy, setFotoBusy] = useState(false);
 
   const vendaByImovel = useMemo(() => {
@@ -208,10 +210,10 @@ export function CatalogUnidadeImoveis({
   }, [deleteRequest?.tick, deleteRequest?.id, items]);
 
   function clearPendingFoto() {
-    setPendingFoto(null);
-    setPendingPreview((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return null;
+    setPendingFotos([]);
+    setPendingPreviews((current) => {
+      current.forEach((url) => URL.revokeObjectURL(url));
+      return [];
     });
   }
 
@@ -228,6 +230,7 @@ export function CatalogUnidadeImoveis({
       cidade: item.cidade,
       estado: item.estado,
       fotoUrl: item.fotoUrl ?? "",
+      fotos: item.fotos ?? [],
       ...imovelToFicha(item),
     });
     const venda = vendaByImovel.get(item.id);
@@ -267,8 +270,8 @@ export function CatalogUnidadeImoveis({
         toast.success("Imóvel atualizado.");
       } else {
         saved = await createCaptacaoImovel(body);
-        if (pendingFoto) {
-          saved = await uploadCaptacaoImovelFoto(saved.id, pendingFoto);
+        for (const file of pendingFotos) {
+          saved = await uploadCaptacaoImovelFoto(saved.id, file);
         }
         toast.success("Imóvel cadastrado.");
       }
@@ -522,8 +525,11 @@ export function CatalogUnidadeImoveis({
                 onChange: (patch) => setForm({ ...form, ...patch }),
               }}
               foto={{
-                url: form.fotoUrl || null,
-                previewUrl: pendingPreview,
+                items: imovelFotoItens({
+                  fotos: form.fotos,
+                  fotoUrl: form.fotoUrl,
+                }),
+                previewUrls: pendingPreviews,
                 busy: fotoBusy,
                 onAdd: (file) => {
                   if (editing) {
@@ -533,9 +539,10 @@ export function CatalogUnidadeImoveis({
                         setForm((current) => ({
                           ...current,
                           fotoUrl: next.fotoUrl ?? "",
+                          fotos: next.fotos ?? [],
                         }));
                         setEditing(next);
-                        toast.success("Foto atualizada.");
+                        toast.success("Foto enviada.");
                       })
                       .catch((err) => {
                         toast.error(
@@ -547,18 +554,21 @@ export function CatalogUnidadeImoveis({
                       .finally(() => setFotoBusy(false));
                     return;
                   }
-                  setPendingPreview((current) => {
-                    if (current) URL.revokeObjectURL(current);
-                    return URL.createObjectURL(file);
-                  });
-                  setPendingFoto(file);
+                  setPendingFotos((current) => [...current, file].slice(0, 4));
+                  setPendingPreviews((current) =>
+                    [...current, URL.createObjectURL(file)].slice(0, 4),
+                  );
                 },
-                onRemove: () => {
+                onRemove: (index, fotoId) => {
                   if (editing) {
                     setFotoBusy(true);
-                    void deleteCaptacaoImovelFoto(editing.id)
+                    void deleteCaptacaoImovelFoto(editing.id, fotoId)
                       .then((next) => {
-                        setForm((current) => ({ ...current, fotoUrl: "" }));
+                        setForm((current) => ({
+                          ...current,
+                          fotoUrl: next.fotoUrl ?? "",
+                          fotos: next.fotos ?? [],
+                        }));
                         setEditing(next);
                         toast.success("Foto removida.");
                       })
@@ -572,7 +582,21 @@ export function CatalogUnidadeImoveis({
                       .finally(() => setFotoBusy(false));
                     return;
                   }
-                  clearPendingFoto();
+                  const savedCount = imovelFotoItens({
+                    fotos: form.fotos,
+                    fotoUrl: form.fotoUrl,
+                  }).length;
+                  const pendingIndex = index - savedCount;
+                  if (pendingIndex >= 0) {
+                    setPendingFotos((current) =>
+                      current.filter((_, i) => i !== pendingIndex),
+                    );
+                    setPendingPreviews((current) => {
+                      const url = current[pendingIndex];
+                      if (url) URL.revokeObjectURL(url);
+                      return current.filter((_, i) => i !== pendingIndex);
+                    });
+                  }
                 },
               }}
             />

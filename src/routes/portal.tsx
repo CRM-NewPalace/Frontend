@@ -1,7 +1,14 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useState, type FormEvent } from "react";
 import { ensurePortalSession, getPortalSession, signOutPortal } from "@/lib/portal-auth";
-import { Building2, LayoutDashboard, LogOut } from "lucide-react";
+import { changePortalPassword } from "@/lib/portal-api";
+import { ApiError } from "@/lib/api";
+import { Building2, KeyRound, LayoutDashboard, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal")({
   ssr: false,
@@ -9,7 +16,7 @@ export const Route = createFileRoute("/portal")({
     if (location.pathname === "/portal/login") return { proprietario: null };
     const cached = getPortalSession();
     const session = cached ?? (await ensurePortalSession());
-    if (!session) throw redirect({ to: "/portal/login" });
+    if (!session) throw redirect({ to: "/portal/login", search: { email: undefined } });
     return { proprietario: session };
   },
   component: PortalLayout,
@@ -19,7 +26,27 @@ function PortalLayout() {
   const { proprietario } = Route.useRouteContext();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [senhaOpen, setSenhaOpen] = useState(false);
+  const [senhaAtual, setSenhaAtual] = useState("");
+  const [senhaNova, setSenhaNova] = useState("");
+  const [senhaBusy, setSenhaBusy] = useState(false);
   if (!proprietario) return <Outlet />;
+
+  async function onChangePassword(e: FormEvent) {
+    e.preventDefault();
+    setSenhaBusy(true);
+    try {
+      await changePortalPassword(senhaAtual, senhaNova);
+      toast.success("Senha atualizada.");
+      setSenhaAtual("");
+      setSenhaNova("");
+      setSenhaOpen(false);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Não foi possível trocar a senha.");
+    } finally {
+      setSenhaBusy(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -64,6 +91,14 @@ function PortalLayout() {
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 px-3 py-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              onClick={() => setSenhaOpen((open) => !open)}
+            >
+              <KeyRound className="h-4 w-4" />
+              Senha
+            </button>
             <span className="hidden max-w-40 truncate text-muted-foreground sm:inline">
               {proprietario.nome}
             </span>
@@ -72,7 +107,7 @@ function PortalLayout() {
               className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 px-3 py-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary"
               onClick={() => {
                 void signOutPortal().then(() =>
-                  navigate({ to: "/portal/login" }),
+                  navigate({ to: "/portal/login", search: { email: undefined } }),
                 );
               }}
             >
@@ -83,6 +118,37 @@ function PortalLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
+        {senhaOpen ? (
+          <form
+            onSubmit={(e) => void onChangePassword(e)}
+            className="mb-6 grid max-w-md gap-3 rounded-2xl border border-primary/15 bg-card p-4"
+          >
+            <p className="text-sm font-medium">Trocar senha do portal</p>
+            <div className="space-y-1">
+              <Label htmlFor="senha-atual">Senha atual</Label>
+              <Input
+                id="senha-atual"
+                type="password"
+                value={senhaAtual}
+                onChange={(e) => setSenhaAtual(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="senha-nova">Nova senha</Label>
+              <Input
+                id="senha-nova"
+                type="password"
+                value={senhaNova}
+                onChange={(e) => setSenhaNova(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" disabled={senhaBusy}>
+              {senhaBusy ? "Salvando…" : "Atualizar senha"}
+            </Button>
+          </form>
+        ) : null}
         <Outlet />
       </main>
     </div>

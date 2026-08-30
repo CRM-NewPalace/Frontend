@@ -10,12 +10,16 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/login")({
   ssr: false,
+  validateSearch: (search: Record<string, unknown>) => ({
+    email: typeof search.email === "string" ? search.email : undefined,
+  }),
   component: PortalLoginPage,
 });
 
 function PortalLoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const { email: emailFromQuery } = Route.useSearch();
+  const [email, setEmail] = useState(emailFromQuery ?? "");
   const [password, setPassword] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,7 +79,9 @@ function PortalLoginPage() {
               Entrar no portal
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Use o e-mail cadastrado pela imobiliária.
+              Este acesso é só do portal do proprietário, em{" "}
+              <span className="font-medium text-foreground">/portal/login</span>.
+              Não use a tela de login do CRM.
             </p>
           </div>
           <div className="space-y-2">
