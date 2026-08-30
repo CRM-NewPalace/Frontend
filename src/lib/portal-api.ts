@@ -420,6 +420,44 @@ export function registrarPortalAcao(
   );
 }
 
+export async function fetchPortalVisitasCarteira() {
+  const dash = await fetchPortalDashboard();
+  const rows = await Promise.all(
+    dash.imoveis.map(async (imovel) => {
+      if (!imovel.temComercializacao) {
+        return { imovel, visitas: { proximas: [], realizadas: [], canceladas: [] } };
+      }
+      const visitas = await fetchPortalVisitas(imovel.id);
+      return { imovel, visitas };
+    }),
+  );
+  return rows;
+}
+
+export async function fetchPortalPropostasCarteira() {
+  const dash = await fetchPortalDashboard();
+  const rows = await Promise.all(
+    dash.imoveis.map(async (imovel) => {
+      if (!imovel.temComercializacao) return { imovel, propostas: [] };
+      const propostas = await fetchPortalPropostas(imovel.id);
+      return { imovel, propostas };
+    }),
+  );
+  return rows;
+}
+
+export async function fetchPortalDocumentosCarteira() {
+  const dash = await fetchPortalDashboard();
+  const rows = await Promise.all(
+    dash.imoveis.map(async (imovel) => {
+      if (!imovel.temComercializacao) return { imovel, docs: [] };
+      const docs = await fetchPortalDocumentacao(imovel.id);
+      return { imovel, docs };
+    }),
+  );
+  return rows;
+}
+
 export function fetchPortalPosVenda(id: string) {
   return portalFetch<{
     status: string;

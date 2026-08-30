@@ -6,18 +6,20 @@ import { ApiError } from "@/lib/api";
 import { fetchPortalDashboard, type PortalImovelListItem } from "@/lib/portal-api";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/portal/imoveis/")({
+export const Route = createFileRoute("/portal/negociacoes")({
   ssr: false,
-  component: PortalImoveisPage,
+  component: PortalNegociacoesPage,
 });
 
-function PortalImoveisPage() {
+function PortalNegociacoesPage() {
   const [items, setItems] = useState<PortalImovelListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void fetchPortalDashboard()
-      .then((data) => setItems(data.imoveis))
+      .then((data) =>
+        setItems(data.imoveis.filter((imovel) => imovel.situacao === "negociacao")),
+      )
       .catch((err) => {
         toast.error(err instanceof ApiError ? err.message : "Não foi possível carregar.");
       })
@@ -36,16 +38,15 @@ function PortalImoveisPage() {
   return (
     <div className="space-y-6">
       <PortalPageTitle
-        kicker="Carteira"
-        title="Meus imóveis"
-        subtitle="Somente os imóveis vinculados a você."
+        title="Negociações"
+        subtitle="Imóveis com proposta ou reserva em andamento."
       />
       {items.length === 0 ? (
-        <PortalEmpty>Nenhum imóvel encontrado.</PortalEmpty>
+        <PortalEmpty>Nenhuma negociação aberta agora.</PortalEmpty>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           {items.map((imovel) => (
-            <PortalImovelCard key={imovel.id} imovel={imovel} />
+            <PortalImovelCard key={imovel.id} imovel={imovel} compact />
           ))}
         </div>
       )}

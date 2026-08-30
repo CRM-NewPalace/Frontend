@@ -2087,39 +2087,48 @@ export function ImoveisPage({
       ) : null}
 
       <Dialog open={kindPickOpen} onOpenChange={setKindPickOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Novo imóvel</DialogTitle>
-            <DialogDescription>
-              Lançamentos usam o cadastro de empreendimento. Captação e usados
-              usam a ficha da unidade (endereço, cômodos, anúncio e venda).
+        <DialogContent className="max-w-lg gap-0 overflow-hidden p-0 sm:rounded-2xl">
+          <DialogHeader className="space-y-1.5 px-6 pb-2 pt-6">
+            <DialogTitle className="text-xl">O que você vai cadastrar?</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              Escolha o tipo. Depois abrimos só o formulário certo.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button
+          <div className="grid gap-3 px-6 pb-6 sm:grid-cols-2">
+            <button
               type="button"
-              variant="outline"
-              className="h-auto flex-col items-start gap-1 py-4 text-left"
+              className="group flex flex-col items-start gap-3 rounded-2xl border border-border/80 bg-muted/30 p-4 text-left transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm"
               onClick={() => void openQuickCreate()}
             >
-              <Building2 className="h-5 w-5 text-primary" />
-              <span className="font-medium">Lançamento</span>
-              <span className="text-xs font-normal text-muted-foreground">
-                Construtora, torres, plantas e tags.
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground">
+                <Building2 className="h-5 w-5" />
               </span>
-            </Button>
-            <Button
+              <span>
+                <span className="block text-sm font-semibold text-foreground">
+                  Lançamento
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                  Empreendimento da construtora: torres, plantas e tabela.
+                </span>
+              </span>
+            </button>
+            <button
               type="button"
-              variant="outline"
-              className="h-auto flex-col items-start gap-1 py-4 text-left"
+              className="group flex flex-col items-start gap-3 rounded-2xl border border-border/80 bg-muted/30 p-4 text-left transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm"
               onClick={openUnidadeCreate}
             >
-              <Home className="h-5 w-5 text-primary" />
-              <span className="font-medium">Captação / usado</span>
-              <span className="text-xs font-normal text-muted-foreground">
-                Ficha, fotos, proprietário e venda de usados.
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground">
+                <Home className="h-5 w-5" />
               </span>
-            </Button>
+              <span>
+                <span className="block text-sm font-semibold text-foreground">
+                  Captação ou usado
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                  Unidade de um dono: ficha, fotos e venda de usados.
+                </span>
+              </span>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
