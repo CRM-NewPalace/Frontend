@@ -93,17 +93,22 @@ type Options = Omit<RequestInit, "body"> & {
 
 async function portalRequest(path: string, options: Options = {}) {
   const { body, skipAuth, headers, ...rest } = options;
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const send = async () => {
     const csrf = skipAuth ? null : readCsrf();
     return fetch(`${getApiUrl()}${path}`, {
       ...rest,
       credentials: "include",
       headers: {
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(body !== undefined && !isForm
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(csrf ? { [CSRF_HEADER]: csrf } : {}),
         ...headers,
       },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(body !== undefined
+        ? { body: isForm ? (body as FormData) : JSON.stringify(body) }
+        : {}),
     });
   };
 
@@ -348,6 +353,22 @@ export function cancelarPortalCaptacao(id: string) {
   return portalFetch<PortalImovelDetalhe>(
     `/portal-proprietario/imoveis/${id}/cancelar-captacao`,
     { method: "POST" },
+  );
+}
+
+export function uploadPortalImovelFoto(id: string, file: File) {
+  const data = new FormData();
+  data.append("file", file);
+  return portalFetch<PortalImovelDetalhe>(
+    `/portal-proprietario/imoveis/${id}/fotos`,
+    { method: "POST", body: data },
+  );
+}
+
+export function deletePortalImovelFoto(id: string, fotoId: string) {
+  return portalFetch<PortalImovelDetalhe>(
+    `/portal-proprietario/imoveis/${id}/fotos/${fotoId}`,
+    { method: "DELETE" },
   );
 }
 

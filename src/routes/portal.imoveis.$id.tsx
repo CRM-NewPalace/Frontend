@@ -9,7 +9,16 @@ import {
   formatBrl,
   type CaptacaoImovelTipo,
 } from "@/lib/captacao-api";
+import {
+  ImageUploadField,
+  assertImageFile,
+} from "@/components/image-upload-field";
 import { ImovelFichaVisao } from "@/components/imovel-ficha-visao";
+import {
+  formatMoneyInput,
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
 import {
   cancelarPortalCaptacao,
   fetchPortalChaves,
@@ -22,7 +31,9 @@ import {
   fetchPortalPropostas,
   fetchPortalVisitas,
   registrarPortalAcao,
+  deletePortalImovelFoto,
   updatePortalImovel,
+  uploadPortalImovelFoto,
   PORTAL_SITUACAO_LABEL,
   type PortalImovelDetalhe,
 } from "@/lib/portal-api";
@@ -106,6 +117,7 @@ function PortalImovelPage() {
   const [editBanheiros, setEditBanheiros] = useState("");
   const [editVagas, setEditVagas] = useState("");
   const [editArea, setEditArea] = useState("");
+  const [fotoBusy, setFotoBusy] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -255,7 +267,9 @@ function PortalImovelPage() {
             setEditEstado(imovel.estado);
             setEditCep(imovel.cep);
             setEditValor(
-              imovel.valorPretendido != null ? String(imovel.valorPretendido) : "",
+              imovel.valorPretendido != null
+                ? formatMoneyInput(imovel.valorPretendido)
+                : "",
             );
             setEditDescricao(imovel.descricao ?? "");
             setEditQuartos(imovel.quartos != null ? String(imovel.quartos) : "");
@@ -620,7 +634,7 @@ function PortalImovelPage() {
             onSubmit={(e: FormEvent) => {
               e.preventDefault();
               setSaving(true);
-              const parsed = Number(editValor.replace(/\./g, "").replace(",", "."));
+              const parsed = parseOptionalMoneyInput(editValor);
               const num = (raw: string) => {
                 const n = Number(raw.replace(",", "."));
                 return Number.isFinite(n) ? n : undefined;
@@ -635,7 +649,7 @@ function PortalImovelPage() {
                 cidade: editCidade.trim() || undefined,
                 estado: editEstado.trim() || undefined,
                 valorPretendido:
-                  Number.isFinite(parsed) && parsed > 0 ? parsed : undefined,
+                  parsed != null && parsed > 0 ? parsed : undefined,
                 descricao: editDescricao.trim() || undefined,
                 area: num(editArea),
                 quartos: num(editQuartos),
@@ -664,7 +678,62 @@ function PortalImovelPage() {
                   <Home className="h-4 w-4" />
                   <h3 className="text-sm font-semibold">Imóvel e valor</h3>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <ImageUploadField
+                  label="Fotos"
+                  hint="Até 4 fotos. A primeira é a capa."
+                  images={(imovel.fotos ?? []).map((foto) => foto.url)}
+                  max={4}
+                  busy={fotoBusy || saving}
+                  slotLabels={["Capa", "Foto 2", "Foto 3", "Foto 4"]}
+                  onAdd={(files) => {
+                    const valid = files.filter((file) => {
+                      const erro = assertImageFile(file);
+                      if (erro) toast.error(erro);
+                      return !erro;
+                    });
+                    if (!valid.length) return;
+                    setFotoBusy(true);
+                    void (async () => {
+                      let latest = imovel;
+                      try {
+                        for (const file of valid) {
+                          latest = await uploadPortalImovelFoto(id, file);
+                          setImovel(latest);
+                        }
+                        toast.success(
+                          valid.length === 1 ? "Foto enviada." : "Fotos enviadas.",
+                        );
+                      } catch (err) {
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Não foi possível enviar a foto.",
+                        );
+                      } finally {
+                        setFotoBusy(false);
+                      }
+                    })();
+                  }}
+                  onRemove={(index) => {
+                    const foto = imovel.fotos?.[index];
+                    if (!foto) return;
+                    setFotoBusy(true);
+                    void deletePortalImovelFoto(id, foto.id)
+                      .then((updated) => {
+                        setImovel(updated);
+                        toast.success("Foto removida.");
+                      })
+                      .catch((err) => {
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Não foi possível remover a foto.",
+                        );
+                      })
+                      .finally(() => setFotoBusy(false));
+                  }}
+                />
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-tipo" className="text-slate-600">Tipo</Label>
                     <select
@@ -689,10 +758,11 @@ function PortalImovelPage() {
                     </Label>
                     <Input
                       id="edit-valor"
-                      inputMode="decimal"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       className="h-10 rounded-lg border-slate-200 bg-slate-50"
                       value={editValor}
-                      onChange={(e) => setEditValor(e.target.value)}
+                      onChange={(e) => setEditValor(maskMoneyInput(e.target.value))}
                     />
                   </div>
                 </div>

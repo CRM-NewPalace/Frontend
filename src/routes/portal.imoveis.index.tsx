@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { Loader2, Plus } from "lucide-react";
+import {
+  ImageUploadField,
+  assertImageFile,
+} from "@/components/image-upload-field";
 import { PortalEmpty, PortalImovelCard, PortalPageTitle } from "@/components/portal-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +25,13 @@ import {
 import {
   createPortalImovel,
   fetchPortalDashboard,
+  uploadPortalImovelFoto,
   type PortalImovelListItem,
 } from "@/lib/portal-api";
+import {
+  maskMoneyInput,
+  parseOptionalMoneyInput,
+} from "@/lib/money-input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/portal/imoveis/")({
@@ -43,6 +52,8 @@ function PortalImoveisPage() {
   const [estado, setEstado] = useState("");
   const [cep, setCep] = useState("");
   const [valor, setValor] = useState("");
+  const [fotos, setFotos] = useState<File[]>([]);
+  const [fotoPreviews, setFotoPreviews] = useState<string[]>([]);
 
   function reload() {
     return fetchPortalDashboard().then((data) => setItems(data.imoveis));
@@ -60,8 +71,8 @@ function PortalImoveisPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const parsed = Number(valor.replace(/\./g, "").replace(",", "."));
-      await createPortalImovel({
+      const parsed = parseOptionalMoneyInput(valor);
+      const created = await createPortalImovel({
         tipo,
         cep: cep.trim() || undefined,
         logradouro: logradouro.trim(),
@@ -69,8 +80,19 @@ function PortalImoveisPage() {
         bairro: bairro.trim() || undefined,
         cidade: cidade.trim() || undefined,
         estado: estado.trim() || undefined,
-        valorPretendido: Number.isFinite(parsed) && parsed > 0 ? parsed : undefined,
+        valorPretendido: parsed != null && parsed > 0 ? parsed : undefined,
       });
+      try {
+        for (const file of fotos) {
+          await uploadPortalImovelFoto(created.id, file);
+        }
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Imóvel criado, mas uma foto não foi enviada. Edite o imóvel para tentar de novo.",
+        );
+      }
       toast.success("Imóvel enviado. A imobiliária vai avaliar na captação.");
       setOpen(false);
       setLogradouro("");
@@ -80,6 +102,9 @@ function PortalImoveisPage() {
       setEstado("");
       setCep("");
       setValor("");
+      fotoPreviews.forEach((url) => URL.revokeObjectURL(url));
+      setFotos([]);
+      setFotoPreviews([]);
       await reload();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Não foi possível cadastrar.");
@@ -124,8 +149,18 @@ function PortalImoveisPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            fotoPreviews.forEach((url) => URL.revokeObjectURL(url));
+            setFotos([]);
+            setFotoPreviews([]);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[min(92vh,780px)] max-w-xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Sugerir imóvel</DialogTitle>
             <DialogDescription>
@@ -192,13 +227,45 @@ function PortalImoveisPage() {
                 <Label htmlFor="valor">Valor pretendido</Label>
                 <Input
                   id="valor"
-                  inputMode="decimal"
-                  placeholder="850000"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
                   value={valor}
-                  onChange={(e) => setValor(e.target.value)}
+                  onChange={(e) => setValor(maskMoneyInput(e.target.value))}
                 />
               </div>
             </div>
+            <ImageUploadField
+              label="Fotos do imóvel"
+              hint="Até 4 fotos. JPG, PNG ou WebP, no máximo 5 MB cada. A primeira vira a capa."
+              images={fotoPreviews}
+              max={4}
+              busy={saving}
+              slotLabels={["Capa", "Foto 2", "Foto 3", "Foto 4"]}
+              onAdd={(files) => {
+                const valid: File[] = [];
+                for (const file of files) {
+                  const erro = assertImageFile(file);
+                  if (erro) {
+                    toast.error(erro);
+                    continue;
+                  }
+                  valid.push(file);
+                }
+                if (!valid.length) return;
+                setFotos((atual) => [...atual, ...valid].slice(0, 4));
+                setFotoPreviews((atual) =>
+                  [...atual, ...valid.map((file) => URL.createObjectURL(file))].slice(0, 4),
+                );
+              }}
+              onRemove={(index) => {
+                setFotoPreviews((atual) => {
+                  const url = atual[index];
+                  if (url) URL.revokeObjectURL(url);
+                  return atual.filter((_, i) => i !== index);
+                });
+                setFotos((atual) => atual.filter((_, i) => i !== index));
+              }}
+            />
             <Button type="submit" disabled={saving} className="bg-[#0f4c5c] hover:bg-[#0c3d4a]">
               {saving ? "Enviando…" : "Enviar para captação"}
             </Button>
