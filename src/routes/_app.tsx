@@ -21,10 +21,32 @@ function guardUser(user: AuthUser, pathname: string) {
   return { user };
 }
 
+function AppError({ reset }: { reset: () => void }) {
+  return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-4 text-center">
+      <p className="text-sm font-medium">Esta tela não carregou.</p>
+      <p className="text-sm text-muted-foreground">
+        Pode ser um arquivo antigo do último deploy. Recarregue a página.
+      </p>
+      <button
+        type="button"
+        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+        onClick={() => {
+          reset();
+          window.location.reload();
+        }}
+      >
+        Recarregar
+      </button>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_app")({
   ssr: false,
   pendingMs: 0,
   pendingMinMs: 0,
+  errorComponent: AppError,
   // Sessão em cache → beforeLoad síncrono (troca de módulo imediata).
   // /auth/me só bloqueia se o cache local sumiu.
   beforeLoad: ({ location }) => {

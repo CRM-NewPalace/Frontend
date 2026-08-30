@@ -1,6 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { recoverStaleChunks } from "@/lib/recover-stale-chunks";
 import { routeTree } from "./routeTree.gen";
+
+recoverStaleChunks();
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
