@@ -18,6 +18,7 @@ export type OruloStatus = {
   connection: OruloConnection | null;
   webhookUrl: string | null;
   oauthRedirectUri: string;
+  buildingCount: number;
 };
 
 export type OruloComercial = {

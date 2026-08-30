@@ -535,6 +535,14 @@ function OruloConexoesCard({ callbackCode }: { callbackCode?: string }) {
               Conectada · Client ID {status.connection?.clientId}
               {status.connection?.syncing ? " · sincronizando…" : ""}
             </p>
+            <p className="text-sm text-muted-foreground">
+              {(status.buildingCount ?? 0) === 0
+                ? "Nenhum empreendimento importado ainda. Depois da sync, eles aparecem em Catálogo → Imóveis."
+                : `${status.buildingCount} empreendimento(s) da Órulo no catálogo.`}
+              {status.connection?.lastFullSyncAt
+                ? ` Última sync: ${new Date(status.connection.lastFullSyncAt).toLocaleString("pt-BR")}.`
+                : ""}
+            </p>
             {status.connection?.lastError ? (
               <p className="text-sm text-destructive">
                 {status.connection.lastError}
@@ -560,15 +568,38 @@ function OruloConexoesCard({ callbackCode }: { callbackCode?: string }) {
                 variant="outline"
                 disabled={busy}
                 onClick={() => {
+                  setBusy(true);
                   void syncOrulo()
-                    .then(() => toast.success("Sincronização iniciada."))
+                    .then(async () => {
+                      toast.success("Sincronização iniciada. Aguarde alguns segundos.");
+                      for (let i = 0; i < 20; i += 1) {
+                        await new Promise((r) => setTimeout(r, 2000));
+                        const next = await fetchOruloStatus();
+                        setStatus(next);
+                        if (!next.connection?.syncing) {
+                          if (next.connection?.lastError) {
+                            toast.error(next.connection.lastError);
+                          } else if ((next.buildingCount ?? 0) > 0) {
+                            toast.success(
+                              `${next.buildingCount} empreendimento(s) importados. Abra Catálogo → Imóveis.`,
+                            );
+                          } else {
+                            toast.message(
+                              "Sync terminou sem empreendimentos. Esse Client ID pode não ter distribuição na Órulo.",
+                            );
+                          }
+                          break;
+                        }
+                      }
+                    })
                     .catch((err) =>
                       toast.error(
                         err instanceof ApiError
                           ? err.message
                           : "Falha ao sincronizar.",
                       ),
-                    );
+                    )
+                    .finally(() => setBusy(false));
                 }}
               >
                 <RefreshCw className="mr-1.5 h-4 w-4" />
