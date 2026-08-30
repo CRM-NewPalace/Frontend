@@ -1,11 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import {
-  ensureSession,
-  getSession,
-  isSessionReady,
-  type AuthUser,
-} from "@/lib/auth";
+import { ensureSession, getSession, type AuthUser } from "@/lib/auth";
 import { canAccessRoute, defaultRouteForRole } from "@/lib/permissions";
 import { LeadsProvider } from "@/lib/leads-store";
 import { CatalogProvider } from "@/lib/catalog-store";
@@ -28,13 +23,15 @@ function guardUser(user: AuthUser, pathname: string) {
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
-  // Sessão já validada nesta página → beforeLoad síncrono (troca de seção instantânea).
-  // Só espera /auth/me no primeiro load ou se o cache sumiu.
+  pendingMs: 0,
+  pendingMinMs: 0,
+  // Sessão em cache → beforeLoad síncrono (troca de módulo imediata).
+  // /auth/me só bloqueia se o cache local sumiu.
   beforeLoad: ({ location }) => {
-    if (isSessionReady()) {
-      const user = getSession()!;
+    const cached = getSession();
+    if (cached) {
       void ensureSession();
-      return guardUser(user, location.pathname);
+      return guardUser(cached, location.pathname);
     }
 
     return ensureSession().then((user) => {

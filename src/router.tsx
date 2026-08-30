@@ -18,10 +18,12 @@ export const getRouter = () => {
     scrollRestoration: true,
     // Sem preload no hover: o intent disparava dezenas de rotas pesadas
     // (funil, leads, dashboard) e quebrava com match undefined no router.
-    // A troca de módulo fica no clique, com o chunk em cache depois da 1ª visita.
     defaultPreload: false,
+    // Padrão do TanStack = 1000ms / 500ms — a tela anterior ficava “presa”.
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
+    defaultPendingComponent: () => null,
+    defaultViewTransition: false,
   });
 
   return router;
