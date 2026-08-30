@@ -174,33 +174,69 @@ function PortalImovelPage() {
         <Button
           type="button"
           variant="outline"
-          disabled={acaoBusy}
+          disabled={acaoBusy || imovel.acoes?.vi_e_concordo}
           onClick={() => {
             setAcaoBusy(true);
             void registrarPortalAcao(id, "vi_e_concordo")
-              .then((res) => toast.success(res.texto))
+              .then((res) => {
+                setImovel((atual) =>
+                  atual
+                    ? {
+                        ...atual,
+                        acoes: { ...atual.acoes, vi_e_concordo: true, quero_falar: atual.acoes?.quero_falar ?? false },
+                      }
+                    : atual,
+                );
+                setExtra((prev) => {
+                  const next = { ...prev };
+                  delete next.Histórico;
+                  return next;
+                });
+                toast.success(
+                  res.jaRegistrado ? "Já estava registrado." : res.texto,
+                );
+              })
               .catch((err) => {
                 toast.error(err instanceof ApiError ? err.message : "Não foi possível registrar.");
               })
               .finally(() => setAcaoBusy(false));
           }}
         >
-          Vi e concordo
+          {imovel.acoes?.vi_e_concordo ? "Já registrado" : "Vi e concordo"}
         </Button>
         <Button
           type="button"
-          disabled={acaoBusy}
+          disabled={acaoBusy || imovel.acoes?.quero_falar}
           onClick={() => {
             setAcaoBusy(true);
             void registrarPortalAcao(id, "quero_falar")
-              .then((res) => toast.success(res.texto))
+              .then((res) => {
+                setImovel((atual) =>
+                  atual
+                    ? {
+                        ...atual,
+                        acoes: { vi_e_concordo: atual.acoes?.vi_e_concordo ?? false, quero_falar: true },
+                      }
+                    : atual,
+                );
+                setExtra((prev) => {
+                  const next = { ...prev };
+                  delete next.Histórico;
+                  return next;
+                });
+                toast.success(
+                  res.jaRegistrado ? "Já estava registrado." : res.texto,
+                );
+              })
               .catch((err) => {
                 toast.error(err instanceof ApiError ? err.message : "Não foi possível registrar.");
               })
               .finally(() => setAcaoBusy(false));
           }}
         >
-          Quero falar com o corretor
+          {imovel.acoes?.quero_falar
+            ? "Pedido já enviado"
+            : "Quero falar com o corretor"}
         </Button>
         <Button
           type="button"

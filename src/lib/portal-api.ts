@@ -259,6 +259,10 @@ export type PortalImovelDetalhe = {
     responsavel: string;
     canceladoPeloProprietario?: boolean;
   } | null;
+  acoes?: {
+    vi_e_concordo: boolean;
+    quero_falar: boolean;
+  };
   comercializacao: {
     status: string;
     preco: number | null;
@@ -466,7 +470,7 @@ export function registrarPortalAcao(
   id: string,
   tipo: "vi_e_concordo" | "quero_falar",
 ) {
-  return portalFetch<{ ok: boolean; texto: string }>(
+  return portalFetch<{ ok: boolean; texto: string; jaRegistrado?: boolean }>(
     `/portal-proprietario/imoveis/${id}/acoes`,
     { method: "POST", body: { tipo } },
   );
