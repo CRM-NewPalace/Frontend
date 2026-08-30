@@ -469,6 +469,11 @@ function CaptacoesPage() {
                     {item.responsavel.name}
                   </TableCell>
                   <TableCell>
+                    {item.sugestaoProprietario ? (
+                      <Badge className="mb-1 bg-violet-600 text-white hover:bg-violet-600">
+                        Sugestão do proprietário
+                      </Badge>
+                    ) : null}
                     {item.origem ? (
                       <Badge
                         className={cn(
@@ -662,6 +667,11 @@ function CaptacoesPage() {
                   >
                     {item.funilEtapa.label}
                   </Badge>
+                  {item.sugestaoProprietario ? (
+                    <Badge className="bg-violet-600 text-white hover:bg-violet-600">
+                      Sugestão do proprietário
+                    </Badge>
+                  ) : null}
                   {item.origem ? (
                     <Badge
                       className={cn(

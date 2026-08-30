@@ -55,6 +55,7 @@ export type OperationFunnelCard = {
   actionLabel?: string;
   priority?: "alta" | "media" | "baixa";
   monitoramento?: LeadMonitoramento | null;
+  tag?: { label: string; className?: string };
 };
 
 export function FunilScrollControls({
@@ -310,6 +311,17 @@ export function OperationFunnelBoard({
                             )}
                           />
                         </div>
+                        {card.tag ? (
+                          <span
+                            className={cn(
+                              "mb-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                              card.tag.className ??
+                                "bg-violet-600 text-white",
+                            )}
+                          >
+                            {card.tag.label}
+                          </span>
+                        ) : null}
                         {card.subtitle ? (
                           <p className="mb-1 truncate text-xs text-muted-foreground">
                             {card.subtitle}

@@ -178,6 +178,7 @@ export type Captacao = {
   imovelId: string;
   responsavelId: string;
   origem: string;
+  sugestaoProprietario?: boolean;
   exclusividade: boolean;
   valorPretendido: number | null;
   valorAvaliacao: number | null;

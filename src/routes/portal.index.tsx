@@ -163,7 +163,7 @@ function PortalDashboardPage() {
               to="/portal/imoveis"
               className="inline-flex items-center gap-1 text-sm font-medium text-[#0d7a8c] hover:underline"
             >
-              Ver todos
+              Cadastrar ou ver todos
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>

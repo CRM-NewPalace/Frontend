@@ -291,6 +291,23 @@ export function fetchPortalDashboard() {
   return portalFetch<PortalDashboard>("/portal-proprietario/imoveis");
 }
 
+export function createPortalImovel(body: {
+  tipo: string;
+  cep?: string;
+  logradouro: string;
+  numero?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  valorPretendido?: number;
+  descricao?: string;
+}) {
+  return portalFetch<PortalImovelDetalhe>("/portal-proprietario/imoveis", {
+    method: "POST",
+    body,
+  });
+}
+
 export function fetchPortalImovel(id: string) {
   return portalFetch<PortalImovelDetalhe>(`/portal-proprietario/imoveis/${id}`);
 }

@@ -269,6 +269,12 @@ function CaptacaoFunilPage() {
             actionLabel: "Detalhes",
             priority: item.exclusividade ? "alta" : "baixa",
             monitoramento: item.monitoramento,
+            tag: item.sugestaoProprietario
+              ? {
+                  label: "Sugestão do proprietário",
+                  className: "bg-violet-600 text-white",
+                }
+              : undefined,
           }))}
         />
       )}
