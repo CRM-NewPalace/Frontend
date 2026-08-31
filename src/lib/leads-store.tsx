@@ -74,6 +74,7 @@ type LeadsContextValue = {
   /** Usuários ativos para atribuição (vindo de GET /leads/assignees). */
   assignees: LeadAssignee[];
   refresh: (opts?: { silent?: boolean }) => Promise<void>;
+  requestLeads: () => void;
   resolveCorretorId: (nome: string) => string | undefined;
   addLead: (input: CreateLeadInput) => Promise<Lead>;
   updateLead: (
@@ -155,8 +156,9 @@ function buildOptimisticLead(
 export function LeadsProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [assignees, setAssignees] = useState<LeadAssignee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wanted, setWanted] = useState(false);
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     // Plataforma (super_admin) não opera CRM de imobiliária.
@@ -172,29 +174,34 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const pageSize = 200;
-      const [first, team, docs] = await Promise.all([
+      const [first, team] = await Promise.all([
         fetchLeads({ page: 1, limit: pageSize }),
         fetchLeadAssignees(),
+      ]);
+      setAssignees(
+        [...team].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+      );
+      setLeads(first.data.map(mapApiLead));
+      setLoading(false);
+
+      const totalPages = Math.max(1, first.meta.totalPages);
+      const [rest, docs] = await Promise.all([
+        totalPages > 1
+          ? Promise.all(
+              Array.from({ length: totalPages - 1 }, (_, i) =>
+                fetchLeads({ page: i + 2, limit: pageSize }),
+              ),
+            )
+          : Promise.resolve([]),
         fetchDocumentacoes().catch(() => [] as Documentacao[]),
       ]);
       const all = [...first.data];
-      const totalPages = Math.max(1, first.meta.totalPages);
-      if (totalPages > 1) {
-        const rest = await Promise.all(
-          Array.from({ length: totalPages - 1 }, (_, i) =>
-            fetchLeads({ page: i + 2, limit: pageSize }),
-          ),
-        );
-        for (const page of rest) all.push(...page.data);
-      }
+      for (const page of rest) all.push(...page.data);
       const docStatusByLead = latestDocStatusByLeadId(docs);
       setLeads(
         all
           .map(mapApiLead)
           .map((lead) => applyDocStatusToLead(lead, docStatusByLead)),
-      );
-      setAssignees(
-        [...team].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       );
     } catch (err) {
       const message =
@@ -202,15 +209,22 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           ? err.message
           : "Não foi possível carregar os leads.";
       setError(message);
-    } finally {
       setLoading(false);
     }
   }, []);
 
+  const requestLeads = useCallback(() => {
+    setWanted(true);
+  }, []);
+
   useEffect(() => {
     clearLegacyStorage();
+  }, []);
+
+  useEffect(() => {
+    if (!wanted) return;
     void refresh();
-  }, [refresh]);
+  }, [wanted, refresh]);
 
   const resolveCorretorId = useCallback(
     (nome: string) => assignees.find((a) => a.name === nome)?.id,
@@ -387,6 +401,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       error,
       assignees,
       refresh,
+      requestLeads,
       resolveCorretorId,
       addLead,
       updateLead,
@@ -401,6 +416,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       error,
       assignees,
       refresh,
+      requestLeads,
       resolveCorretorId,
       addLead,
       updateLead,
@@ -419,5 +435,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 export function useLeads() {
   const ctx = useContext(LeadsContext);
   if (!ctx) throw new Error("useLeads must be used within LeadsProvider");
+  useEffect(() => {
+    ctx.requestLeads();
+  }, [ctx.requestLeads]);
   return ctx;
 }

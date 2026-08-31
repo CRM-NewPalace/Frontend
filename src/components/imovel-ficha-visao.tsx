@@ -31,6 +31,7 @@ export type ImovelVisaoData = {
   comodidadesUnidade?: string[] | null;
   comodidadesCondominio?: string[] | null;
   fotoUrl?: string | null;
+  fotos?: Array<{ id?: string; url: string }>;
 };
 
 function formatM2(value: number | null | undefined) {
@@ -107,13 +108,25 @@ export function ImovelFichaVisao({ imovel }: { imovel: ImovelVisaoData }) {
 
   return (
     <div className="space-y-10">
-      {imovel.fotoUrl ? (
-        <img
-          src={imovel.fotoUrl}
-          alt=""
-          className="max-h-72 w-full rounded-xl object-cover"
-        />
-      ) : null}
+      {(() => {
+        const urls = [
+          ...(imovel.fotos?.map((foto) => foto.url) ?? []),
+          ...(imovel.fotoUrl && !imovel.fotos?.length ? [imovel.fotoUrl] : []),
+        ];
+        if (urls.length === 0) return null;
+        return (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {urls.map((src) => (
+              <img
+                key={src}
+                src={src}
+                alt=""
+                className="h-56 w-full min-w-[12rem] max-w-md shrink-0 rounded-xl object-cover"
+              />
+            ))}
+          </div>
+        );
+      })()}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Visão Geral</h2>
         <div>

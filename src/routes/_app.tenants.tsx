@@ -63,7 +63,13 @@ import {
   type TenantDetail,
   type TenantMetaConnection,
   type TenantOzapConnection,
+  type TenantOruloConnection,
 } from "@/lib/tenants-api";
+import {
+  deleteTenantOruloConnection,
+  updateTenantOruloConnection,
+  upsertTenantOruloConnection,
+} from "@/lib/orulo-api";
 import {
   adminGroupEnabled,
   modulesFromTenantJson,
@@ -162,6 +168,8 @@ function TenantsPage() {
   const [metaPageId, setMetaPageId] = useState("");
   const [metaToken, setMetaToken] = useState("");
   const [ozapInstanceId, setOzapInstanceId] = useState("");
+  const [oruloClientId, setOruloClientId] = useState("");
+  const [oruloClientSecret, setOruloClientSecret] = useState("");
   const [savingConnection, setSavingConnection] = useState(false);
 
   const [savingAdmin, setSavingAdmin] = useState(false);
@@ -170,6 +178,9 @@ function TenantsPage() {
     null,
   );
   const [deleteOzap, setDeleteOzap] = useState<TenantOzapConnection | null>(
+    null,
+  );
+  const [deleteOrulo, setDeleteOrulo] = useState<TenantOruloConnection | null>(
     null,
   );
   const [deleteTenantTarget, setDeleteTenantTarget] = useState<Tenant | null>(
@@ -630,6 +641,48 @@ function TenantsPage() {
     }
   }
 
+  async function handleAddOrulo(e: FormEvent) {
+    e.preventDefault();
+    if (!detail) return;
+    if (!oruloClientId.trim() || !oruloClientSecret.trim()) {
+      toast.error("Informe Client ID e Secret da Órulo.");
+      return;
+    }
+    setSavingConnection(true);
+    try {
+      await upsertTenantOruloConnection(detail.id, {
+        clientId: oruloClientId.trim(),
+        clientSecret: oruloClientSecret.trim(),
+      });
+      setOruloClientId("");
+      setOruloClientSecret("");
+      toast.success("Órulo conectada. A sincronização começou.");
+      await reloadDetail(detail.id);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Falha ao conectar a Órulo.",
+      );
+    } finally {
+      setSavingConnection(false);
+    }
+  }
+
+  async function toggleOrulo(connection: TenantOruloConnection) {
+    if (!detail) return;
+    try {
+      await updateTenantOruloConnection(detail.id, { ativo: !connection.ativo });
+      await reloadDetail(detail.id);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Falha ao atualizar conexão Órulo.",
+      );
+    }
+  }
+
   async function confirmDeleteOzap() {
     if (!detail || !deleteOzap) return;
     try {
@@ -642,6 +695,22 @@ function TenantsPage() {
         err instanceof ApiError
           ? err.message
           : "Falha ao remover conexão OZap.",
+      );
+    }
+  }
+
+  async function confirmDeleteOrulo() {
+    if (!detail || !deleteOrulo) return;
+    try {
+      await deleteTenantOruloConnection(detail.id);
+      toast.success("Conexão Órulo removida.");
+      setDeleteOrulo(null);
+      await reloadDetail(detail.id);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Falha ao remover conexão Órulo.",
       );
     }
   }
@@ -1339,7 +1408,7 @@ function TenantsPage() {
         onOpenChange={setDetailOpen}
         icon={<Link2 className="w-5 h-5" />}
         title={detail ? `Conexões — ${detail.name}` : "Conexões"}
-        description="Vincule páginas do Meta Lead Ads e instâncias OZap a este tenant."
+        description="Vincule Meta Lead Ads, OZap e o catálogo da Órulo a este tenant."
       >
         <FormDialogBody>
           {detailLoading || !detail ? (
@@ -1529,6 +1598,96 @@ function TenantsPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeleteOzap(connection)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </FormSection>
+
+              <FormSection title="Órulo">
+                <form
+                  className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+                  onSubmit={(e) => void handleAddOrulo(e)}
+                >
+                  <div className="space-y-1.5">
+                    <Label htmlFor="orulo-client">Client ID</Label>
+                    <Input
+                      id="orulo-client"
+                      value={oruloClientId}
+                      onChange={(e) => setOruloClientId(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="orulo-secret">Client Secret</Label>
+                    <Input
+                      id="orulo-secret"
+                      type="password"
+                      value={oruloClientSecret}
+                      onChange={(e) => setOruloClientSecret(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="submit" disabled={savingConnection}>
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                  </div>
+                </form>
+
+                {(detail.oruloConnections ?? []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma credencial Órulo vinculada.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {detail.oruloConnections.map((connection) => (
+                      <li
+                        key={connection.id}
+                        className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 shrink-0 text-amber-700" />
+                            <span className="truncate font-medium">
+                              {connection.clientId}
+                            </span>
+                            <Badge
+                              variant={
+                                connection.ativo ? "default" : "secondary"
+                              }
+                              className={STATUS_CHIP_CLASS}
+                            >
+                              {connection.ativo ? "Ativa" : "Inativa"}
+                            </Badge>
+                          </div>
+                          {connection.lastError ? (
+                            <p className="truncate text-xs text-destructive">
+                              {connection.lastError}
+                            </p>
+                          ) : connection.syncing ? (
+                            <p className="text-xs text-muted-foreground">
+                              Sincronizando catálogo…
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void toggleOrulo(connection)}
+                          >
+                            {connection.ativo ? "Desativar" : "Ativar"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteOrulo(connection)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -1894,6 +2053,27 @@ function TenantsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => void confirmDeleteOzap()}>
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(deleteOrulo)}
+        onOpenChange={(open) => !open && setDeleteOrulo(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover conexão Órulo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Os empreendimentos já importados permanecem no catálogo. Novas
+              atualizações deixam de chegar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmDeleteOrulo()}>
               Remover
             </AlertDialogAction>
           </AlertDialogFooter>

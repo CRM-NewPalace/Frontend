@@ -3,10 +3,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { CaptacaoDetalheDialog } from "@/components/captacao-detalhe-dialog";
 import { FormDialogActions } from "@/components/form-dialog";
+import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import {
   FunilScrollControls,
   OperationFunnelBoard,
 } from "@/components/operation-funnel-board";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -55,6 +66,12 @@ function CaptacaoFunilPage() {
   const [movingId, setMovingId] = useState<string | null>(null);
   const [canScroll, setCanScroll] = useState({ left: false, right: false });
   const [detail, setDetail] = useState<Captacao | null>(null);
+  const [lostTarget, setLostTarget] = useState<{
+    id: string;
+    etapaId: string;
+  } | null>(null);
+  const [lostMotivo, setLostMotivo] = useState("");
+  const [lostMotivoOutro, setLostMotivoOutro] = useState("");
   const [filterMonitoramento, setFilterMonitoramento] =
     useState<MonitoramentoFiltro>("todos");
   const scrollBoard = useRef<((direction: -1 | 1) => void) | null>(null);
@@ -114,8 +131,23 @@ function CaptacaoFunilPage() {
     [funil],
   );
 
-  async function moveCard(cardId: string, etapaId: string) {
+  function isPerdidoEtapa(etapaId: string) {
+    return funil?.etapas.find((etapa) => etapa.id === etapaId)?.papel === "perdido";
+  }
+
+  function resolveMotivoPerda() {
+    const motivo =
+      lostMotivo === "__outro__" ? lostMotivoOutro.trim() : lostMotivo.trim();
+    return motivo;
+  }
+
+  async function persistMove(
+    cardId: string,
+    etapaId: string,
+    extra: Record<string, unknown> = {},
+  ) {
     const previous = items;
+    const previousDetail = detail;
     setMovingId(cardId);
     setItems((current) =>
       current.map((item) =>
@@ -123,20 +155,35 @@ function CaptacaoFunilPage() {
       ),
     );
     try {
-      const updated = await updateCaptacao(cardId, { funilEtapaId: etapaId });
+      const updated = await updateCaptacao(cardId, {
+        funilEtapaId: etapaId,
+        ...extra,
+      });
       setItems((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
+      if (detail?.id === cardId) setDetail(updated);
+      return true;
     } catch (err) {
       setItems(previous);
+      if (previousDetail) setDetail(previousDetail);
       toast.error(
         err instanceof ApiError
           ? err.message
           : "Não foi possível mover a captação.",
       );
+      return false;
     } finally {
       setMovingId(null);
     }
+  }
+
+  async function moveCard(cardId: string, etapaId: string) {
+    if (isPerdidoEtapa(etapaId)) {
+      setLostTarget({ id: cardId, etapaId });
+      return;
+    }
+    await persistMove(cardId, etapaId);
   }
 
   function openDetail(cardId: string) {
@@ -146,34 +193,34 @@ function CaptacaoFunilPage() {
 
   async function moveDetailToStage(etapaId: string) {
     if (!detail || detail.funilEtapaId === etapaId) return;
-    const previous = detail;
-    const stage = stages.find((item) => item.id === etapaId);
-    setDetail({
-      ...detail,
-      funilEtapaId: etapaId,
-      funilEtapa: {
-        ...detail.funilEtapa,
-        id: etapaId,
-        label: stage?.label ?? detail.funilEtapa.label,
-        color: stage?.color ?? detail.funilEtapa.color,
-      },
+    if (isPerdidoEtapa(etapaId)) {
+      setLostTarget({ id: detail.id, etapaId });
+      return;
+    }
+    const ok = await persistMove(detail.id, etapaId);
+    if (ok) {
+      const stage = stages.find((item) => item.id === etapaId);
+      toast.success(
+        `${detail.proprietario.nome} movido para ${stage?.label ?? "a nova etapa"}`,
+      );
+    }
+  }
+
+  async function confirmLost() {
+    if (!lostTarget) return;
+    const motivo = resolveMotivoPerda();
+    if (!motivo) {
+      toast.error("Selecione o motivo da perda.");
+      return;
+    }
+    const ok = await persistMove(lostTarget.id, lostTarget.etapaId, {
+      motivoPerda: motivo,
     });
-    toast.success(
-      `${detail.proprietario.nome} movido para ${stage?.label ?? "a nova etapa"}`,
-    );
-    try {
-      const updated = await updateCaptacao(detail.id, { funilEtapaId: etapaId });
-      setItems((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
-      setDetail(updated);
-    } catch (err) {
-      setDetail(previous);
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível mover a captação.",
-      );
+    if (ok) {
+      toast.success("Perda registrada.");
+      setLostTarget(null);
+      setLostMotivo("");
+      setLostMotivoOutro("");
     }
   }
 
@@ -269,6 +316,24 @@ function CaptacaoFunilPage() {
             actionLabel: "Detalhes",
             priority: item.exclusividade ? "alta" : "baixa",
             monitoramento: item.monitoramento,
+            tags: [
+              ...(item.canceladoPeloProprietario
+                ? [
+                    {
+                      label: "Cancelado pelo proprietário",
+                      className: "bg-red-600 text-white",
+                    },
+                  ]
+                : []),
+              ...(item.sugestaoProprietario
+                ? [
+                    {
+                      label: "Sugestão do proprietário",
+                      className: "bg-violet-600 text-white",
+                    },
+                  ]
+                : []),
+            ],
           }))}
         />
       )}
@@ -318,11 +383,73 @@ function CaptacaoFunilPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {detail.funilEtapa.papel !== "perdido" ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:col-span-2"
+                    onClick={() => {
+                      const etapa = funil?.etapas.find(
+                        (item) => item.papel === "perdido" && item.active,
+                      );
+                      if (!etapa) {
+                        toast.error("Não há etapa de perdido no funil de captação.");
+                        return;
+                      }
+                      setLostTarget({ id: detail.id, etapaId: etapa.id });
+                    }}
+                  >
+                    Dar perda
+                  </Button>
+                ) : null}
               </div>
             </FormDialogActions>
           ) : null
         }
       />
+      <AlertDialog
+        open={!!lostTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLostTarget(null);
+            setLostMotivo("");
+            setLostMotivoOutro("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Por que esta captação foi perdida?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {lostTarget
+                ? "A captação vai para a etapa Perdido. Informe o motivo para o time acompanhar."
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-1">
+            <LostMotivoFields
+              value={lostMotivo}
+              outroValue={lostMotivoOutro}
+              onChange={setLostMotivo}
+              onOutroChange={setLostMotivoOutro}
+              selectId="captacao-lost-motivo"
+              outroId="captacao-lost-motivo-outro"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmLost();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar perda
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

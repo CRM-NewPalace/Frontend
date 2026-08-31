@@ -89,6 +89,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   {
+    pendingMs: 0,
+    pendingMinMs: 0,
     head: () => {
       const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
       let apiOrigin = "";

@@ -10,6 +10,7 @@ import {
   deleteCaptacaoImovelFoto,
   fetchCaptacaoImovel,
   formatBrl,
+  imovelFotoItens,
   updateCaptacaoImovel,
   uploadCaptacaoImovelFoto,
   type Imovel,
@@ -184,14 +185,14 @@ function ImovelDetalhePage() {
             value={ficha}
             onChange={setFicha}
             foto={{
-              url: item.fotoUrl ?? null,
+              items: imovelFotoItens(item),
               busy: fotoBusy,
               onAdd: (file) => {
                 setFotoBusy(true);
                 void uploadCaptacaoImovelFoto(item.id, file)
                   .then((next) => {
                     setItem(next);
-                    toast.success("Foto atualizada.");
+                    toast.success("Foto enviada.");
                   })
                   .catch((err) => {
                     toast.error(
@@ -202,9 +203,9 @@ function ImovelDetalhePage() {
                   })
                   .finally(() => setFotoBusy(false));
               },
-              onRemove: () => {
+              onRemove: (_index, fotoId) => {
                 setFotoBusy(true);
-                void deleteCaptacaoImovelFoto(item.id)
+                void deleteCaptacaoImovelFoto(item.id, fotoId)
                   .then((next) => {
                     setItem(next);
                     toast.success("Foto removida.");

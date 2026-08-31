@@ -53,6 +53,8 @@ export type ConfigSearch = {
   item?: ConfigItem;
   google?: string;
   meta?: string;
+  orulo?: string;
+  code?: string;
 };
 
 export function parseConfigSecao(value: unknown): ConfigSecao | undefined {
@@ -82,11 +84,21 @@ export function parseConfigSearch(
     typeof search.meta === "string" && search.meta.trim()
       ? search.meta.trim()
       : undefined;
+  const orulo =
+    typeof search.orulo === "string" && search.orulo.trim()
+      ? search.orulo.trim()
+      : undefined;
+  const code =
+    typeof search.code === "string" && search.code.trim()
+      ? search.code.trim()
+      : undefined;
   return {
     ...(secao ? { secao } : {}),
     ...(item ? { item } : {}),
     ...(google ? { google } : {}),
     ...(meta ? { meta } : {}),
+    ...(orulo ? { orulo } : {}),
+    ...(code ? { code } : {}),
   };
 }
 

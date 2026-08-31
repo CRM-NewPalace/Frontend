@@ -93,17 +93,22 @@ type Options = Omit<RequestInit, "body"> & {
 
 async function portalRequest(path: string, options: Options = {}) {
   const { body, skipAuth, headers, ...rest } = options;
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const send = async () => {
     const csrf = skipAuth ? null : readCsrf();
     return fetch(`${getApiUrl()}${path}`, {
       ...rest,
       credentials: "include",
       headers: {
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(body !== undefined && !isForm
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(csrf ? { [CSRF_HEADER]: csrf } : {}),
         ...headers,
       },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(body !== undefined
+        ? { body: isForm ? (body as FormData) : JSON.stringify(body) }
+        : {}),
     });
   };
 
@@ -172,15 +177,44 @@ export type PortalImovelListItem = {
   bairro: string;
   cidade: string;
   fotoUrl?: string | null;
+  fotos?: Array<{ id: string; url: string; sortOrder: number }>;
   valor: number | null;
   situacao: PortalSituacao;
+  proximoPasso?: string;
+  temComercializacao?: boolean;
+  contato?: PortalContato;
   statusOperacao: string | null;
   responsavel: string | null;
   dataCaptacao: string;
   interessados: number;
   visitas: number;
   propostas: number;
+  canceladoPeloProprietario?: boolean;
 };
+
+export type PortalContato = {
+  imobiliaria: { nome: string; telefone: string };
+  corretor: {
+    nome: string;
+    telefone: string | null;
+    whatsapp: string | null;
+  } | null;
+};
+
+export type PortalNovidade = {
+  id: string;
+  imovelId: string;
+  identificacao: string;
+  origem: string;
+  tipo: string;
+  texto: string;
+  createdAt: string;
+  lida?: boolean;
+};
+
+export function countNovidadesNaoLidas(items: PortalNovidade[]) {
+  return items.filter((item) => item.lida !== true).length;
+}
 
 export type PortalDashboard = {
   resumo: {
@@ -191,6 +225,7 @@ export type PortalDashboard = {
     captacao: number;
   };
   imoveis: PortalImovelListItem[];
+  novidades?: PortalNovidade[];
 };
 
 export type PortalImovelDetalhe = {
@@ -216,6 +251,9 @@ export type PortalImovelDetalhe = {
   torres?: number | null;
   descricao?: string;
   fotoUrl?: string | null;
+  fotos?: Array<{ id: string; url: string; sortOrder: number }>;
+  proximoPasso?: string;
+  contato?: PortalContato;
   comodidadesUnidade?: string[];
   comodidadesCondominio?: string[];
   valorPretendido: number | null;
@@ -229,7 +267,12 @@ export type PortalImovelDetalhe = {
     origem: string;
     exclusividade: boolean;
     responsavel: string;
+    canceladoPeloProprietario?: boolean;
   } | null;
+  acoes?: {
+    vi_e_concordo: boolean;
+    quero_falar: boolean;
+  };
   comercializacao: {
     status: string;
     preco: number | null;
@@ -264,8 +307,74 @@ export function fetchPortalDashboard() {
   return portalFetch<PortalDashboard>("/portal-proprietario/imoveis");
 }
 
+export function createPortalImovel(body: {
+  tipo: string;
+  cep?: string;
+  logradouro: string;
+  numero?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  valorPretendido?: number;
+  descricao?: string;
+}) {
+  return portalFetch<PortalImovelDetalhe>("/portal-proprietario/imoveis", {
+    method: "POST",
+    body,
+  });
+}
+
 export function fetchPortalImovel(id: string) {
   return portalFetch<PortalImovelDetalhe>(`/portal-proprietario/imoveis/${id}`);
+}
+
+export function updatePortalImovel(
+  id: string,
+  body: {
+    tipo?: string;
+    cep?: string;
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    estado?: string;
+    valorPretendido?: number;
+    descricao?: string;
+    area?: number;
+    quartos?: number;
+    suites?: number;
+    banheiros?: number;
+    vagas?: number;
+  },
+) {
+  return portalFetch<PortalImovelDetalhe>(`/portal-proprietario/imoveis/${id}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function cancelarPortalCaptacao(id: string) {
+  return portalFetch<PortalImovelDetalhe>(
+    `/portal-proprietario/imoveis/${id}/cancelar-captacao`,
+    { method: "POST" },
+  );
+}
+
+export function uploadPortalImovelFoto(id: string, file: File) {
+  const data = new FormData();
+  data.append("file", file);
+  return portalFetch<PortalImovelDetalhe>(
+    `/portal-proprietario/imoveis/${id}/fotos`,
+    { method: "POST", body: data },
+  );
+}
+
+export function deletePortalImovelFoto(id: string, fotoId: string) {
+  return portalFetch<PortalImovelDetalhe>(
+    `/portal-proprietario/imoveis/${id}/fotos/${fotoId}`,
+    { method: "DELETE" },
+  );
 }
 
 export function fetchPortalHistorico(id: string) {
@@ -370,6 +479,71 @@ export function fetchPortalChaves(id: string) {
       }>;
     }>;
   }>(`/portal-proprietario/imoveis/${id}/chaves`);
+}
+
+export function changePortalPassword(senhaAtual: string, senhaNova: string) {
+  return portalFetch<void>("/portal-proprietario/me/senha", {
+    method: "PATCH",
+    body: { senhaAtual, senhaNova },
+  });
+}
+
+export function fetchPortalNovidades() {
+  return portalFetch<PortalNovidade[]>("/portal-proprietario/novidades");
+}
+
+export function marcarPortalNovidadesLidas() {
+  return portalFetch<PortalNovidade[]>("/portal-proprietario/novidades/lidas", {
+    method: "POST",
+  });
+}
+
+export function registrarPortalAcao(
+  id: string,
+  tipo: "vi_e_concordo" | "quero_falar",
+) {
+  return portalFetch<{ ok: boolean; texto: string; jaRegistrado?: boolean }>(
+    `/portal-proprietario/imoveis/${id}/acoes`,
+    { method: "POST", body: { tipo } },
+  );
+}
+
+export async function fetchPortalVisitasCarteira() {
+  const dash = await fetchPortalDashboard();
+  const rows = await Promise.all(
+    dash.imoveis.map(async (imovel) => {
+      if (!imovel.temComercializacao) {
+        return { imovel, visitas: { proximas: [], realizadas: [], canceladas: [] } };
+      }
+      const visitas = await fetchPortalVisitas(imovel.id);
+      return { imovel, visitas };
+    }),
+  );
+  return rows;
+}
+
+export async function fetchPortalPropostasCarteira() {
+  const dash = await fetchPortalDashboard();
+  const rows = await Promise.all(
+    dash.imoveis.map(async (imovel) => {
+      if (!imovel.temComercializacao) return { imovel, propostas: [] };
+      const propostas = await fetchPortalPropostas(imovel.id);
+      return { imovel, propostas };
+    }),
+  );
+  return rows;
+}
+
+export async function fetchPortalDocumentosCarteira() {
+  const dash = await fetchPortalDashboard();
+  const rows = await Promise.all(
+    dash.imoveis.map(async (imovel) => {
+      if (!imovel.temComercializacao) return { imovel, docs: [] };
+      const docs = await fetchPortalDocumentacao(imovel.id);
+      return { imovel, docs };
+    }),
+  );
+  return rows;
 }
 
 export function fetchPortalPosVenda(id: string) {

@@ -17,6 +17,17 @@ import {
 } from "@/lib/captacao-api";
 import { fetchFunis, type Funil } from "@/lib/funis-api";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { LostMotivoFields } from "@/components/lost-motivo-fields";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatMoneyInput, maskMoneyInput, parseOptionalMoneyInput } from "@/lib/money-input";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +48,9 @@ function CaptacaoDetalhePage() {
   const [deleting, setDeleting] = useState(false);
   const [valorPretendido, setValorPretendido] = useState("");
   const [valorAvaliacao, setValorAvaliacao] = useState("");
+  const [lostEtapaId, setLostEtapaId] = useState<string | null>(null);
+  const [lostMotivo, setLostMotivo] = useState("");
+  const [lostMotivoOutro, setLostMotivoOutro] = useState("");
 
   async function load() {
     setLoading(true);
@@ -160,6 +174,12 @@ function CaptacaoDetalhePage() {
                 ))}
               </select>
             </div>
+            {item.canceladoPeloProprietario ? (
+              <p className="rounded-md bg-red-50 px-3 py-2 text-red-700">
+                O proprietário cancelou o anúncio pelo portal. Entre em contato
+                ou registre a perda com motivo.
+              </p>
+            ) : null}
             <p>Origem: {item.origem || "—"}</p>
             <label className="flex items-center gap-2">
               <input
@@ -224,9 +244,15 @@ function CaptacaoDetalhePage() {
                 className="mt-1 flex h-9 w-full rounded-md border bg-background px-3 text-sm"
                 value={item.funilEtapaId}
                 disabled={saving}
-                onChange={(e) =>
-                  void patch({ funilEtapaId: e.target.value }, "Etapa atualizada.")
-                }
+                onChange={(e) => {
+                  const etapaId = e.target.value;
+                  const etapa = etapas.find((itemEtapa) => itemEtapa.id === etapaId);
+                  if (etapa?.papel === "perdido") {
+                    setLostEtapaId(etapaId);
+                    return;
+                  }
+                  void patch({ funilEtapaId: etapaId }, "Etapa atualizada.");
+                }}
               >
                 {etapas.map((etapa) => (
                   <option key={etapa.id} value={etapa.id}>
@@ -261,6 +287,58 @@ function CaptacaoDetalhePage() {
           </CardContent>
         </Card>
       </div>
+      <AlertDialog
+        open={!!lostEtapaId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLostEtapaId(null);
+            setLostMotivo("");
+            setLostMotivoOutro("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Por que esta captação foi perdida?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Selecione o motivo para mover para Perdido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <LostMotivoFields
+            value={lostMotivo}
+            outroValue={lostMotivoOutro}
+            onChange={setLostMotivo}
+            onOutroChange={setLostMotivoOutro}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                const motivo =
+                  lostMotivo === "__outro__"
+                    ? lostMotivoOutro.trim()
+                    : lostMotivo.trim();
+                if (!motivo || !lostEtapaId) {
+                  toast.error("Selecione o motivo da perda.");
+                  return;
+                }
+                void patch(
+                  { funilEtapaId: lostEtapaId, motivoPerda: motivo },
+                  "Perda registrada.",
+                ).then(() => {
+                  setLostEtapaId(null);
+                  setLostMotivo("");
+                  setLostMotivoOutro("");
+                });
+              }}
+            >
+              Confirmar perda
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <ConfirmDeleteDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

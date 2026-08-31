@@ -49,8 +49,14 @@ import { Route as AppTriagemRouteImport } from './routes/_app.triagem'
 import { Route as AppUsuariosRouteImport } from './routes/_app.usuarios'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
+import { Route as PortalDocumentosRouteImport } from './routes/portal.documentos'
 import { Route as PortalImoveisRouteImport } from './routes/portal.imoveis'
 import { Route as PortalLoginRouteImport } from './routes/portal.login'
+import { Route as PortalMensagensRouteImport } from './routes/portal.mensagens'
+import { Route as PortalNegociacoesRouteImport } from './routes/portal.negociacoes'
+import { Route as PortalNovidadesRouteImport } from './routes/portal.novidades'
+import { Route as PortalPropostasRouteImport } from './routes/portal.propostas'
+import { Route as PortalVisitasRouteImport } from './routes/portal.visitas'
 import { Route as ProdutosCrmImobiliarioRouteImport } from './routes/produtos.crm-imobiliario'
 import { Route as ProdutosIaWhatsappRouteImport } from './routes/produtos.ia-whatsapp'
 import { Route as ProdutosSitesInstitucionaisRouteImport } from './routes/produtos.sites-institucionais'
@@ -286,6 +292,11 @@ const PortalIndexRoute = PortalIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalDocumentosRoute = PortalDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalImoveisRoute = PortalImoveisRouteImport.update({
   id: '/imoveis',
   path: '/imoveis',
@@ -294,6 +305,31 @@ const PortalImoveisRoute = PortalImoveisRouteImport.update({
 const PortalLoginRoute = PortalLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalMensagensRoute = PortalMensagensRouteImport.update({
+  id: '/mensagens',
+  path: '/mensagens',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalNegociacoesRoute = PortalNegociacoesRouteImport.update({
+  id: '/negociacoes',
+  path: '/negociacoes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalNovidadesRoute = PortalNovidadesRouteImport.update({
+  id: '/novidades',
+  path: '/novidades',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalPropostasRoute = PortalPropostasRouteImport.update({
+  id: '/propostas',
+  path: '/propostas',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalVisitasRoute = PortalVisitasRouteImport.update({
+  id: '/visitas',
+  path: '/visitas',
   getParentRoute: () => PortalRoute,
 } as any)
 const ProdutosCrmImobiliarioRoute = ProdutosCrmImobiliarioRouteImport.update({
@@ -526,8 +562,14 @@ export interface FileRoutesByFullPath {
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
+  '/portal/documentos': typeof PortalDocumentosRoute
   '/portal/imoveis': typeof PortalImoveisRouteWithChildren
   '/portal/login': typeof PortalLoginRoute
+  '/portal/mensagens': typeof PortalMensagensRoute
+  '/portal/negociacoes': typeof PortalNegociacoesRoute
+  '/portal/novidades': typeof PortalNovidadesRoute
+  '/portal/propostas': typeof PortalPropostasRoute
+  '/portal/visitas': typeof PortalVisitasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
@@ -603,7 +645,13 @@ export interface FileRoutesByTo {
   '/triagem': typeof AppTriagemRoute
   '/usuarios': typeof AppUsuariosRoute
   '/vendas': typeof AppVendasRoute
+  '/portal/documentos': typeof PortalDocumentosRoute
   '/portal/login': typeof PortalLoginRoute
+  '/portal/mensagens': typeof PortalMensagensRoute
+  '/portal/negociacoes': typeof PortalNegociacoesRoute
+  '/portal/novidades': typeof PortalNovidadesRoute
+  '/portal/propostas': typeof PortalPropostasRoute
+  '/portal/visitas': typeof PortalVisitasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
@@ -678,8 +726,14 @@ export interface FileRoutesById {
   '/_app/triagem': typeof AppTriagemRoute
   '/_app/usuarios': typeof AppUsuariosRoute
   '/_app/vendas': typeof AppVendasRoute
+  '/portal/documentos': typeof PortalDocumentosRoute
   '/portal/imoveis': typeof PortalImoveisRouteWithChildren
   '/portal/login': typeof PortalLoginRoute
+  '/portal/mensagens': typeof PortalMensagensRoute
+  '/portal/negociacoes': typeof PortalNegociacoesRoute
+  '/portal/novidades': typeof PortalNovidadesRoute
+  '/portal/propostas': typeof PortalPropostasRoute
+  '/portal/visitas': typeof PortalVisitasRoute
   '/produtos/crm-imobiliario': typeof ProdutosCrmImobiliarioRoute
   '/produtos/ia-whatsapp': typeof ProdutosIaWhatsappRoute
   '/produtos/sites-institucionais': typeof ProdutosSitesInstitucionaisRoute
@@ -758,8 +812,14 @@ export interface FileRouteTypes {
     | '/triagem'
     | '/usuarios'
     | '/vendas'
+    | '/portal/documentos'
     | '/portal/imoveis'
     | '/portal/login'
+    | '/portal/mensagens'
+    | '/portal/negociacoes'
+    | '/portal/novidades'
+    | '/portal/propostas'
+    | '/portal/visitas'
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
@@ -835,7 +895,13 @@ export interface FileRouteTypes {
     | '/triagem'
     | '/usuarios'
     | '/vendas'
+    | '/portal/documentos'
     | '/portal/login'
+    | '/portal/mensagens'
+    | '/portal/negociacoes'
+    | '/portal/novidades'
+    | '/portal/propostas'
+    | '/portal/visitas'
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
@@ -909,8 +975,14 @@ export interface FileRouteTypes {
     | '/_app/triagem'
     | '/_app/usuarios'
     | '/_app/vendas'
+    | '/portal/documentos'
     | '/portal/imoveis'
     | '/portal/login'
+    | '/portal/mensagens'
+    | '/portal/negociacoes'
+    | '/portal/novidades'
+    | '/portal/propostas'
+    | '/portal/visitas'
     | '/produtos/crm-imobiliario'
     | '/produtos/ia-whatsapp'
     | '/produtos/sites-institucionais'
@@ -1244,6 +1316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalIndexRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/portal/documentos': {
+      id: '/portal/documentos'
+      path: '/documentos'
+      fullPath: '/portal/documentos'
+      preLoaderRoute: typeof PortalDocumentosRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/portal/imoveis': {
       id: '/portal/imoveis'
       path: '/imoveis'
@@ -1256,6 +1335,41 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/portal/login'
       preLoaderRoute: typeof PortalLoginRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/mensagens': {
+      id: '/portal/mensagens'
+      path: '/mensagens'
+      fullPath: '/portal/mensagens'
+      preLoaderRoute: typeof PortalMensagensRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/negociacoes': {
+      id: '/portal/negociacoes'
+      path: '/negociacoes'
+      fullPath: '/portal/negociacoes'
+      preLoaderRoute: typeof PortalNegociacoesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/novidades': {
+      id: '/portal/novidades'
+      path: '/novidades'
+      fullPath: '/portal/novidades'
+      preLoaderRoute: typeof PortalNovidadesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/propostas': {
+      id: '/portal/propostas'
+      path: '/propostas'
+      fullPath: '/portal/propostas'
+      preLoaderRoute: typeof PortalPropostasRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/visitas': {
+      id: '/portal/visitas'
+      path: '/visitas'
+      fullPath: '/portal/visitas'
+      preLoaderRoute: typeof PortalVisitasRouteImport
       parentRoute: typeof PortalRoute
     }
     '/produtos/crm-imobiliario': {
@@ -1725,14 +1839,26 @@ const PortalImoveisRouteWithChildren = PortalImoveisRoute._addFileChildren(
 )
 
 interface PortalRouteChildren {
+  PortalDocumentosRoute: typeof PortalDocumentosRoute
   PortalImoveisRoute: typeof PortalImoveisRouteWithChildren
   PortalLoginRoute: typeof PortalLoginRoute
+  PortalMensagensRoute: typeof PortalMensagensRoute
+  PortalNegociacoesRoute: typeof PortalNegociacoesRoute
+  PortalNovidadesRoute: typeof PortalNovidadesRoute
+  PortalPropostasRoute: typeof PortalPropostasRoute
+  PortalVisitasRoute: typeof PortalVisitasRoute
   PortalIndexRoute: typeof PortalIndexRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
+  PortalDocumentosRoute: PortalDocumentosRoute,
   PortalImoveisRoute: PortalImoveisRouteWithChildren,
   PortalLoginRoute: PortalLoginRoute,
+  PortalMensagensRoute: PortalMensagensRoute,
+  PortalNegociacoesRoute: PortalNegociacoesRoute,
+  PortalNovidadesRoute: PortalNovidadesRoute,
+  PortalPropostasRoute: PortalPropostasRoute,
+  PortalVisitasRoute: PortalVisitasRoute,
   PortalIndexRoute: PortalIndexRoute,
 }
 

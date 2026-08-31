@@ -97,6 +97,7 @@ import {
 import { ApiError } from "@/lib/api";
 import {
   deleteCaptacaoImovelFoto,
+  imovelFotoItens,
   uploadCaptacaoImovelFoto,
 } from "@/lib/captacao-api";
 import {
@@ -2332,7 +2333,7 @@ function VendaUsadoDetalhePage() {
             value={ficha}
             onChange={setFicha}
             foto={{
-              url: item.imovel.fotoUrl ?? null,
+              items: imovelFotoItens(item.imovel),
               busy: fotoBusy,
               onAdd: (file) => {
                 setFotoBusy(true);
@@ -2342,7 +2343,7 @@ function VendaUsadoDetalhePage() {
                       ...item,
                       imovel: { ...item.imovel, ...next },
                     });
-                    toast.success("Foto atualizada.");
+                    toast.success("Foto enviada.");
                   })
                   .catch((err) => {
                     toast.error(
@@ -2353,9 +2354,9 @@ function VendaUsadoDetalhePage() {
                   })
                   .finally(() => setFotoBusy(false));
               },
-              onRemove: () => {
+              onRemove: (_index, fotoId) => {
                 setFotoBusy(true);
-                void deleteCaptacaoImovelFoto(item.imovel.id)
+                void deleteCaptacaoImovelFoto(item.imovel.id, fotoId)
                   .then((next) => {
                     setItem({
                       ...item,

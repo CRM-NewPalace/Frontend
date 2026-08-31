@@ -149,6 +149,7 @@ export type Imovel = {
   torres?: number | null;
   descricao?: string;
   fotoUrl?: string | null;
+  fotos?: Array<{ id: string; url: string; sortOrder: number }>;
   comodidadesUnidade?: string[];
   comodidadesCondominio?: string[];
   observacoes: string;
@@ -177,6 +178,9 @@ export type Captacao = {
   imovelId: string;
   responsavelId: string;
   origem: string;
+  sugestaoProprietario?: boolean;
+  canceladoPeloProprietario?: boolean;
+  motivoPerda?: string;
   exclusividade: boolean;
   valorPretendido: number | null;
   valorAvaliacao: number | null;
@@ -275,7 +279,7 @@ export function updateProprietario(
 
 export function updateProprietarioPortal(
   id: string,
-  body: { ativo: boolean; senha?: string },
+  body: { ativo: boolean; senha?: string; gerarSenhaTemporaria?: boolean },
 ) {
   return apiFetch<{
     ativo: boolean;
@@ -321,8 +325,19 @@ export function uploadCaptacaoImovelFoto(id: string, file: File) {
   });
 }
 
-export function deleteCaptacaoImovelFoto(id: string) {
-  return apiFetch<Imovel>(`/captacao/imoveis/${id}/foto`, { method: "DELETE" });
+export function deleteCaptacaoImovelFoto(id: string, fotoId?: string) {
+  const suffix = fotoId ? `/${fotoId}` : "";
+  return apiFetch<Imovel>(`/captacao/imoveis/${id}/foto${suffix}`, {
+    method: "DELETE",
+  });
+}
+
+export function imovelFotoItens(item: {
+  fotos?: Array<{ id: string; url: string; sortOrder?: number }>;
+  fotoUrl?: string | null;
+}) {
+  if (item.fotos?.length) return item.fotos;
+  return item.fotoUrl ? [{ url: item.fotoUrl }] : [];
 }
 
 export function deleteProprietario(id: string) {

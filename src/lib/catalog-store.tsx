@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -108,6 +109,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [catalog, setCatalog] = useState<GroupedCatalog>(emptyGrouped);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadedOnce = useRef(false);
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     if (getSession()?.role === "super_admin") {
@@ -117,11 +119,12 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!opts?.silent) setLoading(true);
+    if (!opts?.silent && !loadedOnce.current) setLoading(true);
     setError(null);
     try {
       const data = await fetchCatalog(true);
       setCatalog(data);
+      loadedOnce.current = true;
     } catch (err) {
       const message =
         err instanceof ApiError
