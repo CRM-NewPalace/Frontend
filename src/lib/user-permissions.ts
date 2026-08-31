@@ -176,7 +176,24 @@ export const PERMISSION_ACTIONS = [
 ] as const;
 
 const ROLE_DEFAULT_ROUTES: Record<Role, readonly string[]> = {
-  super_admin: ["/perfil", "/tenants", "/guia", "/agenda", "/financeiro"],
+  super_admin: [
+    "/perfil",
+    "/tenants",
+    "/guia",
+    "/dashboard",
+    "/leads",
+    "/funil",
+    "/triagem",
+    "/agenda",
+    "/leads-perdidos",
+    "/taxa-conversao",
+    "/atrasos",
+    "/metas",
+    "/propostas",
+    "/contratos",
+    "/vendas",
+    "/financeiro",
+  ],
   admin: [
     "/dashboard",
     "/vendas",

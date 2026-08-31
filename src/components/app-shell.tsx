@@ -179,6 +179,32 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
 ];
 
+/** Operação da plataforma (super_admin). */
+const PLATFORM_OPERACAO_MODULES: NavLeaf[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/leads", label: "Leads", icon: Users },
+  { to: "/funil", label: "Funil", icon: Kanban },
+  { to: "/triagem", label: "Triagem", icon: ClipboardList },
+  { to: "/agenda", label: "Agenda", icon: Calendar },
+  { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
+  { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
+  { to: "/atrasos", label: "Atrasos", icon: TriangleAlert },
+  { to: "/metas", label: "Metas", icon: Target },
+];
+
+/** Fechamento da plataforma (super_admin) — sem Documentação. */
+const PLATFORM_FECHAMENTO_MODULES: NavLeaf[] = [
+  { to: "/propostas", label: "Propostas", icon: ClipboardList },
+  { to: "/contratos", label: "Contratos", icon: FileSignature },
+  { to: "/vendas", label: "Vendas", icon: DollarSign },
+];
+
+/** Gestão da plataforma (super_admin) — clientes da plataforma e guia. */
+const PLATFORM_GESTAO_MODULES: NavLeaf[] = [
+  { to: "/tenants", label: "Clientes", icon: Building2 },
+  { to: "/guia", label: "Guia", icon: BookOpen },
+];
+
 /** Financeiro da plataforma (super_admin) — mesmo design das imobiliárias. */
 const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
   {
@@ -687,10 +713,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return true;
     })
       .map((section) => {
-        const sectionItems =
-          section.id === "financeiro" && user.role === "super_admin"
-            ? PLATFORM_FINANCEIRO_MODULES
-            : section.items;
+        let sectionItems = section.items;
+        if (user.role === "super_admin") {
+          if (section.id === "operacao") sectionItems = PLATFORM_OPERACAO_MODULES;
+          else if (section.id === "fechamento")
+            sectionItems = PLATFORM_FECHAMENTO_MODULES;
+          else if (section.id === "gestao") sectionItems = PLATFORM_GESTAO_MODULES;
+          else if (section.id === "financeiro")
+            sectionItems = PLATFORM_FINANCEIRO_MODULES;
+        }
         return {
           ...section,
           items: sectionItems
