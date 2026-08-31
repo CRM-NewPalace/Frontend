@@ -306,18 +306,20 @@ function Config() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/configuracoes" });
   const user = getSession();
+  const isPlatformAdmin = user?.role === "super_admin";
   const isAnalista = user?.role === "analista";
   const isTreinee = user?.role === "treinee";
   const isCorretor = user?.role === "corretor";
-  const showCreci = Boolean(user && userCanInformarCreci(user));
+  const showCreci = Boolean(user && userCanInformarCreci(user) && !isPlatformAdmin);
   const isSolo = user?.tenant?.plano === "solo";
-  const showOpsTabs = !isAnalista && !isTreinee && !isCorretor;
+  const showOpsTabs = !isAnalista && !isTreinee && !isCorretor && !isPlatformAdmin;
   const showUsuarioExtraTab = showOpsTabs && isSolo;
-  const showDocumentacao = !isTreinee && !isCorretor;
-  const showMotivos = !isTreinee && !isCorretor;
-  const showCatalogTabs = !isCorretor;
+  const showDocumentacao = !isTreinee && !isCorretor && !isPlatformAdmin;
+  const showMotivos = !isTreinee && !isCorretor && !isPlatformAdmin;
+  const showCatalogTabs = !isCorretor && !isPlatformAdmin;
   const showImoveis = Boolean(
     user &&
+      !isPlatformAdmin &&
       canAccessRoute(
         user.role,
         "/imoveis",
@@ -328,6 +330,7 @@ function Config() {
   );
   const showMetas = Boolean(
     user &&
+      !isPlatformAdmin &&
       canAccessRoute(
         user.role,
         "/metas",

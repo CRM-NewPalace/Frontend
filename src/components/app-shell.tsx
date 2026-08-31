@@ -203,6 +203,7 @@ const PLATFORM_FECHAMENTO_MODULES: NavLeaf[] = [
 const PLATFORM_GESTAO_MODULES: NavLeaf[] = [
   { to: "/tenants", label: "Clientes", icon: Building2 },
   { to: "/guia", label: "Guia", icon: BookOpen },
+  { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 /** Financeiro da plataforma (super_admin) — mesmo design das imobiliárias. */
