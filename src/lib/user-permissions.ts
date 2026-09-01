@@ -401,7 +401,10 @@ export function defaultsFromRole(
     "leads.delete": role === "admin" || role === "super_admin",
     "leads.viewLost": Boolean(modules.leadsPerdidos),
     "leads.viewOthers":
-      role === "admin" || role === "gerente" || role === "analista",
+      role === "admin" ||
+      role === "super_admin" ||
+      role === "gerente" ||
+      role === "analista",
     "leads.changeOwner": gestor,
     "leads.export": gestor,
     "financeiro.access": Boolean(modules.financeiro),

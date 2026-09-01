@@ -1296,7 +1296,9 @@ function LeadsPage() {
   return (
     <div>
       <PageHeader
-        title={isCorretor ? "Meus leads" : "Leads"}
+        title={
+          isCorretor ? "Meus leads" : isPlatformAdmin ? "Empresas" : "Leads"
+        }
         description={
           loading
             ? "Carregando leads..."
@@ -1305,7 +1307,9 @@ function LeadsPage() {
                 ? `${leads.length} leads atribuídos a você`
                 : isGerente
                   ? `${leads.length} leads (equipe + pool do admin)`
-                  : `${leads.length} leads de toda a equipe no funil`
+                  : isPlatformAdmin
+                    ? `${leads.length} empresas no funil`
+                    : `${leads.length} leads de toda a equipe no funil`
               : `${filteredLeads.length} de ${leads.length} leads`
         }
         actions={

@@ -161,15 +161,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   const [wanted, setWanted] = useState(false);
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
-    // Plataforma (super_admin) não opera CRM de imobiliária.
-    if (getSession()?.role === "super_admin") {
-      setLeads([]);
-      setAssignees([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
     if (!opts?.silent) setLoading(true);
     setError(null);
     try {

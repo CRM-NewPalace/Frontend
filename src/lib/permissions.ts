@@ -397,7 +397,12 @@ export function canViewRankingVendas(
  * Corretor e treinee ficam restritos aos próprios registros.
  */
 export function canViewTeamData(role: Role): boolean {
-  return role === "admin" || role === "gerente" || role === "analista";
+  return (
+    role === "admin" ||
+    role === "super_admin" ||
+    role === "gerente" ||
+    role === "analista"
+  );
 }
 
 /** Mesmo escopo operacional do corretor (própria carteira). */
