@@ -221,6 +221,7 @@ export function MetasPorOrigem({
   metas,
   vista = "cards",
   flat = false,
+  headingTitle,
   canEdit,
   onEdit,
   onRemove,
@@ -229,6 +230,7 @@ export function MetasPorOrigem({
   vista?: MetasVista;
   /** Solo: lista única sem escopo/origem de equipe. */
   flat?: boolean;
+  headingTitle?: string;
 } & MetaActions) {
   const metasGerencia = metas.filter(
     (meta) => meta.origem === "gerente" || meta.origem === "admin",
@@ -259,7 +261,7 @@ export function MetasPorOrigem({
           heading={
             <SectionHeading
               icon={Target}
-              title="Suas metas"
+              title={headingTitle ?? "Suas metas"}
               count={metas.length}
             />
           }
@@ -845,14 +847,16 @@ export function MetaTipoPicker({
   value,
   onChange,
   disabled,
+  tipos = META_TIPOS,
 }: {
   value: MetaTipo;
   onChange: (tipo: MetaTipo) => void;
   disabled?: boolean;
+  tipos?: readonly MetaTipo[];
 }) {
   return (
     <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-3", disabled && "opacity-80")}>
-      {META_TIPOS.map((tipo) => {
+      {tipos.map((tipo) => {
         const Icon = META_TIPO_ICON[tipo];
         const selected = value === tipo;
         return (

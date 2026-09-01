@@ -318,6 +318,7 @@ function DashboardAdminView() {
   const [summary, setSummary] = useState<DashboardAdmin | null>(null);
   const [loading, setLoading] = useState(true);
   const isGerente = user?.role === "gerente";
+  const isPlatformAdmin = user?.role === "super_admin";
   const isSolo = user?.tenant?.plano === "solo";
 
   const anosDisponiveis = useMemo(() => {
@@ -526,19 +527,31 @@ function DashboardAdminView() {
 
       <DashboardPanel
         title="Precisa de atenção"
-        description="Leads sem dono, parados e perdidos neste período."
+        description={
+          isPlatformAdmin
+            ? "Leads parados, perdidos e taxa de conversão neste período."
+            : "Leads sem dono, parados e perdidos neste período."
+        }
         action={<PanelLink to="/leads">Ver leads</PanelLink>}
       >
-        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-          <FinanceKpiCard
-            label="Sem corretor atribuído"
-            value={summary.atencao.semDono}
-            icon={UserX}
-            tone="orange"
-            format="number"
-            compact
-            className={KPI_EMBED}
-          />
+        <div
+          className={
+            isPlatformAdmin
+              ? "grid grid-cols-2 gap-2.5 xl:grid-cols-3"
+              : "grid grid-cols-2 gap-2.5 xl:grid-cols-4"
+          }
+        >
+          {isPlatformAdmin ? null : (
+            <FinanceKpiCard
+              label="Sem corretor atribuído"
+              value={summary.atencao.semDono}
+              icon={UserX}
+              tone="orange"
+              format="number"
+              compact
+              className={KPI_EMBED}
+            />
+          )}
           <FinanceKpiCard
             label={`Parados (${summary.atencao.diasParado}d)`}
             value={summary.atencao.parados}
@@ -561,7 +574,9 @@ function DashboardAdminView() {
             className={KPI_EMBED}
           />
           <FinanceKpiCard
-            label="Conversão (doc → venda)"
+            label={
+              isPlatformAdmin ? "Taxa de conversão" : "Conversão (doc → venda)"
+            }
             value={summary.conversao.taxa.valor}
             evolucaoPct={summary.conversao.taxa.evolucaoPct}
             valorMesAnterior={summary.conversao.taxa.valorMesAnterior}
@@ -574,6 +589,7 @@ function DashboardAdminView() {
         </div>
       </DashboardPanel>
 
+      {isPlatformAdmin ? null : (
       <div className="grid gap-4 xl:grid-cols-2">
         <DashboardPanel
           title="Pipeline de documentação"
@@ -690,6 +706,7 @@ function DashboardAdminView() {
           </div>
         </DashboardPanel>
       </div>
+      )}
 
       <section
         data-guia="dashboard-funil"
@@ -708,8 +725,16 @@ function DashboardAdminView() {
 
         <DashboardPanel
           title="Conversão do mês"
-          description="% das documentações do mês que viraram venda (vs mês anterior)."
-          action={<PanelLink to="/documentacao">Ver documentação</PanelLink>}
+          description={
+            isPlatformAdmin
+              ? "% de conversão do mês (vs mês anterior)."
+              : "% das documentações do mês que viraram venda (vs mês anterior)."
+          }
+          action={
+            <PanelLink to={isPlatformAdmin ? "/taxa-conversao" : "/documentacao"}>
+              {isPlatformAdmin ? "Ver conversão" : "Ver documentação"}
+            </PanelLink>
+          }
         >
           <div className="space-y-4">
             <div className="rounded-xl border bg-secondary/40 p-3 text-center sm:p-4">
@@ -728,13 +753,9 @@ function DashboardAdminView() {
                 className="mt-2 justify-center"
               />
               <p className="mt-2 px-1 text-xs leading-relaxed text-muted-foreground">
-                {summary.conversao.vendas.valor} venda
-                {summary.conversao.vendas.valor === 1 ? "" : "s"} de{" "}
-                {summary.conversao.documentacoes.valor}{" "}
-                {summary.conversao.documentacoes.valor === 1
-                  ? "documentação"
-                  : "documentações"}{" "}
-                do mês
+                {isPlatformAdmin
+                  ? `${summary.conversao.vendas.valor} venda${summary.conversao.vendas.valor === 1 ? "" : "s"} no mês`
+                  : `${summary.conversao.vendas.valor} venda${summary.conversao.vendas.valor === 1 ? "" : "s"} de ${summary.conversao.documentacoes.valor} ${summary.conversao.documentacoes.valor === 1 ? "documentação" : "documentações"} do mês`}
               </p>
               {summary.entradas.semana > summary.entradas.mes.valor ? (
                 <p className="mt-1 px-1 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
@@ -745,6 +766,7 @@ function DashboardAdminView() {
             </div>
 
             <div className="space-y-2">
+          {isPlatformAdmin ? null : (
               <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">Documentações</div>
@@ -758,6 +780,7 @@ function DashboardAdminView() {
                   {summary.conversao.documentacoes.valor}
                 </span>
               </div>
+          )}
               <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">Viraram venda</div>
@@ -891,7 +914,7 @@ function DashboardAdminView() {
         </DashboardPanel>
       </section>
 
-      {isSolo ? null : (
+      {isSolo || isPlatformAdmin ? null : (
       <section className="grid min-w-0 gap-4 xl:grid-cols-2">
         <DashboardPanel
           title="Ranking de corretores"
@@ -1018,7 +1041,9 @@ function DashboardAdminView() {
       <DashboardPanel
         title="Metas vs realizado"
         description={
-          isSolo
+          isPlatformAdmin
+            ? "Metas mensais ativas da empresa."
+            : isSolo
             ? "Metas ativas do período · tipo, valor e progresso."
             : "Metas mensais ativas · imobiliária, equipes e corretores."
         }
@@ -1060,7 +1085,9 @@ function DashboardAdminView() {
             <>
           <div className="rounded-xl border bg-secondary/40 p-4">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <div className="font-semibold text-primary">Imobiliária</div>
+              <div className="font-semibold text-primary">
+                {isPlatformAdmin ? "Empresa" : "Imobiliária"}
+              </div>
               <div className="text-sm tabular-nums">
                 {summary.metas.imobiliaria.atual.toLocaleString("pt-BR")} /{" "}
                 {summary.metas.imobiliaria.meta.toLocaleString("pt-BR")} (
@@ -1070,7 +1097,7 @@ function DashboardAdminView() {
             <Progress value={summary.metas.imobiliaria.percentual} />
           </div>
 
-          {metasEquipes.length > 0 && (
+          {isPlatformAdmin ? null : metasEquipes.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-primary">Por equipe</h3>
               {metasEquipesPage.pageItems.map((eq) => (
@@ -1093,7 +1120,7 @@ function DashboardAdminView() {
             </div>
           )}
 
-          {metasCorretores.length > 0 ? (
+          {isPlatformAdmin ? null : metasCorretores.length > 0 ? (
             <div className="overflow-x-auto">
               <h3 className="mb-2 text-sm font-semibold text-primary">
                 Por corretor
