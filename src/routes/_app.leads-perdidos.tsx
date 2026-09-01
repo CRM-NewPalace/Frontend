@@ -99,6 +99,7 @@ function initials(nome: string) {
 
 function LeadsPerdidos() {
   const user = getSession();
+  const isPlatformAdmin = user?.role === "super_admin";
   const { funnelStages, colorByLabel } = useCatalog();
   const cached = getLostLeadsCache();
   const [leads, setLeads] = useState<LostLead[]>(cached ?? []);
@@ -324,7 +325,11 @@ function LeadsPerdidos() {
         <div className="relative min-w-50 max-w-md flex-1">
           <Search className={FILTER_SEARCH_ICON} />
           <Input
-            placeholder="Buscar por nome, motivo, corretor..."
+            placeholder={
+              isPlatformAdmin
+                ? "Buscar por nome, motivo..."
+                : "Buscar por nome, motivo, corretor..."
+            }
             className={cn("pl-9 h-9", FILTER_CONTROL)}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -353,7 +358,7 @@ function LeadsPerdidos() {
               </TableHead>
               <TableHead>Lead</TableHead>
               <TableHead>Motivo</TableHead>
-              <TableHead>Corretor</TableHead>
+              {isPlatformAdmin ? null : <TableHead>Corretor</TableHead>}
               <TableHead>Excluído por</TableHead>
               <TableHead>Data</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -363,7 +368,7 @@ function LeadsPerdidos() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={isPlatformAdmin ? 6 : 7}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Carregando...
@@ -372,7 +377,7 @@ function LeadsPerdidos() {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={isPlatformAdmin ? 6 : 7}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum lead perdido.
@@ -414,9 +419,11 @@ function LeadsPerdidos() {
                   >
                     {l.motivoPerda}
                   </TableCell>
+                  {isPlatformAdmin ? null : (
                   <TableCell className="table-person-name text-sm">
                     {l.corretor}
                   </TableCell>
+                  )}
                   <TableCell className="text-sm">{l.perdidoPor}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {l.perdidoAt}
@@ -487,7 +494,9 @@ function LeadsPerdidos() {
                       )
                     }
                   />
-                  <DetailField label="Corretor" value={detail.corretor} />
+                  {isPlatformAdmin ? null : (
+                    <DetailField label="Corretor" value={detail.corretor} />
+                  )}
                 </div>
               </FormSection>
               <FormSection

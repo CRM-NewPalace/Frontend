@@ -38,6 +38,7 @@ import {
 import { ApiError } from "@/lib/api";
 import { createAgendamento, type AgendamentoTipo } from "@/lib/agenda-api";
 import { AgendamentoTipoOption } from "@/components/agenda-tipo-option";
+import { getSession } from "@/lib/auth";
 import { brl, prioridadeBadgeClass, type Lead } from "@/lib/crm-types";
 import { displayEmail } from "@/lib/email";
 import { createTriagemEvent } from "@/lib/triagem-api";
@@ -297,7 +298,9 @@ export function TriagemFunilDialog({
                 label="E-mail"
                 value={displayEmail(lead.email) || "—"}
               />
-              <DetailField label="Corretor" value={lead.corretor} />
+              {getSession()?.role === "super_admin" ? null : (
+                <DetailField label="Corretor" value={lead.corretor} />
+              )}
               <DetailField
                 label="Prioridade"
                 value={

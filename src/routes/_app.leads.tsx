@@ -539,6 +539,14 @@ function LeadsPage() {
   }, [routeSearch.distribuicao]);
 
   useEffect(() => {
+    if (!isPlatformAdmin) return;
+    setDistribuicaoFilter("all");
+    if (routeSearch.distribuicao) {
+      void navigate({ to: "/leads", search: {}, replace: true });
+    }
+  }, [isPlatformAdmin, routeSearch.distribuicao, navigate]);
+
+  useEffect(() => {
     setParadosFilter(Boolean(routeSearch.parados));
   }, [routeSearch.parados]);
 
@@ -957,6 +965,19 @@ function LeadsPage() {
     }
     const e164 = digits.startsWith("55") ? digits : `55${digits}`;
     window.open(`https://wa.me/${e164}`, "_blank", "noopener,noreferrer");
+  }
+
+  function openLeadMaps(lead: Lead) {
+    const url = googleMapsSearchUrl(
+      lead.prospeccao?.endereco,
+      lead.bairro,
+      lead.cidade,
+    );
+    if (!url) {
+      toast.error("Este lead não tem endereço no cadastro.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -2693,7 +2714,11 @@ function LeadsPage() {
       <div
         className={cn(
           "mb-4 grid grid-cols-2 gap-3",
-          isGerente ? "lg:grid-cols-5" : "lg:grid-cols-4",
+          isPlatformAdmin
+            ? "lg:grid-cols-2"
+            : isGerente
+              ? "lg:grid-cols-5"
+              : "lg:grid-cols-4",
         )}
       >
         <button
@@ -2722,7 +2747,7 @@ function LeadsPage() {
             )}
           />
         </button>
-        {!isCorretor ? (
+        {showTeamColumns ? (
           <>
             <button
               type="button"
@@ -3039,7 +3064,7 @@ function LeadsPage() {
         </div>
       </div>
 
-      {!isCorretor && (
+      {showTeamColumns && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-border/60 bg-card p-1">
             {(
@@ -3352,6 +3377,23 @@ function LeadsPage() {
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          title="Abrir no Google Maps"
+                          disabled={
+                            !googleMapsSearchUrl(
+                              l.prospeccao?.endereco,
+                              l.bairro,
+                              l.cidade,
+                            )
+                          }
+                          onClick={() => openLeadMaps(l)}
+                        >
+                          <MapPin className="w-3.5 h-3.5" />
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -3376,6 +3418,18 @@ function LeadsPage() {
                             >
                               <MessageCircle className="w-4 h-4 mr-2 text-emerald-600" />{" "}
                               WhatsApp
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={
+                                !googleMapsSearchUrl(
+                                  l.prospeccao?.endereco,
+                                  l.bairro,
+                                  l.cidade,
+                                )
+                              }
+                              onClick={() => openLeadMaps(l)}
+                            >
+                              <MapPin className="w-4 h-4 mr-2" /> Google Maps
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
