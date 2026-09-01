@@ -251,6 +251,8 @@ type FormState = {
   };
 };
 
+const todayInput = () => new Date().toISOString().slice(0, 10);
+
 const emptyProspeccaoForm = () => ({
   endereco: "",
   instagram: "",
