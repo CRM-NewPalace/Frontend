@@ -21,6 +21,36 @@ function apiProxyTarget(mode: string) {
   return raw.replace(/\/api\/?$/, "");
 }
 
+function apiProxy(target: string) {
+  return {
+    "/api": {
+      target,
+      changeOrigin: true,
+      timeout: 15_000,
+      proxyTimeout: 15_000,
+      configure(proxy: {
+        on: (event: string, listener: (...args: unknown[]) => void) => void;
+      }) {
+        proxy.on("error", (...args: unknown[]) => {
+          const err = args[0] as { message?: string };
+          const res = args[2] as
+            | { headersSent?: boolean; writeHead: Function; end: Function }
+            | undefined;
+          console.error(`[vite] proxy /api → ${target} falhou:`, err?.message);
+          if (res && !res.headersSent) {
+            res.writeHead(502, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify({
+                message: `API indisponível (${target}). Ajuste API_PROXY_TARGET ou suba o Nest.`,
+              }),
+            );
+          }
+        });
+      },
+    },
+  };
+}
+
 function flattenPlugins(plugins: PluginOption[] | undefined): PluginOption[] {
   const out: PluginOption[] = [];
   for (const plugin of plugins ?? []) {
@@ -71,14 +101,7 @@ const lovableConfig = defineLovableConfig({
       open: true,
       // Proxy evita CORS. Timeout evita a aba ficar em “Esperando localhost…”
       // se o staging não responder. host 127.0.0.1 evita o atraso de IPv6 no Windows.
-      proxy: {
-        "/api": {
-          target: STAGING_API,
-          changeOrigin: true,
-          timeout: 15_000,
-          proxyTimeout: 15_000,
-        },
-      },
+      proxy: apiProxy(STAGING_API),
     },
   },
 });
@@ -97,14 +120,7 @@ export default async function defineConfig(
       ...config.server,
       host: "127.0.0.1",
       port: 8080,
-      proxy: {
-        "/api": {
-          target: apiProxyTarget(env.mode),
-          changeOrigin: true,
-          timeout: 15_000,
-          proxyTimeout: 15_000,
-        },
-      },
+      proxy: apiProxy(apiProxyTarget(env.mode)),
     },
     plugins: withoutTsconfigPathsPlugin(config.plugins),
   };
