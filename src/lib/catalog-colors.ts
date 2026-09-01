@@ -282,25 +282,60 @@ const CATALOG_BG_TO_SOFT_TEXT: Record<string, string> = {
   "bg-sky-500": "text-sky-700 dark:text-sky-300",
 };
 
+const CATALOG_BG_TO_BORDER: Record<string, string> = {
+  "bg-slate-500": "border-slate-500",
+  "bg-blue-500": "border-blue-500",
+  "bg-indigo-500": "border-indigo-500",
+  "bg-violet-500": "border-violet-500",
+  "bg-purple-500": "border-purple-500",
+  "bg-fuchsia-500": "border-fuchsia-500",
+  "bg-pink-500": "border-pink-500",
+  "bg-rose-500": "border-rose-500",
+  "bg-red-500": "border-red-500",
+  "bg-orange-500": "border-orange-500",
+  "bg-amber-500": "border-amber-500",
+  "bg-yellow-400": "border-yellow-400",
+  "bg-lime-500": "border-lime-500",
+  "bg-green-500": "border-green-500",
+  "bg-emerald-500": "border-emerald-500",
+  "bg-teal-500": "border-teal-500",
+  "bg-cyan-500": "border-cyan-500",
+  "bg-sky-500": "border-sky-500",
+};
+
 /**
  * Badge suave (origem etc.): sem fundo cinza, texto colorido legível,
- * hover com a cor principal do tema.
+ * borda na cor do catálogo, hover com a cor principal do tema.
  */
 export function catalogColorSoftBadgeClass(
   color: string | null | undefined,
   extra?: string,
 ): string {
-  const bg = catalogColorSwatch(color);
+  const normalized = normalizeCatalogColor(color);
+  const bg = catalogColorSwatch(normalized);
   const text = CATALOG_BG_TO_SOFT_TEXT[bg] ?? "text-foreground";
+  const border = isHexColor(normalized)
+    ? "border"
+    : (CATALOG_BG_TO_BORDER[bg] ?? "border-slate-500");
   return [
     STATUS_CHIP_CLASS,
-    "border-transparent bg-transparent shadow-none",
+    "bg-transparent shadow-none border",
+    border,
     text,
     "hover:bg-primary hover:text-primary-foreground",
     extra ?? "",
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Borda em hex customizado (quando a origem não usa classe Tailwind). */
+export function catalogColorSoftBadgeStyle(
+  color: string | null | undefined,
+): { borderColor: string } | undefined {
+  const normalized = normalizeCatalogColor(color);
+  if (!isHexColor(normalized)) return undefined;
+  return { borderColor: normalized };
 }
 
 function catalogGradientStops(color: string | null | undefined) {
