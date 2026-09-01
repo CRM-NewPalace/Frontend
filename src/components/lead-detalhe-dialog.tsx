@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   Clock,
   Copy,
+  ExternalLink,
   Hourglass,
   Mail,
   MapPin,
@@ -670,6 +671,34 @@ export function LeadDetalheDialog({
                       <InfoRow
                         label="Endereço"
                         value={lead.prospeccao.endereco}
+                        action={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 shrink-0"
+                            title="Abrir no Google Maps"
+                            onClick={() => {
+                              const query = [
+                                lead.prospeccao?.endereco,
+                                lead.bairro,
+                                lead.cidade,
+                              ]
+                                .map((part) => part?.trim())
+                                .filter(Boolean)
+                                .join(", ");
+                              if (!query) return;
+                              window.open(
+                                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }}
+                          >
+                            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                            Maps
+                          </Button>
+                        }
                       />
                     ) : null}
                     {lead.construtora && (

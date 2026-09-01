@@ -80,6 +80,7 @@ import {
   Globe,
   Link2,
   Target,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -181,6 +182,17 @@ function isLeadParado(lead: Lead, dias = DIAS_PARADO): boolean {
     : new Date(raw).getTime();
   if (Number.isNaN(t)) return false;
   return t < Date.now() - dias * 24 * 60 * 60 * 1000;
+}
+
+function googleMapsSearchUrl(
+  ...parts: Array<string | null | undefined>
+): string | null {
+  const query = parts
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(", ");
+  if (!query) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 export const Route = createFileRoute("/_app/leads")({
@@ -303,26 +315,26 @@ function formProspeccaoToPayload(
 ): LeadProspeccao | null {
   const fitRaw = p.fit.trim().replace(",", ".");
   const fit = fitRaw ? Number(fitRaw) : null;
-  const payload: LeadProspeccao = {
-    endereco: p.endereco.trim() || null,
-    instagram: p.instagram.trim() || null,
-    site: p.site.trim() || null,
-    linkedin: p.linkedin.trim() || null,
-    atuacao: p.atuacao.trim() || null,
-    lancamentos: p.lancamentos.trim() || null,
-    usados: p.usados.trim() || null,
-    locacao: p.locacao.trim() || null,
-    administracao: p.administracao.trim() || null,
-    crmIdentificado: p.crmIdentificado.trim() || null,
-    tecnologia: p.tecnologia.trim() || null,
-    sinais: p.sinais.trim() || null,
-    quemAbordar: p.quemAbordar.trim() || null,
-    produtoIndicado: p.produtoIndicado.trim() || null,
-    fit: Number.isFinite(fit) ? fit : null,
-    motivoFit: p.motivoFit.trim() || null,
-  };
-  const has = Object.values(payload).some((v) => v != null && v !== "");
-  return has ? payload : null;
+  return (
+    compactProspeccao({
+      endereco: p.endereco.trim() || null,
+      instagram: p.instagram.trim() || null,
+      site: p.site.trim() || null,
+      linkedin: p.linkedin.trim() || null,
+      atuacao: p.atuacao.trim() || null,
+      lancamentos: p.lancamentos.trim() || null,
+      usados: p.usados.trim() || null,
+      locacao: p.locacao.trim() || null,
+      administracao: p.administracao.trim() || null,
+      crmIdentificado: p.crmIdentificado.trim() || null,
+      tecnologia: p.tecnologia.trim() || null,
+      sinais: p.sinais.trim() || null,
+      quemAbordar: p.quemAbordar.trim() || null,
+      produtoIndicado: p.produtoIndicado.trim() || null,
+      fit: Number.isFinite(fit) ? fit : null,
+      motivoFit: p.motivoFit.trim() || null,
+    }) ?? null
+  );
 }
 
 const emptyForm = (origemDefault = ""): FormState => ({
@@ -1241,14 +1253,14 @@ function LeadsPage() {
         valid.map((r) => {
           const prospeccao = compactProspeccao(r.prospeccao);
           return {
-            nome: r.nome,
-            telefone: r.telefone,
-            origem: r.origem || origemOptions[0] || "Importação",
-            interesse: r.interesse,
-            cidade: r.cidade || undefined,
-            bairro: r.bairro || undefined,
-            prioridade: r.prioridade,
-            renda: r.renda,
+          nome: r.nome,
+          telefone: r.telefone,
+          origem: r.origem || origemOptions[0] || "Importação",
+          interesse: r.interesse,
+          cidade: r.cidade || undefined,
+          bairro: r.bairro || undefined,
+          prioridade: r.prioridade,
+          renda: r.renda,
             ...(prospeccao ? { prospeccao } : {}),
           };
         }),
@@ -1439,7 +1451,7 @@ function LeadsPage() {
               : "Atualize os dados do contato no funil."
             : isPlatformAdmin
               ? "Preencha cada seção: empresa, localização, digital, operação e fit."
-              : "Preencha os dados para adicionar o contato ao funil."
+            : "Preencha os dados para adicionar o contato ao funil."
         }
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
@@ -1635,15 +1647,43 @@ function LeadsPage() {
                     >
                       Endereço
                     </Label>
-                    <Input
-                      id="lead-endereco"
-                      value={form.prospeccao.endereco}
-                      onChange={(e) =>
-                        setProspeccao("endereco", e.target.value)
-                      }
-                      placeholder="Rua, número, sala"
-                      className="h-10 bg-background"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="lead-endereco"
+                        value={form.prospeccao.endereco}
+                        onChange={(e) =>
+                          setProspeccao("endereco", e.target.value)
+                        }
+                        placeholder="Rua, número, sala"
+                        className="h-10 bg-background"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 shrink-0"
+                        disabled={
+                          !googleMapsSearchUrl(
+                            form.prospeccao.endereco,
+                            form.bairro,
+                            form.cidade,
+                          )
+                        }
+                        title="Abrir no Google Maps"
+                        onClick={() => {
+                          const url = googleMapsSearchUrl(
+                            form.prospeccao.endereco,
+                            form.bairro,
+                            form.cidade,
+                          );
+                          if (url) {
+                            window.open(url, "_blank", "noopener,noreferrer");
+                          }
+                        }}
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1.5" />
+                        Maps
+                      </Button>
+                    </div>
                   </div>
                 </FormSection>
                   </TabsContent>
@@ -3216,8 +3256,8 @@ function LeadsPage() {
                             <span className="text-muted-foreground">—</span>
                           )
                         : l.tipoRenda || (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -3273,8 +3313,8 @@ function LeadsPage() {
                             <span className="text-muted-foreground">—</span>
                           )
                         : l.estadoCivil || (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="truncate">
                       <Badge
@@ -3436,7 +3476,7 @@ function LeadsPage() {
                     são opcionais e entram na ficha de prospecção.
                   </li>
                 ) : (
-                  <li>Data Captura e Origem são opcionais</li>
+                <li>Data Captura e Origem são opcionais</li>
                 )}
                 <li>Uma linha = um lead</li>
               </ul>
