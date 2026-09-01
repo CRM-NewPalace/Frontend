@@ -40,6 +40,7 @@ import {
 } from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { brl, type Lead } from "@/lib/crm-types";
+import { hasProspeccao } from "@/lib/lead-prospeccao";
 import { displayEmail } from "@/lib/email";
 import { getWhatsAppUrl } from "@/lib/env";
 import {
@@ -581,19 +582,96 @@ export function LeadDetalheDialog({
                     />
                   </InfoCard>
 
-                  <InfoCard icon={Wallet} title="Perfil e renda">
-                    <InfoRow
-                      label="Renda mensal"
-                      value={lead.renda != null ? brl(lead.renda) : null}
-                    />
-                    <InfoRow label="Tipo de renda" value={lead.tipoRenda} />
-                    <InfoRow label="Estado civil" value={lead.estadoCivil} />
-                    <InfoRow label="Interesse" value={lead.interesse} />
-                  </InfoCard>
+                  {hasProspeccao(lead.prospeccao) ? (
+                    <InfoCard icon={Wallet} title="Prospecção">
+                      <InfoRow
+                        label="Produto indicado"
+                        value={lead.prospeccao?.produtoIndicado}
+                      />
+                      <InfoRow
+                        label="Fit"
+                        value={
+                          lead.prospeccao?.fit != null
+                            ? String(lead.prospeccao.fit)
+                            : null
+                        }
+                      />
+                      <InfoRow
+                        label="Quem abordar"
+                        value={lead.prospeccao?.quemAbordar}
+                      />
+                      <InfoRow
+                        label="CRM identificado"
+                        value={lead.prospeccao?.crmIdentificado}
+                      />
+                      <InfoRow label="Site" value={lead.prospeccao?.site} />
+                      <InfoRow
+                        label="Instagram"
+                        value={lead.prospeccao?.instagram}
+                      />
+                      <InfoRow
+                        label="Atuação"
+                        value={lead.prospeccao?.atuacao}
+                      />
+                      <InfoRow
+                        label="Lançamentos"
+                        value={lead.prospeccao?.lancamentos}
+                      />
+                      <InfoRow label="Usados" value={lead.prospeccao?.usados} />
+                      <InfoRow
+                        label="Locação"
+                        value={lead.prospeccao?.locacao}
+                      />
+                      <InfoRow
+                        label="Administração"
+                        value={lead.prospeccao?.administracao}
+                      />
+                      <InfoRow
+                        label="Tecnologia"
+                        value={lead.prospeccao?.tecnologia}
+                      />
+                      <InfoRow
+                        label="Sinais"
+                        value={lead.prospeccao?.sinais}
+                      />
+                      <InfoRow
+                        label="Motivo do fit"
+                        value={lead.prospeccao?.motivoFit}
+                      />
+                    </InfoCard>
+                  ) : (
+                    <InfoCard icon={Wallet} title="Perfil e renda">
+                      <InfoRow
+                        label="Renda mensal"
+                        value={lead.renda != null ? brl(lead.renda) : null}
+                      />
+                      <InfoRow label="Tipo de renda" value={lead.tipoRenda} />
+                      <InfoRow label="Estado civil" value={lead.estadoCivil} />
+                      <InfoRow label="Interesse" value={lead.interesse} />
+                    </InfoCard>
+                  )}
 
                   <InfoCard icon={MapPin} title="Localização e imóvel">
-                    <InfoRow label="Cidade" value={lead.cidade} />
-                    <InfoRow label="Bairro" value={lead.bairro} />
+                    <InfoRow
+                      label={
+                        hasProspeccao(lead.prospeccao) ? "Município" : "Cidade"
+                      }
+                      value={lead.cidade}
+                    />
+                    <InfoRow
+                      label={
+                        hasProspeccao(lead.prospeccao)
+                          ? "Bairro/Região"
+                          : "Bairro"
+                      }
+                      value={lead.bairro}
+                    />
+                    {lead.prospeccao?.endereco ? (
+                      <InfoRow
+                        label="Endereço"
+                        value={lead.prospeccao.endereco}
+                      />
+                    ) : null}
                     {lead.construtora && (
                       <InfoRow
                         label="Construtora"

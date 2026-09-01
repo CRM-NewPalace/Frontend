@@ -5,6 +5,7 @@
 
 import { STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
 import type { LeadMonitoramento } from "@/lib/lead-monitoramento";
+import type { LeadProspeccao } from "@/lib/lead-prospeccao";
 
 export type StageId = string;
 
@@ -50,6 +51,8 @@ export interface Lead {
   quartosMin: number | null;
   /** Mínimo de vagas desejado (opcional). */
   vagasMin: number | null;
+  /** Prospecção B2B (tenant da plataforma). */
+  prospeccao?: LeadProspeccao | null;
   /** Data de cadastro (ISO). */
   createdAt?: string;
   updatedAt: string;
