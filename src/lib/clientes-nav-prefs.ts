@@ -12,12 +12,6 @@ function storageKey() {
   return `${KEY_PREFIX}.${tenantId}.${userId}`;
 }
 
-function legacyTenantStorageKey() {
-  const session = getSession();
-  const tenantId = session?.tenant?.id ?? session?.tenantId ?? "default";
-  return `${KEY_PREFIX}.${tenantId}`;
-}
-
 function readStoredFlag(key: string): boolean | null {
   try {
     const raw = localStorage.getItem(key);
@@ -31,9 +25,7 @@ function readStoredFlag(key: string): boolean | null {
 
 /** Ligado = some Clientes e Funil de Clientes do menu deste usuário. */
 export function getHideClientesFromSidebar(): boolean {
-  const own = readStoredFlag(storageKey());
-  if (own !== null) return own;
-  return readStoredFlag(legacyTenantStorageKey()) === true;
+  return readStoredFlag(storageKey()) === true;
 }
 
 export function setHideClientesFromSidebar(hide: boolean): void {
