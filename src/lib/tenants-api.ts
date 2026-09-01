@@ -26,6 +26,7 @@ export type Tenant = {
   maxUsuarios: number;
   usuariosExtras: number;
   iaBotEnabled: boolean;
+  isTest: boolean;
   hasMetaConnection?: boolean;
   hasOzapConnection?: boolean;
   hasOruloConnection?: boolean;
@@ -87,6 +88,7 @@ export type CreateTenantInput = {
   maxUsuarios?: number;
   usuariosExtras?: number;
   iaBotEnabled?: boolean;
+  isTest?: boolean;
 };
 
 export type CreateTenantAdminInput = {
@@ -115,6 +117,7 @@ export type UpdateTenantInput = {
   maxUsuarios?: number;
   usuariosExtras?: number;
   iaBotEnabled?: boolean;
+  isTest?: boolean;
 };
 
 export type CreateMetaConnectionInput = {
