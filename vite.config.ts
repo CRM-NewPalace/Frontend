@@ -5,13 +5,19 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig as defineLovableConfig } from "@lovable.dev/vite-tanstack-config";
-import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
+import { loadEnv, type ConfigEnv, type Plugin, type PluginOption, type UserConfig } from "vite";
+
+/** Staging hospedado — padrão para a equipe (não precisa subir o Nest local). */
+const STAGING_API =
+  "http://api-staging-zoneconnection.179.198.111.97.sslip.io";
 
 /** Host da API sem sufixo /api — o browser já chama /api/... e o proxy mantém esse path. */
-function apiProxyTarget() {
+function apiProxyTarget(mode: string) {
+  const fileEnv = loadEnv(mode, process.cwd(), "");
   const raw =
-    process.env.API_PROXY_TARGET ??
-    "http://127.0.0.1:3333";
+    process.env.API_PROXY_TARGET ||
+    fileEnv.API_PROXY_TARGET ||
+    STAGING_API;
   return raw.replace(/\/api\/?$/, "");
 }
 
@@ -67,7 +73,7 @@ const lovableConfig = defineLovableConfig({
       // se o staging não responder. host 127.0.0.1 evita o atraso de IPv6 no Windows.
       proxy: {
         "/api": {
-          target: apiProxyTarget(),
+          target: STAGING_API,
           changeOrigin: true,
           timeout: 15_000,
           proxyTimeout: 15_000,
@@ -91,6 +97,14 @@ export default async function defineConfig(
       ...config.server,
       host: "127.0.0.1",
       port: 8080,
+      proxy: {
+        "/api": {
+          target: apiProxyTarget(env.mode),
+          changeOrigin: true,
+          timeout: 15_000,
+          proxyTimeout: 15_000,
+        },
+      },
     },
     plugins: withoutTsconfigPathsPlugin(config.plugins),
   };
