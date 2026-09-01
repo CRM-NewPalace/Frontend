@@ -94,6 +94,7 @@ import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
   catalogColorSoftBadgeClass,
+  catalogColorSoftBadgeStyle,
   DEFAULT_CATALOG_COLOR,
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
@@ -432,6 +433,8 @@ function LeadsPage() {
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
   const isPlatformAdmin = user?.role === "super_admin";
+  const showTeamColumns = !isCorretor && !isPlatformAdmin;
+  const leadTableColSpan = showTeamColumns ? 12 : 10;
   /** Só admin/analista filtram entre várias equipes. Gerente não filtra por outras. */
   const canFilterEquipe = user?.role === "admin" || user?.role === "analista";
 
@@ -2540,8 +2543,8 @@ function LeadsPage() {
         lead={detailLead}
         open={!!detailLead}
         onOpenChange={(o) => !o && setDetailLead(null)}
-        showCorretor={!isCorretor}
-        equipe={detailLead && !isCorretor ? equipeLabel(detailLead) : null}
+        showCorretor={showTeamColumns}
+        equipe={detailLead && showTeamColumns ? equipeLabel(detailLead) : null}
         showMeuLeadBadge={Boolean(
           isGerente &&
           detailLead &&
@@ -2906,7 +2909,7 @@ function LeadsPage() {
               </SelectContent>
             </Select>
           )}
-          {!isCorretor && (
+          {showTeamColumns && (
             <Select value={corretorFilter} onValueChange={setCorretorFilter}>
               <SelectTrigger className={cn("w-44 h-9", FILTER_CONTROL)}>
                 <SelectValue placeholder="Corretor" />
@@ -3148,8 +3151,8 @@ function LeadsPage() {
                 {isPlatformAdmin ? "Produto" : "Tipo de renda"}
               </TableHead>
               <TableHead className="w-36">Etapa</TableHead>
-              {!isCorretor && <TableHead className="w-28">Equipe</TableHead>}
-              {!isCorretor && (
+              {showTeamColumns && <TableHead className="w-28">Equipe</TableHead>}
+              {showTeamColumns && (
                 <TableHead className="w-[14%]">Corretor</TableHead>
               )}
               <TableHead className="w-[7%]">{isPlatformAdmin ? "Fit" : "Renda"}</TableHead>
@@ -3165,7 +3168,7 @@ function LeadsPage() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={isCorretor ? 10 : 12}
+                  colSpan={leadTableColSpan}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Carregando leads...
@@ -3174,7 +3177,7 @@ function LeadsPage() {
             ) : filteredLeads.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={isCorretor ? 10 : 12}
+                  colSpan={leadTableColSpan}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Nenhum lead encontrado com esses filtros.
@@ -3246,6 +3249,9 @@ function LeadsPage() {
                             ),
                             "w-auto max-w-full",
                           )}
+                          style={catalogColorSoftBadgeStyle(
+                            colorByLabel("origem", l.origem),
+                          )}
                           title={l.origem}
                         >
                           {l.origem}
@@ -3280,7 +3286,7 @@ function LeadsPage() {
                         {stage.name}
                       </Badge>
                     </TableCell>
-                    {!isCorretor && (
+                    {showTeamColumns && (
                       <TableCell className="truncate">
                         {equipe === "—" ? (
                           <span className="text-muted-foreground">—</span>
@@ -3289,7 +3295,7 @@ function LeadsPage() {
                         )}
                       </TableCell>
                     )}
-                    {!isCorretor && (
+                    {showTeamColumns && (
                       <TableCell className="table-person-name truncate text-sm leading-snug">
                         {l.corretor || (
                           <span className="text-[11px] font-normal text-muted-foreground">
