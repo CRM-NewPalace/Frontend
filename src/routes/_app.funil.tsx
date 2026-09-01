@@ -223,13 +223,16 @@ export function ComercialFunilBoard({
   const { isModuleEnabled } = useTenantTheme();
   const canAgenda = isModuleEnabled("agenda");
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const isPlatformAdmin = user?.role === "super_admin";
   const isGerente = user?.role === "gerente";
   const isManager = canSeeTeam;
   const adminVeClientesCorretor =
     isClientesFunil && getAdminVerClientesCorretor();
-  /** Solo não tem equipes/corretores no filtro — é carteira própria. */
+  /** Solo e Super Admin não usam filtros de equipe/corretor. */
   const showTeamFilters =
-    !isSolo && (!isClientesFunil || adminVeClientesCorretor);
+    !isSolo &&
+    !isPlatformAdmin &&
+    (!isClientesFunil || adminVeClientesCorretor);
   const {
     leads: allLeads,
     assignees,
@@ -281,7 +284,8 @@ export function ComercialFunilBoard({
   }, [applyFunnelEtapas]);
 
   useEffect(() => {
-    if (isSolo || (!isAdmin && !isGerente)) return;
+    if (isSolo || isPlatformAdmin || (user?.role !== "admin" && !isGerente))
+      return;
     let cancelled = false;
     void fetchEquipes()
       .then((list) => {
@@ -293,7 +297,7 @@ export function ComercialFunilBoard({
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, isGerente, isSolo]);
+  }, [isAdmin, isGerente, isSolo, isPlatformAdmin, user?.role]);
 
   const corretorOptions = useMemo(() => {
     let list = assignees.filter((a) => !a.role || isCorretorLike(a.role));
@@ -1117,7 +1121,9 @@ export function ComercialFunilBoard({
                 ? "Seus leads no funil — inclusive os em atraso. Arraste os cards para mover entre etapas."
                 : isGerente
                   ? "Funil da sua equipe — seus leads e os da equipe, inclusive os em atraso."
-                  : "Funil da imobiliária — todos os leads de captação, inclusive os em atraso."
+                  : isPlatformAdmin
+                    ? "Funil da plataforma — arraste os cards para mover entre etapas."
+                    : "Funil da imobiliária — todos os leads de captação, inclusive os em atraso."
         }
         actionsClassName="lg:max-w-none"
         actions={
@@ -1515,7 +1521,10 @@ export function ComercialFunilBoard({
                         <FaWhatsapp className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     </div>
-                    {l.tipo === "cliente" && !isCorretor && !isClientesFunil && (
+                    {l.tipo === "cliente" &&
+                      !isCorretor &&
+                      !isPlatformAdmin &&
+                      !isClientesFunil && (
                       <div className="text-[10px] text-violet-600 dark:text-violet-300 mt-1">
                         Carteira de {l.corretor.split(" ")[0]}
                       </div>
@@ -1530,10 +1539,14 @@ export function ComercialFunilBoard({
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t text-[11px] text-muted-foreground">
-                      <div className="flex min-w-0 items-center gap-1">
-                        <User className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{l.corretor.split(" ")[0]}</span>
-                      </div>
+                      {isPlatformAdmin ? (
+                        <span />
+                      ) : (
+                        <div className="flex min-w-0 items-center gap-1">
+                          <User className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{l.corretor.split(" ")[0]}</span>
+                        </div>
+                      )}
                       <div className="flex shrink-0 items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {l.updatedAt}
@@ -1629,9 +1642,13 @@ export function ComercialFunilBoard({
                     </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between border-t pt-2 text-[11px] text-muted-foreground">
-                    <span className="truncate">
-                      {lead.corretor.split(" ")[0]}
-                    </span>
+                    {isPlatformAdmin ? (
+                      <span />
+                    ) : (
+                      <span className="truncate">
+                        {lead.corretor.split(" ")[0]}
+                      </span>
+                    )}
                     <span>{lead.updatedAt}</span>
                   </div>
                 </Card>
@@ -1645,7 +1662,7 @@ export function ComercialFunilBoard({
         lead={detailLead}
         open={!!detailLead}
         onOpenChange={(o) => !o && setDetailLead(null)}
-        showCorretor={!isCorretor}
+        showCorretor={!isCorretor && !isPlatformAdmin}
         showMeuLeadBadge={Boolean(
           isGerente &&
           !isClientesFunil &&

@@ -17,6 +17,7 @@ import {
   User,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getSession } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -226,10 +227,12 @@ export function LeadFunilAlerta({
                 <p className="truncate text-sm font-semibold leading-tight">
                   {lead.nome}
                 </p>
+                {getSession()?.role === "super_admin" ? null : (
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-white/90">
                   <User className="h-3 w-3 shrink-0" aria-hidden />
                   <span className="truncate">{lead.corretor}</span>
                 </p>
+                )}
               </div>
             </div>
           </div>

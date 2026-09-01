@@ -4,14 +4,18 @@ import {
   Briefcase,
   CalendarClock,
   ClipboardCheck,
+  Building2,
   Clock,
   Copy,
   ExternalLink,
+  Globe,
   Hourglass,
+  Link2,
   Mail,
   MapPin,
   Phone,
   Tag,
+  Target,
   Timer,
   TriangleAlert,
   UserRound,
@@ -38,6 +42,8 @@ import { docStatus1BadgeClass } from "@/lib/documentacao-status";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
+  catalogColorSoftBadgeClass,
+  catalogColorSoftBadgeStyle,
 } from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { brl, type Lead } from "@/lib/crm-types";
@@ -380,6 +386,14 @@ export function LeadDetalheDialog({
   const telefoneDigits = lead ? phoneDigits(lead.telefone) : "";
   const temTelefone = telefoneDigits.length >= 10;
   const email = lead ? displayEmail(lead.email) : "";
+  const mapsQuery = lead
+    ? [lead.prospeccao?.endereco, lead.bairro, lead.cidade]
+        .map((part) => part?.trim())
+        .filter(Boolean)
+        .join(", ")
+    : "";
+  const temMapa = Boolean(mapsQuery);
+  const isProspeccao = Boolean(lead && hasProspeccao(lead.prospeccao));
 
   function abrirWhatsApp() {
     if (!temTelefone) return;
@@ -388,6 +402,15 @@ export function LeadDetalheDialog({
       : `55${telefoneDigits}`;
     window.open(
       getWhatsAppUrl(undefined, e164),
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+
+  function abrirMaps() {
+    if (!temMapa) return;
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -407,7 +430,8 @@ export function LeadDetalheDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "w-[calc(100vw-1.5rem)] max-w-2xl gap-0 p-0 sm:w-full",
+          "w-[calc(100vw-1.5rem)] gap-0 p-0 sm:w-full",
+          isProspeccao ? "max-w-3xl" : "max-w-2xl",
           "!flex !flex-col overflow-hidden",
           "!top-[max(0.75rem,2dvh)] !translate-y-0",
           "max-h-[calc(100dvh-1.5rem)]",
@@ -520,6 +544,17 @@ export function LeadDetalheDialog({
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
+                  className="h-8"
+                  disabled={!temMapa}
+                  onClick={abrirMaps}
+                >
+                  <MapPin className="mr-1.5 h-3.5 w-3.5" />
+                  Maps
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
                   variant="ghost"
                   className="h-8 px-2 text-muted-foreground"
                   disabled={!lead.telefone}
@@ -542,7 +577,10 @@ export function LeadDetalheDialog({
                 </MonitoramentoCard>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <InfoCard icon={Phone} title="Contato">
+                  <InfoCard
+                    icon={isProspeccao ? Building2 : Phone}
+                    title={isProspeccao ? "Empresa" : "Contato"}
+                  >
                     <InfoRow
                       label="Telefone"
                       value={lead.telefone}
@@ -560,18 +598,26 @@ export function LeadDetalheDialog({
                       }
                     />
                     <InfoRow label="E-mail" value={email} />
+                    {isProspeccao ? (
+                      <InfoRow
+                        label="Quem abordar"
+                        value={lead.prospeccao?.quemAbordar}
+                      />
+                    ) : null}
                     <InfoRow
                       label="Origem"
                       value={
                         lead.origem ? (
                           <Badge
+                            variant="outline"
                             className={cn(
-                              catalogColorBadgeClass(
+                              catalogColorSoftBadgeClass(
                                 colorByLabel("origem", lead.origem),
                               ),
                               CHIP,
+                              "w-auto",
                             )}
-                            style={catalogColorBadgeStyle(
+                            style={catalogColorSoftBadgeStyle(
                               colorByLabel("origem", lead.origem),
                             )}
                             title={lead.origem}
@@ -583,61 +629,28 @@ export function LeadDetalheDialog({
                     />
                   </InfoCard>
 
-                  {hasProspeccao(lead.prospeccao) ? (
-                    <InfoCard icon={Wallet} title="Prospecção">
+                  {isProspeccao ? (
+                    <InfoCard icon={MapPin} title="Local">
+                      <InfoRow label="Município" value={lead.cidade} />
+                      <InfoRow label="Bairro / Região" value={lead.bairro} />
                       <InfoRow
-                        label="Produto indicado"
-                        value={lead.prospeccao?.produtoIndicado}
-                      />
-                      <InfoRow
-                        label="Fit"
-                        value={
-                          lead.prospeccao?.fit != null
-                            ? String(lead.prospeccao.fit)
-                            : null
+                        label="Endereço"
+                        value={lead.prospeccao?.endereco}
+                        action={
+                          temMapa ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 shrink-0"
+                              title="Abrir no Google Maps"
+                              onClick={abrirMaps}
+                            >
+                              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                              Maps
+                            </Button>
+                          ) : undefined
                         }
-                      />
-                      <InfoRow
-                        label="Quem abordar"
-                        value={lead.prospeccao?.quemAbordar}
-                      />
-                      <InfoRow
-                        label="CRM identificado"
-                        value={lead.prospeccao?.crmIdentificado}
-                      />
-                      <InfoRow label="Site" value={lead.prospeccao?.site} />
-                      <InfoRow
-                        label="Instagram"
-                        value={lead.prospeccao?.instagram}
-                      />
-                      <InfoRow
-                        label="Atuação"
-                        value={lead.prospeccao?.atuacao}
-                      />
-                      <InfoRow
-                        label="Lançamentos"
-                        value={lead.prospeccao?.lancamentos}
-                      />
-                      <InfoRow label="Usados" value={lead.prospeccao?.usados} />
-                      <InfoRow
-                        label="Locação"
-                        value={lead.prospeccao?.locacao}
-                      />
-                      <InfoRow
-                        label="Administração"
-                        value={lead.prospeccao?.administracao}
-                      />
-                      <InfoRow
-                        label="Tecnologia"
-                        value={lead.prospeccao?.tecnologia}
-                      />
-                      <InfoRow
-                        label="Sinais"
-                        value={lead.prospeccao?.sinais}
-                      />
-                      <InfoRow
-                        label="Motivo do fit"
-                        value={lead.prospeccao?.motivoFit}
                       />
                     </InfoCard>
                   ) : (
@@ -652,70 +665,92 @@ export function LeadDetalheDialog({
                     </InfoCard>
                   )}
 
-                  <InfoCard icon={MapPin} title="Localização e imóvel">
-                    <InfoRow
-                      label={
-                        hasProspeccao(lead.prospeccao) ? "Município" : "Cidade"
-                      }
-                      value={lead.cidade}
-                    />
-                    <InfoRow
-                      label={
-                        hasProspeccao(lead.prospeccao)
-                          ? "Bairro/Região"
-                          : "Bairro"
-                      }
-                      value={lead.bairro}
-                    />
-                    {lead.prospeccao?.endereco ? (
-                      <InfoRow
-                        label="Endereço"
-                        value={lead.prospeccao.endereco}
-                        action={
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-8 shrink-0"
-                            title="Abrir no Google Maps"
-                            onClick={() => {
-                              const query = [
-                                lead.prospeccao?.endereco,
-                                lead.bairro,
-                                lead.cidade,
-                              ]
-                                .map((part) => part?.trim())
-                                .filter(Boolean)
-                                .join(", ");
-                              if (!query) return;
-                              window.open(
-                                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
-                                "_blank",
-                                "noopener,noreferrer",
-                              );
-                            }}
-                          >
-                            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                            Maps
-                          </Button>
-                        }
-                      />
-                    ) : null}
-                    {lead.construtora && (
-                      <InfoRow
-                        label="Construtora"
-                        value={lead.construtora.nome}
-                      />
-                    )}
-                    {lead.empreendimento && (
-                      <InfoRow
-                        label="Empreendimento"
-                        value={lead.empreendimento.nome}
-                      />
-                    )}
-                  </InfoCard>
+                  {isProspeccao ? (
+                    <>
+                      <InfoCard icon={Globe} title="Digital">
+                        <InfoRow label="Site" value={lead.prospeccao?.site} />
+                        <InfoRow
+                          label="Instagram"
+                          value={lead.prospeccao?.instagram}
+                        />
+                        <InfoRow
+                          label="LinkedIn"
+                          value={lead.prospeccao?.linkedin}
+                        />
+                      </InfoCard>
+                      <InfoCard icon={Link2} title="Operação">
+                        <InfoRow
+                          label="Atuação / Serviços"
+                          value={lead.prospeccao?.atuacao}
+                        />
+                        <InfoRow
+                          label="Lançamentos"
+                          value={lead.prospeccao?.lancamentos}
+                        />
+                        <InfoRow label="Usados" value={lead.prospeccao?.usados} />
+                        <InfoRow
+                          label="Locação"
+                          value={lead.prospeccao?.locacao}
+                        />
+                        <InfoRow
+                          label="Administração"
+                          value={lead.prospeccao?.administracao}
+                        />
+                        <InfoRow
+                          label="CRM identificado"
+                          value={lead.prospeccao?.crmIdentificado}
+                        />
+                        <InfoRow
+                          label="Tecnologia"
+                          value={lead.prospeccao?.tecnologia}
+                        />
+                        <InfoRow
+                          label="Sinais"
+                          value={lead.prospeccao?.sinais}
+                        />
+                      </InfoCard>
+                      <InfoCard icon={Target} title="Fit">
+                        <InfoRow
+                          label="Produto indicado"
+                          value={lead.prospeccao?.produtoIndicado}
+                        />
+                        <InfoRow
+                          label="Fit"
+                          value={
+                            lead.prospeccao?.fit != null
+                              ? String(lead.prospeccao.fit)
+                              : null
+                          }
+                        />
+                        <InfoRow
+                          label="Motivo do fit"
+                          value={lead.prospeccao?.motivoFit}
+                        />
+                      </InfoCard>
+                    </>
+                  ) : (
+                    <InfoCard icon={MapPin} title="Localização e imóvel">
+                      <InfoRow label="Cidade" value={lead.cidade} />
+                      <InfoRow label="Bairro" value={lead.bairro} />
+                      {lead.construtora && (
+                        <InfoRow
+                          label="Construtora"
+                          value={lead.construtora.nome}
+                        />
+                      )}
+                      {lead.empreendimento && (
+                        <InfoRow
+                          label="Empreendimento"
+                          value={lead.empreendimento.nome}
+                        />
+                      )}
+                    </InfoCard>
+                  )}
 
-                  <InfoCard icon={Briefcase} title="Atendimento">
+                  <InfoCard
+                    icon={Briefcase}
+                    title={isProspeccao ? "Funil" : "Atendimento"}
+                  >
                     {showCorretor && (
                       <InfoRow
                         label="Corretor"
@@ -727,9 +762,9 @@ export function LeadDetalheDialog({
                         }
                       />
                     )}
-                    {(equipe ?? lead.equipe) && (
+                    {showCorretor && (equipe ?? lead.equipe) ? (
                       <InfoRow label="Equipe" value={equipe ?? lead.equipe} />
-                    )}
+                    ) : null}
                     <InfoRow
                       label="Cadastrado em"
                       value={

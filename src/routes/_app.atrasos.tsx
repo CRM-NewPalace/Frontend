@@ -39,6 +39,7 @@ function Page() {
   const user = getSession();
   const canView = canViewModule(user, "atrasos");
   const isGerente = user?.role === "gerente";
+  const isPlatformAdmin = user?.role === "super_admin";
   const [rows, setRows] = useState<CorretorMonitoramento[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -107,6 +108,8 @@ function Page() {
         description={
           isGerente
             ? "Leads da sua equipe parados, fora do prazo da etapa ou com tarefa atrasada."
+            : isPlatformAdmin
+              ? "Empresas paradas, fora do prazo da etapa ou com tarefa atrasada."
             : "Leads parados, fora do prazo da etapa ou com tarefa atrasada, por corretor."
         }
         actions={
@@ -114,7 +117,11 @@ function Page() {
             <div className="relative max-w-xs min-w-50 flex-1">
               <Search className={FILTER_SEARCH_ICON} />
               <Input
-                placeholder="Buscar corretor ou lead..."
+                placeholder={
+                  isPlatformAdmin
+                    ? "Buscar empresa..."
+                    : "Buscar corretor ou lead..."
+                }
                 className={cn("h-9 bg-background pl-9", FILTER_CONTROL)}
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
@@ -168,8 +175,9 @@ function Page() {
       </section>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        {resumo.corretores} corretor{resumo.corretores === 1 ? "" : "es"} com
-        pendências · clique no lead para abrir o funil.
+        {isPlatformAdmin
+          ? "Clique na empresa para abrir o funil."
+          : `${resumo.corretores} corretor${resumo.corretores === 1 ? "" : "es"} com pendências · clique no lead para abrir o funil.`}
       </p>
 
       {loading ? (

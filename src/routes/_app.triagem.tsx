@@ -61,6 +61,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type TriagemSearch = {
   leadId?: string;
@@ -671,6 +672,7 @@ function CorretorTriagem() {
 function ManagerTriagem() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
+  const isPlatformAdmin = user?.role === "super_admin";
   const canWrite = canWriteTriagem(user?.role);
   const { leads: allLeads, assignees, loading, refresh } = useLeads();
   const { funnelStages } = useCatalog();
@@ -739,11 +741,15 @@ function ManagerTriagem() {
   }, [allCorretores, corretorIdsNaEquipe, corretorSearch]);
 
   const leads = useMemo(() => {
-    if (!selectedCorretorId) return [];
-    return allLeads
-      .filter((l) => l.tipo === "lead" && l.corretorId === selectedCorretorId)
-      .map(leadToContact);
-  }, [allLeads, selectedCorretorId]);
+    const raw = isPlatformAdmin
+      ? allLeads.filter((l) => l.tipo === "lead")
+      : !selectedCorretorId
+        ? []
+        : allLeads.filter(
+            (l) => l.tipo === "lead" && l.corretorId === selectedCorretorId,
+          );
+    return raw.map(leadToContact);
+  }, [allLeads, isPlatformAdmin, selectedCorretorId]);
 
   const filteredLeads = useMemo(
     () =>
@@ -830,7 +836,9 @@ function ManagerTriagem() {
         <PageHeader
           title="Triagem"
           description={
-            canWrite
+            isPlatformAdmin
+              ? "Consulte e registre relatos das empresas no funil."
+              : canWrite
               ? "Consulte e registre relatos dos leads da equipe — avançar etapa é opcional."
               : "Consulte os relatos dos corretores por lead. Somente leitura."
           }
@@ -838,6 +846,7 @@ function ManagerTriagem() {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:overflow-hidden">
+        {isPlatformAdmin ? null : (
         <Card className="flex min-h-0 flex-col space-y-3 overflow-hidden p-4 max-lg:min-h-80 lg:col-span-3">
           <div className="flex shrink-0 items-center gap-2.5 text-sm font-semibold text-primary">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
@@ -915,9 +924,13 @@ function ManagerTriagem() {
             ))}
           </div>
         </Card>
+        )}
 
-        <Card className="flex min-h-0 flex-col space-y-3 overflow-hidden p-4 max-lg:min-h-80 lg:col-span-4">
-          {!selectedCorretorId ? (
+        <Card className={cn(
+          "flex min-h-0 flex-col space-y-3 overflow-hidden p-4 max-lg:min-h-80",
+          isPlatformAdmin ? "lg:col-span-5" : "lg:col-span-4",
+        )}>
+          {!isPlatformAdmin && !selectedCorretorId ? (
             <TriagemEmptyState
               title="Leads do corretor"
               icon={ClipboardList}
@@ -933,6 +946,16 @@ function ManagerTriagem() {
                     <ClipboardList className="h-4 w-4" />
                   </span>
                   <span>
+                    {isPlatformAdmin ? (
+                      <>
+                        Empresas
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          ({filteredLeads.length}
+                          {stageFilter !== "__all__" ? ` de ${leads.length}` : ""})
+                        </span>
+                      </>
+                    ) : (
+                      <>
                     Leads de{" "}
                     <span className="font-bold text-primary">
                       {selectedCorretor?.name ?? "—"}
@@ -941,6 +964,8 @@ function ManagerTriagem() {
                       ({filteredLeads.length}
                       {stageFilter !== "__all__" ? ` de ${leads.length}` : ""})
                     </span>
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
@@ -984,8 +1009,11 @@ function ManagerTriagem() {
           )}
         </Card>
 
-        <Card className="flex min-h-0 flex-col overflow-hidden p-4 max-lg:min-h-80 lg:col-span-5">
-          {!selectedCorretorId ? (
+        <Card className={cn(
+          "flex min-h-0 flex-col overflow-hidden p-4 max-lg:min-h-80",
+          isPlatformAdmin ? "lg:col-span-7" : "lg:col-span-5",
+        )}>
+          {!isPlatformAdmin && !selectedCorretorId ? (
             <TriagemEmptyState
               title="Histórico"
               icon={FileText}
