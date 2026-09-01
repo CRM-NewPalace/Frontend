@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,8 +118,11 @@ type TenantForm = {
   plano: TenantPlano;
   usuariosExtras: number;
   iaBotEnabled: boolean;
+  isTest: boolean;
   modules: Record<TenantModuleKey, boolean>;
 };
+
+type TenantListFilter = "reais" | "teste" | "todos";
 
 const emptyTenantForm = (): TenantForm => ({
   name: "",
@@ -130,6 +133,7 @@ const emptyTenantForm = (): TenantForm => ({
   plano: "bronze",
   usuariosExtras: 0,
   iaBotEnabled: false,
+  isTest: false,
   modules: modulesPresetForPlano("bronze"),
 });
 
@@ -152,6 +156,7 @@ function formatDate(value: string) {
 function TenantsPage() {
   const [items, setItems] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listFilter, setListFilter] = useState<TenantListFilter>("reais");
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
@@ -230,6 +235,14 @@ function TenantsPage() {
     void loadItems();
   }, [loadItems]);
 
+  const realCount = items.filter((item) => !item.isTest).length;
+  const testCount = items.filter((item) => item.isTest).length;
+  const visibleItems = useMemo(() => {
+    if (listFilter === "reais") return items.filter((item) => !item.isTest);
+    if (listFilter === "teste") return items.filter((item) => item.isTest);
+    return items;
+  }, [items, listFilter]);
+
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
@@ -258,6 +271,7 @@ function TenantsPage() {
       plano: item.plano ?? "bronze",
       usuariosExtras: item.usuariosExtras ?? 0,
       iaBotEnabled: Boolean(item.iaBotEnabled),
+      isTest: Boolean(item.isTest),
       modules: modulesFromTenantJson(item.modules),
     });
     setSlugTouched(true);
@@ -277,6 +291,7 @@ function TenantsPage() {
         plano: detail.plano ?? "bronze",
         usuariosExtras: detail.usuariosExtras ?? 0,
         iaBotEnabled: Boolean(detail.iaBotEnabled),
+        isTest: Boolean(detail.isTest),
         modules: modulesFromTenantJson(detail.modules),
       });
     } catch (err) {
@@ -387,6 +402,7 @@ function TenantsPage() {
           plano: form.plano,
           usuariosExtras: form.usuariosExtras,
           iaBotEnabled: form.iaBotEnabled,
+          isTest: form.isTest,
           modules,
         });
         setFormOpen(false);
@@ -435,6 +451,7 @@ function TenantsPage() {
         plano: form.plano,
         usuariosExtras: form.usuariosExtras,
         iaBotEnabled: form.iaBotEnabled,
+        isTest: form.isTest,
         modules,
       });
       if (
@@ -719,7 +736,7 @@ function TenantsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Clientes"
-        description="Clientes (tenants) cadastrados na plataforma — plano, documento e conexões."
+        description="Separe clientes reais dos ambientes de teste. Plano, documento e conexões."
         actions={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
@@ -727,6 +744,32 @@ function TenantsPage() {
           </Button>
         }
       />
+
+      <Tabs
+        value={listFilter}
+        onValueChange={(value) => setListFilter(value as TenantListFilter)}
+      >
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-full bg-muted p-1 sm:w-auto">
+          <TabsTrigger value="reais" className="rounded-full px-4">
+            Reais
+            <span className="ml-1.5 text-[11px] text-muted-foreground">
+              {realCount}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="teste" className="rounded-full px-4">
+            Teste
+            <span className="ml-1.5 text-[11px] text-muted-foreground">
+              {testCount}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="todos" className="rounded-full px-4">
+            Todos
+            <span className="ml-1.5 text-[11px] text-muted-foreground">
+              {items.length}
+            </span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <Card>
         <CardContent className="p-0">
@@ -744,6 +787,15 @@ function TenantsPage() {
                 Criar primeiro cliente
               </Button>
             </div>
+          ) : visibleItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
+              <Building2 className="h-10 w-10 opacity-40" />
+              <p>
+                {listFilter === "teste"
+                  ? "Nenhum cliente de teste."
+                  : "Nenhum cliente real nesta lista."}
+              </p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -757,7 +809,7 @@ function TenantsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => {
+                {visibleItems.map((item) => {
                   const conexoes = connectionLabels(item);
                   return (
                   <TableRow key={item.id}>
@@ -777,7 +829,17 @@ function TenantsPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <div className="font-medium truncate">{item.name}</div>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="font-medium truncate">{item.name}</div>
+                            {item.isTest ? (
+                              <Badge
+                                variant="secondary"
+                                className="shrink-0 text-[10px]"
+                              >
+                                Teste
+                              </Badge>
+                            ) : null}
+                          </div>
                           <code className="text-[11px] text-muted-foreground">
                             {item.slug}
                           </code>
@@ -987,6 +1049,25 @@ function TenantsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <label className="flex items-start gap-3 rounded-lg border p-3">
+                    <Checkbox
+                      checked={form.isTest}
+                      onCheckedChange={(checked) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          isTest: checked === true,
+                        }))
+                      }
+                    />
+                    <span className="space-y-0.5">
+                      <span className="block text-sm font-medium">
+                        Cliente de teste
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        Aparece na aba Teste, separado dos clientes reais.
+                      </span>
+                    </span>
+                  </label>
                 </FormSection>
               </TabsContent>
 
