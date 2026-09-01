@@ -93,6 +93,7 @@ type MetasTab =
 function Page() {
   const user = getSession();
   const isAdmin = user?.role === "admin";
+  const isPlatformAdmin = user?.role === "super_admin";
   const isGerente = user?.role === "gerente";
   const isSolo = user?.tenant?.plano === "solo";
   const [metas, setMetas] = useState<Meta[]>([]);
@@ -232,7 +233,11 @@ function Page() {
     );
   }, [equipes, usuarios]);
 
-  const isGestor = isAdmin || isGerente;
+  const isGestor = isAdmin || isGerente || isPlatformAdmin;
+  const empresaLabel = isPlatformAdmin ? "Empresa" : "Imobiliária";
+  const tiposMeta = isPlatformAdmin
+    ? META_TIPOS.filter((tipo) => tipo !== "documentacoes")
+    : META_TIPOS;
 
   const filteredMetas = useMemo(() => {
     return metas.filter((meta) => {
@@ -321,7 +326,8 @@ function Page() {
   function openCreate() {
     setEditing(null);
     setForm({
-      escopo: isSolo ? "imobiliaria" : isAdmin ? "imobiliaria" : "corretor",
+      escopo:
+        isSolo || isPlatformAdmin || isAdmin ? "imobiliaria" : "corretor",
       corretorId: "",
       gerenteId: "",
       tipo: "vendas",
@@ -387,8 +393,12 @@ function Page() {
         toast.success("Meta atualizada.");
       } else {
         await createMeta({
-          ...(isAdmin && !isSolo ? { escopo: form.escopo } : {}),
-          ...(isSolo ? { escopo: "imobiliaria" as const } : {}),
+          ...(isAdmin && !isSolo && !isPlatformAdmin
+            ? { escopo: form.escopo }
+            : {}),
+          ...(isSolo || isPlatformAdmin
+            ? { escopo: "imobiliaria" as const }
+            : {}),
           ...(!isSolo &&
           form.escopo === "corretor" &&
           (isAdmin || isGerente)
@@ -437,9 +447,11 @@ function Page() {
   }
 
   const canCreate =
-    isCorretorLike(user?.role) || isGerente || isAdmin;
+    isCorretorLike(user?.role) || isGerente || isAdmin || isPlatformAdmin;
 
   const canEditMeta = (meta: Meta) => {
+    if (isPlatformAdmin)
+      return meta.origem === "admin" && meta.escopo === "imobiliaria";
     if (isAdmin) return meta.origem === "admin";
     if (isGerente)
       return (
@@ -450,24 +462,26 @@ function Page() {
     return meta.origem === "pessoal" && meta.escopo === "corretor";
   };
 
-  const gestorTabs: Array<{ id: MetasTab; label: string }> = [
-    { id: "todas", label: "Todas" },
-    ...(isAdmin && !isSolo
-      ? [{ id: "imobiliaria" as const, label: "Imobiliária" }]
-      : []),
-    ...(!isSolo
-      ? [
-          { id: "gerente" as const, label: "Gerentes" },
-          { id: "corretor" as const, label: "Corretores" },
-        ]
-      : []),
-  ];
+  const gestorTabs: Array<{ id: MetasTab; label: string }> = isPlatformAdmin
+    ? [{ id: "imobiliaria" as const, label: empresaLabel }]
+    : [
+        { id: "todas", label: "Todas" },
+        ...(isAdmin && !isSolo
+          ? [{ id: "imobiliaria" as const, label: "Imobiliária" }]
+          : []),
+        ...(!isSolo
+          ? [
+              { id: "gerente" as const, label: "Gerentes" },
+              { id: "corretor" as const, label: "Corretores" },
+            ]
+          : []),
+      ];
   const corretorTabs: Array<{ id: MetasTab; label: string }> = [
     { id: "todas", label: "Todas" },
     { id: "atribuidas", label: "Atribuídas" },
     { id: "pessoais", label: "Pessoais" },
   ];
-  const tabs = isSolo ? [] : isGestor ? gestorTabs : corretorTabs;
+  const tabs = isSolo || isPlatformAdmin ? [] : isGestor ? gestorTabs : corretorTabs;
   const showImobiliaria =
     !isSolo &&
     isGestor &&
@@ -475,11 +489,13 @@ function Page() {
       (tab === "todas" && filteredImobiliaria.length > 0));
   const showGerentes =
     !isSolo &&
+    !isPlatformAdmin &&
     isGestor &&
     (tab === "gerente" ||
       (tab === "todas" && filteredGruposGerentes.length > 0));
   const showCorretores =
     !isSolo &&
+    !isPlatformAdmin &&
     isGestor &&
     (tab === "corretor" ||
       (tab === "todas" && filteredGruposCorretores.length > 0));
@@ -491,6 +507,8 @@ function Page() {
         description={
           isSolo
             ? "Defina tipo, valor e período das suas metas."
+            : isPlatformAdmin
+              ? "Defina e acompanhe as metas da empresa."
             : isAdmin
               ? "Defina metas da imobiliária, por gerente ou por corretor."
               : isGerente
@@ -504,7 +522,7 @@ function Page() {
               onClick={openCreate}
             >
               <Plus className="w-4 h-4 mr-1" />
-              {isSolo
+              {isSolo || isPlatformAdmin
                 ? "Nova meta"
                 : isAdmin
                   ? "Nova meta"
@@ -587,7 +605,7 @@ function Page() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Todos os tipos</SelectItem>
-                  {META_TIPOS.map((tipo) => (
+                  {tiposMeta.map((tipo) => (
                     <SelectItem key={tipo} value={tipo}>
                       {META_TIPO_LABEL[tipo]}
                     </SelectItem>
@@ -610,11 +628,12 @@ function Page() {
             </div>
           </div>
 
-          {isSolo ? (
+          {isSolo || isPlatformAdmin ? (
             <MetasPorOrigem
               metas={filteredMetas}
               vista={vista}
               flat
+              headingTitle={isPlatformAdmin ? "Metas da empresa" : undefined}
               canEdit={canEditMeta}
               onEdit={openEdit}
               onRemove={remove}
@@ -656,7 +675,7 @@ function Page() {
             ? isSolo
               ? "Ajuste o valor. Tipo e período não mudam depois de criada."
               : "Ajuste o valor. Tipo, período e responsável não mudam depois de criada."
-            : isSolo
+            : isSolo || isPlatformAdmin
               ? "Defina o tipo, o período e o valor da meta."
               : isAdmin
                 ? "Defina o responsável, o tipo e o período da meta."
@@ -809,9 +828,10 @@ function Page() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Tipo</Label>
-                  <MetaTipoPicker
+                    <MetaTipoPicker
                     value={form.tipo}
                     disabled={Boolean(editing)}
+                    tipos={tiposMeta}
                     onChange={(tipo) =>
                       setForm((atual) => ({ ...atual, tipo }))
                     }

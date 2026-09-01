@@ -258,7 +258,7 @@ function LeadsPerdidos() {
         description={
           loading
             ? "Carregando..."
-            : `${filtered.length} lead(s) removidos da operação — só admin vê esta lista.${
+            : `${filtered.length} lead(s) removidos da operação.${
                 refreshing ? " Atualizando…" : ""
               }`
         }
