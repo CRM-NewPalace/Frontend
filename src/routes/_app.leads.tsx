@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,6 +77,9 @@ import {
   Users,
   Flame,
   Building2,
+  Globe,
+  Link2,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -344,6 +349,14 @@ const emptyForm = (origemDefault = ""): FormState => ({
 
 type FormMode = "create" | "edit";
 
+type PlatformLeadTab =
+  | "empresa"
+  | "localizacao"
+  | "digital"
+  | "operacao"
+  | "fit"
+  | "funil";
+
 function leadToForm(lead: Lead): FormState {
   const temp =
     (["Quente", "Morno", "Frio"] as const).find((t) => lead.tags.includes(t)) ??
@@ -467,6 +480,8 @@ function LeadsPage() {
 
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
+  const [platformLeadTab, setPlatformLeadTab] =
+    useState<PlatformLeadTab>("empresa");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [deleteLead, setDeleteLead] = useState<Lead | null>(null);
@@ -866,6 +881,7 @@ function LeadsPage() {
   function openCreate() {
     setFormMode("create");
     setEditingId(null);
+    setPlatformLeadTab("empresa");
     // Sem vínculo: lead fica no pool do admin para distribuição.
     setForm({
       ...emptyForm(),
@@ -878,6 +894,7 @@ function LeadsPage() {
   function openEdit(lead: Lead) {
     setFormMode("edit");
     setEditingId(lead.id);
+    setPlatformLeadTab("empresa");
     const next = leadToForm(lead);
     if (!next.equipeId && lead.corretorId) {
       const eq = equipesAtivas.find((e) =>
@@ -1396,22 +1413,577 @@ function LeadsPage() {
       <FormDialogShell
         open={open}
         onOpenChange={setOpen}
+        className={isPlatformAdmin ? "max-w-3xl" : undefined}
         icon={
           formMode === "edit" ? (
             <Pencil className="w-5 h-5" />
+          ) : isPlatformAdmin ? (
+            <Building2 className="w-5 h-5" />
           ) : (
             <UserPlus className="w-5 h-5" />
           )
         }
-        title={formMode === "edit" ? "Editar lead" : "Novo lead"}
+        title={
+          formMode === "edit"
+            ? isPlatformAdmin
+              ? "Editar empresa"
+              : "Editar lead"
+            : isPlatformAdmin
+              ? "Nova empresa"
+              : "Novo lead"
+        }
         description={
           formMode === "edit"
-            ? "Atualize os dados do contato no funil."
-            : "Preencha os dados para adicionar o contato ao funil."
+            ? isPlatformAdmin
+              ? "Atualize cada seção da ficha de prospecção."
+              : "Atualize os dados do contato no funil."
+            : isPlatformAdmin
+              ? "Preencha cada seção: empresa, localização, digital, operação e fit."
+              : "Preencha os dados para adicionar o contato ao funil."
         }
       >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <FormDialogBody>
+          <FormDialogBody className={isPlatformAdmin ? "bg-muted/40" : undefined}>
+            {isPlatformAdmin ? (
+              <>
+                <Tabs
+                  value={platformLeadTab}
+                  onValueChange={(value) =>
+                    setPlatformLeadTab(value as PlatformLeadTab)
+                  }
+                >
+                  <TabsList className="mb-1 flex h-auto w-full flex-wrap justify-start gap-1 rounded-full bg-muted p-1">
+                    <TabsTrigger
+                      value="empresa"
+                      className="gap-1.5 rounded-full px-3"
+                    >
+                      <Building2 className="h-3.5 w-3.5" />
+                      Empresa
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="localizacao"
+                      className="gap-1.5 rounded-full px-3"
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                      Local
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="digital"
+                      className="gap-1.5 rounded-full px-3"
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      Digital
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="operacao"
+                      className="gap-1.5 rounded-full px-3"
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      Operação
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="fit"
+                      className="gap-1.5 rounded-full px-3"
+                    >
+                      <Target className="h-3.5 w-3.5" />
+                      Fit
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="funil"
+                      className="gap-1.5 rounded-full px-3"
+                    >
+                      <Wallet className="h-3.5 w-3.5" />
+                      Funil
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="empresa" className="mt-4">
+                <FormSection
+                  icon={<Building2 className="w-3.5 h-3.5 text-primary" />}
+                  title="Empresa"
+                  description="Identificação e contato de quem decide."
+                >
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="lead-nome"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Empresa{" "}
+                      <span className="text-destructive" aria-hidden="true">
+                        *
+                      </span>
+                    </Label>
+                    <Input
+                      id="lead-nome"
+                      value={form.nome}
+                      onChange={(e) => setField("nome", e.target.value)}
+                      placeholder="Ex.: Âncora Imobiliária"
+                      className="h-10 bg-background"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="lead-telefone"
+                        className="text-xs text-muted-foreground"
+                      >
+                        Telefone / WhatsApp{" "}
+                        <span className="text-destructive" aria-hidden="true">
+                          *
+                        </span>
+                      </Label>
+                      <Input
+                        id="lead-telefone"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        value={form.telefone}
+                        onChange={(e) =>
+                          setField("telefone", formatPhone(e.target.value))
+                        }
+                        placeholder={PHONE_PLACEHOLDER}
+                        className="h-10 bg-background"
+                        maxLength={15}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="lead-email"
+                        className="text-xs text-muted-foreground"
+                      >
+                        E-mail{" "}
+                        <span className="font-normal">(opcional)</span>
+                      </Label>
+                      <Input
+                        id="lead-email"
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => setField("email", e.target.value)}
+                        placeholder="email@exemplo.com"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Quem abordar
+                      </Label>
+                      <Input
+                        value={form.prospeccao.quemAbordar}
+                        onChange={(e) =>
+                          setProspeccao("quemAbordar", e.target.value)
+                        }
+                        placeholder="Dono, gestor comercial, diretor…"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Responsável interno
+                      </Label>
+                      <div className="h-10 px-3 rounded-md border bg-muted/40 text-sm flex items-center text-muted-foreground">
+                        {user?.name ?? "—"}
+                      </div>
+                    </div>
+                  </div>
+                </FormSection>
+                  </TabsContent>
+
+                  <TabsContent value="localizacao" className="mt-4">
+                <FormSection
+                  icon={<MapPin className="w-3.5 h-3.5 text-primary" />}
+                  title="Localização"
+                  description="Onde a operação está."
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="lead-cidade"
+                        className="text-xs text-muted-foreground"
+                      >
+                        Município
+                      </Label>
+                      <Input
+                        id="lead-cidade"
+                        value={form.cidade}
+                        onChange={(e) => setField("cidade", e.target.value)}
+                        placeholder="Ex.: Recife"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="lead-bairro"
+                        className="text-xs text-muted-foreground"
+                      >
+                        Bairro / Região
+                      </Label>
+                      <Input
+                        id="lead-bairro"
+                        value={form.bairro}
+                        onChange={(e) => setField("bairro", e.target.value)}
+                        placeholder="Ex.: Boa Viagem"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="lead-endereco"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Endereço
+                    </Label>
+                    <Input
+                      id="lead-endereco"
+                      value={form.prospeccao.endereco}
+                      onChange={(e) =>
+                        setProspeccao("endereco", e.target.value)
+                      }
+                      placeholder="Rua, número, sala"
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                </FormSection>
+                  </TabsContent>
+
+                  <TabsContent value="digital" className="mt-4">
+                <FormSection
+                  icon={<Globe className="w-3.5 h-3.5 text-primary" />}
+                  title="Presença digital"
+                  description="Canais públicos para abordagem."
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label className="text-xs text-muted-foreground">
+                        Site
+                      </Label>
+                      <Input
+                        value={form.prospeccao.site}
+                        onChange={(e) => setProspeccao("site", e.target.value)}
+                        placeholder="https://"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Instagram
+                      </Label>
+                      <Input
+                        value={form.prospeccao.instagram}
+                        onChange={(e) =>
+                          setProspeccao("instagram", e.target.value)
+                        }
+                        placeholder="https://instagram.com/..."
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        LinkedIn
+                      </Label>
+                      <Input
+                        value={form.prospeccao.linkedin}
+                        onChange={(e) =>
+                          setProspeccao("linkedin", e.target.value)
+                        }
+                        placeholder="https://linkedin.com/company/..."
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                  </div>
+                </FormSection>
+                  </TabsContent>
+
+                  <TabsContent value="operacao" className="mt-4">
+                <FormSection
+                  icon={<Link2 className="w-3.5 h-3.5 text-primary" />}
+                  title="Operação"
+                  description="O que a empresa vende e qual stack usa hoje."
+                >
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Atuação / Serviços
+                    </Label>
+                    <Input
+                      value={form.prospeccao.atuacao}
+                      onChange={(e) =>
+                        setProspeccao("atuacao", e.target.value)
+                      }
+                      placeholder="Venda, locação, lançamentos…"
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(
+                      [
+                        ["lancamentos", "Lançamentos"],
+                        ["usados", "Usados"],
+                        ["locacao", "Locação"],
+                        ["administracao", "Administração"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <div key={key} className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">
+                          {label}
+                        </Label>
+                        <Select
+                          value={form.prospeccao[key] || "__none__"}
+                          onValueChange={(v) =>
+                            setProspeccao(key, v === "__none__" ? "" : v)
+                          }
+                        >
+                          <SelectTrigger className="h-10 bg-background">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">—</SelectItem>
+                            {PROSPECCAO_SIM_NAO.map((opt) => (
+                              <SelectItem key={opt} value={opt}>
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        CRM identificado
+                      </Label>
+                      <Input
+                        value={form.prospeccao.crmIdentificado}
+                        onChange={(e) =>
+                          setProspeccao("crmIdentificado", e.target.value)
+                        }
+                        placeholder="Kenlo, Vista, nenhum…"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Tecnologia identificada
+                      </Label>
+                      <Input
+                        value={form.prospeccao.tecnologia}
+                        onChange={(e) =>
+                          setProspeccao("tecnologia", e.target.value)
+                        }
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                  </div>
+                </FormSection>
+                  </TabsContent>
+
+                  <TabsContent value="fit" className="mt-4">
+                <FormSection
+                  icon={<Target className="w-3.5 h-3.5 text-primary" />}
+                  title="Fit comercial"
+                  description="Produto Zone e o quanto a conta vale a abordagem."
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Produto indicado
+                      </Label>
+                      <Input
+                        value={form.prospeccao.produtoIndicado}
+                        onChange={(e) =>
+                          setProspeccao("produtoIndicado", e.target.value)
+                        }
+                        placeholder="CRM + IA SDR + Landing"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Fit (0–10)
+                      </Label>
+                      <Input
+                        inputMode="decimal"
+                        value={form.prospeccao.fit}
+                        onChange={(e) => setProspeccao("fit", e.target.value)}
+                        placeholder="8.5"
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Sinais para prospecção
+                    </Label>
+                    <Textarea
+                      value={form.prospeccao.sinais}
+                      onChange={(e) =>
+                        setProspeccao("sinais", e.target.value)
+                      }
+                      placeholder="Volume de leads, equipe, presença digital…"
+                      className="min-h-20 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Motivo do fit
+                    </Label>
+                    <Textarea
+                      value={form.prospeccao.motivoFit}
+                      onChange={(e) =>
+                        setProspeccao("motivoFit", e.target.value)
+                      }
+                      placeholder="Por que esta conta entra agora."
+                      className="min-h-20 bg-background"
+                    />
+                  </div>
+                </FormSection>
+                  </TabsContent>
+
+                  <TabsContent value="funil" className="mt-4">
+                <FormSection
+                  icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
+                  title="Qualificação no funil"
+                  description="Prioridade da abordagem e origem da pesquisa."
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Origem / fonte
+                      </Label>
+                      <Select
+                        value={form.origem || "__none__"}
+                        onValueChange={(v) =>
+                          setField("origem", v === "__none__" ? "" : v)
+                        }
+                      >
+                        <SelectTrigger className="h-10 bg-background">
+                          <SelectValue placeholder="Selecione a origem" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Sem origem</SelectItem>
+                          {origemOptions.map((o) => (
+                            <SelectItem key={o} value={o}>
+                              {o}
+                            </SelectItem>
+                          ))}
+                          {formMode === "edit" &&
+                            form.origem &&
+                            !origemOptions.includes(form.origem) && (
+                              <SelectItem value={form.origem}>
+                                {form.origem}
+                              </SelectItem>
+                            )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Data de cadastro
+                      </Label>
+                      <Input
+                        type="date"
+                        value={form.createdAt}
+                        onChange={(e) => setField("createdAt", e.target.value)}
+                        className="h-10 bg-background"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Prioridade
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        {
+                          value: "Alta" as const,
+                          active:
+                            "border-red-300 bg-red-100 text-red-800 shadow-sm ring-1 ring-red-200/80",
+                          idle: "hover:border-red-200 hover:bg-red-50 hover:text-red-700",
+                        },
+                        {
+                          value: "Média" as const,
+                          active:
+                            "border-amber-300 bg-amber-100 text-amber-900 shadow-sm ring-1 ring-amber-200/80",
+                          idle: "hover:border-amber-200 hover:bg-amber-50 hover:text-amber-800",
+                        },
+                        {
+                          value: "Baixa" as const,
+                          active:
+                            "border-sky-300 bg-sky-100 text-sky-800 shadow-sm ring-1 ring-sky-200/80",
+                          idle: "hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700",
+                        },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setField("prioridade", opt.value)}
+                          className={cn(
+                            "h-10 rounded-lg border text-sm font-medium transition-colors",
+                            form.prioridade === opt.value
+                              ? opt.active
+                              : cn(
+                                  "bg-background text-muted-foreground",
+                                  opt.idle,
+                                ),
+                          )}
+                        >
+                          {opt.value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Temperatura
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        {
+                          value: "Quente" as const,
+                          active:
+                            "border-orange-300 bg-orange-100 text-orange-900 shadow-sm ring-1 ring-orange-200/80",
+                          idle: "hover:border-orange-200 hover:bg-orange-50 hover:text-orange-800",
+                        },
+                        {
+                          value: "Morno" as const,
+                          active:
+                            "border-yellow-300 bg-yellow-100 text-yellow-900 shadow-sm ring-1 ring-yellow-200/80",
+                          idle: "hover:border-yellow-200 hover:bg-yellow-50 hover:text-yellow-800",
+                        },
+                        {
+                          value: "Frio" as const,
+                          active:
+                            "border-cyan-300 bg-cyan-100 text-cyan-900 shadow-sm ring-1 ring-cyan-200/80",
+                          idle: "hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-800",
+                        },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setField("temperatura", opt.value)}
+                          className={cn(
+                            "h-10 rounded-lg border text-sm font-medium transition-colors",
+                            form.temperatura === opt.value
+                              ? opt.active
+                              : cn(
+                                  "bg-background text-muted-foreground",
+                                  opt.idle,
+                                ),
+                          )}
+                        >
+                          {opt.value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </FormSection>
+                  </TabsContent>
+                </Tabs>
+              </>
+            ) : (
+              <>
             <FormSection
               icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
               title="Contato"
@@ -1609,7 +2181,7 @@ function LeadsPage() {
 
             <FormSection
               icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
-              title={isPlatformAdmin ? "Qualificação" : "Renda"}
+              title="Renda"
             >
               {isPlatformAdmin ? null : (
               <>
@@ -1845,7 +2417,7 @@ function LeadsPage() {
                     htmlFor="lead-cidade"
                     className="text-xs text-muted-foreground"
                   >
-                    {isPlatformAdmin ? "Município" : "Cidade"}
+                    Cidade
                   </Label>
                   <Input
                     id="lead-cidade"
@@ -1860,7 +2432,7 @@ function LeadsPage() {
                     htmlFor="lead-bairro"
                     className="text-xs text-muted-foreground"
                   >
-                    {isPlatformAdmin ? "Bairro/Região" : "Bairro"}
+                    Bairro
                   </Label>
                   <Input
                     id="lead-bairro"
@@ -1871,208 +2443,22 @@ function LeadsPage() {
                   />
                 </div>
               </div>
-              {isPlatformAdmin ? (
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="lead-endereco"
-                    className="text-xs text-muted-foreground"
-                  >
-                    Endereço
-                  </Label>
-                  <Input
-                    id="lead-endereco"
-                    value={form.prospeccao.endereco}
-                    onChange={(e) => setProspeccao("endereco", e.target.value)}
-                    placeholder="Rua, número"
-                    className="h-10 bg-background"
-                  />
-                </div>
-              ) : null}
             </FormSection>
-
-            {isPlatformAdmin ? (
-              <FormSection
-                icon={<Building2 className="w-3.5 h-3.5 text-primary" />}
-                title="Prospecção"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Instagram
-                    </Label>
-                    <Input
-                      value={form.prospeccao.instagram}
-                      onChange={(e) =>
-                        setProspeccao("instagram", e.target.value)
-                      }
-                      placeholder="https://instagram.com/..."
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Site
-                    </Label>
-                    <Input
-                      value={form.prospeccao.site}
-                      onChange={(e) => setProspeccao("site", e.target.value)}
-                      placeholder="https://"
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      LinkedIn
-                    </Label>
-                    <Input
-                      value={form.prospeccao.linkedin}
-                      onChange={(e) =>
-                        setProspeccao("linkedin", e.target.value)
-                      }
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Quem abordar
-                    </Label>
-                    <Input
-                      value={form.prospeccao.quemAbordar}
-                      onChange={(e) =>
-                        setProspeccao("quemAbordar", e.target.value)
-                      }
-                      placeholder="Dono/gestor comercial"
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Atuação / Serviços
-                  </Label>
-                  <Input
-                    value={form.prospeccao.atuacao}
-                    onChange={(e) => setProspeccao("atuacao", e.target.value)}
-                    className="h-10 bg-background"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {(
-                    [
-                      ["lancamentos", "Lançamentos?"],
-                      ["usados", "Usados?"],
-                      ["locacao", "Locação?"],
-                      ["administracao", "Administração?"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <div key={key} className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {label}
-                      </Label>
-                      <Select
-                        value={form.prospeccao[key] || "__none__"}
-                        onValueChange={(v) =>
-                          setProspeccao(key, v === "__none__" ? "" : v)
-                        }
-                      >
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">—</SelectItem>
-                          {PROSPECCAO_SIM_NAO.map((opt) => (
-                            <SelectItem key={opt} value={opt}>
-                              {opt}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      CRM identificado
-                    </Label>
-                    <Input
-                      value={form.prospeccao.crmIdentificado}
-                      onChange={(e) =>
-                        setProspeccao("crmIdentificado", e.target.value)
-                      }
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Tecnologia identificada
-                    </Label>
-                    <Input
-                      value={form.prospeccao.tecnologia}
-                      onChange={(e) =>
-                        setProspeccao("tecnologia", e.target.value)
-                      }
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Sinais para prospecção
-                  </Label>
-                  <Input
-                    value={form.prospeccao.sinais}
-                    onChange={(e) => setProspeccao("sinais", e.target.value)}
-                    className="h-10 bg-background"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Produto indicado
-                    </Label>
-                    <Input
-                      value={form.prospeccao.produtoIndicado}
-                      onChange={(e) =>
-                        setProspeccao("produtoIndicado", e.target.value)
-                      }
-                      placeholder="CRM + IA SDR"
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Fit (0-10)
-                    </Label>
-                    <Input
-                      inputMode="decimal"
-                      value={form.prospeccao.fit}
-                      onChange={(e) => setProspeccao("fit", e.target.value)}
-                      placeholder="8.5"
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Motivo do fit
-                  </Label>
-                  <Input
-                    value={form.prospeccao.motivoFit}
-                    onChange={(e) =>
-                      setProspeccao("motivoFit", e.target.value)
-                    }
-                    className="h-10 bg-background"
-                  />
-                </div>
-              </FormSection>
-            ) : null}
+              </>
+            )}
           </FormDialogBody>
 
           <FormDialogActions
             hint={
               formMode === "edit" ? (
                 "As alterações são salvas no banco."
+              ) : isPlatformAdmin ? (
+                <>A empresa entra na etapa{" "}
+                  <span className="font-medium text-foreground">
+                    {defaultStageName}
+                  </span>
+                  .
+                </>
               ) : (
                 <>
                   O lead entra na etapa{" "}
@@ -2098,7 +2484,7 @@ function LeadsPage() {
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  Salvar lead
+                  {isPlatformAdmin ? "Salvar empresa" : "Salvar lead"}
                 </>
               )}
             </Button>

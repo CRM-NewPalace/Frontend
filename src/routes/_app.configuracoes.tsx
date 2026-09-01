@@ -986,7 +986,8 @@ function Config() {
         {selection.item === "listas" ? (
           <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
-              Origens, tags, CCAs
+              Origens, tags
+              {isPlatformAdmin ? "" : ", CCAs"}
               {showMotivos ? " e motivos de perda" : ""} usados no cadastro de
               leads.
             </p>
@@ -1005,7 +1006,7 @@ function Config() {
                       ? ([["motivos", "Motivos"]] as const)
                       : []),
                     ["tags", "Tags"],
-                    ["cca", "CCA"],
+                    ...(!isPlatformAdmin ? ([["cca", "CCA"]] as const) : []),
                   ] as const
                 ).map(([kind, title]) => (
                   <CatalogKindCard
