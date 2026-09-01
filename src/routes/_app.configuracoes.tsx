@@ -314,10 +314,11 @@ function Config() {
   const showCreci = Boolean(user && userCanInformarCreci(user) && !isPlatformAdmin);
   const isSolo = user?.tenant?.plano === "solo";
   const showOpsTabs = !isAnalista && !isTreinee && !isCorretor && !isPlatformAdmin;
+  const showFunil = !isAnalista && !isTreinee && !isCorretor;
   const showUsuarioExtraTab = showOpsTabs && isSolo;
   const showDocumentacao = !isTreinee && !isCorretor && !isPlatformAdmin;
-  const showMotivos = !isTreinee && !isCorretor && !isPlatformAdmin;
-  const showCatalogTabs = !isCorretor && !isPlatformAdmin;
+  const showMotivos = !isTreinee && !isCorretor;
+  const showCatalogTabs = !isCorretor;
   const showImoveis = Boolean(
     user &&
       !isPlatformAdmin &&
@@ -347,6 +348,7 @@ function Config() {
     () => ({
       showCreci,
       showOps: showOpsTabs,
+      showFunil,
       showUsuarioExtra: showUsuarioExtraTab,
       showDocumentacao,
       showCatalog: showCatalogTabs,
@@ -357,6 +359,7 @@ function Config() {
     [
       showCreci,
       showOpsTabs,
+      showFunil,
       showUsuarioExtraTab,
       showDocumentacao,
       showCatalogTabs,

@@ -22,6 +22,7 @@ export type ConfigItem = (typeof CONFIG_ITEMS)[number];
 export type ConfigNavFlags = {
   showCreci: boolean;
   showOps: boolean;
+  showFunil: boolean;
   showUsuarioExtra: boolean;
   showDocumentacao: boolean;
   showCatalog: boolean;
@@ -138,6 +139,8 @@ export function buildConfigModules(flags: ConfigNavFlags): ConfigNavModule[] {
       { id: "funil", label: "Funis" },
       { id: "financeiro", label: "Financeiro" },
     );
+  } else if (flags.showFunil) {
+    operacaoItems.push({ id: "funil", label: "Funis" });
   }
   if (flags.showMetas) {
     operacaoItems.push({ id: "metas", label: "Metas" });
@@ -146,7 +149,9 @@ export function buildConfigModules(flags: ConfigNavFlags): ConfigNavModule[] {
     modules.push({
       id: "operacao",
       label: "Operação",
-      description: "Módulos, funis e preferências da operação.",
+      description: flags.showOps
+        ? "Módulos, funis e preferências da operação."
+        : "Funis da operação comercial.",
       icon: Layers,
       items: operacaoItems,
     });
@@ -166,7 +171,10 @@ export function buildConfigModules(flags: ConfigNavFlags): ConfigNavModule[] {
     modules.push({
       id: "catalogos",
       label: "Catálogos",
-      description: "Listas usadas em leads, documentação e imóveis.",
+      description:
+        flags.showDocumentacao || flags.showImoveis
+          ? "Listas usadas em leads, documentação e imóveis."
+          : "Listas usadas em leads.",
       icon: BookMarked,
       items: catalogoItems,
     });
