@@ -74,7 +74,7 @@ import {
   UserCheck,
   Users,
   Flame,
-  Briefcase,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -126,6 +126,8 @@ import {
   PHONE_PLACEHOLDER,
 } from "@/lib/phone";
 import { isPlaceholderEmail } from "@/lib/email";
+import type { LeadProspeccao } from "@/lib/lead-prospeccao";
+import { compactProspeccao, PROSPECCAO_SIM_NAO } from "@/lib/lead-prospeccao";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -229,9 +231,92 @@ type FormState = {
   corretorId: string;
   /** YYYY-MM-DD — cadastro retroativo. */
   createdAt: string;
+  prospeccao: {
+    endereco: string;
+    instagram: string;
+    site: string;
+    linkedin: string;
+    atuacao: string;
+    lancamentos: string;
+    usados: string;
+    locacao: string;
+    administracao: string;
+    crmIdentificado: string;
+    tecnologia: string;
+    sinais: string;
+    quemAbordar: string;
+    produtoIndicado: string;
+    fit: string;
+    motivoFit: string;
+  };
 };
 
-const todayInput = () => new Date().toISOString().slice(0, 10);
+const emptyProspeccaoForm = () => ({
+  endereco: "",
+  instagram: "",
+  site: "",
+  linkedin: "",
+  atuacao: "",
+  lancamentos: "",
+  usados: "",
+  locacao: "",
+  administracao: "",
+  crmIdentificado: "",
+  tecnologia: "",
+  sinais: "",
+  quemAbordar: "",
+  produtoIndicado: "",
+  fit: "",
+  motivoFit: "",
+});
+
+function leadProspeccaoToForm(p?: LeadProspeccao | null) {
+  return {
+    endereco: p?.endereco ?? "",
+    instagram: p?.instagram ?? "",
+    site: p?.site ?? "",
+    linkedin: p?.linkedin ?? "",
+    atuacao: p?.atuacao ?? "",
+    lancamentos: p?.lancamentos ?? "",
+    usados: p?.usados ?? "",
+    locacao: p?.locacao ?? "",
+    administracao: p?.administracao ?? "",
+    crmIdentificado: p?.crmIdentificado ?? "",
+    tecnologia: p?.tecnologia ?? "",
+    sinais: p?.sinais ?? "",
+    quemAbordar: p?.quemAbordar ?? "",
+    produtoIndicado: p?.produtoIndicado ?? "",
+    fit: p?.fit != null ? String(p.fit) : "",
+    motivoFit: p?.motivoFit ?? "",
+  };
+}
+
+function formProspeccaoToPayload(
+  p: FormState["prospeccao"],
+): LeadProspeccao | null {
+  const fitRaw = p.fit.trim().replace(",", ".");
+  const fit = fitRaw ? Number(fitRaw) : null;
+  const payload: LeadProspeccao = {
+    endereco: p.endereco.trim() || null,
+    instagram: p.instagram.trim() || null,
+    site: p.site.trim() || null,
+    linkedin: p.linkedin.trim() || null,
+    atuacao: p.atuacao.trim() || null,
+    lancamentos: p.lancamentos.trim() || null,
+    usados: p.usados.trim() || null,
+    locacao: p.locacao.trim() || null,
+    administracao: p.administracao.trim() || null,
+    crmIdentificado: p.crmIdentificado.trim() || null,
+    tecnologia: p.tecnologia.trim() || null,
+    sinais: p.sinais.trim() || null,
+    quemAbordar: p.quemAbordar.trim() || null,
+    produtoIndicado: p.produtoIndicado.trim() || null,
+    fit: Number.isFinite(fit) ? fit : null,
+    motivoFit: p.motivoFit.trim() || null,
+  };
+  const has = Object.values(payload).some((v) => v != null && v !== "");
+  return has ? payload : null;
+}
 
 const emptyForm = (origemDefault = ""): FormState => ({
   nome: "",
@@ -252,6 +337,7 @@ const emptyForm = (origemDefault = ""): FormState => ({
   equipeId: "",
   corretorId: "",
   createdAt: todayInput(),
+  prospeccao: emptyProspeccaoForm(),
 });
 
 type FormMode = "create" | "edit";
@@ -280,6 +366,7 @@ function leadToForm(lead: Lead): FormState {
     equipeId: lead.equipeId ?? "",
     corretorId: lead.corretorId ?? (lead.equipeId ? "__pool__" : ""),
     createdAt: lead.createdAt?.slice(0, 10) || todayInput(),
+    prospeccao: leadProspeccaoToForm(lead.prospeccao),
   };
 }
 
@@ -317,6 +404,7 @@ function LeadsPage() {
   const canDistribuir = user?.role === "admin" || user?.role === "gerente";
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
+  const isPlatformAdmin = user?.role === "super_admin";
   /** Só admin/analista filtram entre várias equipes. Gerente não filtra por outras. */
   const canFilterEquipe = user?.role === "admin" || user?.role === "analista";
 
@@ -803,6 +891,16 @@ function LeadsPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function setProspeccao(
+    key: keyof FormState["prospeccao"],
+    value: string,
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      prospeccao: { ...prev.prospeccao, [key]: value },
+    }));
+  }
+
   async function copyLeadPhone(telefone: string) {
     const value = formatPhone(telefone).trim() || telefone.trim();
     if (!phoneDigits(value)) {
@@ -928,6 +1026,9 @@ function LeadsPage() {
           quartosMin: Number.isFinite(quartosMin) ? quartosMin : null,
           vagasMin: Number.isFinite(vagasMin) ? vagasMin : null,
           tags,
+          ...(isPlatformAdmin
+            ? { prospeccao: formProspeccaoToPayload(form.prospeccao) }
+            : {}),
           ...(equipeId !== undefined ? { equipeId } : {}),
           ...(corretorId !== undefined ? { corretorId } : {}),
           ...(form.createdAt ? { createdAt: form.createdAt } : {}),
@@ -957,6 +1058,9 @@ function LeadsPage() {
           ? { quartosMin }
           : {}),
         ...(Number.isFinite(vagasMin) && vagasMin != null ? { vagasMin } : {}),
+        ...(isPlatformAdmin
+          ? { prospeccao: formProspeccaoToPayload(form.prospeccao) }
+          : {}),
         tags,
         ...(equipeId !== undefined ? { equipeId } : {}),
         ...(corretorId !== undefined ? { corretorId } : {}),
@@ -1115,16 +1219,20 @@ function LeadsPage() {
     setImportSaving(true);
     try {
       const result = await importLeads(
-        valid.map((r) => ({
-          nome: r.nome,
-          telefone: r.telefone,
-          origem: r.origem || origemOptions[0] || "Importação",
-          interesse: r.interesse,
-          cidade: r.cidade || undefined,
-          bairro: r.bairro || undefined,
-          prioridade: r.prioridade,
-          renda: r.renda,
-        })),
+        valid.map((r) => {
+          const prospeccao = compactProspeccao(r.prospeccao);
+          return {
+            nome: r.nome,
+            telefone: r.telefone,
+            origem: r.origem || origemOptions[0] || "Importação",
+            interesse: r.interesse,
+            cidade: r.cidade || undefined,
+            bairro: r.bairro || undefined,
+            prioridade: r.prioridade,
+            renda: r.renda,
+            ...(prospeccao ? { prospeccao } : {}),
+          };
+        }),
       );
       setImportOpen(false);
       setImportRows([]);
@@ -1311,7 +1419,7 @@ function LeadsPage() {
                   htmlFor="lead-nome"
                   className="text-xs text-muted-foreground"
                 >
-                  Nome completo{" "}
+                  {isPlatformAdmin ? "Empresa" : "Nome completo"}{" "}
                   <span className="text-destructive" aria-hidden="true">
                     *
                   </span>
@@ -1320,7 +1428,11 @@ function LeadsPage() {
                   id="lead-nome"
                   value={form.nome}
                   onChange={(e) => setField("nome", e.target.value)}
-                  placeholder="Ex.: João Pereira"
+                  placeholder={
+                    isPlatformAdmin
+                      ? "Ex.: Âncora Imobiliária"
+                      : "Ex.: João Pereira"
+                  }
                   className="h-10 bg-background"
                   autoFocus
                   required
@@ -1495,8 +1607,10 @@ function LeadsPage() {
 
             <FormSection
               icon={<Wallet className="w-3.5 h-3.5 text-primary" />}
-              title="Renda"
+              title={isPlatformAdmin ? "Qualificação" : "Renda"}
             >
+              {isPlatformAdmin ? null : (
+              <>
               <div className="space-y-1.5">
                 <Label
                   htmlFor="lead-renda"
@@ -1633,6 +1747,8 @@ function LeadsPage() {
                   />
                 </div>
               </div>
+              </>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
                   Prioridade
@@ -1727,7 +1843,7 @@ function LeadsPage() {
                     htmlFor="lead-cidade"
                     className="text-xs text-muted-foreground"
                   >
-                    Cidade
+                    {isPlatformAdmin ? "Município" : "Cidade"}
                   </Label>
                   <Input
                     id="lead-cidade"
@@ -1742,7 +1858,7 @@ function LeadsPage() {
                     htmlFor="lead-bairro"
                     className="text-xs text-muted-foreground"
                   >
-                    Bairro
+                    {isPlatformAdmin ? "Bairro/Região" : "Bairro"}
                   </Label>
                   <Input
                     id="lead-bairro"
@@ -1753,7 +1869,202 @@ function LeadsPage() {
                   />
                 </div>
               </div>
+              {isPlatformAdmin ? (
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="lead-endereco"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Endereço
+                  </Label>
+                  <Input
+                    id="lead-endereco"
+                    value={form.prospeccao.endereco}
+                    onChange={(e) => setProspeccao("endereco", e.target.value)}
+                    placeholder="Rua, número"
+                    className="h-10 bg-background"
+                  />
+                </div>
+              ) : null}
             </FormSection>
+
+            {isPlatformAdmin ? (
+              <FormSection
+                icon={<Building2 className="w-3.5 h-3.5 text-primary" />}
+                title="Prospecção"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Instagram
+                    </Label>
+                    <Input
+                      value={form.prospeccao.instagram}
+                      onChange={(e) =>
+                        setProspeccao("instagram", e.target.value)
+                      }
+                      placeholder="https://instagram.com/..."
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Site
+                    </Label>
+                    <Input
+                      value={form.prospeccao.site}
+                      onChange={(e) => setProspeccao("site", e.target.value)}
+                      placeholder="https://"
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      LinkedIn
+                    </Label>
+                    <Input
+                      value={form.prospeccao.linkedin}
+                      onChange={(e) =>
+                        setProspeccao("linkedin", e.target.value)
+                      }
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Quem abordar
+                    </Label>
+                    <Input
+                      value={form.prospeccao.quemAbordar}
+                      onChange={(e) =>
+                        setProspeccao("quemAbordar", e.target.value)
+                      }
+                      placeholder="Dono/gestor comercial"
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Atuação / Serviços
+                  </Label>
+                  <Input
+                    value={form.prospeccao.atuacao}
+                    onChange={(e) => setProspeccao("atuacao", e.target.value)}
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      ["lancamentos", "Lançamentos?"],
+                      ["usados", "Usados?"],
+                      ["locacao", "Locação?"],
+                      ["administracao", "Administração?"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <div key={key} className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        {label}
+                      </Label>
+                      <Select
+                        value={form.prospeccao[key] || "__none__"}
+                        onValueChange={(v) =>
+                          setProspeccao(key, v === "__none__" ? "" : v)
+                        }
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">—</SelectItem>
+                          {PROSPECCAO_SIM_NAO.map((opt) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      CRM identificado
+                    </Label>
+                    <Input
+                      value={form.prospeccao.crmIdentificado}
+                      onChange={(e) =>
+                        setProspeccao("crmIdentificado", e.target.value)
+                      }
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Tecnologia identificada
+                    </Label>
+                    <Input
+                      value={form.prospeccao.tecnologia}
+                      onChange={(e) =>
+                        setProspeccao("tecnologia", e.target.value)
+                      }
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Sinais para prospecção
+                  </Label>
+                  <Input
+                    value={form.prospeccao.sinais}
+                    onChange={(e) => setProspeccao("sinais", e.target.value)}
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Produto indicado
+                    </Label>
+                    <Input
+                      value={form.prospeccao.produtoIndicado}
+                      onChange={(e) =>
+                        setProspeccao("produtoIndicado", e.target.value)
+                      }
+                      placeholder="CRM + IA SDR"
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Fit (0-10)
+                    </Label>
+                    <Input
+                      inputMode="decimal"
+                      value={form.prospeccao.fit}
+                      onChange={(e) => setProspeccao("fit", e.target.value)}
+                      placeholder="8.5"
+                      className="h-10 bg-background"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Motivo do fit
+                  </Label>
+                  <Input
+                    value={form.prospeccao.motivoFit}
+                    onChange={(e) =>
+                      setProspeccao("motivoFit", e.target.value)
+                    }
+                    className="h-10 bg-background"
+                  />
+                </div>
+              </FormSection>
+            ) : null}
           </FormDialogBody>
 
           <FormDialogActions
@@ -2399,18 +2710,18 @@ function LeadsPage() {
                   disabled={filteredLeads.length === 0 || bulkDeleting}
                 />
               </TableHead>
-              <TableHead className="w-[16%]">Lead</TableHead>
+              <TableHead className="w-[16%]">{isPlatformAdmin ? "Empresa" : "Lead"}</TableHead>
               <TableHead className="w-32">Origem</TableHead>
               <TableHead className="w-22 pr-4 text-center!">
-                Tipo de renda
+                {isPlatformAdmin ? "Produto" : "Tipo de renda"}
               </TableHead>
               <TableHead className="w-36">Etapa</TableHead>
               {!isCorretor && <TableHead className="w-28">Equipe</TableHead>}
               {!isCorretor && (
                 <TableHead className="w-[14%]">Corretor</TableHead>
               )}
-              <TableHead className="w-[7%]">Renda</TableHead>
-              <TableHead className="w-[8%]">Estado civil</TableHead>
+              <TableHead className="w-[7%]">{isPlatformAdmin ? "Fit" : "Renda"}</TableHead>
+              <TableHead className="w-[8%]">{isPlatformAdmin ? "Município" : "Estado civil"}</TableHead>
               <TableHead className="w-19">Prioridade</TableHead>
               <TableHead className="w-28">Atualizado</TableHead>
               <TableHead className="sticky right-0 z-20 w-16 text-right">
@@ -2512,9 +2823,13 @@ function LeadsPage() {
                       )}
                     </TableCell>
                     <TableCell className="truncate pr-4 text-center!">
-                      {l.tipoRenda || (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {isPlatformAdmin
+                        ? l.prospeccao?.produtoIndicado || (
+                            <span className="text-muted-foreground">—</span>
+                          )
+                        : l.tipoRenda || (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -2552,16 +2867,26 @@ function LeadsPage() {
                       </TableCell>
                     )}
                     <TableCell className="truncate font-medium tabular-nums">
-                      {l.renda != null ? (
+                      {isPlatformAdmin ? (
+                        l.prospeccao?.fit != null ? (
+                          l.prospeccao.fit
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )
+                      ) : l.renda != null ? (
                         brl(l.renda)
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="truncate">
-                      {l.estadoCivil || (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {isPlatformAdmin
+                        ? l.cidade || (
+                            <span className="text-muted-foreground">—</span>
+                          )
+                        : l.estadoCivil || (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                     </TableCell>
                     <TableCell className="truncate">
                       <Badge
@@ -2644,6 +2969,40 @@ function LeadsPage() {
           </DialogHeader>
 
           <div className="space-y-4 text-sm">
+            {isPlatformAdmin ? (
+              <div>
+                <p className="font-medium mb-1.5">Planilha de prospecção</p>
+                <p className="text-muted-foreground mb-2">
+                  Aceita a planilha Zone Connection (aba de leads) com Empresa,
+                  Município, Bairro/Região, Endereço, Telefone/WhatsApp, redes,
+                  atuação, módulos, CRM, produto, fit, prioridade e fonte.
+                </p>
+                <div className="rounded-md border overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/60 text-left">
+                        <th className="p-2 font-medium">Empresa</th>
+                        <th className="p-2 font-medium">Município</th>
+                        <th className="p-2 font-medium">Telefone/WhatsApp</th>
+                        <th className="p-2 font-medium">Produto indicado</th>
+                        <th className="p-2 font-medium">Fit</th>
+                        <th className="p-2 font-medium">Fonte</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t text-muted-foreground">
+                        <td className="p-2">Âncora Imobiliária</td>
+                        <td className="p-2">Recife</td>
+                        <td className="p-2 tabular-nums">(81) 2123-3333</td>
+                        <td className="p-2">CRM + IA SDR</td>
+                        <td className="p-2">9.5</td>
+                        <td className="p-2">Google Maps</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
             <div>
               <p className="font-medium mb-1.5">Colunas (nessa ordem)</p>
               <div className="rounded-md border overflow-x-auto">
@@ -2667,23 +3026,35 @@ function LeadsPage() {
                 </table>
               </div>
             </div>
+            )}
 
             <div>
               <p className="font-medium mb-1.5">Regras</p>
               <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                 <li>
-                  <span className="text-foreground">Nome do Cliente</span> e{" "}
-                  <span className="text-foreground">Telefone</span> são
+                  <span className="text-foreground">
+                    {isPlatformAdmin ? "Empresa" : "Nome do Cliente"}
+                  </span>{" "}
+                  e <span className="text-foreground">Telefone</span> são
                   obrigatórios
                 </li>
                 <li>
-                  Telefone já com DDD, ex.: (81) 98888-7777 ou 81 98888-7777
+                  Telefone já com DDD, ex.: (81) 98888-7777 ou 81 98888-7777.
+                  Se houver mais de um número na célula, usa o primeiro.
                 </li>
-                <li>Data Captura e Origem são opcionais</li>
+                {isPlatformAdmin ? (
+                  <li>
+                    As demais colunas (endereço, redes, fit, produto, fonte)
+                    são opcionais e entram na ficha de prospecção.
+                  </li>
+                ) : (
+                  <li>Data Captura e Origem são opcionais</li>
+                )}
                 <li>Uma linha = um lead</li>
               </ul>
             </div>
 
+            {isPlatformAdmin ? null : (
             <div>
               <p className="font-medium mb-1.5">Não incluir</p>
               <p className="text-muted-foreground">
@@ -2691,13 +3062,21 @@ function LeadsPage() {
                 mensagem de captura, etapa, corretor ou prioridade.
               </p>
             </div>
+            )}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
             <Button
               type="button"
               variant="outline"
-              onClick={() => downloadImportTemplate()}
+              onClick={() =>
+                downloadImportTemplate(
+                  isPlatformAdmin
+                    ? "modelo-importacao-prospeccao.xlsx"
+                    : undefined,
+                  isPlatformAdmin ? { prospeccao: true } : undefined,
+                )
+              }
             >
               <FileSpreadsheet className="w-4 h-4 mr-1" />
               Baixar modelo Excel
@@ -2724,17 +3103,28 @@ function LeadsPage() {
             <DialogTitle>Confirmar importação</DialogTitle>
             <DialogDescription>
               {importFileName ? `Arquivo: ${importFileName}. ` : ""}
-              Formato: Data Captura, Nome do Cliente, Telefone (com DDD) e
-              Origem. Hora, e-mail, imóvel e mensagem são ignorados.
+              {isPlatformAdmin
+                ? "Lê a aba de leads da planilha de prospecção (Empresa, telefone, município, produto, fit e demais campos)."
+                : "Formato: Data Captura, Nome do Cliente, Telefone (com DDD) e Origem. Hora, e-mail, imóvel e mensagem são ignorados."}
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto flex-1 min-h-0 border rounded-md">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/80 backdrop-blur">
                 <tr className="text-left text-muted-foreground border-b">
-                  <th className="p-2 font-medium">Nome</th>
+                  <th className="p-2 font-medium">
+                    {isPlatformAdmin ? "Empresa" : "Nome"}
+                  </th>
                   <th className="p-2 font-medium">Telefone</th>
-                  <th className="p-2 font-medium">Origem</th>
+                  <th className="p-2 font-medium">
+                    {isPlatformAdmin ? "Município" : "Origem"}
+                  </th>
+                  {isPlatformAdmin ? (
+                    <>
+                      <th className="p-2 font-medium">Produto</th>
+                      <th className="p-2 font-medium">Fit</th>
+                    </>
+                  ) : null}
                   <th className="p-2 font-medium">Status</th>
                 </tr>
               </thead>
@@ -2749,7 +3139,21 @@ function LeadsPage() {
                   >
                     <td className="p-2">{row.nome || "—"}</td>
                     <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
-                    <td className="p-2">{row.origem || "—"}</td>
+                    <td className="p-2">
+                      {isPlatformAdmin
+                        ? row.cidade || row.origem || "—"
+                        : row.origem || "—"}
+                    </td>
+                    {isPlatformAdmin ? (
+                      <>
+                        <td className="p-2">
+                          {row.prospeccao?.produtoIndicado || "—"}
+                        </td>
+                        <td className="p-2 tabular-nums">
+                          {row.prospeccao?.fit ?? "—"}
+                        </td>
+                      </>
+                    ) : null}
                     <td className="p-2">
                       {row.error ? (
                         <span className="text-xs text-destructive">

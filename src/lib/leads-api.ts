@@ -5,6 +5,7 @@ import type {
   Lead,
   StageId,
 } from "@/lib/crm-types";
+import type { LeadProspeccao } from "@/lib/lead-prospeccao";
 import type {
   CorretorMonitoramento,
   LeadMonitoramento,
@@ -32,6 +33,7 @@ export interface ApiLead {
   orcamentoMax: number | null;
   quartosMin: number | null;
   vagasMin: number | null;
+  prospeccao?: LeadProspeccao | null;
   tags: string[];
   corretorId: string | null;
   corretor: { id: string; name: string } | null;
@@ -89,6 +91,7 @@ export type CreateLeadInput = {
   quartosMin?: number | null;
   vagasMin?: number | null;
   tags?: string[];
+  prospeccao?: LeadProspeccao | null;
   /** UUID do corretor dono. null = pool da equipe. */
   corretorId?: string | null;
   /** UUID da equipe/gerente (pool). */
@@ -133,6 +136,7 @@ export function mapApiLead(api: ApiLead): Lead {
     orcamentoMax: api.orcamentoMax ?? null,
     quartosMin: api.quartosMin ?? null,
     vagasMin: api.vagasMin ?? null,
+    prospeccao: api.prospeccao ?? null,
     createdAt: api.createdAt,
     updatedAt: formatUpdatedAt(api.updatedAt),
     updatedAtIso: api.updatedAt,
@@ -211,6 +215,7 @@ export type ImportLeadInput = {
   prioridade?: Lead["prioridade"];
   renda?: number | null;
   corretorId?: string;
+  prospeccao?: LeadProspeccao | null;
 };
 
 export type ImportLeadsResult = {

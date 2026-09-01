@@ -4,6 +4,8 @@ import autoTable from "jspdf-autotable";
 import mammoth from "mammoth";
 import type { Lead } from "@/lib/crm-types";
 import { formatPhone, isValidPhone, phoneDigits } from "@/lib/phone";
+import type { LeadProspeccao } from "@/lib/lead-prospeccao";
+import { EMPTY_PROSPECCAO } from "@/lib/lead-prospeccao";
 
 /** Formato único de import/export (SupremoCRM simplificado). */
 export const LEAD_IO_COLUMNS = [
@@ -11,6 +13,32 @@ export const LEAD_IO_COLUMNS = [
   "Nome do Cliente",
   "Telefone",
   "Origem",
+] as const;
+
+/** Colunas da planilha de prospecção B2B (super tenant). */
+export const LEAD_PROSPECCAO_IO_COLUMNS = [
+  "Empresa",
+  "Município",
+  "Bairro/Região",
+  "Endereço",
+  "Telefone/WhatsApp",
+  "Instagram",
+  "Site",
+  "LinkedIn",
+  "Atuação / Serviços",
+  "Lançamentos?",
+  "Usados?",
+  "Locação?",
+  "Administração?",
+  "CRM identificado",
+  "Tecnologia identificada",
+  "Sinais para prospecção",
+  "Quem abordar",
+  "Produto indicado",
+  "Fit (0-10)",
+  "Prioridade",
+  "Motivo do fit",
+  "Fonte",
 ] as const;
 
 export type ParsedImportLead = {
@@ -23,6 +51,7 @@ export type ParsedImportLead = {
   bairro: string;
   prioridade: "Alta" | "Média" | "Baixa";
   renda: number | null;
+  prospeccao?: LeadProspeccao | null;
   /** Linha inválida: motivo. */
   error?: string;
 };
@@ -63,13 +92,43 @@ const HEADER_ALIASES: Record<string, string> = {
   cidade: "cidade",
   city: "cidade",
   bairro: "bairro",
-  prioridade: "skip",
-  priority: "skip",
+  prioridade: "prioridade",
+  priority: "prioridade",
   renda: "renda",
   income: "renda",
   etapa: "skip",
   corretor: "skip",
   atualizado: "skip",
+  empresa: "nome",
+  municipio: "cidade",
+  "bairro/regiao": "bairro",
+  "bairro / regiao": "bairro",
+  endereco: "endereco",
+  "telefone/whatsapp": "telefone",
+  "telefone / whatsapp": "telefone",
+  instagram: "instagram",
+  site: "site",
+  linkedin: "linkedin",
+  "atuacao / servicos": "atuacao",
+  "atuacao/servicos": "atuacao",
+  atuacao: "atuacao",
+  "lancamentos?": "lancamentos",
+  lancamentos: "lancamentos",
+  "usados?": "usados",
+  usados: "usados",
+  "locacao?": "locacao",
+  locacao: "locacao",
+  "administracao?": "administracao",
+  administracao: "administracao",
+  "crm identificado": "crmIdentificado",
+  "tecnologia identificada": "tecnologia",
+  "sinais para prospeccao": "sinais",
+  "quem abordar": "quemAbordar",
+  "produto indicado": "produtoIndicado",
+  "fit (0-10)": "fit",
+  fit: "fit",
+  "motivo do fit": "motivoFit",
+  fonte: "origem",
 };
 
 function normalizeHeader(value: unknown): string {
@@ -78,6 +137,31 @@ function normalizeHeader(value: unknown): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "");
+}
+
+function extractFirstPhone(value: unknown): string {
+  const text = String(value ?? "");
+  const matches = text.match(/(?:\+?55\s*)?\(?\d{2}\)?\s*\d{4,5}[-\s]?\d{4}/g);
+  if (!matches?.length) return formatPhone(text);
+  return formatPhone(matches[0]);
+}
+
+function cellText(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function parseFit(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(String(value).replace(",", "."));
+  if (!Number.isFinite(n)) return null;
+  return Math.min(10, Math.max(0, Math.round(n * 10) / 10));
+}
+
+function parsePrioridade(value: unknown): "Alta" | "Média" | "Baixa" {
+  const n = normalizeHeader(value);
+  if (n === "alta") return "Alta";
+  if (n === "baixa") return "Baixa";
+  return "Média";
 }
 
 function parseRenda(value: unknown): number | null {
@@ -97,11 +181,12 @@ function stripTimePrefix(nome: string): string {
 
 /** Junta DDD + telefone em um único número formatado. */
 function mergePhone(ddd: unknown, telefone: unknown): string {
+  const fromCell = extractFirstPhone(telefone);
+  if (isValidPhone(fromCell)) return fromCell;
   const dddDigits = String(ddd ?? "")
     .replace(/\D/g, "")
     .slice(0, 2);
   const phoneDigitsOnly = String(telefone ?? "").replace(/\D/g, "");
-  // Se o telefone já traz DDD (10–11 dígitos), usa direto
   if (phoneDigitsOnly.length >= 10) {
     return formatPhone(phoneDigitsOnly);
   }
@@ -124,6 +209,28 @@ function buildLeadFromCells(
   const cidade = String(cells.cidade ?? "").trim();
   const bairro = String(cells.bairro ?? "").trim();
   const renda = parseRenda(cells.renda);
+  const prospeccao: LeadProspeccao = {
+    ...EMPTY_PROSPECCAO,
+    endereco: cellText(cells.endereco) || "",
+    instagram: cellText(cells.instagram) || "",
+    site: cellText(cells.site) || "",
+    linkedin: cellText(cells.linkedin) || "",
+    atuacao: cellText(cells.atuacao) || "",
+    lancamentos: cellText(cells.lancamentos) || "",
+    usados: cellText(cells.usados) || "",
+    locacao: cellText(cells.locacao) || "",
+    administracao: cellText(cells.administracao) || "",
+    crmIdentificado: cellText(cells.crmIdentificado) || "",
+    tecnologia: cellText(cells.tecnologia) || "",
+    sinais: cellText(cells.sinais) || "",
+    quemAbordar: cellText(cells.quemAbordar) || "",
+    produtoIndicado: cellText(cells.produtoIndicado) || "",
+    fit: parseFit(cells.fit),
+    motivoFit: cellText(cells.motivoFit) || "",
+  };
+  const hasProspeccao = Object.entries(prospeccao).some(
+    ([k, v]) => k === "fit" ? v != null : Boolean(String(v ?? "").trim()),
+  );
 
   const lead: ParsedImportLead = {
     nome,
@@ -133,8 +240,9 @@ function buildLeadFromCells(
     interesse: "Comprar",
     cidade,
     bairro,
-    prioridade: "Média",
+    prioridade: cells.prioridade ? parsePrioridade(cells.prioridade) : "Média",
     renda,
+    prospeccao: hasProspeccao ? prospeccao : undefined,
   };
 
   if (nome.length < 2) lead.error = "Nome inválido";
@@ -188,7 +296,7 @@ function rowsFromMatrix(
       !isValidPhone(mergePhone(cells.ddd, cells.telefone))
     ) {
       for (const cell of row) {
-        const formatted = formatPhone(String(cell ?? ""));
+        const formatted = mergePhone("", cell);
         if (isValidPhone(formatted)) {
           cells.telefone = formatted;
           cells.ddd = "";
@@ -200,17 +308,51 @@ function rowsFromMatrix(
     results.push(buildLeadFromCells(cells, defaults));
   }
 
-  return dedupeByPhone(results);
+  return dedupeImportRows(results);
 }
 
-function dedupeByPhone(rows: ParsedImportLead[]): ParsedImportLead[] {
+function dedupeImportRows(rows: ParsedImportLead[]): ParsedImportLead[] {
   const seen = new Set<string>();
   return rows.filter((r) => {
-    const key = phoneDigits(r.telefone);
+    const phone = phoneDigits(r.telefone);
+    if (!phone && r.error) return true;
+    const key = r.prospeccao
+      ? `${normalizeHeader(r.nome)}|${phone}`
+      : phone;
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function matrixFromSheet(sheet: XLSX.WorkSheet): unknown[][] {
+  return XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    raw: false,
+  }) as unknown[][];
+}
+
+function headerScore(headerRow: unknown[]): number {
+  const mapped = mapHeaderKeys(headerRow);
+  return mapped.filter(Boolean).length;
+}
+
+function pickImportSheet(workbook: XLSX.WorkBook): XLSX.WorkSheet | null {
+  let best: { sheet: XLSX.WorkSheet; score: number } | null = null;
+  for (const name of workbook.SheetNames) {
+    const sheet = workbook.Sheets[name];
+    if (!sheet) continue;
+    const matrix = matrixFromSheet(sheet);
+    const score = headerScore(matrix[0] ?? []);
+    const looksProspeccao = (matrix[0] ?? []).some((h) => {
+      const n = normalizeHeader(h);
+      return n === "empresa" || n.includes("produto indicado") || n === "fit (0-10)";
+    });
+    const boosted = score + (looksProspeccao ? 20 : 0);
+    if (!best || boosted > best.score) best = { sheet, score: boosted };
+  }
+  return best?.sheet ?? null;
 }
 
 export function parseLeadsFromExcel(
@@ -218,15 +360,9 @@ export function parseLeadsFromExcel(
   defaults: { origem: string },
 ): ParsedImportLead[] {
   const workbook = XLSX.read(buffer, { type: "array" });
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) return [];
-  const sheet = workbook.Sheets[sheetName];
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-    header: 1,
-    defval: "",
-    raw: false,
-  }) as unknown[][];
-  return rowsFromMatrix(matrix, defaults);
+  const sheet = pickImportSheet(workbook);
+  if (!sheet) return [];
+  return rowsFromMatrix(matrixFromSheet(sheet), defaults);
 }
 
 function parseHtmlTables(
@@ -310,7 +446,7 @@ function parseSupremoPdfLines(
     );
   }
 
-  return dedupeByPhone(results);
+  return dedupeImportRows(results);
 }
 
 function parseTextLines(
@@ -365,7 +501,7 @@ function parseTextLines(
     );
   }
 
-  return dedupeByPhone(results);
+  return dedupeImportRows(results);
 }
 
 export async function parseLeadsFromWord(
@@ -456,8 +592,8 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 /** Monta planilha forçando texto (evita Excel/Sheets interpretar telefone como fórmula/número). */
-function buildLeadsSheet(rows: string[][]) {
-  const aoa = [Array.from(LEAD_IO_COLUMNS), ...rows];
+function buildTextSheet(headers: readonly string[], rows: string[][]) {
+  const aoa = [Array.from(headers), ...rows];
   const sheet = XLSX.utils.aoa_to_sheet(aoa);
 
   const range = XLSX.utils.decode_range(sheet["!ref"] ?? "A1");
@@ -471,7 +607,7 @@ function buildLeadsSheet(rows: string[][]) {
     }
   }
 
-  sheet["!cols"] = LEAD_IO_COLUMNS.map((header, index) => {
+  sheet["!cols"] = headers.map((header, index) => {
     const maxLen = Math.max(
       header.length,
       ...rows.map((row) => String(row[index] ?? "").length),
@@ -481,6 +617,10 @@ function buildLeadsSheet(rows: string[][]) {
   });
 
   return sheet;
+}
+
+function buildLeadsSheet(rows: string[][]) {
+  return buildTextSheet(LEAD_IO_COLUMNS, rows);
 }
 
 function leadsToSheetRows(leads: Lead[]): string[][] {
@@ -545,12 +685,44 @@ export function exportLeadsToPdf(
 
 export function downloadImportTemplate(
   filename = "modelo-importacao-leads.xlsx",
+  opts?: { prospeccao?: boolean },
 ) {
   const workbook = XLSX.utils.book_new();
-  const sheet = buildLeadsSheet([
-    ["02/08/2026", "Maria Silva", "(81) 98888-7777", "WhatsApp"],
-  ]);
-  XLSX.utils.book_append_sheet(workbook, sheet, "Modelo");
+  const sheet = opts?.prospeccao
+    ? buildTextSheet(LEAD_PROSPECCAO_IO_COLUMNS, [
+        [
+          "Âncora Imobiliária",
+          "Recife",
+          "Madalena",
+          "R. Demócrito de Souza Filho, 95",
+          "(81) 2123-3333",
+          "",
+          "https://ancoraimobiliaria.com.br/",
+          "",
+          "Venda; Locação; Administração",
+          "Sim",
+          "Sim",
+          "Sim",
+          "Sim",
+          "Não identificado publicamente",
+          "Não identificado publicamente",
+          "Presença digital forte",
+          "Dono/gestor comercial",
+          "CRM + IA SDR + Landing",
+          "9.5",
+          "Alta",
+          "Grande operação e atuação completa",
+          "Google Maps + site oficial",
+        ],
+      ])
+    : buildLeadsSheet([
+        ["02/08/2026", "Maria Silva", "(81) 98888-7777", "WhatsApp"],
+      ]);
+  XLSX.utils.book_append_sheet(
+    workbook,
+    sheet,
+    opts?.prospeccao ? "Leads RMR" : "Modelo",
+  );
   const data = XLSX.write(workbook, {
     bookType: "xlsx",
     type: "array",
