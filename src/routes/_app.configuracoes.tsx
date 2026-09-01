@@ -62,6 +62,7 @@ import { ConfigModulosOperacaoPanel } from "@/components/config-modulos-operacao
 import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
 import { ConfigCreciPanel } from "@/components/config-creci-panel";
 import { ConfigConexoesPanel } from "@/components/config-conexoes-panel";
+import { ConfigHideClientesMenuCard } from "@/components/config-hide-clientes-menu-card";
 import { ConfigUsuarioExtraPanel } from "@/components/config-usuario-extra-panel";
 import { ConfigSettingsLayout } from "@/components/config-settings-layout";
 import { userCanInformarCreci } from "@/lib/users-api";
@@ -633,14 +634,19 @@ function Config() {
         ) : null}
 
         {selection.item === "conexoes" ? (
-          <ConfigConexoesPanel
-            selectingMeta={search.meta === "select"}
-            oruloCallbackCode={
-              search.orulo === "callback" || search.code
-                ? search.code
-                : undefined
-            }
-          />
+          <div className="space-y-4">
+            {!isSolo && !isPlatformAdmin && !showOpsTabs ? (
+              <ConfigHideClientesMenuCard />
+            ) : null}
+            <ConfigConexoesPanel
+              selectingMeta={search.meta === "select"}
+              oruloCallbackCode={
+                search.orulo === "callback" || search.code
+                  ? search.code
+                  : undefined
+              }
+            />
+          </div>
         ) : null}
 
         {selection.item === "empresa" ? <ConfigEmpresaPanel /> : null}

@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import {
-  Building2,
-  Eye,
-  Home,
-  KeyRound,
-  Landmark,
-  UserCircle2,
-} from "lucide-react";
+import { Building2, Eye, Home, KeyRound, Landmark } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +13,7 @@ import {
   updateTenantOperationModules,
   type TenantOperationModules,
 } from "@/lib/tenant-company-api";
-import {
-  getHideClientesFromSidebar,
-  setHideClientesFromSidebar,
-} from "@/lib/clientes-nav-prefs";
+import { ConfigHideClientesMenuCard } from "@/components/config-hide-clientes-menu-card";
 import { toast } from "sonner";
 
 const CARDS: Array<{
@@ -66,9 +56,6 @@ export function ConfigModulosOperacaoPanel() {
   const router = useRouter();
   const { refresh: refreshLeads } = useLeads();
   const [ops, setOps] = useState<TenantOperationModules | null>(null);
-  const [hideClientes, setHideClientes] = useState(() =>
-    getHideClientesFromSidebar(),
-  );
   const [adminVerClientes, setAdminVerClientes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -81,20 +68,7 @@ export function ConfigModulosOperacaoPanel() {
     try {
       const data = await fetchTenantOperationModules();
       setOps(data.operations);
-      const serverHasPref =
-        typeof data.modules?.hideClientesNav === "boolean";
-      const hide = serverHasPref
-        ? data.hideClientesNav === true
-        : getHideClientesFromSidebar();
-      setHideClientes(hide);
-      setHideClientesFromSidebar(hide);
       setAdminVerClientes(data.adminVerClientesCorretor === true);
-      if (!serverHasPref && hide && isAdmin) {
-        const saved = await updateTenantOperationModules({
-          hideClientesNav: true,
-        });
-        patchSessionTenantModules(saved.modules);
-      }
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -104,7 +78,7 @@ export function ConfigModulosOperacaoPanel() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -130,40 +104,6 @@ export function ConfigModulosOperacaoPanel() {
         err instanceof ApiError
           ? err.message
           : "Não foi possível atualizar a operação.",
-      );
-    } finally {
-      setSavingKey(null);
-    }
-  }
-
-  async function toggleHideClientes(checked: boolean) {
-    if (!isAdmin) return;
-    setHideClientes(checked);
-    setHideClientesFromSidebar(checked);
-    setSavingKey("hideClientesNav");
-    try {
-      const data = await updateTenantOperationModules({
-        hideClientesNav: checked,
-      });
-      setOps(data.operations);
-      setHideClientes(data.hideClientesNav === true);
-      setHideClientesFromSidebar(data.hideClientesNav === true);
-      patchSessionTenantModules(data.modules);
-      await fetchMe();
-      await router.invalidate();
-      toast.success(
-        checked
-          ? "Clientes e Funil de Clientes ocultos do menu."
-          : "Clientes e Funil de Clientes voltaram ao menu.",
-      );
-    } catch (err) {
-      const previous = !checked;
-      setHideClientes(previous);
-      setHideClientesFromSidebar(previous);
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível atualizar a visibilidade do menu.",
       );
     } finally {
       setSavingKey(null);
@@ -265,38 +205,7 @@ export function ConfigModulosOperacaoPanel() {
             </Card>
           );
         })}
-        {!isSolo ? (
-          <Card>
-            <CardHeader className="flex-row items-start gap-3 space-y-0">
-              <div className="rounded-lg border bg-muted/40 p-2">
-                <UserCircle2 className="h-5 w-5 text-brand-accent" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <CardTitle className="text-base">
-                  Clientes e Funil de Clientes
-                </CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Só oculta do menu. As telas continuam acessíveis se alguém
-                  abrir o endereço.
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium">Ocultar do menu</p>
-                <p className="text-xs text-muted-foreground">
-                  Some Clientes e Funil de Clientes da barra lateral.
-                </p>
-              </div>
-              <Switch
-                checked={hideClientes}
-                disabled={!isAdmin || savingKey === "hideClientesNav"}
-                onCheckedChange={(checked) => void toggleHideClientes(checked)}
-                aria-label="Ocultar Clientes e Funil de Clientes do menu"
-              />
-            </CardContent>
-          </Card>
-        ) : null}
+        {!isSolo ? <ConfigHideClientesMenuCard /> : null}
         {isAdmin && !isSolo ? (
           <Card>
             <CardHeader className="flex-row items-start gap-3 space-y-0">

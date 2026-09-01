@@ -3,18 +3,24 @@ import { getSession } from "@/lib/auth";
 
 const KEY_PREFIX = "clientes.hideFromSidebar";
 export const CLIENTES_NAV_EVENT = "clientes-nav-pref";
-export const HIDE_CLIENTES_NAV_KEY = "hideClientesNav";
 export const ADMIN_VER_CLIENTES_CORRETOR_KEY = "adminVerClientesCorretor";
 
 function storageKey() {
   const session = getSession();
   const tenantId = session?.tenant?.id ?? session?.tenantId ?? "default";
+  const userId = session?.id ?? "anon";
+  return `${KEY_PREFIX}.${tenantId}.${userId}`;
+}
+
+function legacyTenantStorageKey() {
+  const session = getSession();
+  const tenantId = session?.tenant?.id ?? session?.tenantId ?? "default";
   return `${KEY_PREFIX}.${tenantId}`;
 }
 
-function readLocalHide(): boolean | null {
+function readStoredFlag(key: string): boolean | null {
   try {
-    const raw = localStorage.getItem(storageKey());
+    const raw = localStorage.getItem(key);
     if (raw === "1" || raw === "true") return true;
     if (raw === "0" || raw === "false") return false;
     return null;
@@ -23,12 +29,11 @@ function readLocalHide(): boolean | null {
   }
 }
 
-/** Ligado = some Clientes e Funil de Clientes do menu. */
+/** Ligado = some Clientes e Funil de Clientes do menu deste usuário. */
 export function getHideClientesFromSidebar(): boolean {
-  const session = getSession();
-  const fromTenant = session?.tenant?.modules?.[HIDE_CLIENTES_NAV_KEY];
-  if (typeof fromTenant === "boolean") return fromTenant;
-  return readLocalHide() === true;
+  const own = readStoredFlag(storageKey());
+  if (own !== null) return own;
+  return readStoredFlag(legacyTenantStorageKey()) === true;
 }
 
 export function setHideClientesFromSidebar(hide: boolean): void {
