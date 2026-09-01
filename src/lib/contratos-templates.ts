@@ -24,7 +24,10 @@ export type ContratoTemplateId =
   | "parentesco-sem-conjuge"
   | "parentesco-com-conjuge"
   | "intermediacao"
-  | "checklist-renda-informal";
+  | "checklist-renda-informal"
+  | "saas-ouro"
+  | "saas-prata-admin"
+  | "saas-prata-financeiro";
 
 export type ContratoTemplate = {
   id: ContratoTemplateId;
@@ -32,6 +35,117 @@ export type ContratoTemplate = {
   descricao: string;
   fields: ContratoField[];
 };
+
+const SAAS_CONTRATO_FIELDS: ContratoField[] = [
+  {
+    key: "contratadaNome",
+    label: "Contratada (nome)",
+    type: "text",
+    required: true,
+    defaultValue: "ZONE CONNECTION",
+  },
+  {
+    key: "contratadaRepresentante",
+    label: "Representante da contratada",
+    type: "text",
+    required: true,
+    defaultValue: "Eduardo Alves de Santana",
+  },
+  {
+    key: "contratadaCpf",
+    label: "CPF do representante da contratada",
+    type: "cpf",
+    required: true,
+    defaultValue: "712.919.534-77",
+  },
+  {
+    key: "contratadaCidade",
+    label: "Sede da contratada",
+    type: "text",
+    required: true,
+    defaultValue: "Camaragibe, Estado de Pernambuco",
+  },
+  {
+    key: "contratanteNome",
+    label: "Contratante (razão social)",
+    type: "text",
+    required: true,
+    placeholder: "Imobiliária Exemplo LTDA",
+  },
+  {
+    key: "contratanteCnpj",
+    label: "CNPJ do contratante",
+    type: "cnpj",
+    required: true,
+  },
+  {
+    key: "contratanteEndereco",
+    label: "Sede do contratante",
+    type: "textarea",
+    required: true,
+  },
+  {
+    key: "contratanteRepresentante",
+    label: "Representante do contratante",
+    type: "text",
+    required: true,
+  },
+  {
+    key: "contratanteCargo",
+    label: "Cargo do representante",
+    type: "text",
+    required: true,
+    defaultValue: "Diretor Executivo",
+  },
+  {
+    key: "contratanteCpf",
+    label: "CPF do representante do contratante",
+    type: "cpf",
+    required: true,
+  },
+  {
+    key: "diaVencimento",
+    label: "Dia de vencimento (todo mês)",
+    type: "text",
+    required: true,
+    placeholder: "10",
+  },
+  { key: "data", label: "Data do contrato", type: "date", required: true },
+];
+
+export const SAAS_CONTRATO_IDS: ContratoTemplateId[] = [
+  "saas-ouro",
+  "saas-prata-admin",
+  "saas-prata-financeiro",
+];
+
+export function isSaasContratoTemplate(id: ContratoTemplateId) {
+  return SAAS_CONTRATO_IDS.includes(id);
+}
+
+const SAAS_CONTRATO_TEMPLATES: ContratoTemplate[] = [
+  {
+    id: "saas-ouro",
+    titulo: "Licença SaaS — Plano Ouro",
+    descricao:
+      "Contrato de licença de uso com CRM, financeiro, administrativo e até 30 usuários.",
+    fields: SAAS_CONTRATO_FIELDS,
+  },
+  {
+    id: "saas-prata-admin",
+    titulo: "Licença SaaS — Plano Prata Administrativo",
+    descricao:
+      "CRM Bronze mais módulo administrativo: equipes, ranking, metas, propostas e conversão.",
+    fields: SAAS_CONTRATO_FIELDS,
+  },
+  {
+    id: "saas-prata-financeiro",
+    titulo: "Licença SaaS — Plano Prata Financeiro",
+    descricao:
+      "CRM Bronze mais financeiro: pagar, receber, fluxo de caixa e comissionamento.",
+    fields: SAAS_CONTRATO_FIELDS,
+  },
+];
 
 export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
   {
@@ -541,6 +655,7 @@ export const CONTRATO_TEMPLATES: ContratoTemplate[] = [
       { key: "data", label: "Data", type: "date", required: true },
     ],
   },
+  ...SAAS_CONTRATO_TEMPLATES,
 ];
 
 export function getContratoTemplate(id: ContratoTemplateId) {

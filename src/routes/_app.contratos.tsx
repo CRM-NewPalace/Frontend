@@ -20,6 +20,7 @@ import { downloadContratoPdf, resolveContratoBrandHex } from "@/lib/contratos-pd
 import {
   CONTRATO_TEMPLATES,
   emptyContratoForm,
+  isSaasContratoTemplate,
   type ContratoField,
   type ContratoTemplate,
   type ContratoTemplateId,
@@ -39,6 +40,7 @@ import {
   Handshake,
   Loader2,
   Receipt,
+  Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -54,6 +56,12 @@ const TEMPLATES_BLOQUEADOS_CORRETOR: ReadonlySet<ContratoTemplateId> = new Set([
 
 function canUseContratoTemplate(templateId: ContratoTemplateId): boolean {
   const role = getSession()?.role;
+  if (role === "super_admin") {
+    return isSaasContratoTemplate(templateId);
+  }
+  if (isSaasContratoTemplate(templateId)) {
+    return false;
+  }
   if (role === "corretor" && TEMPLATES_BLOQUEADOS_CORRETOR.has(templateId)) {
     return false;
   }
@@ -94,6 +102,21 @@ const TEMPLATE_META: Record<
     accent: "text-amber-600 dark:text-amber-400",
     accentBg: "bg-amber-500/10",
   },
+  "saas-ouro": {
+    icon: Sparkles,
+    accent: "text-amber-600 dark:text-amber-400",
+    accentBg: "bg-amber-500/10",
+  },
+  "saas-prata-admin": {
+    icon: Sparkles,
+    accent: "text-slate-600 dark:text-slate-300",
+    accentBg: "bg-slate-500/10",
+  },
+  "saas-prata-financeiro": {
+    icon: Sparkles,
+    accent: "text-emerald-600 dark:text-emerald-400",
+    accentBg: "bg-emerald-500/10",
+  },
 };
 
 const CONTRATO_GROUPS: Array<{
@@ -125,6 +148,13 @@ const CONTRATO_GROUPS: Array<{
     title: "Financeiro",
     description: "Comprovantes de pagamento e recebimento.",
     templateIds: ["recibo-pagamento"],
+  },
+  {
+    id: "saas",
+    title: "Licenças Zone Connection",
+    description:
+      "Contratos de licença SaaS (Ouro e Prata) para imobiliárias.",
+    templateIds: ["saas-ouro", "saas-prata-admin", "saas-prata-financeiro"],
   },
 ];
 
@@ -226,6 +256,7 @@ function prefillFromTenant(
 ): Record<string, string> {
   const values = emptyContratoForm(template);
   if (!tenant) return values;
+  if (isSaasContratoTemplate(template.id)) return values;
 
   if (template.id === "intermediacao") {
     if (tenant.name?.trim()) values.contratadaNome = tenant.name.trim();
@@ -722,7 +753,11 @@ function ContratosPage() {
     <div className="space-y-5">
       <PageHeader
         title="Contratos"
-        description="Escolha o modelo por categoria, preencha os dados e baixe o PDF."
+        description={
+          getSession()?.role === "super_admin"
+            ? "Escolha o plano, preencha os dados da imobiliária contratante e baixe o PDF."
+            : "Escolha o modelo por categoria, preencha os dados e baixe o PDF."
+        }
       />
 
       <div className="space-y-5">

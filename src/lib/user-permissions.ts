@@ -398,7 +398,7 @@ export function defaultsFromRole(
     "leads.view": Boolean(modules.leads),
     "leads.create": Boolean(modules.leads),
     "leads.edit": Boolean(modules.leads),
-    "leads.delete": role === "admin",
+    "leads.delete": role === "admin" || role === "super_admin",
     "leads.viewLost": Boolean(modules.leadsPerdidos),
     "leads.viewOthers":
       role === "admin" || role === "gerente" || role === "analista",
