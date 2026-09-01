@@ -268,7 +268,9 @@ export function ComercialFunilBoard({
     let cancelled = false;
     void fetchFunilAtivo("comercial")
       .then((funil) => {
-        if (!cancelled) setFunilAtivo(funil);
+        if (cancelled) return;
+        setFunilAtivo(funil);
+        applyFunnelEtapas(funil.etapas);
       })
       .catch(() => {
         if (!cancelled) setFunilAtivo(null);
@@ -276,7 +278,7 @@ export function ComercialFunilBoard({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyFunnelEtapas]);
 
   useEffect(() => {
     if (isSolo || (!isAdmin && !isGerente)) return;
@@ -1313,6 +1315,31 @@ export function ComercialFunilBoard({
           </div>
         }
       />
+
+      {!catalogLoading && boardStages.length === 0 ? (
+        <div className="rounded-xl border border-dashed bg-muted/20 px-6 py-16 text-center">
+          <p className="text-sm font-medium text-foreground">
+            Nenhum funil comercial ativo neste ambiente.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Crie as etapas em Configurações para o kanban aparecer aqui.
+          </p>
+          {!isCorretor ? (
+            <Button
+              asChild
+              className={cn("mt-4", FUNIL_GRADIENT_BTN)}
+              style={FUNIL_GRADIENT_STYLE}
+            >
+              <Link
+                to="/configuracoes"
+                search={{ secao: "operacao", item: "funil" }}
+              >
+                Configurar funil
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {orphanLeads.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
