@@ -71,7 +71,10 @@ import {
   exportLostLeadsToPdf,
 } from "@/lib/lost-leads-io";
 import { brl, prioridadeBadgeClass } from "@/lib/crm-types";
-import { catalogColorBadgeClass } from "@/lib/catalog-colors";
+import {
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+} from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { displayEmail } from "@/lib/email";
 import { toast } from "sonner";
@@ -483,6 +486,9 @@ function LeadsPerdidos() {
                       detail.origem ? (
                         <Badge
                           className={catalogColorBadgeClass(
+                            colorByLabel("origem", detail.origem),
+                          )}
+                          style={catalogColorBadgeStyle(
                             colorByLabel("origem", detail.origem),
                           )}
                           title={detail.origem}

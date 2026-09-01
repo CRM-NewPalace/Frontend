@@ -93,8 +93,6 @@ import { MeuLeadBadge } from "@/components/meu-lead-badge";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
-  catalogColorSoftBadgeClass,
-  catalogColorSoftBadgeStyle,
   DEFAULT_CATALOG_COLOR,
   STATUS_CHIP_CLASS,
 } from "@/lib/catalog-colors";
@@ -3267,14 +3265,13 @@ function LeadsPage() {
                     <TableCell className="overflow-visible">
                       {l.origem ? (
                         <Badge
-                          variant="outline"
                           className={cn(
-                            catalogColorSoftBadgeClass(
+                            catalogColorBadgeClass(
                               colorByLabel("origem", l.origem),
                             ),
                             "w-auto max-w-full",
                           )}
-                          style={catalogColorSoftBadgeStyle(
+                          style={catalogColorBadgeStyle(
                             colorByLabel("origem", l.origem),
                           )}
                           title={l.origem}

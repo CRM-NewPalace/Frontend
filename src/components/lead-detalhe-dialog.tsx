@@ -42,8 +42,6 @@ import { docStatus1BadgeClass } from "@/lib/documentacao-status";
 import {
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
-  catalogColorSoftBadgeClass,
-  catalogColorSoftBadgeStyle,
 } from "@/lib/catalog-colors";
 import { useCatalog } from "@/lib/catalog-store";
 import { brl, type Lead } from "@/lib/crm-types";
@@ -609,15 +607,13 @@ export function LeadDetalheDialog({
                       value={
                         lead.origem ? (
                           <Badge
-                            variant="outline"
                             className={cn(
-                              catalogColorSoftBadgeClass(
+                              catalogColorBadgeClass(
                                 colorByLabel("origem", lead.origem),
                               ),
                               CHIP,
-                              "w-auto",
                             )}
-                            style={catalogColorSoftBadgeStyle(
+                            style={catalogColorBadgeStyle(
                               colorByLabel("origem", lead.origem),
                             )}
                             title={lead.origem}

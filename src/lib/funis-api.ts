@@ -155,6 +155,16 @@ export async function updateFunilEtapa(
   });
 }
 
+export async function reorderFunilEtapas(
+  funilId: string,
+  orderedIds: string[],
+): Promise<Funil> {
+  return apiFetch<Funil>(`/funis/${funilId}/etapas/reorder`, {
+    method: "PATCH",
+    body: { orderedIds },
+  });
+}
+
 export async function deleteFunilEtapa(
   funilId: string,
   etapaId: string,
