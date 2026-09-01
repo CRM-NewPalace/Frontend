@@ -302,6 +302,14 @@ export async function deleteMetaConnection(
   );
 }
 
+export async function fetchOzapConnections(
+  tenantId: string,
+): Promise<TenantOzapConnection[]> {
+  return apiFetch<TenantOzapConnection[]>(
+    `/tenants/${tenantId}/ozap-connections`,
+  );
+}
+
 export async function createOzapConnection(
   tenantId: string,
   input: CreateOzapConnectionInput,

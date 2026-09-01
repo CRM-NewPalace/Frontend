@@ -53,6 +53,7 @@ import {
   type StageId,
 } from "@/lib/crm-types";
 import { getSession } from "@/lib/auth";
+import { getAdminVerClientesCorretor } from "@/lib/clientes-nav-prefs";
 import {
   canViewTeamData,
   canWriteTriagem as roleCanWriteTriagem,
@@ -224,8 +225,11 @@ export function ComercialFunilBoard({
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isGerente = user?.role === "gerente";
   const isManager = canSeeTeam;
+  const adminVeClientesCorretor =
+    isClientesFunil && getAdminVerClientesCorretor();
   /** Solo não tem equipes/corretores no filtro — é carteira própria. */
-  const showTeamFilters = !isSolo && !isClientesFunil;
+  const showTeamFilters =
+    !isSolo && (!isClientesFunil || adminVeClientesCorretor);
   const {
     leads: allLeads,
     assignees,
@@ -338,12 +342,12 @@ export function ComercialFunilBoard({
   const leads = useMemo(() => {
     let list = allLeads.filter((l) => l.tipo === tipoFiltro);
 
-    // Clientes = carteira pessoal (corretor, admin e gerente só a própria).
-    if (isClientesFunil && user) {
+    // Clientes = carteira pessoal, salvo admin com opção de ver corretores.
+    if (isClientesFunil && user && !adminVeClientesCorretor) {
       list = list.filter(
         (l) => l.corretorId === user.id || l.corretor === user.name,
       );
-    } else if (user) {
+    } else if (!isClientesFunil && user) {
       list = list.filter((l) => isLeadInAtrasoScope(user, l, teamScope));
     }
 
@@ -361,7 +365,7 @@ export function ComercialFunilBoard({
       });
     }
 
-    if (!isClientesFunil && isAdmin && filterEquipeId !== "__all__") {
+    if ((!isClientesFunil || adminVeClientesCorretor) && isAdmin && filterEquipeId !== "__all__") {
       if (filterEquipeId === "__none__") {
         list = list.filter((l) => !l.equipeId);
       } else {
@@ -369,7 +373,7 @@ export function ComercialFunilBoard({
       }
     }
 
-    if (!isClientesFunil && isManager && filterCorretorId !== "__all__") {
+    if ((!isClientesFunil || adminVeClientesCorretor) && isManager && filterCorretorId !== "__all__") {
       if (filterCorretorId === "__none__") {
         list = list.filter((l) => !l.corretorId);
       } else {
@@ -415,6 +419,7 @@ export function ComercialFunilBoard({
     funilAtivo,
     isAdmin,
     isClientesFunil,
+    adminVeClientesCorretor,
     isGerente,
     isManager,
     teamScope,
@@ -1103,7 +1108,9 @@ export function ComercialFunilBoard({
           loading || catalogLoading
             ? "Carregando funil..."
             : isClientesFunil
-              ? "Sua carteira de clientes no funil — arraste os cards para mover entre etapas."
+              ? adminVeClientesCorretor
+                ? "Sua carteira e a dos corretores no funil — arraste os cards para mover entre etapas."
+                : "Sua carteira de clientes no funil — arraste os cards para mover entre etapas."
               : isSolo || isCorretor
                 ? "Seus leads no funil — inclusive os em atraso. Arraste os cards para mover entre etapas."
                 : isGerente

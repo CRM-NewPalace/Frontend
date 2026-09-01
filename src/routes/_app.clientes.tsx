@@ -56,6 +56,7 @@ import {
   DetailField,
 } from "@/components/form-dialog";
 import { getSession } from "@/lib/auth";
+import { getAdminVerClientesCorretor } from "@/lib/clientes-nav-prefs";
 import { canViewTeamData, isCorretorLike } from "@/lib/permissions";
 import { TableSortSelect } from "@/components/table-sort-select";
 import {
@@ -205,6 +206,7 @@ function Clientes() {
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
   const canOwnCarteira = isAdmin || isGerente;
+  const adminVeClientesCorretor = getAdminVerClientesCorretor();
 
   const {
     leads: allLeads,
@@ -228,14 +230,14 @@ function Clientes() {
     funnelStages.find((s) => s.id === stage)?.name ?? stage;
 
   const clientes = useMemo(() => {
+    const byTipo = allLeads.filter((l) => l.tipo === "cliente");
+    if (adminVeClientesCorretor) return byTipo;
     // Carteira pessoal: corretor, admin e gerente só veem os próprios clientes.
-    const scoped = user
-      ? allLeads.filter(
-          (l) => l.corretorId === user.id || l.corretor === user.name,
-        )
-      : [];
-    return scoped.filter((l) => l.tipo === "cliente");
-  }, [allLeads, user]);
+    if (!user) return [];
+    return byTipo.filter(
+      (l) => l.corretorId === user.id || l.corretor === user.name,
+    );
+  }, [adminVeClientesCorretor, allLeads, user]);
 
   const [sort, setSort] = useState<TableSort>(DEFAULT_TABLE_SORT);
   const sortedClientes = useMemo(
@@ -592,11 +594,13 @@ function Clientes() {
   return (
     <div>
       <PageHeader
-        title="Meus clientes"
+        title={adminVeClientesCorretor ? "Clientes" : "Meus clientes"}
         description={
           loading
             ? "Carregando clientes..."
-            : "Sua carteira pessoal de clientes — também aparece no funil. A carteira do corretor é privada."
+            : adminVeClientesCorretor
+              ? "Sua carteira e a dos corretores — também aparece no funil de clientes."
+              : "Sua carteira pessoal de clientes — também aparece no funil. A carteira do corretor é privada."
         }
         actions={
           <>

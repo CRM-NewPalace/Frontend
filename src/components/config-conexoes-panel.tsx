@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,18 @@ import {
   type MetaOAuthAssets,
   type MetaOAuthStatus,
 } from "@/lib/meta-oauth-api";
-import { CalendarDays, Loader2, RefreshCw, Share2, Unplug } from "lucide-react";
+import { CalendarDays, Loader2, MessageCircle, Plus, RefreshCw, Share2, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { getSession } from "@/lib/auth";
+import { PLATFORM_TENANT_ID } from "@/lib/platform-tenant";
+import {
+  createOzapConnection,
+  deleteOzapConnection,
+  fetchOzapConnections,
+  updateOzapConnection,
+  type TenantOzapConnection,
+} from "@/lib/tenants-api";
 import {
   completeOruloOAuth,
   connectOrulo,
@@ -45,6 +53,7 @@ export function ConfigConexoesPanel({
   return (
     <div className="space-y-4">
       <MetaConexoesCard selectingMeta={selectingMeta} />
+      <IaConexoesCard />
       <GoogleConexoesCard />
       <OruloConexoesCard callbackCode={oruloCallbackCode} />
     </div>
@@ -320,6 +329,192 @@ function MetaConexoesCard({ selectingMeta }: { selectingMeta: boolean }) {
   );
 }
 
+function IaConexoesCard() {
+  const user = getSession();
+  const canManage = user?.role === "super_admin";
+  const [connections, setConnections] = useState<TenantOzapConnection[]>([]);
+  const [loading, setLoading] = useState(canManage);
+  const [busy, setBusy] = useState(false);
+  const [instanceId, setInstanceId] = useState("");
+
+  const load = useCallback(async () => {
+    if (!canManage) return;
+    const rows = await fetchOzapConnections(PLATFORM_TENANT_ID);
+    setConnections(rows);
+  }, [canManage]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    let cancelled = false;
+    void load()
+      .catch((err) => {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Não foi possível carregar a conexão da IA.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canManage, load]);
+
+  if (!canManage) return null;
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault();
+    const id = Number(instanceId.trim());
+    if (!Number.isInteger(id) || id < 1) {
+      toast.error("Informe o Instance ID numérico do OZap.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await createOzapConnection(PLATFORM_TENANT_ID, { instanceId: id });
+      setInstanceId("");
+      await load();
+      toast.success("IA conectada. Os leads do WhatsApp entram no CRM da plataforma.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível conectar a IA.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggle(connection: TenantOzapConnection) {
+    setBusy(true);
+    try {
+      await updateOzapConnection(PLATFORM_TENANT_ID, connection.id, {
+        ativo: !connection.ativo,
+      });
+      await load();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível atualizar a instância.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(connection: TenantOzapConnection) {
+    setBusy(true);
+    try {
+      await deleteOzapConnection(PLATFORM_TENANT_ID, connection.id);
+      await load();
+      toast.success("Instância da IA desconectada.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível desconectar a IA.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">IA / WhatsApp (OZap)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Vincule a instância do bot de IA da plataforma. Os leads do WhatsApp
+          entram no CRM do super admin, como nas imobiliárias.
+        </p>
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Verificando conexão…
+          </div>
+        ) : (
+          <>
+            <form
+              className="grid gap-3 sm:grid-cols-[1fr_auto]"
+              onSubmit={(e) => void handleAdd(e)}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="platform-ozap-instance">Instance ID</Label>
+                <Input
+                  id="platform-ozap-instance"
+                  value={instanceId}
+                  onChange={(e) => setInstanceId(e.target.value)}
+                  placeholder="1143"
+                  inputMode="numeric"
+                  disabled={busy}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button type="submit" disabled={busy}>
+                  <Plus className="h-4 w-4" />
+                  Conectar
+                </Button>
+              </div>
+            </form>
+            {connections.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma instância OZap vinculada à plataforma.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {connections.map((connection) => (
+                  <li
+                    key={connection.id}
+                    className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 text-emerald-600" />
+                      <span className="font-medium">
+                        Instância {connection.instanceId}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {connection.ativo ? "Ativa" : "Inativa"}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void toggle(connection)}
+                      >
+                        {connection.ativo ? "Desativar" : "Ativar"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={busy}
+                        onClick={() => void remove(connection)}
+                      >
+                        <Unplug className="mr-1.5 h-4 w-4" />
+                        Remover
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function GoogleConexoesCard() {
   const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -438,7 +633,7 @@ function GoogleConexoesCard() {
 
 function OruloConexoesCard({ callbackCode }: { callbackCode?: string }) {
   const user = getSession();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const [status, setStatus] = useState<OruloStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);

@@ -49,6 +49,7 @@ export type TenantModulesResponse = {
   modules: Record<string, boolean>;
   operations: TenantOperationModules;
   hideClientesNav: boolean;
+  adminVerClientesCorretor: boolean;
 };
 
 export async function fetchTenantOperationModules(): Promise<TenantModulesResponse> {
@@ -60,6 +61,7 @@ export async function updateTenantOperationModules(input: {
   imoveisUsados?: boolean;
   locacao?: boolean;
   hideClientesNav?: boolean;
+  adminVerClientesCorretor?: boolean;
 }): Promise<TenantModulesResponse> {
   return apiFetch<TenantModulesResponse>("/tenant/modules", {
     method: "PATCH",

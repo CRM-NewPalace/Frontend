@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { Building2, Home, KeyRound, Landmark, UserCircle2 } from "lucide-react";
+import { Building2, Eye, Home, KeyRound, Landmark } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
 import { fetchMe, getSession, patchSessionTenantModules } from "@/lib/auth";
+import { useLeads } from "@/lib/leads-store";
 import {
   fetchTenantOperationModules,
   updateTenantOperationModules,
   type TenantOperationModules,
 } from "@/lib/tenant-company-api";
-import {
-  getHideClientesFromSidebar,
-  setHideClientesFromSidebar,
-} from "@/lib/clientes-nav-prefs";
+import { ConfigHideClientesMenuCard } from "@/components/config-hide-clientes-menu-card";
 import { toast } from "sonner";
 
 const CARDS: Array<{
@@ -56,10 +54,9 @@ const CARDS: Array<{
 
 export function ConfigModulosOperacaoPanel() {
   const router = useRouter();
+  const { refresh: refreshLeads } = useLeads();
   const [ops, setOps] = useState<TenantOperationModules | null>(null);
-  const [hideClientes, setHideClientes] = useState(() =>
-    getHideClientesFromSidebar(),
-  );
+  const [adminVerClientes, setAdminVerClientes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const session = getSession();
@@ -71,19 +68,7 @@ export function ConfigModulosOperacaoPanel() {
     try {
       const data = await fetchTenantOperationModules();
       setOps(data.operations);
-      const serverHasPref =
-        typeof data.modules?.hideClientesNav === "boolean";
-      const hide = serverHasPref
-        ? data.hideClientesNav === true
-        : getHideClientesFromSidebar();
-      setHideClientes(hide);
-      setHideClientesFromSidebar(hide);
-      if (!serverHasPref && hide && isAdmin) {
-        const saved = await updateTenantOperationModules({
-          hideClientesNav: true,
-        });
-        patchSessionTenantModules(saved.modules);
-      }
+      setAdminVerClientes(data.adminVerClientesCorretor === true);
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -93,7 +78,7 @@ export function ConfigModulosOperacaoPanel() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -125,34 +110,31 @@ export function ConfigModulosOperacaoPanel() {
     }
   }
 
-  async function toggleHideClientes(checked: boolean) {
+  async function toggleAdminVerClientes(checked: boolean) {
     if (!isAdmin) return;
-    setHideClientes(checked);
-    setHideClientesFromSidebar(checked);
-    setSavingKey("hideClientesNav");
+    setAdminVerClientes(checked);
+    setSavingKey("adminVerClientesCorretor");
     try {
       const data = await updateTenantOperationModules({
-        hideClientesNav: checked,
+        adminVerClientesCorretor: checked,
       });
       setOps(data.operations);
-      setHideClientes(data.hideClientesNav === true);
-      setHideClientesFromSidebar(data.hideClientesNav === true);
+      setAdminVerClientes(data.adminVerClientesCorretor === true);
       patchSessionTenantModules(data.modules);
       await fetchMe();
+      await refreshLeads({ silent: true });
       await router.invalidate();
       toast.success(
         checked
-          ? "Clientes e Funil de Clientes ocultos do menu."
-          : "Clientes e Funil de Clientes voltaram ao menu.",
+          ? "Você passa a ver os clientes dos corretores na lista e no funil."
+          : "A lista e o funil voltam a mostrar só a sua carteira de clientes.",
       );
     } catch (err) {
-      const previous = !checked;
-      setHideClientes(previous);
-      setHideClientesFromSidebar(previous);
+      setAdminVerClientes(!checked);
       toast.error(
         err instanceof ApiError
           ? err.message
-          : "Não foi possível atualizar a visibilidade do menu.",
+          : "Não foi possível atualizar a visibilidade dos clientes.",
       );
     } finally {
       setSavingKey(null);
@@ -223,34 +205,38 @@ export function ConfigModulosOperacaoPanel() {
             </Card>
           );
         })}
-        {!isSolo ? (
+        {!isSolo ? <ConfigHideClientesMenuCard /> : null}
+        {isAdmin && !isSolo ? (
           <Card>
             <CardHeader className="flex-row items-start gap-3 space-y-0">
               <div className="rounded-lg border bg-muted/40 p-2">
-                <UserCircle2 className="h-5 w-5 text-brand-accent" />
+                <Eye className="h-5 w-5 text-brand-accent" />
               </div>
               <div className="min-w-0 flex-1">
                 <CardTitle className="text-base">
-                  Clientes e Funil de Clientes
+                  Ver clientes dos corretores
                 </CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Só oculta do menu. As telas continuam acessíveis se alguém
-                  abrir o endereço.
+                  Quando ativo, o administrador vê a própria carteira e a dos
+                  corretores em Clientes e no Funil de Clientes.
                 </p>
               </div>
             </CardHeader>
             <CardContent className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">Ocultar do menu</p>
+                <p className="text-sm font-medium">Mostrar carteiras</p>
                 <p className="text-xs text-muted-foreground">
-                  Some Clientes e Funil de Clientes da barra lateral.
+                  Só o admin do tenant. Corretores continuam vendo só os
+                  próprios clientes.
                 </p>
               </div>
               <Switch
-                checked={hideClientes}
-                disabled={!isAdmin || savingKey === "hideClientesNav"}
-                onCheckedChange={(checked) => void toggleHideClientes(checked)}
-                aria-label="Ocultar Clientes e Funil de Clientes do menu"
+                checked={adminVerClientes}
+                disabled={savingKey === "adminVerClientesCorretor"}
+                onCheckedChange={(checked) =>
+                  void toggleAdminVerClientes(checked)
+                }
+                aria-label="Ver clientes dos corretores"
               />
             </CardContent>
           </Card>

@@ -192,6 +192,7 @@ const ROLE_DEFAULT_ROUTES: Record<Role, readonly string[]> = {
     "/propostas",
     "/contratos",
     "/vendas",
+    "/configuracoes",
     "/financeiro",
   ],
   admin: [

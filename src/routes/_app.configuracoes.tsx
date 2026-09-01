@@ -62,6 +62,7 @@ import { ConfigModulosOperacaoPanel } from "@/components/config-modulos-operacao
 import { ConfigEmpresaPanel } from "@/components/config-empresa-panel";
 import { ConfigCreciPanel } from "@/components/config-creci-panel";
 import { ConfigConexoesPanel } from "@/components/config-conexoes-panel";
+import { ConfigHideClientesMenuCard } from "@/components/config-hide-clientes-menu-card";
 import { ConfigUsuarioExtraPanel } from "@/components/config-usuario-extra-panel";
 import { ConfigSettingsLayout } from "@/components/config-settings-layout";
 import { userCanInformarCreci } from "@/lib/users-api";
@@ -306,18 +307,20 @@ function Config() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/configuracoes" });
   const user = getSession();
+  const isPlatformAdmin = user?.role === "super_admin";
   const isAnalista = user?.role === "analista";
   const isTreinee = user?.role === "treinee";
   const isCorretor = user?.role === "corretor";
-  const showCreci = Boolean(user && userCanInformarCreci(user));
+  const showCreci = Boolean(user && userCanInformarCreci(user) && !isPlatformAdmin);
   const isSolo = user?.tenant?.plano === "solo";
-  const showOpsTabs = !isAnalista && !isTreinee && !isCorretor;
+  const showOpsTabs = !isAnalista && !isTreinee && !isCorretor && !isPlatformAdmin;
   const showUsuarioExtraTab = showOpsTabs && isSolo;
-  const showDocumentacao = !isTreinee && !isCorretor;
-  const showMotivos = !isTreinee && !isCorretor;
-  const showCatalogTabs = !isCorretor;
+  const showDocumentacao = !isTreinee && !isCorretor && !isPlatformAdmin;
+  const showMotivos = !isTreinee && !isCorretor && !isPlatformAdmin;
+  const showCatalogTabs = !isCorretor && !isPlatformAdmin;
   const showImoveis = Boolean(
     user &&
+      !isPlatformAdmin &&
       canAccessRoute(
         user.role,
         "/imoveis",
@@ -328,6 +331,7 @@ function Config() {
   );
   const showMetas = Boolean(
     user &&
+      !isPlatformAdmin &&
       canAccessRoute(
         user.role,
         "/metas",
@@ -630,14 +634,19 @@ function Config() {
         ) : null}
 
         {selection.item === "conexoes" ? (
-          <ConfigConexoesPanel
-            selectingMeta={search.meta === "select"}
-            oruloCallbackCode={
-              search.orulo === "callback" || search.code
-                ? search.code
-                : undefined
-            }
-          />
+          <div className="space-y-4">
+            {!isSolo && !isPlatformAdmin && !showOpsTabs ? (
+              <ConfigHideClientesMenuCard />
+            ) : null}
+            <ConfigConexoesPanel
+              selectingMeta={search.meta === "select"}
+              oruloCallbackCode={
+                search.orulo === "callback" || search.code
+                  ? search.code
+                  : undefined
+              }
+            />
+          </div>
         ) : null}
 
         {selection.item === "empresa" ? <ConfigEmpresaPanel /> : null}
