@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 const KEY_PREFIX = "clientes.hideFromSidebar";
 export const CLIENTES_NAV_EVENT = "clientes-nav-pref";
 export const HIDE_CLIENTES_NAV_KEY = "hideClientesNav";
+export const ADMIN_VER_CLIENTES_CORRETOR_KEY = "adminVerClientesCorretor";
 
 function storageKey() {
   const session = getSession();
@@ -56,4 +57,11 @@ export function useHideClientesFromSidebar() {
   }, []);
 
   return hide;
+}
+
+/** Admin do tenant com a opção ligada nas configurações. */
+export function getAdminVerClientesCorretor(): boolean {
+  const session = getSession();
+  if (session?.role !== "admin") return false;
+  return session.tenant?.modules?.[ADMIN_VER_CLIENTES_CORRETOR_KEY] === true;
 }
