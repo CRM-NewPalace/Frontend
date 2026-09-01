@@ -1479,6 +1479,145 @@ async function pdfIntermediacao(values: Values, logoUrl?: string | null) {
   );
 }
 
+const SAAS_PLANOS: Record<
+  "saas-ouro" | "saas-prata-admin" | "saas-prata-financeiro",
+  {
+    nome: string;
+    titulo: string;
+    usuarios: string;
+    extra: string;
+    mensalidade: string;
+    implantacao: string;
+    recursos: string;
+  }
+> = {
+  "saas-ouro": {
+    nome: "Ouro",
+    titulo: "CONTRATO DE LICENÇA DE USO DE SOFTWARE (SaaS) – PLANO OURO",
+    usuarios: "30 (trinta)",
+    extra: "R$ 35,00 (trinta e cinco reais) por usuário/mês",
+    mensalidade: "R$ 749,99",
+    implantacao: "R$ 899,99",
+    recursos:
+      "CRM Imobiliário, cadastro de clientes, cadastro de empreendimentos, cadastro de corretores e usuários, funil de vendas, agenda comercial, triagem de leads, relatórios de leads, gráfico do funil de vendas, painel gerencial, atualizações da plataforma, suporte técnico em horário comercial, visão geral do financeiro, cadastro de clientes e fornecedores, movimentação bancária, contas a pagar, contas a receber, fluxo de caixa, centro de despesas, gestão de comissionamento, sistema administrativo, gerenciamento de equipes, ranking de corretores, métricas de desempenho, análise de documentações, gestão de metas, gerenciamento de propostas e acompanhamento da taxa de conversão.",
+  },
+  "saas-prata-admin": {
+    nome: "Prata Administrativo",
+    titulo:
+      "CONTRATO DE LICENÇA DE USO DE SOFTWARE (SaaS) – PLANO PRATA ADMINISTRATIVO",
+    usuarios: "15 (quinze)",
+    extra: "R$ 25,00 (vinte e cinco reais) por usuário/mês",
+    mensalidade: "R$ 499,99",
+    implantacao: "R$ 899,99",
+    recursos:
+      "CRM Imobiliário, cadastro de clientes, cadastro de empreendimentos, cadastro de corretores e usuários, funil de vendas, agenda comercial, triagem de leads, relatórios de leads, gráfico do funil de vendas, painel gerencial, atualizações da plataforma, suporte técnico em horário comercial, sistema administrativo, gerenciamento de equipes, ranking de corretores, métricas de desempenho, análise de documentações, gestão de metas, gerenciamento de propostas e acompanhamento da taxa de conversão.",
+  },
+  "saas-prata-financeiro": {
+    nome: "Prata Financeiro",
+    titulo:
+      "CONTRATO DE LICENÇA DE USO DE SOFTWARE (SaaS) – PLANO PRATA FINANCEIRO",
+    usuarios: "15 (quinze)",
+    extra: "R$ 25,00 (vinte e cinco reais) por usuário/mês",
+    mensalidade: "R$ 499,99",
+    implantacao: "R$ 899,99",
+    recursos:
+      "CRM Imobiliário, cadastro de clientes, cadastro de empreendimentos, cadastro de corretores e usuários, funil de vendas, agenda comercial, triagem de leads, relatórios de leads, gráfico do funil de vendas, painel gerencial, atualizações da plataforma, suporte técnico em horário comercial, visão geral do financeiro, cadastro de clientes e fornecedores, movimentação bancária, contas a pagar, contas a receber, fluxo de caixa, centro de despesas e gestão de comissionamento.",
+  },
+};
+
+async function pdfSaasLicenca(
+  id: keyof typeof SAAS_PLANOS,
+  values: Values,
+  opts?: { logoUrl?: string | null; primaryColor?: string | null },
+) {
+  const plan = SAAS_PLANOS[id];
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const logo = opts?.logoUrl?.trim()
+    ? await loadLogoForPdf(opts.logoUrl)
+    : null;
+  let y = logo ? writeLogo(doc, logo, 36) : 48;
+  y = writeTitle(doc, plan.titulo, y);
+
+  const contratada = v(values, "contratadaNome");
+  const contratadaRep = v(values, "contratadaRepresentante");
+  const contratadaCpf = v(values, "contratadaCpf");
+  const contratadaCidade = v(values, "contratadaCidade");
+  const contratante = v(values, "contratanteNome");
+  const contratanteCnpj = v(values, "contratanteCnpj");
+  const contratanteEnd = v(values, "contratanteEndereco");
+  const contratanteRep = v(values, "contratanteRepresentante");
+  const contratanteCargo = v(values, "contratanteCargo");
+  const contratanteCpf = v(values, "contratanteCpf");
+  const vencimento = v(values, "diaVencimento");
+  const data = formatDateBr(values.data ?? "");
+
+  const blocos = [
+    "Pelo presente instrumento particular, as partes abaixo qualificadas:",
+    `CONTRATADA\n${contratada}, representada por ${contratadaRep}, inscrito no CPF nº ${contratadaCpf}, com sede comercial na cidade de ${contratadaCidade}, doravante denominada simplesmente CONTRATADA.`,
+    `CONTRATANTE\n${contratante}, pessoa jurídica de direito privado, inscrita no CNPJ nº ${contratanteCnpj}, com sede em ${contratanteEnd}, neste ato representada por seu ${contratanteCargo}, ${contratanteRep}, inscrito no CPF nº ${contratanteCpf}, doravante denominada simplesmente CONTRATANTE.`,
+    "As partes acima identificadas resolvem celebrar o presente Contrato de Licença de Uso de Software (SaaS), que será regido pelas cláusulas e condições seguintes.",
+    "CLÁUSULA PRIMEIRA – DO OBJETO",
+    "1.1. O presente contrato tem por objeto a concessão de licença de uso da plataforma Zone Connection, disponibilizada na modalidade Software como Serviço (SaaS), destinada à gestão comercial, administrativa e operacional do CONTRATANTE.",
+    `1.2. A contratação compreende a disponibilização da plataforma, implantação inicial, treinamento básico, suporte técnico e atualizações disponibilizadas pela CONTRATADA durante a vigência deste contrato, observadas as condições do Plano ${plan.nome}.`,
+    "1.3. A licença concedida é pessoal, limitada, onerosa, intransferível, não exclusiva e válida exclusivamente durante a vigência deste contrato.",
+    "1.4. O presente contrato não transfere ao CONTRATANTE qualquer direito de propriedade intelectual sobre a plataforma, seu código-fonte, banco de dados, identidade visual, funcionalidades ou demais componentes do sistema, que permanecem de propriedade exclusiva da CONTRATADA.",
+    "CLÁUSULA SEGUNDA – DOS SERVIÇOS CONTRATADOS",
+    `2.1. A CONTRATADA disponibilizará ao CONTRATANTE a plataforma Zone Connection, na modalidade Software como Serviço (SaaS), conforme os recursos e funcionalidades previstos para o Plano ${plan.nome}.`,
+    `2.2. O Plano ${plan.nome} contempla os seguintes recursos e funcionalidades: ${plan.recursos}`,
+    `2.3. O Plano ${plan.nome} contempla até ${plan.usuarios} usuários ativos.`,
+    "2.4. Caso o CONTRATANTE necessite de usuários adicionais, estes poderão ser contratados mediante pagamento do valor vigente definido pela CONTRATADA.",
+    "2.5. A CONTRATADA poderá desenvolver, alterar, aprimorar ou disponibilizar novas funcionalidades para a plataforma durante a vigência deste contrato, sem prejuízo das funcionalidades já contratadas.",
+    "CLÁUSULA TERCEIRA – DA IMPLANTAÇÃO",
+    "3.1. Após a confirmação da contratação e do pagamento inicial, quando aplicável, a CONTRATADA iniciará o processo de implantação da plataforma.",
+    "3.2. A implantação poderá compreender: I – criação do ambiente da empresa; II – configuração inicial da plataforma; III – cadastro da empresa; IV – criação dos usuários contratados; V – treinamento inicial dos usuários; VI – orientações sobre utilização da plataforma.",
+    "3.3. O treinamento inicial será realizado de forma remota, por videoconferência ou outro meio definido pela CONTRATADA.",
+    "CLÁUSULA QUARTA – DA VIGÊNCIA E DA FIDELIDADE",
+    "4.1. O presente contrato terá vigência de 12 (doze) meses, contados da data de ativação da plataforma.",
+    "4.2. Durante esse período, o CONTRATANTE compromete-se a manter o contrato vigente, observando todas as obrigações assumidas neste instrumento.",
+    "4.3. Em caso de solicitação de cancelamento antes do término da vigência contratual, o CONTRATANTE ficará sujeito ao pagamento de multa rescisória correspondente a 30% (trinta por cento) do valor das mensalidades vincendas, sem prejuízo da quitação dos valores eventualmente em aberto.",
+    "4.4. Encerrado o período de vigência, a continuidade da utilização da plataforma dependerá da celebração de novo contrato ou da renovação mediante nova proposta comercial emitida pela CONTRATADA.",
+    "CLÁUSULA QUINTA – DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO",
+    `5.1. Pela utilização da plataforma Zone Connection, o CONTRATANTE pagará à CONTRATADA a mensalidade correspondente ao Plano ${plan.nome}.\nPlano contratado: ${plan.nome}.\nValor da mensalidade: ${plan.mensalidade}.\nValor de implantação: ${plan.implantacao}.\nUsuários inclusos: ${plan.usuarios}.\nUsuário adicional: ${plan.extra}.\nData de vencimento: dia ${vencimento} de cada mês.\nForma de pagamento: PIX, boleto bancário, cartão de crédito ou outro meio disponibilizado pela CONTRATADA.`,
+    "5.2. O acesso à plataforma poderá ser liberado após a confirmação do pagamento da primeira mensalidade e da taxa de implantação, quando esta for aplicável.",
+    `5.3. Quaisquer serviços não previstos no Plano ${plan.nome} serão considerados serviços adicionais e dependerão de orçamento e contratação específica.`,
+    "CLÁUSULA SEXTA – DAS OBRIGAÇÕES DA CONTRATADA",
+    "6.1. Constituem obrigações da CONTRATADA: I – Disponibilizar ao CONTRATANTE o acesso à plataforma Zone Connection, de acordo com o plano contratado; II – Manter a plataforma em funcionamento, ressalvadas as interrupções necessárias para manutenção preventiva, corretiva, evolutiva ou decorrentes de caso fortuito, força maior ou falhas de serviços de terceiros; III – Realizar atualizações, melhorias e correções técnicas sempre que necessário; IV – Disponibilizar suporte técnico em horário comercial, por meio dos canais oficiais da CONTRATADA; V – Manter a confidencialidade das informações recebidas do CONTRATANTE; VI – Adotar medidas técnicas e administrativas razoáveis para proteger os dados armazenados.",
+    "6.2. A CONTRATADA não garante que a plataforma estará livre de interrupções ou indisponibilidades ocasionadas por fatores externos, tais como falhas de internet, energia elétrica, provedores de hospedagem, serviços de terceiros ou eventos de força maior.",
+    "CLÁUSULA SÉTIMA – DAS OBRIGAÇÕES DO CONTRATANTE",
+    "7.1. Constituem obrigações do CONTRATANTE: I – Efetuar o pagamento das mensalidades e demais valores contratados nas datas de vencimento; II – Utilizar a plataforma exclusivamente para fins lícitos e relacionados às suas atividades empresariais; III – Manter atualizados os dados cadastrais; IV – Zelar pelo sigilo das credenciais de acesso; V – Comunicar imediatamente qualquer suspeita de acesso não autorizado; VI – Disponibilizar informações corretas para a implantação.",
+    "7.2. É expressamente proibido ao CONTRATANTE: I – Compartilhar usuários ou senhas com terceiros não autorizados; II – Copiar, reproduzir, modificar, descompilar, realizar engenharia reversa ou tentar obter acesso ao código-fonte; III – Comercializar, sublicenciar, revender, alugar, ceder ou disponibilizar a plataforma a terceiros sem autorização; IV – Utilizar a plataforma para práticas ilícitas, fraudulentas ou que possam causar prejuízos.",
+    "CLÁUSULA OITAVA – DO SUPORTE TÉCNICO",
+    `8.1. O suporte técnico está incluído no Plano ${plan.nome} e será prestado em horário comercial, de segunda a sexta-feira, exceto feriados, por meio dos canais oficiais disponibilizados pela CONTRATADA.`,
+    "8.2. O suporte compreende exclusivamente: I – Esclarecimento de dúvidas sobre a utilização da plataforma; II – Correção de falhas técnicas identificadas no sistema; III – Orientações relacionadas às funcionalidades contratadas.",
+    "8.3. Não estão incluídos no suporte: I – Desenvolvimento de funcionalidades exclusivas; II – Personalizações específicas; III – Consultorias operacionais ou comerciais; IV – Treinamentos adicionais após a implantação inicial; V – Suporte a equipamentos, redes, internet ou sistemas de terceiros.",
+    "CLÁUSULA NONA – DA INADIMPLÊNCIA",
+    "9.1. O não pagamento de qualquer obrigação financeira prevista neste contrato acarretará multa moratória de 2% (dois por cento) sobre o valor devido, acrescida de juros de mora de 1% (um por cento) ao mês, calculados proporcionalmente aos dias de atraso.",
+    "9.2. Permanecendo o débito em aberto por período superior a 05 (cinco) dias corridos, a CONTRATADA poderá suspender temporariamente o acesso do CONTRATANTE à plataforma, independentemente de notificação judicial ou extrajudicial.",
+    "9.3. Persistindo a inadimplência por período superior a 30 (trinta) dias, a CONTRATADA poderá rescindir o presente contrato, sem prejuízo da cobrança dos valores vencidos, da multa contratual e das demais medidas legais cabíveis.",
+    "CLÁUSULA DÉCIMA – DO CANCELAMENTO E DA RESCISÃO",
+    "10.1. O presente contrato poderá ser rescindido por qualquer das partes ao término do prazo de vigência, mediante comunicação por escrito.",
+    "10.2. Caso o CONTRATANTE solicite o cancelamento antes do término do período de fidelidade, será aplicada a multa prevista na Cláusula Quarta deste contrato.",
+    "10.3. Encerrado o contrato, o acesso à plataforma será imediatamente desativado.",
+    "10.4. Os dados do CONTRATANTE permanecerão armazenados pelo prazo de até 30 (trinta) dias após o encerramento do contrato, período em que poderá ser solicitada sua exportação, quando tecnicamente possível.",
+    "10.5. Decorrido o prazo previsto no item anterior, a CONTRATADA poderá excluir definitivamente todas as informações armazenadas, não podendo ser responsabilizada por sua recuperação posterior.",
+    "CLÁUSULA DÉCIMA PRIMEIRA – DAS DISPOSIÇÕES FINAIS",
+    "11.1. A plataforma Zone Connection, incluindo seu código-fonte, banco de dados, identidade visual, funcionalidades, documentação e demais elementos que a compõem, constitui propriedade exclusiva da CONTRATADA.",
+    "11.2. A CONTRATADA compromete-se a tratar os dados do CONTRATANTE em conformidade com a legislação vigente, especialmente a Lei nº 13.709/2018 (LGPD).",
+    "11.3. As partes reconhecem como válida a assinatura eletrônica realizada por meio da plataforma Clicksign, produzindo todos os efeitos legais e jurídicos.",
+    "11.4. Qualquer tolerância quanto ao descumprimento de obrigações previstas neste contrato será considerada mera liberalidade, não constituindo novação ou renúncia de direitos.",
+    `ASSINATURAS\nLocal e data: ${contratadaCidade}, ${data}.`,
+    `CONTRATADA\n${contratada}, representada por ${contratadaRep}\nCPF nº ${contratadaCpf}\n\nAssinatura: ________________________________\nData: ___ / ___ / _____`,
+    `CONTRATANTE\n${contratante}, neste ato representada por ${contratanteRep}, inscrito no CPF nº ${contratanteCpf}.\n\nAssinatura: ________________________________\nData: ___ / ___ / _____`,
+  ];
+
+  for (const bloco of blocos) {
+    const isClause = bloco.startsWith("CLÁUSULA") || bloco === "ASSINATURAS" || bloco.startsWith("ASSINATURAS");
+    y = writeParagraph(doc, y, bloco, isClause && !bloco.includes("\n"));
+  }
+
+  doc.save(`contrato-saas-${safeName(plan.nome)}-${safeName(contratante)}.pdf`);
+}
+
 export async function downloadContratoPdf(
   id: ContratoTemplateId,
   values: Values,
@@ -1502,6 +1641,11 @@ export async function downloadContratoPdf(
       break;
     case "checklist-renda-informal":
       await pdfChecklistRenda(values, opts?.logoUrl);
+      break;
+    case "saas-ouro":
+    case "saas-prata-admin":
+    case "saas-prata-financeiro":
+      await pdfSaasLicenca(id, values, opts);
       break;
   }
 }

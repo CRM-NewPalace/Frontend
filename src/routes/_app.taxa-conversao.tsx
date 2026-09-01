@@ -97,7 +97,8 @@ function ResponsiveChartShell({ children }: { children: ReactNode }) {
 function Page() {
   const user = getSession();
   const canView = canViewModule(user, "taxaConversao");
-  /** Ranking entre gerentes/equipes: só admin. */
+  const isPlatformAdmin = user?.role === "super_admin";
+  /** Ranking entre gerentes/equipes: só admin da imobiliária. */
   const showRankingGerentes = user?.role === "admin";
   const isGerente = user?.role === "gerente";
 
@@ -116,12 +117,17 @@ function Page() {
     }
     setLoading(true);
     try {
-      const [a, r] = await Promise.all([
-        fetchDashboardAdmin(),
-        fetchDashboardRanking(),
-      ]);
-      setAdmin(a);
-      setRanking(r);
+      if (isPlatformAdmin) {
+        setAdmin(await fetchDashboardAdmin());
+        setRanking(null);
+      } else {
+        const [a, r] = await Promise.all([
+          fetchDashboardAdmin(),
+          fetchDashboardRanking(),
+        ]);
+        setAdmin(a);
+        setRanking(r);
+      }
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -133,7 +139,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [canView]);
+  }, [canView, isPlatformAdmin]);
 
   useEffect(() => {
     void load();
@@ -207,7 +213,11 @@ function Page() {
       <div>
         <PageHeader
           title="Taxa de conversão"
-          description="Entradas, vendas e conversão por corretor."
+          description={
+            isPlatformAdmin
+              ? "Vendas e taxa de conversão da empresa."
+              : "Entradas, vendas e conversão por corretor."
+          }
         />
         <SemConexao
           title="Acesso restrito"
@@ -229,7 +239,7 @@ function Page() {
     );
   }
 
-  if (!admin || !ranking) {
+  if (!admin || (!isPlatformAdmin && !ranking)) {
     return (
       <div>
         <PageHeader title="Taxa de conversão" />
@@ -248,19 +258,31 @@ function Page() {
     <div>
       <PageHeader
         title="Taxa de conversão"
-        description={`Documentações do mês × vendas · ${mes} · comparação com o mês anterior.`}
+        description={
+          isPlatformAdmin
+            ? `Vendas e conversão · ${mes} · comparação com o mês anterior.`
+            : `Documentações do mês × vendas · ${mes} · comparação com o mês anterior.`
+        }
       />
 
-      <section className="grid gap-3 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 mb-4">
-        <FinanceKpiCard
-          label="Documentações"
-          value={conv.documentacoes.valor}
-          evolucaoPct={conv.documentacoes.evolucaoPct}
-          valorMesAnterior={conv.documentacoes.valorMesAnterior}
-          icon={FileText}
-          tone="blue-1"
-          format="number"
-        />
+      <section
+        className={
+          isPlatformAdmin
+            ? "mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4"
+            : "mb-4 grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6"
+        }
+      >
+        {isPlatformAdmin ? null : (
+          <FinanceKpiCard
+            label="Documentações"
+            value={conv.documentacoes.valor}
+            evolucaoPct={conv.documentacoes.evolucaoPct}
+            valorMesAnterior={conv.documentacoes.valorMesAnterior}
+            icon={FileText}
+            tone="blue-1"
+            format="number"
+          />
+        )}
         <FinanceKpiCard
           label="Vendas"
           value={conv.vendas.valor}
@@ -297,56 +319,85 @@ function Page() {
           format="number"
           invertEvolucao
         />
-        <FinanceKpiCard
-          label="Taxa geral (ranking)"
-          value={ranking.totais.taxaConversao}
-          icon={Goal}
-          tone="blue-6"
-          format="percent"
-          suffix={`· ${ranking.totais.visitas} visitas`}
-        />
+        {isPlatformAdmin || !ranking ? null : (
+          <FinanceKpiCard
+            label="Taxa geral (ranking)"
+            value={ranking.totais.taxaConversao}
+            icon={Goal}
+            tone="blue-6"
+            format="percent"
+            suffix={`· ${ranking.totais.visitas} visitas`}
+          />
+        )}
       </section>
 
       <Card className="mb-4">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Funil do mês</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Das{" "}
-            <span className="table-person-name tabular-nums">
-              {conv.documentacoes.valor}
-            </span>{" "}
-            documentações do mês,{" "}
-            <span className="table-person-name tabular-nums">
-              {conv.vendas.valor}
-            </span>{" "}
-            viraram venda (
-            <span className="table-person-name tabular-nums">
-              {conv.taxa.valor.toLocaleString("pt-BR", {
-                maximumFractionDigits: 1,
-              })}
-              %
-            </span>
-            ).
+            {isPlatformAdmin ? (
+              <>
+                {conv.vendas.valor} venda
+                {conv.vendas.valor === 1 ? "" : "s"} no mês (
+                <span className="table-person-name tabular-nums">
+                  {conv.taxa.valor.toLocaleString("pt-BR", {
+                    maximumFractionDigits: 1,
+                  })}
+                  %
+                </span>{" "}
+                de conversão) · {admin.perdidos.mes.valor} perdido
+                {admin.perdidos.mes.valor === 1 ? "" : "s"}.
+              </>
+            ) : (
+              <>
+                Das{" "}
+                <span className="table-person-name tabular-nums">
+                  {conv.documentacoes.valor}
+                </span>{" "}
+                documentações do mês,{" "}
+                <span className="table-person-name tabular-nums">
+                  {conv.vendas.valor}
+                </span>{" "}
+                viraram venda (
+                <span className="table-person-name tabular-nums">
+                  {conv.taxa.valor.toLocaleString("pt-BR", {
+                    maximumFractionDigits: 1,
+                  })}
+                  %
+                </span>
+                ).
+              </>
+            )}
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          <FlowBar
-            label="Documentações"
-            value={conv.documentacoes.valor}
-            max={Math.max(conv.documentacoes.valor, 1)}
-            tone="sky"
-          />
+          {isPlatformAdmin ? null : (
+            <FlowBar
+              label="Documentações"
+              value={conv.documentacoes.valor}
+              max={Math.max(conv.documentacoes.valor, 1)}
+              tone="sky"
+            />
+          )}
           <FlowBar
             label="Vendas"
             value={conv.vendas.valor}
-            max={Math.max(conv.documentacoes.valor, 1)}
+            max={Math.max(
+              isPlatformAdmin
+                ? conv.vendas.valor
+                : conv.documentacoes.valor,
+              admin.perdidos.mes.valor,
+              1,
+            )}
             tone="emerald"
           />
           <FlowBar
             label="Perdidos no mês"
             value={admin.perdidos.mes.valor}
             max={Math.max(
-              conv.documentacoes.valor,
+              isPlatformAdmin
+                ? conv.vendas.valor
+                : conv.documentacoes.valor,
               admin.perdidos.mes.valor,
               1,
             )}
@@ -355,6 +406,8 @@ function Page() {
         </CardContent>
       </Card>
 
+      {isPlatformAdmin ? null : (
+      <>
       <div className={FILTER_BAR_SHELL}>
         <div className="relative min-w-50 max-w-sm flex-1">
           <Search className={FILTER_SEARCH_ICON} />
@@ -539,7 +592,7 @@ function Page() {
             Conversão por corretor
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            {corretoresFiltrados.length} de {ranking.corretores.length}{" "}
+            {corretoresFiltrados.length} de {ranking?.corretores.length ?? 0}{" "}
             corretor(es)
           </p>
         </CardHeader>
@@ -575,8 +628,10 @@ function Page() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
 
-      {showRankingGerentes && (
+      {showRankingGerentes && ranking && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
