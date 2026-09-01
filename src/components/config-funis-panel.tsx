@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +63,7 @@ import {
   parseFunilTipo,
   installFunilEtapasPadrao,
   recoverFunilEtapas,
+  reorderFunilEtapas,
   updateFunil,
   updateFunilEtapa,
   type Funil,
@@ -66,6 +73,7 @@ import {
 } from "@/lib/funis-api";
 import {
   Check,
+  GripVertical,
   Loader2,
   ListRestart,
   LifeBuoy,
@@ -194,6 +202,40 @@ function ColorSwatchPicker({
   );
 }
 
+function sortEtapas(etapas: FunilEtapa[]): FunilEtapa[] {
+  return [...etapas].sort(
+    (a, b) =>
+      a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "pt-BR"),
+  );
+}
+
+function orderedIdsAfterActiveMove(
+  etapas: FunilEtapa[],
+  newActiveIds: string[],
+): string[] {
+  const sorted = sortEtapas(etapas);
+  const activeIds = new Set(sorted.filter((e) => e.active).map((e) => e.id));
+  if (newActiveIds.length !== activeIds.size) {
+    return sorted.map((e) => e.id);
+  }
+  let i = 0;
+  return sorted.map((e) => (activeIds.has(e.id) ? newActiveIds[i++]! : e.id));
+}
+
+function moveEtapaById(
+  etapas: FunilEtapa[],
+  fromId: string,
+  toId: string,
+): FunilEtapa[] {
+  const from = etapas.findIndex((e) => e.id === fromId);
+  const to = etapas.findIndex((e) => e.id === toId);
+  if (from < 0 || to < 0 || from === to) return etapas;
+  const next = [...etapas];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item!);
+  return next;
+}
+
 export function ConfigFunisPanel() {
   const { refresh: refreshCatalog, applyFunnelEtapas } = useCatalog();
   const { refresh: refreshLeads } = useLeads();
@@ -229,6 +271,7 @@ export function ConfigFunisPanel() {
   const [deleteFunilId, setDeleteFunilId] = useState<string | null>(null);
   const [deleteEtapa, setDeleteEtapa] = useState<FunilEtapa | null>(null);
   const [confirmDefaults, setConfirmDefaults] = useState(false);
+  const [draggingEtapaId, setDraggingEtapaId] = useState<string | null>(null);
 
   const tenantModules = getSession()?.tenant?.modules ?? null;
   const tiposVisiveis = FUNIL_TIPOS.filter(
@@ -239,7 +282,9 @@ export function ConfigFunisPanel() {
   const funisDoTipo = funis.filter((f) => funilNoFiltro(f, tipoFiltro));
   const funisSemTipo = funis.filter((f) => funilTipoOf(f) === null);
   const selected = funisDoTipo.find((f) => f.id === selectedId) ?? null;
-  const activeEtapas = (selected?.etapas ?? []).filter((e) => e.active);
+  const activeEtapas = sortEtapas(
+    (selected?.etapas ?? []).filter((e) => e.active),
+  );
   const funisParaVincular =
     tipoFiltro === "sem_tipo"
       ? []
@@ -293,6 +338,30 @@ export function ConfigFunisPanel() {
       applyFunnelEtapas(updated.etapas);
     }
     await refreshCatalog();
+  }
+
+  async function handleReorderEtapas(fromId: string, toId: string) {
+    if (!selected || fromId === toId) return;
+    const nextActive = moveEtapaById(activeEtapas, fromId, toId);
+    if (nextActive === activeEtapas) return;
+    const orderedIds = orderedIdsAfterActiveMove(
+      selected.etapas,
+      nextActive.map((e) => e.id),
+    );
+    if (orderedIds.join() === sortEtapas(selected.etapas).map((e) => e.id).join()) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await reorderFunilEtapas(selected.id, orderedIds);
+      await afterMutation(updated);
+      toast.success("Ordem das etapas atualizada.");
+    } catch (err) {
+      toast.error(errorMessage(err, "Não foi possível reordenar as etapas."));
+    } finally {
+      setSaving(false);
+      setDraggingEtapaId(null);
+    }
   }
 
   async function handleCreate(e: FormEvent) {
@@ -899,6 +968,12 @@ export function ConfigFunisPanel() {
                 padrão&quot;.
               </p>
             )}
+            {selected && activeEtapas.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Arraste pelo ícone à esquerda para mudar a posição das etapas.
+                Essa ordem vale no funil e na lista de leads.
+              </p>
+            )}
             {activeEtapas.map((s) => {
               const papel = resolveEtapaPapel(s);
               const isInitial = papel === "inicial";
@@ -906,12 +981,45 @@ export function ConfigFunisPanel() {
               return (
                 <div
                   key={s.id}
+                  draggable={!saving}
+                  onDragStart={(event: DragEvent<HTMLDivElement>) => {
+                    if ((event.target as HTMLElement).closest("button")) {
+                      event.preventDefault();
+                      return;
+                    }
+                    setDraggingEtapaId(s.id);
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", s.id);
+                  }}
+                  onDragEnd={() => setDraggingEtapaId(null)}
+                  onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(event: DragEvent<HTMLDivElement>) => {
+                    event.preventDefault();
+                    const fromId =
+                      event.dataTransfer.getData("text/plain") ||
+                      draggingEtapaId;
+                    if (fromId) void handleReorderEtapas(fromId, s.id);
+                  }}
                   className={cn(
                     "flex items-center gap-3 border border-border/60 rounded-lg p-3",
                     catalogColorSoftSurfaceClass(color),
+                    draggingEtapaId === s.id && "opacity-60",
+                    draggingEtapaId &&
+                      draggingEtapaId !== s.id &&
+                      "ring-1 ring-primary/40",
                   )}
                   style={catalogColorSoftSurfaceStyle(color)}
                 >
+                  <span
+                    className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground"
+                    aria-hidden
+                    title="Arraste para reordenar"
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </span>
                   <Badge
                     className={catalogColorBadgeClass(color)}
                     style={catalogColorBadgeStyle(color)}

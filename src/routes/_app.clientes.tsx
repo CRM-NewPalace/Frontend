@@ -111,7 +111,11 @@ import {
   FILTER_BAR_SHELL,
   FILTER_CONTROL,
 } from "@/lib/filter-bar";
-import { catalogColorBadgeClass, STATUS_CHIP_CLASS } from "@/lib/catalog-colors";
+import {
+  catalogColorBadgeClass,
+  catalogColorBadgeStyle,
+  STATUS_CHIP_CLASS,
+} from "@/lib/catalog-colors";
 import { toast } from "sonner";
 import { SOFT_BTN } from "@/lib/soft-btn";
 import { BRAND_GRADIENT_STYLE } from "@/lib/brand-gradient";
@@ -1235,6 +1239,9 @@ function Clientes() {
                       detail.origem ? (
                         <Badge
                           className={catalogColorBadgeClass(
+                            colorByLabel("origem", detail.origem),
+                          )}
+                          style={catalogColorBadgeStyle(
                             colorByLabel("origem", detail.origem),
                           )}
                           title={detail.origem}
