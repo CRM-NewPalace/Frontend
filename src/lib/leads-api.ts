@@ -201,7 +201,11 @@ export async function fetchLeads(params?: {
 }
 
 export async function createLead(input: CreateLeadInput): Promise<ApiLead> {
-  return apiFetch<ApiLead>("/leads", { method: "POST", body: input });
+  const { tipo, ...rest } = input;
+  // APIs sem `tipo` no DTO (forbidNonWhitelisted) rejeitam `tipo: "lead"`.
+  // O backend assume lead quando o campo é omitido.
+  const body = tipo && tipo !== "lead" ? { tipo, ...rest } : rest;
+  return apiFetch<ApiLead>("/leads", { method: "POST", body });
 }
 
 export type ImportLeadInput = {
