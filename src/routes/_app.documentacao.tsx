@@ -111,19 +111,6 @@ import {
 } from "@/lib/documentacao-status";
 import { celebrateAfterDocumentacao } from "@/lib/celebrations";
 
-function docInVendaPeriod(
-  doc: { dataVenda: string | null; createdAt: string },
-  de?: string | null,
-  ate?: string | null,
-): boolean {
-  if (!de && !ate) return true;
-  const vendaDay =
-    doc.dataVenda?.slice(0, 10) || doc.createdAt.slice(0, 10) || "";
-  if (!vendaDay) return false;
-  if (de && vendaDay < de) return false;
-  if (ate && vendaDay > ate) return false;
-  return true;
-}
 import {
   dedupeImportDocs,
   downloadDocumentacaoImportTemplate,
@@ -1035,85 +1022,11 @@ function DocumentacaoPage() {
       { aprovadas: 0, reprovadas: 0, emAnalise: 0, vgv: 0, total: 0 },
     );
     base.total = filteredItems.length;
-
-    // VGV: mesmo critério do dashboard (status vendido + data venda ou cadastro no período)
-    const vgvItems = items.filter((doc) => {
-      if (!isStatusVendido(doc.status2)) return false;
-      if (!matchesStatus1Filter(doc.status1, filterStatus1)) {
-        return false;
-      }
-      if (
-        filterStatus2 !== "__all__" &&
-        !statusesMatch(doc.status2, filterStatus2)
-      ) {
-        return false;
-      }
-      if (
-        filterFonte !== "__all__" &&
-        displayFonte(doc.fonte) !== filterFonte
-      ) {
-        return false;
-      }
-      if (
-        filterConstrutoraId !== "__all__" &&
-        doc.construtoraId !== filterConstrutoraId
-      ) {
-        return false;
-      }
-      if (
-        filterEmpreendimentoId !== "__all__" &&
-        doc.empreendimentoId !== filterEmpreendimentoId
-      ) {
-        return false;
-      }
-      if (filterTipo !== "__all__" && doc.tipoContato !== filterTipo) {
-        return false;
-      }
-      if (
-        filterCorretorId !== "__all__" &&
-        doc.corretorId !== filterCorretorId
-      ) {
-        return false;
-      }
-      if (filterGerenteId !== "__all__" && doc.gerenteId !== filterGerenteId) {
-        return false;
-      }
-      const q = filterSearch.trim().toLowerCase();
-      if (q) {
-        const hay = [
-          doc.nome,
-          doc.construtora?.nome,
-          doc.empreendimento?.nome,
-          doc.status1,
-          doc.status2,
-          doc.corretor?.name,
-          doc.gerente?.name,
-          displayFonte(doc.fonte),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return docInVendaPeriod(doc, periodRange.de, periodRange.ate);
-    });
-
-    base.vgv = vgvItems.reduce((sum, doc) => sum + (doc.vgv ?? 0), 0);
+    base.vgv = filteredItems
+      .filter((doc) => isStatusVendido(doc.status2))
+      .reduce((sum, doc) => sum + (doc.vgv ?? 0), 0);
     return base;
-  }, [
-    filteredItems,
-    items,
-    filterStatus1,
-    filterStatus2,
-    filterFonte,
-    filterConstrutoraId,
-    filterEmpreendimentoId,
-    filterTipo,
-    filterCorretorId,
-    filterGerenteId,
-    filterSearch,
-    periodRange,
-  ]);
+  }, [filteredItems]);
 
   const filterEmpreendimentoOptions = useMemo(() => {
     if (filterConstrutoraId === "__all__") return empreendimentos;
