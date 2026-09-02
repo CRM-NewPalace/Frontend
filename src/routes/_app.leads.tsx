@@ -73,6 +73,7 @@ import {
   Loader2,
   Share2,
   Inbox,
+  Briefcase,
   UserCheck,
   Users,
   Flame,

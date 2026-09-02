@@ -117,16 +117,12 @@ function docInVendaPeriod(
   ate?: string | null,
 ): boolean {
   if (!de && !ate) return true;
-  const vendaDay = doc.dataVenda?.slice(0, 10) ?? "";
-  const cadastroDay = doc.createdAt.slice(0, 10);
-  const inRange = (day: string) => {
-    if (!day) return false;
-    if (de && day < de) return false;
-    if (ate && day > ate) return false;
-    return true;
-  };
-  // Mesmo critério do backend: data de venda ou cadastro no período
-  return inRange(vendaDay) || inRange(cadastroDay);
+  const vendaDay =
+    doc.dataVenda?.slice(0, 10) || doc.createdAt.slice(0, 10) || "";
+  if (!vendaDay) return false;
+  if (de && vendaDay < de) return false;
+  if (ate && vendaDay > ate) return false;
+  return true;
 }
 import {
   dedupeImportDocs,

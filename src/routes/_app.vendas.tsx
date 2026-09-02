@@ -274,7 +274,8 @@ function VendasPage() {
         ? corretorEquipe.get(docCorretorId)
         : undefined;
       const docGerenteId = doc.gerenteId ?? equipe?.gerenteId ?? null;
-      const vendaDay = dateDay(doc.dataVenda);
+      // Igual ao dashboard: dataVenda; se vazia, cadastro da ficha.
+      const vendaDay = dateDay(doc.dataVenda) || dateDay(doc.createdAt);
       if (applied.equipeId !== "__all__" && equipe?.id !== applied.equipeId)
         return false;
       if (
@@ -773,7 +774,7 @@ function VendasPage() {
                           </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          {dateBr(doc.dataVenda)}
+                          {dateBr(doc.dataVenda || doc.createdAt)}
                         </TableCell>
                         <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
                           {doc.vgv != null ? brl(doc.vgv) : "—"}
