@@ -3375,23 +3375,25 @@ function LeadsPage() {
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          title="Abrir no Google Maps"
-                          disabled={
-                            !googleMapsSearchUrl(
-                              l.prospeccao?.endereco,
-                              l.bairro,
-                              l.cidade,
-                            )
-                          }
-                          onClick={() => openLeadMaps(l)}
-                        >
-                          <MapPin className="w-3.5 h-3.5" />
-                        </Button>
+                        {isPlatformAdmin ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            title="Abrir no Google Maps"
+                            disabled={
+                              !googleMapsSearchUrl(
+                                l.prospeccao?.endereco,
+                                l.bairro,
+                                l.cidade,
+                              )
+                            }
+                            onClick={() => openLeadMaps(l)}
+                          >
+                            <MapPin className="w-3.5 h-3.5" />
+                          </Button>
+                        ) : null}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -3417,18 +3419,20 @@ function LeadsPage() {
                               <MessageCircle className="w-4 h-4 mr-2 text-emerald-600" />{" "}
                               WhatsApp
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={
-                                !googleMapsSearchUrl(
-                                  l.prospeccao?.endereco,
-                                  l.bairro,
-                                  l.cidade,
-                                )
-                              }
-                              onClick={() => openLeadMaps(l)}
-                            >
-                              <MapPin className="w-4 h-4 mr-2" /> Google Maps
-                            </DropdownMenuItem>
+                            {isPlatformAdmin ? (
+                              <DropdownMenuItem
+                                disabled={
+                                  !googleMapsSearchUrl(
+                                    l.prospeccao?.endereco,
+                                    l.bairro,
+                                    l.cidade,
+                                  )
+                                }
+                                onClick={() => openLeadMaps(l)}
+                              >
+                                <MapPin className="w-4 h-4 mr-2" /> Google Maps
+                              </DropdownMenuItem>
+                            ) : null}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
