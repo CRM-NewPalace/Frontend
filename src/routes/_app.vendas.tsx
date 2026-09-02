@@ -99,20 +99,6 @@ function dateDay(value: string | null | undefined) {
   return value?.slice(0, 10) ?? "";
 }
 
-function toDateInput(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function currentMonthRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return { dataDe: toDateInput(start), dataAte: toDateInput(end) };
-}
-
 function dateBr(value: string | null | undefined) {
   if (!value) return "—";
   const [year, month, day] = value.slice(0, 10).split("-");
@@ -181,7 +167,8 @@ function VendasPage() {
       gerenteId: "__all__",
       corretorId: "__all__",
       origem: "__all__",
-      ...currentMonthRange(),
+      dataDe: "",
+      dataAte: "",
     }),
     [],
   );
@@ -503,7 +490,7 @@ function VendasPage() {
     <div>
       <PageHeader
         title="Vendas"
-        description="Vendas do mês atual — ajuste o período nos filtros se quiser ver outro intervalo."
+        description="Todas as vendas — use o período nos filtros se quiser restringir o intervalo."
       />
 
       <section className="grid gap-3 grid-cols-2 xl:grid-cols-3">
