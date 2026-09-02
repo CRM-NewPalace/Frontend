@@ -277,16 +277,28 @@ function Page() {
             ? (data.kpis.despesasOutrosMes ?? 0)
             : Math.max(0, despesas - fixas - variaveis);
         const totalComissao = Math.max(
-          mes === "todos" ? (data.kpis.comissoesAReceberMes ?? 0) : 0,
+          data.kpis.comissoesAReceberMes ?? 0,
           rowDoMes?.comissoesAReceber ?? 0,
           somaTitulosAbertos(titulosComissao, ano, mes),
         );
-        const aReceber = somaTitulosAbertos(titulosReceber, ano, mes);
-        const aPagar = somaTitulosAbertos(titulosPagar, ano, mes);
-        const comissoesItens = abertas
-          .sort((a, b) => b.valor - a.valor)
-          .slice(0, 40)
-          .map(tituloToPipeline);
+        const aReceber = Math.max(
+          data.kpis.aReceber ?? 0,
+          rowDoMes?.aReceber ?? 0,
+          somaTitulosAbertos(titulosReceber, ano, mes),
+        );
+        const aPagar = Math.max(
+          data.kpis.aPagar ?? 0,
+          rowDoMes?.aPagar ?? 0,
+          somaTitulosAbertos(titulosPagar, ano, mes),
+        );
+        const pipelineApi = data.despesasPipeline?.comissoes ?? [];
+        const comissoesItens =
+          pipelineApi.length > 0
+            ? pipelineApi.slice(0, 40)
+            : abertas
+                .sort((a, b) => b.valor - a.valor)
+                .slice(0, 40)
+                .map(tituloToPipeline);
         const noMes = (item: DespesaPipelineItem) =>
           itemNoPeriodo(item.data, ano, mes);
 
