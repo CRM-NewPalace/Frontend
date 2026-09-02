@@ -539,17 +539,19 @@ export function LeadDetalheDialog({
                   icon={Mail}
                   label="E-mail"
                 />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  disabled={!temMapa}
-                  onClick={abrirMaps}
-                >
-                  <MapPin className="mr-1.5 h-3.5 w-3.5" />
-                  Maps
-                </Button>
+                {isProspeccao ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    disabled={!temMapa}
+                    onClick={abrirMaps}
+                  >
+                    <MapPin className="mr-1.5 h-3.5 w-3.5" />
+                    Maps
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
