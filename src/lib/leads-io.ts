@@ -81,11 +81,15 @@ const HEADER_ALIASES: Record<string, string> = {
   mail: "email",
   origem: "origem",
   source: "origem",
-  // ignorados no mapeamento útil (não importamos)
+  // ignorados — colunas de outros CRMs / exportações
+  id: "skip",
+  situacao: "skip",
+  "situacao anterior": "skip",
+  status: "skip",
   "imovel seminovo de interesse": "skip",
   "imóvel seminovo de interesse": "skip",
-  "empreendimento de interesse": "empreendimento",
-  empreendimento: "empreendimento",
+  "empreendimento de interesse": "skip",
+  empreendimento: "skip",
   "mensagem inicial da captura do lead": "skip",
   mensagem: "skip",
   // legado nosso
@@ -142,11 +146,20 @@ function normalizeHeader(value: unknown): string {
     .replace(/\p{M}/gu, "");
 }
 
+/** Dígitos nacionais: remove DDI 55 quando o número vem como +55... */
+function nationalPhoneDigits(value: unknown): string {
+  let digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length >= 12) {
+    digits = digits.slice(2);
+  }
+  return digits.slice(0, 11);
+}
+
 function extractFirstPhone(value: unknown): string {
   const text = String(value ?? "");
   const matches = text.match(/(?:\+?55\s*)?\(?\d{2}\)?\s*\d{4,5}[-\s]?\d{4}/g);
-  if (!matches?.length) return formatPhone(text);
-  return formatPhone(matches[0]);
+  const raw = matches?.[0] ?? text;
+  return formatPhone(nationalPhoneDigits(raw));
 }
 
 function cellText(value: unknown): string {
@@ -189,7 +202,7 @@ function mergePhone(ddd: unknown, telefone: unknown): string {
   const dddDigits = String(ddd ?? "")
     .replace(/\D/g, "")
     .slice(0, 2);
-  const phoneDigitsOnly = String(telefone ?? "").replace(/\D/g, "");
+  const phoneDigitsOnly = nationalPhoneDigits(telefone);
   if (phoneDigitsOnly.length >= 10) {
     return formatPhone(phoneDigitsOnly);
   }
@@ -204,11 +217,7 @@ function buildLeadFromCells(
   const nome = stripTimePrefix(String(cells.nome ?? "").trim());
   const telefone = mergePhone(cells.ddd, cells.telefone);
   const email = String(cells.email ?? "").trim();
-  const empreendimento = String(cells.empreendimento ?? "").trim();
-  const origem =
-    String(cells.origem ?? "").trim() ||
-    (empreendimento && !empreendimento.startsWith("[") ? empreendimento : "") ||
-    defaults.origem;
+  const origem = String(cells.origem ?? "").trim() || defaults.origem;
   const cidade = String(cells.cidade ?? "").trim();
   const bairro = String(cells.bairro ?? "").trim();
   const renda = parseRenda(cells.renda);
