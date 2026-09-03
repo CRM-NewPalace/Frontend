@@ -38,6 +38,23 @@ export async function updateTenantCompany(
   });
 }
 
+export async function uploadTenantCompanyLogo(
+  file: File,
+): Promise<TenantCompanyProfile> {
+  const data = new FormData();
+  data.append("file", file);
+  return apiFetch<TenantCompanyProfile>("/tenant/company/logo", {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function deleteTenantCompanyLogo(): Promise<TenantCompanyProfile> {
+  return apiFetch<TenantCompanyProfile>("/tenant/company/logo", {
+    method: "DELETE",
+  });
+}
+
 export type TenantOperationModules = {
   comercial: boolean;
   captacao: boolean;

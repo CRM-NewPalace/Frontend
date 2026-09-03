@@ -6,11 +6,17 @@ import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api";
 import { fetchMe, getSession } from "@/lib/auth";
 import {
+  deleteTenantCompanyLogo,
   fetchTenantCompany,
   updateTenantCompany,
+  uploadTenantCompanyLogo,
 } from "@/lib/tenant-company-api";
 import { formatPhone } from "@/lib/phone";
 import { formatCpfCnpj } from "@/lib/utils";
+import {
+  ImageUploadField,
+  assertImageFile,
+} from "@/components/image-upload-field";
 import { Building2, Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,8 +45,10 @@ export function ConfigEmpresaPanel() {
   const isAdmin = session?.role === "admin";
   const isSolo = session?.tenant?.plano === "solo";
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
 
   const copy = useMemo(
     () =>
@@ -48,7 +56,7 @@ export function ConfigEmpresaPanel() {
         ? {
             title: "Meus dados",
             blurb:
-              "Essas informações aparecem nos contratos de intermediação e na identificação do seu CRM.",
+              "Essas informações e a logo aparecem nos contratos, propostas e na identificação do seu CRM.",
             nameLabel: "Nome comercial",
             namePlaceholder: "Ex.: João Silva Corretores",
             nameRequired: "Informe o nome comercial.",
@@ -63,7 +71,7 @@ export function ConfigEmpresaPanel() {
         : {
             title: "Dados da imobiliária",
             blurb:
-              "Essas informações alimentam o contrato de intermediação e a identificação da imobiliária no CRM.",
+              "Essas informações e a logo alimentam contratos, propostas e a identificação da imobiliária no CRM.",
             nameLabel: "Nome da imobiliária",
             namePlaceholder: "Ex.: IMOBILIÁRIA NEW PALACE",
             nameRequired: "Informe o nome da imobiliária.",
@@ -94,6 +102,7 @@ export function ConfigEmpresaPanel() {
           endereco: company.endereco ?? "",
           cidade: company.cidade ?? "",
         });
+        setLogoUrl(company.logoUrl);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -111,6 +120,54 @@ export function ConfigEmpresaPanel() {
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function refreshSessionLogo() {
+    await fetchMe().catch(() => null);
+  }
+
+  async function handleAddLogo(files: File[]) {
+    const file = files[0];
+    if (!isAdmin || !file) return;
+    const invalid = assertImageFile(file);
+    if (invalid) {
+      toast.error(invalid);
+      return;
+    }
+    setLogoBusy(true);
+    try {
+      const updated = await uploadTenantCompanyLogo(file);
+      setLogoUrl(updated.logoUrl);
+      await refreshSessionLogo();
+      toast.success("Logo atualizada.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível enviar a logo.",
+      );
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  async function handleRemoveLogo() {
+    if (!isAdmin) return;
+    setLogoBusy(true);
+    try {
+      const updated = await deleteTenantCompanyLogo();
+      setLogoUrl(updated.logoUrl);
+      await refreshSessionLogo();
+      toast.success("Logo removida.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível remover a logo.",
+      );
+    } finally {
+      setLogoBusy(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -176,6 +233,18 @@ export function ConfigEmpresaPanel() {
       <CardContent>
         <p className="mb-4 text-sm text-muted-foreground">{copy.blurb}</p>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>
+          <ImageUploadField
+            images={logoUrl ? [logoUrl] : []}
+            max={1}
+            label="Logo"
+            hint="Aparece no menu, contratos e propostas. JPG, PNG ou WebP, máx. 5 MB."
+            recommendedSize="800 × 400"
+            disabled={!isAdmin}
+            busy={logoBusy}
+            shape="logo"
+            onAdd={(files) => void handleAddLogo(files)}
+            onRemove={() => void handleRemoveLogo()}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="empresa-nome">{copy.nameLabel}</Label>
