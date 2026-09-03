@@ -42,8 +42,6 @@ import {
   DEFAULT_CATALOG_COLOR,
   catalogColorBadgeClass,
   catalogColorBadgeStyle,
-  catalogColorSoftSurfaceClass,
-  catalogColorSoftSurfaceStyle,
   catalogColorSwatchStyle,
   nextCatalogColor,
   normalizeCatalogColor,
@@ -73,14 +71,24 @@ import {
 } from "@/lib/funis-api";
 import {
   Check,
+  Clock,
   GripVertical,
   Loader2,
   ListRestart,
   LifeBuoy,
+  MoreHorizontal,
   Pencil,
   Plus,
+  Tags,
   Trash2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   formatPrazoUnidade,
   PRAZO_UNIDADE_OPTIONS,
@@ -801,143 +809,157 @@ export function ConfigFunisPanel() {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row justify-between items-start gap-2 flex-wrap">
-            <div>
-              <CardTitle className="text-base">
-                {selected ? selected.name : "Etapas do funil"}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {selected
-                  ? funilTipoOf(selected) === null
-                    ? "Este funil ainda não tem tipo. Vincule-o a uma operação para usá-lo no kanban."
-                    : selected.ativo
-                      ? funilTipoOf(selected) === "comercial"
-                        ? "Este funil está ativo no kanban e nos novos leads."
-                        : "Este funil está ativo neste tipo de operação."
-                      : "Edite as etapas ou ative este funil para usá-lo."
-                  : "Edite as etapas ou ative este funil para usá-lo. Selecione um funil à esquerda."}
-              </p>
-            </div>
-            {selected && (
-              <div className="flex flex-wrap items-center gap-2">
-                {!selected.ativo && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={saving}
-                    onClick={() => void handleAtivar(selected.id)}
-                  >
-                    <Check className="w-4 h-4 mr-1" />
-                    Usar este funil
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={saving}
-                  onClick={() => {
-                    setRenameValue(selected.name);
-                    setRenameOpen(true);
-                  }}
-                >
-                  <Pencil className="w-4 h-4 mr-1" />
-                  Renomear
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={saving}
-                  onClick={() => setConfirmDefaults(true)}
-                >
-                  <ListRestart className="w-4 h-4 mr-1" />
-                  Etapas padrão
-                </Button>
-                {funilTipoOf(selected) === "comercial" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={saving}
-                  onClick={() => void handleRecoverLeadStages()}
-                >
-                  <LifeBuoy className="w-4 h-4 mr-1" />
-                  Recuperar etapas dos leads
-                </Button>
-                )}
-                <Button size="sm" onClick={openAddEtapa}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Nova etapa
-                </Button>
-                {!selected.ativo && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    disabled={saving || funisDoTipo.length <= 1}
-                    onClick={() => setDeleteFunilId(selected.id)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Excluir funil
-                  </Button>
-                )}
+          <CardHeader className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                  <span className="truncate">
+                    {selected ? selected.name : "Etapas do funil"}
+                  </span>
+                  {selected?.ativo ? (
+                    <Badge className="text-[10px]">Em uso</Badge>
+                  ) : null}
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {selected
+                    ? funilTipoOf(selected) === null
+                      ? "Vincule este funil a um tipo de operação para usá-lo no kanban."
+                      : selected.ativo
+                        ? funilTipoOf(selected) === "comercial"
+                          ? "Ativo no kanban comercial e nos novos leads."
+                          : "Ativo neste tipo de operação."
+                        : "Edite as etapas ou ative este funil para usá-lo."
+                    : "Selecione um funil à esquerda para editar as etapas."}
+                </p>
               </div>
-            )}
+              {selected ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  {!selected.ativo ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={saving}
+                      onClick={() => void handleAtivar(selected.id)}
+                    >
+                      <Check className="mr-1 h-4 w-4" />
+                      Usar
+                    </Button>
+                  ) : null}
+                  <Button size="sm" onClick={openAddEtapa}>
+                    <Plus className="mr-1 h-4 w-4" />
+                    Nova etapa
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8"
+                        disabled={saving}
+                        aria-label="Mais ações do funil"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem
+                        disabled={saving}
+                        onClick={() => {
+                          setRenameValue(selected.name);
+                          setRenameOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Renomear
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={saving}
+                        onClick={() => setConfirmDefaults(true)}
+                      >
+                        <ListRestart className="h-4 w-4" />
+                        Restaurar etapas padrão
+                      </DropdownMenuItem>
+                      {funilTipoOf(selected) === "comercial" ? (
+                        <DropdownMenuItem
+                          disabled={saving}
+                          onClick={() => void handleRecoverLeadStages()}
+                        >
+                          <LifeBuoy className="h-4 w-4" />
+                          Recuperar etapas dos leads
+                        </DropdownMenuItem>
+                      ) : null}
+                      {!selected.ativo ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            disabled={saving || funisDoTipo.length <= 1}
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteFunilId(selected.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Excluir funil
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : null}
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-5">
             {!selected && !loading && (
               <p className="text-sm text-muted-foreground">
                 Selecione um funil à esquerda.
               </p>
             )}
-            {selected && (
-              <div className="rounded-lg border border-border/60 p-3 space-y-2">
-                <p className="text-xs font-medium">Tipo de operação</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Funis sem tipo não entram no kanban comercial. Vincule ao tipo
-                  certo; o kanban de vendas usa só Comercial.
-                </p>
-                <select
-                  className="h-8 w-full max-w-xs rounded-md border bg-background px-2 text-sm"
-                  value={funilTipoOf(selected) ?? ""}
-                  disabled={saving}
-                  onChange={(e) => {
-                    const tipo = parseFunilTipo(e.target.value);
-                    if (!tipo) return;
-                    void handleVincularTipo(selected, tipo);
-                  }}
-                >
-                  {funilTipoOf(selected) === null && (
-                    <option value="">Sem tipo — selecione para vincular</option>
-                  )}
-                  {FUNIL_TIPOS.map((tipo) => (
-                    <option key={tipo} value={tipo}>
-                      {FUNIL_TIPO_LABEL[tipo]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {selected && (
-              <div className="rounded-lg border border-border/60 p-3 space-y-2">
-                <p className="text-xs font-medium">Alerta de inatividade</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Leads sem mudança de etapa, triagem, tarefa ou atividade neste
-                  período recebem borda vermelha no funil.
-                </p>
-                <div className="flex flex-wrap items-end gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">Período</Label>
+            {selected ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Tags className="h-3.5 w-3.5 text-primary" />
+                    <p className="text-xs font-medium">Tipo de operação</p>
+                  </div>
+                  <select
+                    className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                    value={funilTipoOf(selected) ?? ""}
+                    disabled={saving}
+                    onChange={(e) => {
+                      const tipo = parseFunilTipo(e.target.value);
+                      if (!tipo) return;
+                      void handleVincularTipo(selected, tipo);
+                    }}
+                  >
+                    {funilTipoOf(selected) === null && (
+                      <option value="">Sem tipo — vincular</option>
+                    )}
+                    {FUNIL_TIPOS.map((tipo) => (
+                      <option key={tipo} value={tipo}>
+                        {FUNIL_TIPO_LABEL[tipo]}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                    O kanban de vendas usa apenas o tipo Comercial.
+                  </p>
+                </div>
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-primary" />
+                    <p className="text-xs font-medium">Alerta de inatividade</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Input
                       type="number"
                       min={1}
-                      className="h-8 w-24"
+                      aria-label="Período de inatividade"
+                      className="h-9 w-20"
                       value={inatividadeValor}
                       onChange={(e) => setInatividadeValor(e.target.value)}
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">Unidade</Label>
                     <select
-                      className="h-8 rounded-md border bg-background px-2 text-sm"
+                      aria-label="Unidade do período"
+                      className="h-9 rounded-md border bg-background px-2 text-sm"
                       value={inatividadeUnidade}
                       onChange={(e) =>
                         setInatividadeUnidade(e.target.value as PrazoUnidade)
@@ -949,126 +971,139 @@ export function ConfigFunisPanel() {
                         </option>
                       ))}
                     </select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={saving}
+                      onClick={() => void handleSaveInatividade()}
+                    >
+                      Salvar
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={saving}
-                    onClick={() => void handleSaveInatividade()}
-                  >
-                    Salvar
-                  </Button>
+                  <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                    Sem movimento neste período, o card ganha borda vermelha.
+                  </p>
                 </div>
               </div>
-            )}
-            {selected && activeEtapas.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma etapa ativa. Adicione etapas ou use &quot;Etapas
-                padrão&quot;.
-              </p>
-            )}
-            {selected && activeEtapas.length > 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                Arraste pelo ícone à esquerda para mudar a posição das etapas.
-                Essa ordem vale no funil e na lista de leads.
-              </p>
-            )}
-            {activeEtapas.map((s) => {
-              const papel = resolveEtapaPapel(s);
-              const isInitial = papel === "inicial";
-              const color = s.color || DEFAULT_CATALOG_COLOR;
-              return (
-                <div
-                  key={s.id}
-                  draggable={!saving}
-                  onDragStart={(event: DragEvent<HTMLDivElement>) => {
-                    if ((event.target as HTMLElement).closest("button")) {
-                      event.preventDefault();
-                      return;
-                    }
-                    setDraggingEtapaId(s.id);
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", s.id);
-                  }}
-                  onDragEnd={() => setDraggingEtapaId(null)}
-                  onDragOver={(event: DragEvent<HTMLDivElement>) => {
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
-                  }}
-                  onDrop={(event: DragEvent<HTMLDivElement>) => {
-                    event.preventDefault();
-                    const fromId =
-                      event.dataTransfer.getData("text/plain") ||
-                      draggingEtapaId;
-                    if (fromId) void handleReorderEtapas(fromId, s.id);
-                  }}
-                  className={cn(
-                    "flex items-center gap-3 border border-border/60 rounded-lg p-3",
-                    catalogColorSoftSurfaceClass(color),
-                    draggingEtapaId === s.id && "opacity-60",
-                    draggingEtapaId &&
-                      draggingEtapaId !== s.id &&
-                      "ring-1 ring-primary/40",
-                  )}
-                  style={catalogColorSoftSurfaceStyle(color)}
-                >
-                  <span
-                    className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground"
-                    aria-hidden
-                    title="Arraste para reordenar"
-                  >
-                    <GripVertical className="h-4 w-4" />
+            ) : null}
+
+            {selected ? (
+              <div className="space-y-2.5">
+                <div className="flex items-end justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">Etapas</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Arraste para reordenar. A ordem vale no kanban e na lista.
+                    </p>
+                  </div>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {activeEtapas.length}{" "}
+                    {activeEtapas.length === 1 ? "etapa" : "etapas"}
                   </span>
-                  <Badge
-                    className={catalogColorBadgeClass(color)}
-                    style={catalogColorBadgeStyle(color)}
-                    title={s.label}
-                  >
-                    {s.label}
-                  </Badge>
-                  {papel && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      {PAPEL_BADGE_LABEL[papel]}
-                    </Badge>
-                  )}
-                  {s.prazoValor ? (
-                    <Badge variant="outline" className="text-[10px]">
-                      Prazo {formatPrazoUnidade(s.prazoValor, s.prazoUnidade)}
-                    </Badge>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">
-                      Sem prazo
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {s.slug}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => openEditEtapa(s)}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    disabled={isInitial || saving}
-                    title={
-                      isInitial
-                        ? "Etapa inicial não pode ser removida"
-                        : "Excluir etapa"
-                    }
-                    onClick={() => setDeleteEtapa(s)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
                 </div>
-              );
-            })}
+                {activeEtapas.length === 0 ? (
+                  <p className="rounded-xl border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
+                    Nenhuma etapa ativa. Use Nova etapa ou restaure as etapas
+                    padrão.
+                  </p>
+                ) : null}
+                <div className="space-y-1.5">
+                  {activeEtapas.map((s) => {
+                    const papel = resolveEtapaPapel(s);
+                    const isInitial = papel === "inicial";
+                    const color = s.color || DEFAULT_CATALOG_COLOR;
+                    return (
+                      <div
+                        key={s.id}
+                        draggable={!saving}
+                        onDragStart={(event: DragEvent<HTMLDivElement>) => {
+                          if ((event.target as HTMLElement).closest("button")) {
+                            event.preventDefault();
+                            return;
+                          }
+                          setDraggingEtapaId(s.id);
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", s.id);
+                        }}
+                        onDragEnd={() => setDraggingEtapaId(null)}
+                        onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(event: DragEvent<HTMLDivElement>) => {
+                          event.preventDefault();
+                          const fromId =
+                            event.dataTransfer.getData("text/plain") ||
+                            draggingEtapaId;
+                          if (fromId) void handleReorderEtapas(fromId, s.id);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-xl border bg-background px-2.5 py-2",
+                          draggingEtapaId === s.id && "opacity-60",
+                          draggingEtapaId &&
+                            draggingEtapaId !== s.id &&
+                            "ring-1 ring-primary/40",
+                        )}
+                      >
+                        <span
+                          className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground"
+                          aria-hidden
+                          title="Arraste para reordenar"
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </span>
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background"
+                          style={catalogColorSwatchStyle(color)}
+                          aria-hidden
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium leading-tight">
+                            {s.label}
+                          </p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {s.slug}
+                          </p>
+                        </div>
+                        {papel ? (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {PAPEL_BADGE_LABEL[papel]}
+                          </Badge>
+                        ) : null}
+                        <span className="hidden text-[11px] text-muted-foreground sm:inline">
+                          {s.prazoValor
+                            ? formatPrazoUnidade(s.prazoValor, s.prazoUnidade)
+                            : "Sem prazo"}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditEtapa(s)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          disabled={isInitial || saving}
+                          title={
+                            isInitial
+                              ? "Etapa inicial não pode ser removida"
+                              : "Excluir etapa"
+                          }
+                          onClick={() => setDeleteEtapa(s)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
