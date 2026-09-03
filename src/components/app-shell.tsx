@@ -184,17 +184,12 @@ const PLATFORM_OPERACAO_MODULES: NavLeaf[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/leads", label: "Leads", icon: Users },
   { to: "/funil", label: "Funil", icon: Kanban },
-  { to: "/triagem", label: "Triagem", icon: ClipboardList },
   { to: "/agenda", label: "Agenda", icon: Calendar },
-  { to: "/leads-perdidos", label: "Leads Perdidos", icon: UserX },
-  { to: "/taxa-conversao", label: "Taxa de conversão", icon: Goal },
-  { to: "/atrasos", label: "Atrasos", icon: TriangleAlert },
   { to: "/metas", label: "Metas", icon: Target },
 ];
 
-/** Fechamento da plataforma (super_admin) — sem Documentação. */
+/** Fechamento da plataforma (super_admin) — sem Documentação nem Propostas. */
 const PLATFORM_FECHAMENTO_MODULES: NavLeaf[] = [
-  { to: "/propostas", label: "Propostas", icon: ClipboardList },
   { to: "/contratos", label: "Contratos", icon: FileSignature },
   { to: "/vendas", label: "Vendas", icon: DollarSign },
 ];
