@@ -1278,6 +1278,7 @@ function LeadsPage() {
           return {
           nome: r.nome,
           telefone: r.telefone,
+          email: r.email || undefined,
           origem: r.origem || origemOptions[0] || "Importação",
           interesse: r.interesse,
           cidade: r.cidade || undefined,
@@ -3503,17 +3504,19 @@ function LeadsPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/60 text-left">
-                      <th className="p-2 font-medium">Data Captura</th>
-                      <th className="p-2 font-medium">Nome do Cliente</th>
+                      <th className="p-2 font-medium">Nome</th>
                       <th className="p-2 font-medium">Telefone</th>
+                      <th className="p-2 font-medium">Email</th>
+                      <th className="p-2 font-medium">Localidade de interesse</th>
                       <th className="p-2 font-medium">Origem</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-t text-muted-foreground">
-                      <td className="p-2">02/08/2026</td>
                       <td className="p-2">Maria Silva</td>
                       <td className="p-2 tabular-nums">(81) 98888-7777</td>
+                      <td className="p-2">maria@email.com</td>
+                      <td className="p-2">Recife</td>
                       <td className="p-2">WhatsApp</td>
                     </tr>
                   </tbody>
@@ -3527,7 +3530,7 @@ function LeadsPage() {
               <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                 <li>
                   <span className="text-foreground">
-                    {isPlatformAdmin ? "Empresa" : "Nome do Cliente"}
+                    {isPlatformAdmin ? "Empresa" : "Nome"}
                   </span>{" "}
                   e <span className="text-foreground">Telefone</span> são
                   obrigatórios
@@ -3542,7 +3545,9 @@ function LeadsPage() {
                     são opcionais e entram na ficha de prospecção.
                   </li>
                 ) : (
-                <li>Data Captura e Origem são opcionais</li>
+                <li>
+                  Email, Localidade de interesse e Origem são opcionais
+                </li>
                 )}
                 <li>Uma linha = um lead</li>
               </ul>
@@ -3552,8 +3557,8 @@ function LeadsPage() {
             <div>
               <p className="font-medium mb-1.5">Não incluir</p>
               <p className="text-muted-foreground">
-                Hora da captura, DDD em coluna separada, imóvel de interesse,
-                mensagem de captura, etapa, corretor ou prioridade.
+                Hora da captura, DDD em coluna separada, mensagem de captura,
+                etapa, corretor ou prioridade.
               </p>
             </div>
             )}
@@ -3599,7 +3604,7 @@ function LeadsPage() {
               {importFileName ? `Arquivo: ${importFileName}. ` : ""}
               {isPlatformAdmin
                 ? "Lê a aba de leads da planilha de prospecção (Empresa, telefone, município, produto, fit e demais campos)."
-                : "Formato: Data Captura, Nome do Cliente, Telefone (com DDD) e Origem. Hora, e-mail, imóvel e mensagem são ignorados."}
+                : "Formato: Nome, Telefone, Email, Localidade de interesse e Origem."}
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto flex-1 min-h-0 border rounded-md">
@@ -3610,15 +3615,20 @@ function LeadsPage() {
                     {isPlatformAdmin ? "Empresa" : "Nome"}
                   </th>
                   <th className="p-2 font-medium">Telefone</th>
+                  {isPlatformAdmin ? null : (
+                    <th className="p-2 font-medium">Email</th>
+                  )}
                   <th className="p-2 font-medium">
-                    {isPlatformAdmin ? "Município" : "Origem"}
+                    {isPlatformAdmin ? "Município" : "Localidade"}
                   </th>
                   {isPlatformAdmin ? (
                     <>
                       <th className="p-2 font-medium">Produto</th>
                       <th className="p-2 font-medium">Fit</th>
                     </>
-                  ) : null}
+                  ) : (
+                    <th className="p-2 font-medium">Origem</th>
+                  )}
                   <th className="p-2 font-medium">Status</th>
                 </tr>
               </thead>
@@ -3633,10 +3643,13 @@ function LeadsPage() {
                   >
                     <td className="p-2">{row.nome || "—"}</td>
                     <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
+                    {isPlatformAdmin ? null : (
+                      <td className="p-2">{row.email || "—"}</td>
+                    )}
                     <td className="p-2">
                       {isPlatformAdmin
                         ? row.cidade || row.origem || "—"
-                        : row.origem || "—"}
+                        : row.cidade || "—"}
                     </td>
                     {isPlatformAdmin ? (
                       <>
@@ -3647,7 +3660,9 @@ function LeadsPage() {
                           {row.prospeccao?.fit ?? "—"}
                         </td>
                       </>
-                    ) : null}
+                    ) : (
+                      <td className="p-2">{row.origem || "—"}</td>
+                    )}
                     <td className="p-2">
                       {row.error ? (
                         <span className="text-xs text-destructive">

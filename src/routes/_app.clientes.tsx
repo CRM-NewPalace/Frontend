@@ -558,6 +558,7 @@ function Clientes() {
         valid.map((r) => ({
           nome: r.nome,
           telefone: r.telefone,
+          email: r.email || undefined,
           origem: r.origem || origemOptions[0] || "Importação",
           interesse: r.interesse,
           cidade: r.cidade || undefined,
@@ -1427,17 +1428,19 @@ function Clientes() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/60 text-left">
-                      <th className="p-2 font-medium">Data Captura</th>
-                      <th className="p-2 font-medium">Nome do Cliente</th>
+                      <th className="p-2 font-medium">Nome</th>
                       <th className="p-2 font-medium">Telefone</th>
+                      <th className="p-2 font-medium">Email</th>
+                      <th className="p-2 font-medium">Localidade de interesse</th>
                       <th className="p-2 font-medium">Origem</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-t text-muted-foreground">
-                      <td className="p-2">02/08/2026</td>
                       <td className="p-2">Maria Silva</td>
                       <td className="p-2 tabular-nums">(81) 98888-7777</td>
+                      <td className="p-2">maria@email.com</td>
+                      <td className="p-2">Recife</td>
                       <td className="p-2">WhatsApp</td>
                     </tr>
                   </tbody>
@@ -1449,14 +1452,16 @@ function Clientes() {
               <p className="font-medium mb-1.5">Regras</p>
               <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                 <li>
-                  <span className="text-foreground">Nome do Cliente</span> e{" "}
+                  <span className="text-foreground">Nome</span> e{" "}
                   <span className="text-foreground">Telefone</span> são
                   obrigatórios
                 </li>
                 <li>
                   Telefone já com DDD, ex.: (81) 98888-7777 ou 81 98888-7777
                 </li>
-                <li>Data Captura e Origem são opcionais</li>
+                <li>
+                  Email, Localidade de interesse e Origem são opcionais
+                </li>
                 <li>Uma linha = um cliente</li>
                 <li>
                   Os clientes entram na sua carteira (ou na de quem importa)
@@ -1467,8 +1472,8 @@ function Clientes() {
             <div>
               <p className="font-medium mb-1.5">Não incluir</p>
               <p className="text-muted-foreground">
-                Hora da captura, DDD em coluna separada, imóvel de interesse,
-                mensagem de captura, etapa, corretor ou prioridade.
+                Hora da captura, DDD em coluna separada, mensagem de captura,
+                etapa, corretor ou prioridade.
               </p>
             </div>
           </div>
@@ -1509,8 +1514,7 @@ function Clientes() {
             <DialogTitle>Confirmar importação</DialogTitle>
             <DialogDescription>
               {importFileName ? `Arquivo: ${importFileName}. ` : ""}
-              Formato: Data Captura, Nome do Cliente, Telefone (com DDD) e
-              Origem. Hora, e-mail, imóvel e mensagem são ignorados.
+              Formato: Nome, Telefone, Email, Localidade de interesse e Origem.
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto flex-1 min-h-0 border rounded-md">
@@ -1519,6 +1523,8 @@ function Clientes() {
                 <tr className="text-left text-muted-foreground border-b">
                   <th className="p-2 font-medium">Nome</th>
                   <th className="p-2 font-medium">Telefone</th>
+                  <th className="p-2 font-medium">Email</th>
+                  <th className="p-2 font-medium">Localidade</th>
                   <th className="p-2 font-medium">Origem</th>
                   <th className="p-2 font-medium">Status</th>
                 </tr>
@@ -1534,6 +1540,8 @@ function Clientes() {
                   >
                     <td className="p-2">{row.nome || "—"}</td>
                     <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
+                    <td className="p-2">{row.email || "—"}</td>
+                    <td className="p-2">{row.cidade || "—"}</td>
                     <td className="p-2">{row.origem || "—"}</td>
                     <td className="p-2">
                       {row.error ? (
