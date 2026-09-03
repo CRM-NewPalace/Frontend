@@ -160,8 +160,8 @@ export function LeadAtividadeDialog({
       });
       toast.success(
         tipo === "tarefa"
-          ? "Tarefa criada. O lead saiu do atraso por inatividade."
-          : "Atividade agendada. O lead saiu do atraso por inatividade.",
+          ? "Tarefa criada. O lead saiu do atraso."
+          : "Atividade agendada. O lead saiu do atraso.",
       );
       await onCreated?.(prompt.leadId);
       onClose();
@@ -193,7 +193,7 @@ export function LeadAtividadeDialog({
               <DialogTitle>Adicionar atividade</DialogTitle>
               <DialogDescription>
                 {prompt
-                  ? `Agende um compromisso para ${prompt.leadNome}. Isso registra movimentação e tira o lead de atrasado.`
+                    ? `Agende um compromisso para ${prompt.leadNome}. Isso registra movimentação e encerra tarefas atrasadas.`
                   : null}
               </DialogDescription>
             </div>
