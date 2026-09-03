@@ -464,9 +464,12 @@ export function ComercialFunilBoard({
   const [activeDropStage, setActiveDropStage] = useState<StageId | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const didDrag = useRef(false);
+  const dismissedOpenLeadId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!openLeadId || loading) return;
+    if (dismissedOpenLeadId.current === openLeadId) return;
+    dismissedOpenLeadId.current = null;
     const found = allLeads.find((l) => l.id === openLeadId);
     if (!found) return;
     const scoped =
@@ -1661,7 +1664,12 @@ export function ComercialFunilBoard({
       <LeadDetalheDialog
         lead={detailLead}
         open={!!detailLead}
-        onOpenChange={(o) => !o && setDetailLead(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            if (openLeadId) dismissedOpenLeadId.current = openLeadId;
+            setDetailLead(null);
+          }
+        }}
         showCorretor={!isCorretor && !isPlatformAdmin}
         showMeuLeadBadge={Boolean(
           isGerente &&
