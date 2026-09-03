@@ -7,11 +7,12 @@ import { formatPhone, isValidPhone, phoneDigits } from "@/lib/phone";
 import type { LeadProspeccao } from "@/lib/lead-prospeccao";
 import { EMPTY_PROSPECCAO } from "@/lib/lead-prospeccao";
 
-/** Formato único de import/export (SupremoCRM simplificado). */
+/** Formato único de import/export. */
 export const LEAD_IO_COLUMNS = [
-  "Data Captura",
-  "Nome do Cliente",
+  "Nome",
   "Telefone",
+  "Email",
+  "Localidade de interesse",
   "Origem",
 ] as const;
 
@@ -89,6 +90,8 @@ const HEADER_ALIASES: Record<string, string> = {
   mensagem: "skip",
   // legado nosso
   interesse: "skip",
+  "localidade de interesse": "cidade",
+  localidade: "cidade",
   cidade: "cidade",
   city: "cidade",
   bairro: "bairro",
@@ -247,6 +250,9 @@ function buildLeadFromCells(
 
   if (nome.length < 2) lead.error = "Nome inválido";
   else if (!isValidPhone(telefone)) lead.error = "Telefone inválido";
+  else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    lead.error = "E-mail inválido";
+  }
 
   return lead;
 }
@@ -283,11 +289,12 @@ function rowsFromMatrix(
       });
     } else {
       // Formato unificado sem cabeçalho:
-      // Data | Nome | Telefone | Origem
-      cells.data = row[0];
-      cells.nome = row[1];
-      cells.telefone = row[2];
-      cells.origem = row[3];
+      // Nome | Telefone | Email | Localidade de interesse | Origem
+      cells.nome = row[0];
+      cells.telefone = row[1];
+      cells.email = row[2];
+      cells.cidade = row[3];
+      cells.origem = row[4];
     }
 
     // Fallback: achar telefone em qualquer célula
@@ -625,9 +632,10 @@ function buildLeadsSheet(rows: string[][]) {
 
 function leadsToSheetRows(leads: Lead[]): string[][] {
   return leads.map((l) => [
-    l.updatedAt || "",
     l.nome || "",
     l.telefone || "",
+    l.email || "",
+    l.cidade || "",
     l.origem || "",
   ]);
 }
@@ -675,7 +683,13 @@ export function exportLeadsToPdf(
   autoTable(doc, {
     startY: 64,
     head: [Array.from(LEAD_IO_COLUMNS)],
-    body: leads.map((l) => [l.updatedAt, l.nome, l.telefone, l.origem || "—"]),
+    body: leads.map((l) => [
+      l.nome,
+      l.telefone,
+      l.email || "—",
+      l.cidade || "—",
+      l.origem || "—",
+    ]),
     styles: { fontSize: 8, cellPadding: 4 },
     headStyles: { fillColor: [7, 158, 212] },
   });
@@ -716,7 +730,13 @@ export function downloadImportTemplate(
         ],
       ])
     : buildLeadsSheet([
-        ["02/08/2026", "Maria Silva", "(81) 98888-7777", "WhatsApp"],
+        [
+          "Maria Silva",
+          "(81) 98888-7777",
+          "maria@email.com",
+          "Recife",
+          "WhatsApp",
+        ],
       ]);
   XLSX.utils.book_append_sheet(
     workbook,
