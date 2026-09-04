@@ -371,6 +371,64 @@ export async function markLeadLostApi(
   });
 }
 
+const BULK_CHUNK = 500;
+
+export type MarkLeadsLostBulkResult = {
+  ok: boolean;
+  updated: number;
+  skipped: number;
+  ids: string[];
+};
+
+export async function markLeadsLostBulkApi(
+  ids: string[],
+  motivo: string,
+): Promise<MarkLeadsLostBulkResult> {
+  let updated = 0;
+  let skipped = 0;
+  const done: string[] = [];
+  for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+    const chunk = ids.slice(i, i + BULK_CHUNK);
+    const result = await apiFetch<MarkLeadsLostBulkResult>("/leads/perder", {
+      method: "POST",
+      body: { ids: chunk, motivo },
+    });
+    updated += result.updated ?? 0;
+    skipped += result.skipped ?? 0;
+    done.push(...(result.ids ?? []));
+  }
+  return { ok: true, updated, skipped, ids: done };
+}
+
+export type RemoveLeadsBulkResult = {
+  ok: boolean;
+  deleted: number;
+  failed: number;
+  failedIds: string[];
+};
+
+export async function deleteLeadsBulkApi(
+  ids: string[],
+): Promise<RemoveLeadsBulkResult> {
+  let deleted = 0;
+  const failedIds: string[] = [];
+  for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+    const chunk = ids.slice(i, i + BULK_CHUNK);
+    const result = await apiFetch<RemoveLeadsBulkResult>(
+      "/leads/perdidos/excluir",
+      { method: "POST", body: { ids: chunk } },
+    );
+    deleted += result.deleted ?? 0;
+    failedIds.push(...(result.failedIds ?? []));
+  }
+  return {
+    ok: true,
+    deleted,
+    failed: failedIds.length,
+    failedIds,
+  };
+}
+
 export async function fetchLostLeads(params?: {
   search?: string;
   page?: number;

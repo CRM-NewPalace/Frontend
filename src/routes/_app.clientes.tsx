@@ -219,6 +219,7 @@ function Clientes() {
     addLead,
     updateLead,
     markLeadLost,
+    markLeadsLost,
     resolveCorretorId,
     assignees,
     loading,
@@ -506,27 +507,29 @@ function Clientes() {
     setBulkMotivo("");
     setBulkMotivoOutro("");
     setBulkDeleting(true);
-    let ok = 0;
-    let fail = 0;
-    for (const id of ids) {
-      try {
-        await markLeadLost(id, motivo);
-        ok += 1;
-      } catch {
-        fail += 1;
+    try {
+      const result = await markLeadsLost(ids, motivo);
+      setSelectedIds(new Set());
+      if (detail && ids.includes(detail.id)) setDetail(null);
+      if (result.skipped === 0) {
+        toast.success(
+          result.updated === 1
+            ? "1 cliente movido para Perda de cliente."
+            : `${result.updated} clientes movidos para Perda de cliente.`,
+        );
+      } else {
+        toast.error(
+          `${result.updated} excluído(s), ${result.skipped} com erro.`,
+        );
       }
-    }
-    setSelectedIds(new Set());
-    if (detail && ids.includes(detail.id)) setDetail(null);
-    setBulkDeleting(false);
-    if (fail === 0) {
-      toast.success(
-        ok === 1
-          ? "1 cliente movido para Perda de cliente."
-          : `${ok} clientes movidos para Perda de cliente.`,
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível excluir os clientes.",
       );
-    } else {
-      toast.error(`${ok} excluído(s), ${fail} com erro.`);
+    } finally {
+      setBulkDeleting(false);
     }
   }
 

@@ -48,6 +48,13 @@ export function prependLostClienteToCache(api: ApiLead) {
   setLostClientesCache([item, ...current.filter((l) => l.id !== item.id)]);
 }
 
+export function invalidateLostClientesCache() {
+  memoryCache = null;
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(CACHE_KEY);
+  }
+}
+
 export async function loadLostClientes(options?: {
   force?: boolean;
 }): Promise<LostLead[]> {

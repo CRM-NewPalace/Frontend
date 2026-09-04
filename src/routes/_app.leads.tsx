@@ -444,6 +444,7 @@ function LeadsPage() {
     addLead,
     updateLead,
     markLeadLost,
+    markLeadsLost,
     applyLead,
     loading,
     assignees,
@@ -1202,27 +1203,29 @@ function LeadsPage() {
     setBulkMotivo("");
     setBulkMotivoOutro("");
     setBulkDeleting(true);
-    let ok = 0;
-    let fail = 0;
-    for (const id of ids) {
-      try {
-        await markLeadLost(id, motivo);
-        ok += 1;
-      } catch {
-        fail += 1;
+    try {
+      const result = await markLeadsLost(ids, motivo);
+      setSelectedIds(new Set());
+      if (detailLead && ids.includes(detailLead.id)) setDetailLead(null);
+      if (result.skipped === 0) {
+        toast.success(
+          result.updated === 1
+            ? "1 lead movido para Leads Perdidos."
+            : `${result.updated} leads movidos para Leads Perdidos.`,
+        );
+      } else {
+        toast.error(
+          `${result.updated} excluído(s), ${result.skipped} com erro.`,
+        );
       }
-    }
-    setSelectedIds(new Set());
-    if (detailLead && ids.includes(detailLead.id)) setDetailLead(null);
-    setBulkDeleting(false);
-    if (fail === 0) {
-      toast.success(
-        ok === 1
-          ? "1 lead movido para Leads Perdidos."
-          : `${ok} leads movidos para Leads Perdidos.`,
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível excluir os leads.",
       );
-    } else {
-      toast.error(`${ok} excluído(s), ${fail} com erro.`);
+    } finally {
+      setBulkDeleting(false);
     }
   }
 

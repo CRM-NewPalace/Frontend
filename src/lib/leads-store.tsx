@@ -17,6 +17,7 @@ import {
   fetchLeads,
   mapApiLead,
   markLeadLostApi,
+  markLeadsLostBulkApi,
   updateLeadApi,
   updateLeadStageApi,
   type CreateLeadInput,
@@ -27,8 +28,11 @@ import {
   fetchDocumentacoes,
   type Documentacao,
 } from "@/lib/documentacao-api";
-import { prependLostLeadToCache } from "@/lib/lost-leads-cache";
-import { prependLostClienteToCache } from "@/lib/lost-clientes-cache";
+import { prependLostLeadToCache, invalidateLostLeadsCache } from "@/lib/lost-leads-cache";
+import {
+  prependLostClienteToCache,
+  invalidateLostClientesCache,
+} from "@/lib/lost-clientes-cache";
 
 const LEGACY_STORAGE_KEY = "crm_mock_leads";
 
@@ -98,6 +102,11 @@ type LeadsContextValue = {
   applyLead: (lead: Lead) => void;
   /** Marca como perdido (sai das listas operacionais). */
   markLeadLost: (id: string, motivo: string) => Promise<void>;
+  /** Soft-delete em lote (um request por até 500 ids). */
+  markLeadsLost: (ids: string[], motivo: string) => Promise<{
+    updated: number;
+    skipped: number;
+  }>;
   /** Exclusão definitiva (admin, lead já perdido). */
   deleteLead: (id: string) => Promise<void>;
 };
@@ -368,6 +377,41 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const markLeadsLost = useCallback(async (ids: string[], motivo: string) => {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return { updated: 0, skipped: 0 };
+    const drop = new Set(unique);
+    const removed: Lead[] = [];
+    setLeads((prev) => {
+      const keep: Lead[] = [];
+      for (const l of prev) {
+        if (drop.has(l.id)) removed.push(l);
+        else keep.push(l);
+      }
+      return keep;
+    });
+
+    try {
+      const result = await markLeadsLostBulkApi(unique, motivo);
+      invalidateLostLeadsCache();
+      invalidateLostClientesCache();
+      const done = new Set(result.ids);
+      if (result.skipped > 0) {
+        const restore = removed.filter((l) => !done.has(l.id));
+        if (restore.length > 0) {
+          setLeads((prev) => [...restore, ...prev]);
+        }
+      }
+      return { updated: result.updated, skipped: result.skipped };
+    } catch (err) {
+      setLeads((prev) => {
+        const existing = new Set(prev.map((l) => l.id));
+        return [...removed.filter((l) => !existing.has(l.id)), ...prev];
+      });
+      throw err;
+    }
+  }, []);
+
   const deleteLead = useCallback(async (id: string) => {
     let previous: Lead | undefined;
     setLeads((prev) => {
@@ -399,6 +443,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       updateLeadStage,
       applyLead,
       markLeadLost,
+      markLeadsLost,
       deleteLead,
     }),
     [
@@ -414,6 +459,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       updateLeadStage,
       applyLead,
       markLeadLost,
+      markLeadsLost,
       deleteLead,
     ],
   );

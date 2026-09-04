@@ -58,7 +58,7 @@ import {
   sortByTableOrder,
   type TableSort,
 } from "@/lib/table-sort";
-import { deleteLeadApi } from "@/lib/leads-api";
+import { deleteLeadApi, deleteLeadsBulkApi } from "@/lib/leads-api";
 import {
   getLostLeadsCache,
   loadLostLeads,
@@ -219,39 +219,40 @@ function LeadsPerdidos() {
     setSelectedIds(new Set());
     if (detail && ids.includes(detail.id)) setDetail(null);
 
-    let ok = 0;
-    let fail = 0;
-    const failed: LostLead[] = [];
-    for (const id of ids) {
-      try {
-        await deleteLeadApi(id);
-        ok += 1;
-      } catch {
-        fail += 1;
-        const target = targets.find((l) => l.id === id);
-        if (target) failed.push(target);
+    try {
+      const result = await deleteLeadsBulkApi(ids);
+      const failed = result.failedIds;
+      if (failed.length > 0) {
+        const failedSet = new Set(failed);
+        const restore = targets.filter((l) => failedSet.has(l.id));
+        setLeads((prev) => {
+          const existing = new Set(prev.map((l) => l.id));
+          return [...restore.filter((l) => !existing.has(l.id)), ...prev];
+        });
+        toast.error(
+          `${result.deleted} excluído(s), ${failed.length} com erro. A lista foi atualizada.`,
+        );
+        void refresh({ silent: true });
+      } else {
+        toast.success(
+          result.deleted === 1
+            ? "1 lead excluído definitivamente."
+            : `${result.deleted} leads excluídos definitivamente.`,
+        );
       }
-    }
-
-    if (failed.length > 0) {
+    } catch (err) {
       setLeads((prev) => {
         const existing = new Set(prev.map((l) => l.id));
-        return [...failed.filter((l) => !existing.has(l.id)), ...prev];
+        return [...targets.filter((l) => !existing.has(l.id)), ...prev];
       });
-    }
-
-    setBulkPurging(false);
-    if (fail === 0) {
-      toast.success(
-        ok === 1
-          ? "1 lead excluído definitivamente."
-          : `${ok} leads excluídos definitivamente.`,
-      );
-    } else {
       toast.error(
-        `${ok} excluído(s), ${fail} com erro. A lista foi atualizada.`,
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível excluir os leads.",
       );
       void refresh({ silent: true });
+    } finally {
+      setBulkPurging(false);
     }
   }
 
