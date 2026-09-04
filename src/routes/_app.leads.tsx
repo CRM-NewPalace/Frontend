@@ -1259,11 +1259,24 @@ function LeadsPage() {
         toast.error("Nenhum lead encontrado no arquivo.");
         return;
       }
-      const existing = await checkImportDuplicates({
-        telefones: rows.map((r) => r.telefone),
-        emails: rows.map((r) => r.email),
-        tipo: "lead",
-      });
+      let existing: ImportExistingIndex = { phones: {}, emails: {} };
+      try {
+        existing = await checkImportDuplicates({
+          telefones: rows
+            .map((r) => r.telefone)
+            .filter((t) => t.trim())
+            .slice(0, 600),
+          emails: rows
+            .map((r) => r.email)
+            .filter((e) => e.trim())
+            .slice(0, 600),
+          tipo: "lead",
+        });
+      } catch {
+        toast.message(
+          "Não foi possível conferir duplicados agora. Os válidos ainda podem ser importados; a base bloqueia telefone/e-mail já cadastrado.",
+        );
+      }
       setImportExisting(existing);
       setImportRows(applyImportConflictErrors(rows, existing, "lead"));
       setImportEditingInvalids(false);
@@ -1299,10 +1312,17 @@ function LeadsPage() {
       toast.error("Nenhum lead válido para importar.");
       return;
     }
+    const MAX_IMPORT = 600;
+    const batch = valid.slice(0, MAX_IMPORT);
+    if (valid.length > MAX_IMPORT) {
+      toast.message(
+        `A importação aceita no máximo ${MAX_IMPORT} registros por vez. Os demais não foram enviados.`,
+      );
+    }
     setImportSaving(true);
     try {
       const result = await importLeads(
-        valid.map((r) => {
+        batch.map((r) => {
           const prospeccao = compactProspeccao(r.prospeccao);
           return {
           nome: r.nome,

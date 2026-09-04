@@ -244,8 +244,10 @@ export async function checkImportDuplicates(input: {
     body: input,
   });
   return {
-    phones: data.phones ?? {},
-    emails: data.emails ?? {},
+    phones:
+      data?.phones && typeof data.phones === "object" ? data.phones : {},
+    emails:
+      data?.emails && typeof data.emails === "object" ? data.emails : {},
   };
 }
 
