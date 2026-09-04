@@ -3,7 +3,8 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import mammoth from "mammoth";
 import type { Lead } from "@/lib/crm-types";
-import { formatPhone, isValidPhone, phoneDigits } from "@/lib/phone";
+import { formatPhone, isValidPhone } from "@/lib/phone";
+import { isPlaceholderEmail } from "@/lib/email";
 import type { LeadProspeccao } from "@/lib/lead-prospeccao";
 import { EMPTY_PROSPECCAO } from "@/lib/lead-prospeccao";
 
@@ -244,7 +245,7 @@ function buildLeadFromCells(
     ([k, v]) => k === "fit" ? v != null : Boolean(String(v ?? "").trim()),
   );
 
-  const lead: ParsedImportLead = {
+  return validateParsedImportLead({
     nome,
     telefone,
     email,
@@ -255,15 +256,70 @@ function buildLeadFromCells(
     prioridade: cells.prioridade ? parsePrioridade(cells.prioridade) : "Média",
     renda,
     prospeccao: hasProspeccao ? prospeccao : undefined,
+  });
+}
+
+/** Revalida nome, telefone e e-mail após edição na prévia da importação. */
+export function validateParsedImportLead(
+  row: ParsedImportLead,
+): ParsedImportLead {
+  const nome = row.nome.trim();
+  const telefone = formatPhone(row.telefone);
+  const email = row.email.trim();
+  const next: ParsedImportLead = {
+    ...row,
+    nome,
+    telefone,
+    email,
   };
-
-  if (nome.length < 2) lead.error = "Nome inválido";
-  else if (!isValidPhone(telefone)) lead.error = "Telefone inválido";
-  else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    lead.error = "E-mail inválido";
+  delete next.error;
+  if (nome.length < 2) next.error = "Nome inválido";
+  else if (!isValidPhone(telefone)) next.error = "Telefone inválido";
+  else   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    next.error = "E-mail inválido";
   }
+  return next;
+}
 
-  return lead;
+export type ImportExistingIndex = {
+  phones: Record<string, string>;
+  emails: Record<string, string>;
+};
+
+/** Marca linhas que já existem na base ou se repetem no arquivo. */
+export function applyImportConflictErrors(
+  rows: ParsedImportLead[],
+  existing: ImportExistingIndex,
+  kind: "lead" | "cliente",
+): ParsedImportLead[] {
+  const label = kind === "cliente" ? "cliente" : "lead";
+  const seenPhone = new Set<string>();
+  const seenEmail = new Set<string>();
+  return rows.map((row) => {
+    const next = validateParsedImportLead(row);
+    if (next.error) return next;
+    const phone = nationalPhoneDigits(next.telefone);
+    if (phone && existing.phones[phone]) {
+      next.error = `Já existe um ${label} na base com este telefone (${existing.phones[phone]})`;
+      return next;
+    }
+    if (phone && seenPhone.has(phone)) {
+      next.error = "Telefone repetido neste arquivo";
+      return next;
+    }
+    if (phone) seenPhone.add(phone);
+    const email = next.email.trim().toLowerCase();
+    if (email && !isPlaceholderEmail(email) && existing.emails[email]) {
+      next.error = `Já existe um ${label} na base com este e-mail (${existing.emails[email]})`;
+      return next;
+    }
+    if (email && !isPlaceholderEmail(email) && seenEmail.has(email)) {
+      next.error = "E-mail repetido neste arquivo";
+      return next;
+    }
+    if (email && !isPlaceholderEmail(email)) seenEmail.add(email);
+    return next;
+  });
 }
 
 function mapHeaderKeys(headerRow: unknown[]): (string | null)[] {
@@ -328,17 +384,7 @@ function rowsFromMatrix(
 }
 
 function dedupeImportRows(rows: ParsedImportLead[]): ParsedImportLead[] {
-  const seen = new Set<string>();
-  return rows.filter((r) => {
-    const phone = phoneDigits(r.telefone);
-    if (!phone && r.error) return true;
-    const key = r.prospeccao
-      ? `${normalizeHeader(r.nome)}|${phone}`
-      : phone;
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return rows;
 }
 
 function matrixFromSheet(sheet: XLSX.WorkSheet): unknown[][] {

@@ -231,6 +231,24 @@ export type ImportLeadsResult = {
   errors: Array<{ index: number; nome: string; message: string }>;
 };
 
+export async function checkImportDuplicates(input: {
+  telefones: string[];
+  emails?: string[];
+  tipo?: ContatoTipo;
+}): Promise<{ phones: Record<string, string>; emails: Record<string, string> }> {
+  const data = await apiFetch<{
+    phones?: Record<string, string>;
+    emails?: Record<string, string>;
+  }>("/leads/import/check", {
+    method: "POST",
+    body: input,
+  });
+  return {
+    phones: data.phones ?? {},
+    emails: data.emails ?? {},
+  };
+}
+
 export async function importLeads(
   leads: ImportLeadInput[],
   opts?: { tipo?: ContatoTipo },

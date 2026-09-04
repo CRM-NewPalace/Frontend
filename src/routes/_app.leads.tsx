@@ -114,13 +114,15 @@ import { useLeads } from "@/lib/leads-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
-import { importLeads, fetchLeadById, mapApiLead } from "@/lib/leads-api";
+import { importLeads, fetchLeadById, mapApiLead, checkImportDuplicates } from "@/lib/leads-api";
 import { fetchEquipes, type Equipe } from "@/lib/equipes-api";
 import {
   downloadImportTemplate,
   exportLeadsToExcel,
   exportLeadsToPdf,
   parseLeadsFromFile,
+  applyImportConflictErrors,
+  type ImportExistingIndex,
   type ParsedImportLead,
 } from "@/lib/leads-io";
 import { LeadsDistribuirDialog } from "@/components/leads-distribuir-dialog";
@@ -466,6 +468,11 @@ function LeadsPage() {
   const [importParsing, setImportParsing] = useState(false);
   const [importSaving, setImportSaving] = useState(false);
   const [importFileName, setImportFileName] = useState("");
+  const [importEditingInvalids, setImportEditingInvalids] = useState(false);
+  const [importExisting, setImportExisting] = useState<ImportExistingIndex>({
+    phones: {},
+    emails: {},
+  });
   const [distribuirOpen, setDistribuirOpen] = useState(false);
 
   const leads = useMemo(() => {
@@ -1252,7 +1259,14 @@ function LeadsPage() {
         toast.error("Nenhum lead encontrado no arquivo.");
         return;
       }
-      setImportRows(rows);
+      const existing = await checkImportDuplicates({
+        telefones: rows.map((r) => r.telefone),
+        emails: rows.map((r) => r.email),
+        tipo: "lead",
+      });
+      setImportExisting(existing);
+      setImportRows(applyImportConflictErrors(rows, existing, "lead"));
+      setImportEditingInvalids(false);
       setImportOpen(true);
     } catch (err) {
       toast.error(
@@ -1262,6 +1276,21 @@ function LeadsPage() {
       setImportParsing(false);
       if (importInputRef.current) importInputRef.current.value = "";
     }
+  }
+
+  function patchImportRow(
+    index: number,
+    patch: Partial<Pick<ParsedImportLead, "nome" | "telefone" | "email" | "cidade" | "origem">>,
+  ) {
+    setImportRows((prev) =>
+      applyImportConflictErrors(
+        prev.map((row, i) =>
+          i === index ? { ...row, ...patch } : row,
+        ),
+        importExisting,
+        "lead",
+      ),
+    );
   }
 
   async function confirmImport() {
@@ -1291,6 +1320,7 @@ function LeadsPage() {
       );
       setImportOpen(false);
       setImportRows([]);
+      setImportEditingInvalids(false);
       await refresh({ silent: true });
       await refreshCatalog({ silent: true });
       if (result.failed > 0) {
@@ -3596,7 +3626,13 @@ function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(next) => {
+          setImportOpen(next);
+          if (!next) setImportEditingInvalids(false);
+        }}
+      >
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Confirmar importação</DialogTitle>
@@ -3607,105 +3643,239 @@ function LeadsPage() {
                 : "Formato: Nome, Telefone, Email, Localidade de interesse e Origem."}
             </DialogDescription>
           </DialogHeader>
-          <div className="overflow-auto flex-1 min-h-0 border rounded-md">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted/80 backdrop-blur">
-                <tr className="text-left text-muted-foreground border-b">
-                  <th className="p-2 font-medium">
-                    {isPlatformAdmin ? "Empresa" : "Nome"}
-                  </th>
-                  <th className="p-2 font-medium">Telefone</th>
-                  {isPlatformAdmin ? null : (
-                    <th className="p-2 font-medium">Email</th>
-                  )}
-                  <th className="p-2 font-medium">
-                    {isPlatformAdmin ? "Município" : "Localidade"}
-                  </th>
-                  {isPlatformAdmin ? (
-                    <>
-                      <th className="p-2 font-medium">Produto</th>
-                      <th className="p-2 font-medium">Fit</th>
-                    </>
-                  ) : (
-                    <th className="p-2 font-medium">Origem</th>
-                  )}
-                  <th className="p-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importRows.map((row, index) => (
-                  <tr
-                    key={`${row.telefone}-${index}`}
-                    className={cn(
-                      "border-b last:border-0",
-                      row.error && "bg-destructive/5",
-                    )}
+          {(() => {
+            const validCount = importRows.filter((r) => !r.error).length;
+            const invalidRows = importRows
+              .map((row, index) => ({ row, index }))
+              .filter(({ row }) => Boolean(row.error));
+            const shownRows = importEditingInvalids
+              ? [
+                  ...importRows
+                    .map((row, index) => ({ row, index }))
+                    .filter(({ row }) => Boolean(row.error)),
+                  ...importRows
+                    .map((row, index) => ({ row, index }))
+                    .filter(({ row }) => !row.error),
+                ]
+              : importRows.map((row, index) => ({ row, index }));
+            return (
+              <>
+                {invalidRows.length > 0 ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+                    <p className="font-medium text-destructive">
+                      {invalidRows.length} lead
+                      {invalidRows.length === 1 ? "" : "s"} inválido
+                      {invalidRows.length === 1 ? "" : "s"} — não sobem até
+                      serem corrigidos ou ignorados.
+                    </p>
+                    <ul className="mt-1.5 max-h-28 space-y-0.5 overflow-auto text-xs text-destructive/90">
+                      {invalidRows.slice(0, 12).map(({ row, index }) => (
+                        <li key={`inv-${index}`}>
+                          Linha {index + 1}
+                          {row.nome ? ` (${row.nome})` : ""}: {row.error}
+                        </li>
+                      ))}
+                      {invalidRows.length > 12 ? (
+                        <li>… e mais {invalidRows.length - 12}</li>
+                      ) : null}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {validCount} lead{validCount === 1 ? "" : "s"} pronto
+                    {validCount === 1 ? "" : "s"} para importar.
+                  </p>
+                )}
+                <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+                      <tr className="border-b text-left text-muted-foreground">
+                        <th className="p-2 font-medium">#</th>
+                        <th className="p-2 font-medium">
+                          {isPlatformAdmin ? "Empresa" : "Nome"}
+                        </th>
+                        <th className="p-2 font-medium">Telefone</th>
+                        {isPlatformAdmin ? null : (
+                          <th className="p-2 font-medium">Email</th>
+                        )}
+                        <th className="p-2 font-medium">
+                          {isPlatformAdmin ? "Município" : "Localidade"}
+                        </th>
+                        {isPlatformAdmin ? (
+                          <>
+                            <th className="p-2 font-medium">Produto</th>
+                            <th className="p-2 font-medium">Fit</th>
+                          </>
+                        ) : (
+                          <th className="p-2 font-medium">Origem</th>
+                        )}
+                        <th className="p-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownRows.map(({ row, index }) => {
+                        const editing = importEditingInvalids;
+                        return (
+                          <tr
+                            key={`${row.telefone}-${index}`}
+                            className={cn(
+                              "border-b last:border-0",
+                              row.error && "bg-destructive/5",
+                            )}
+                          >
+                            <td className="p-2 tabular-nums text-muted-foreground">
+                              {index + 1}
+                            </td>
+                            <td className="p-2">
+                              {editing ? (
+                                <Input
+                                  className="h-8"
+                                  value={row.nome}
+                                  onChange={(e) =>
+                                    patchImportRow(index, {
+                                      nome: e.target.value,
+                                    })
+                                  }
+                                />
+                              ) : (
+                                row.nome || "—"
+                              )}
+                            </td>
+                            <td className="p-2 tabular-nums">
+                              {editing ? (
+                                <Input
+                                  className="h-8"
+                                  value={row.telefone}
+                                  onChange={(e) =>
+                                    patchImportRow(index, {
+                                      telefone: e.target.value,
+                                    })
+                                  }
+                                />
+                              ) : (
+                                row.telefone || "—"
+                              )}
+                            </td>
+                            {isPlatformAdmin ? null : (
+                              <td className="p-2">
+                                {editing ? (
+                                  <Input
+                                    className="h-8"
+                                    value={row.email}
+                                    onChange={(e) =>
+                                      patchImportRow(index, {
+                                        email: e.target.value,
+                                      })
+                                    }
+                                  />
+                                ) : (
+                                  row.email || "—"
+                                )}
+                              </td>
+                            )}
+                            <td className="p-2">
+                              {editing ? (
+                                <Input
+                                  className="h-8"
+                                  value={row.cidade}
+                                  onChange={(e) =>
+                                    patchImportRow(index, {
+                                      cidade: e.target.value,
+                                    })
+                                  }
+                                />
+                              ) : isPlatformAdmin ? (
+                                row.cidade || row.origem || "—"
+                              ) : (
+                                row.cidade || "—"
+                              )}
+                            </td>
+                            {isPlatformAdmin ? (
+                              <>
+                                <td className="p-2">
+                                  {row.prospeccao?.produtoIndicado || "—"}
+                                </td>
+                                <td className="p-2 tabular-nums">
+                                  {row.prospeccao?.fit ?? "—"}
+                                </td>
+                              </>
+                            ) : (
+                              <td className="p-2">
+                                {editing ? (
+                                  <Input
+                                    className="h-8"
+                                    value={row.origem}
+                                    onChange={(e) =>
+                                      patchImportRow(index, {
+                                        origem: e.target.value,
+                                      })
+                                    }
+                                  />
+                                ) : (
+                                  row.origem || "—"
+                                )}
+                              </td>
+                            )}
+                            <td className="p-2">
+                              {row.error ? (
+                                <span className="text-xs text-destructive">
+                                  {row.error}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                                  OK
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {validCount} válido{validCount === 1 ? "" : "s"} ·{" "}
+                  {invalidRows.length} inválido
+                  {invalidRows.length === 1 ? "" : "s"}
+                  {invalidRows.length > 0 && !importEditingInvalids
+                    ? " (não serão enviados se você ignorar)"
+                    : ""}
+                </p>
+                <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={importSaving}
+                    onClick={() => setImportOpen(false)}
                   >
-                    <td className="p-2">{row.nome || "—"}</td>
-                    <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
-                    {isPlatformAdmin ? null : (
-                      <td className="p-2">{row.email || "—"}</td>
+                    Cancelar
+                  </Button>
+                  {invalidRows.length > 0 && !importEditingInvalids ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={importSaving}
+                      onClick={() => setImportEditingInvalids(true)}
+                    >
+                      Editar inválidos
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    disabled={importSaving || validCount === 0}
+                    onClick={() => void confirmImport()}
+                  >
+                    {importSaving && (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     )}
-                    <td className="p-2">
-                      {isPlatformAdmin
-                        ? row.cidade || row.origem || "—"
-                        : row.cidade || "—"}
-                    </td>
-                    {isPlatformAdmin ? (
-                      <>
-                        <td className="p-2">
-                          {row.prospeccao?.produtoIndicado || "—"}
-                        </td>
-                        <td className="p-2 tabular-nums">
-                          {row.prospeccao?.fit ?? "—"}
-                        </td>
-                      </>
-                    ) : (
-                      <td className="p-2">{row.origem || "—"}</td>
-                    )}
-                    <td className="p-2">
-                      {row.error ? (
-                        <span className="text-xs text-destructive">
-                          {row.error}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                          OK
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {importRows.filter((r) => !r.error).length} válido(s) ·{" "}
-            {importRows.filter((r) => r.error).length} inválido(s) (serão
-            ignorados)
-          </p>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={importSaving}
-              onClick={() => setImportOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                importSaving || importRows.every((r) => Boolean(r.error))
-              }
-              onClick={() => void confirmImport()}
-            >
-              {importSaving && (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              )}
-              Importar válidos
-            </Button>
-          </DialogFooter>
+                    {invalidRows.length > 0
+                      ? `Ignorar inválidos e importar ${validCount}`
+                      : `Importar ${validCount}`}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

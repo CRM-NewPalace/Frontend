@@ -69,12 +69,14 @@ import { useCatalog } from "@/lib/catalog-store";
 import { LostMotivoFields } from "@/components/lost-motivo-fields";
 import { brl, type Lead } from "@/lib/crm-types";
 import { ApiError } from "@/lib/api";
-import { importLeads } from "@/lib/leads-api";
+import { importLeads, checkImportDuplicates } from "@/lib/leads-api";
 import {
   downloadImportTemplate,
   exportLeadsToExcel,
   exportLeadsToPdf,
   parseLeadsFromFile,
+  applyImportConflictErrors,
+  type ImportExistingIndex,
   type ParsedImportLead,
 } from "@/lib/leads-io";
 import {
@@ -282,6 +284,11 @@ function Clientes() {
   const [importParsing, setImportParsing] = useState(false);
   const [importSaving, setImportSaving] = useState(false);
   const [importFileName, setImportFileName] = useState("");
+  const [importEditingInvalids, setImportEditingInvalids] = useState(false);
+  const [importExisting, setImportExisting] = useState<ImportExistingIndex>({
+    phones: {},
+    emails: {},
+  });
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
@@ -534,7 +541,14 @@ function Clientes() {
         toast.error("Nenhum cliente encontrado no arquivo.");
         return;
       }
-      setImportRows(rows);
+      const existing = await checkImportDuplicates({
+        telefones: rows.map((r) => r.telefone),
+        emails: rows.map((r) => r.email),
+        tipo: "cliente",
+      });
+      setImportExisting(existing);
+      setImportRows(applyImportConflictErrors(rows, existing, "cliente"));
+      setImportEditingInvalids(false);
       setImportOpen(true);
     } catch (err) {
       toast.error(
@@ -544,6 +558,21 @@ function Clientes() {
       setImportParsing(false);
       if (importInputRef.current) importInputRef.current.value = "";
     }
+  }
+
+  function patchImportRow(
+    index: number,
+    patch: Partial<Pick<ParsedImportLead, "nome" | "telefone" | "email" | "cidade" | "origem">>,
+  ) {
+    setImportRows((prev) =>
+      applyImportConflictErrors(
+        prev.map((row, i) =>
+          i === index ? { ...row, ...patch } : row,
+        ),
+        importExisting,
+        "cliente",
+      ),
+    );
   }
 
   async function confirmImport() {
@@ -570,6 +599,7 @@ function Clientes() {
       );
       setImportOpen(false);
       setImportRows([]);
+      setImportEditingInvalids(false);
       await refresh({ silent: true });
       await refreshCatalog({ silent: true });
       if (result.failed > 0) {
@@ -1508,7 +1538,13 @@ function Clientes() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(next) => {
+          setImportOpen(next);
+          if (!next) setImportEditingInvalids(false);
+        }}
+      >
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Confirmar importação</DialogTitle>
@@ -1517,78 +1553,166 @@ function Clientes() {
               Formato: Nome, Telefone, Email, Localidade de interesse e Origem.
             </DialogDescription>
           </DialogHeader>
-          <div className="overflow-auto flex-1 min-h-0 border rounded-md">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted/80 backdrop-blur">
-                <tr className="text-left text-muted-foreground border-b">
-                  <th className="p-2 font-medium">Nome</th>
-                  <th className="p-2 font-medium">Telefone</th>
-                  <th className="p-2 font-medium">Email</th>
-                  <th className="p-2 font-medium">Localidade</th>
-                  <th className="p-2 font-medium">Origem</th>
-                  <th className="p-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importRows.map((row, index) => (
-                  <tr
-                    key={`${row.telefone}-${index}`}
-                    className={cn(
-                      "border-b last:border-0",
-                      row.error && "bg-destructive/5",
-                    )}
+          {(() => {
+            const validCount = importRows.filter((r) => !r.error).length;
+            const invalidRows = importRows
+              .map((row, index) => ({ row, index }))
+              .filter(({ row }) => Boolean(row.error));
+            const shownRows = importEditingInvalids
+              ? [
+                  ...invalidRows,
+                  ...importRows
+                    .map((row, index) => ({ row, index }))
+                    .filter(({ row }) => !row.error),
+                ]
+              : importRows.map((row, index) => ({ row, index }));
+            return (
+              <>
+                {invalidRows.length > 0 ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+                    <p className="font-medium text-destructive">
+                      {invalidRows.length} cliente
+                      {invalidRows.length === 1 ? "" : "s"} inválido
+                      {invalidRows.length === 1 ? "" : "s"} — não sobem até
+                      serem corrigidos ou ignorados.
+                    </p>
+                    <ul className="mt-1.5 max-h-28 space-y-0.5 overflow-auto text-xs text-destructive/90">
+                      {invalidRows.slice(0, 12).map(({ row, index }) => (
+                        <li key={`inv-${index}`}>
+                          Linha {index + 1}
+                          {row.nome ? ` (${row.nome})` : ""}: {row.error}
+                        </li>
+                      ))}
+                      {invalidRows.length > 12 ? (
+                        <li>… e mais {invalidRows.length - 12}</li>
+                      ) : null}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {validCount} cliente{validCount === 1 ? "" : "s"} pronto
+                    {validCount === 1 ? "" : "s"} para importar.
+                  </p>
+                )}
+                <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+                      <tr className="border-b text-left text-muted-foreground">
+                        <th className="p-2 font-medium">#</th>
+                        <th className="p-2 font-medium">Nome</th>
+                        <th className="p-2 font-medium">Telefone</th>
+                        <th className="p-2 font-medium">Email</th>
+                        <th className="p-2 font-medium">Localidade</th>
+                        <th className="p-2 font-medium">Origem</th>
+                        <th className="p-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownRows.map(({ row, index }) => (
+                        <tr
+                          key={`${row.telefone}-${index}`}
+                          className={cn(
+                            "border-b last:border-0",
+                            row.error && "bg-destructive/5",
+                          )}
+                        >
+                          <td className="p-2 tabular-nums text-muted-foreground">
+                            {index + 1}
+                          </td>
+                          {(
+                            [
+                              ["nome", row.nome],
+                              ["telefone", row.telefone],
+                              ["email", row.email],
+                              ["cidade", row.cidade],
+                              ["origem", row.origem],
+                            ] as const
+                          ).map(([field, value]) => (
+                            <td
+                              key={field}
+                              className={cn(
+                                "p-2",
+                                field === "telefone" && "tabular-nums",
+                              )}
+                            >
+                              {importEditingInvalids ? (
+                                <Input
+                                  className="h-8"
+                                  value={value}
+                                  onChange={(e) =>
+                                    patchImportRow(index, {
+                                      [field]: e.target.value,
+                                    })
+                                  }
+                                />
+                              ) : (
+                                value || "—"
+                              )}
+                            </td>
+                          ))}
+                          <td className="p-2">
+                            {row.error ? (
+                              <span className="text-xs text-destructive">
+                                {row.error}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                                OK
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {validCount} válido{validCount === 1 ? "" : "s"} ·{" "}
+                  {invalidRows.length} inválido
+                  {invalidRows.length === 1 ? "" : "s"}
+                  {invalidRows.length > 0 && !importEditingInvalids
+                    ? " (não serão enviados se você ignorar)"
+                    : ""}
+                </p>
+                <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={importSaving}
+                    onClick={() => setImportOpen(false)}
+                    className={SOFT_BTN}
                   >
-                    <td className="p-2">{row.nome || "—"}</td>
-                    <td className="p-2 tabular-nums">{row.telefone || "—"}</td>
-                    <td className="p-2">{row.email || "—"}</td>
-                    <td className="p-2">{row.cidade || "—"}</td>
-                    <td className="p-2">{row.origem || "—"}</td>
-                    <td className="p-2">
-                      {row.error ? (
-                        <span className="text-xs text-destructive">
-                          {row.error}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                          OK
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {importRows.filter((r) => !r.error).length} válido(s) ·{" "}
-            {importRows.filter((r) => r.error).length} inválido(s) (serão
-            ignorados)
-          </p>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={importSaving}
-              onClick={() => setImportOpen(false)}
-              className={SOFT_BTN}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                importSaving || importRows.every((r) => Boolean(r.error))
-              }
-              onClick={() => void confirmImport()}
-              className={CLIENTES_GRADIENT_BTN}
-              style={CLIENTES_GRADIENT_STYLE}
-            >
-              {importSaving && (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              )}
-              Importar válidos
-            </Button>
-          </DialogFooter>
+                    Cancelar
+                  </Button>
+                  {invalidRows.length > 0 && !importEditingInvalids ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={importSaving}
+                      onClick={() => setImportEditingInvalids(true)}
+                      className={SOFT_BTN}
+                    >
+                      Editar inválidos
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    disabled={importSaving || validCount === 0}
+                    onClick={() => void confirmImport()}
+                    className={CLIENTES_GRADIENT_BTN}
+                    style={CLIENTES_GRADIENT_STYLE}
+                  >
+                    {importSaving && (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    )}
+                    {invalidRows.length > 0
+                      ? `Ignorar inválidos e importar ${validCount}`
+                      : `Importar ${validCount}`}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
