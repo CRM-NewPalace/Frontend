@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -170,6 +172,7 @@ function CaptacoesPage() {
       return hay.includes(q);
     });
   }, [items, search]);
+  const pager = useTablePager(visible, search);
 
   function setVista(next: Vista) {
     setVistaState(next);
@@ -429,7 +432,7 @@ function CaptacoesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visible.map((item, index) => (
+              {pager.pageItems.map((item, index) => (
                 <TableRow
                   key={item.id}
                   className={cn(
@@ -578,10 +581,17 @@ function CaptacoesPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePager
+            page={pager.page}
+            totalPages={pager.totalPages}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         </Card>
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((item) => (
+          {pager.pageItems.map((item) => (
             <Card
               key={item.id}
               className="group overflow-hidden transition-shadow hover:shadow-lg"
@@ -735,6 +745,13 @@ function CaptacoesPage() {
             </Card>
           ))}
         </div>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

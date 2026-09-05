@@ -8,6 +8,8 @@ import {
 } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { ComissaoLancamentoDialog } from "@/components/comissao-lancamento-dialog";
 import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
@@ -759,6 +761,10 @@ export function FinanceiroTitulosPanel({
   const displayRows = useMemo(
     () => buildDisplayRows(rows, vistaParcelas),
     [rows, vistaParcelas],
+  );
+  const pager = useTablePager(
+    displayRows,
+    `${search}|${periodo}|${status}|${categoriaFiltro}|${vistaParcelas}`,
   );
 
   function toggleGrupo(grupoId: string) {
@@ -1611,7 +1617,7 @@ export function FinanceiroTitulosPanel({
         }
       />
 
-      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
         <Table className="[&_th]:px-4 [&_td]:px-4">
           <TableHeader>
             <TableRow>
@@ -1636,7 +1642,7 @@ export function FinanceiroTitulosPanel({
                 </TableCell>
               </TableRow>
             ) : (
-              displayRows.map((row) => {
+              pager.pageItems.map((row) => {
                 if (row.kind === "single") {
                   const t = row.titulo;
                   return (
@@ -1870,6 +1876,12 @@ export function FinanceiroTitulosPanel({
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       </div>
 
       <ComissaoLancamentoDialog

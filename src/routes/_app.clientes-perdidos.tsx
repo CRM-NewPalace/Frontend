@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import {
   Table,
   TableBody,
@@ -138,6 +140,7 @@ function ClientesPerdidos() {
       ),
     [filtered, sort],
   );
+  const pager = useTablePager(sorted, `${search}|${sort}`);
 
   return (
     <div>
@@ -244,7 +247,7 @@ function ClientesPerdidos() {
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((l) => (
+              pager.pageItems.map((l) => (
                 <TableRow key={l.id} className="hover:bg-muted/40">
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -287,6 +290,12 @@ function ClientesPerdidos() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       </Card>
 
       <FormDialogShell

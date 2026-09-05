@@ -6,6 +6,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { catalogColorToChartHex } from "@/lib/catalog-colors";
+import { SOFT_SURFACE } from "@/lib/soft-surface";
 import { cn } from "@/lib/utils";
 import {
   Bar,
@@ -83,7 +84,7 @@ export function FunnelBarChart({
       </p>
     );
   }
-  const height = Math.max(288, data.length * 40);
+  const height = Math.max(260, data.length * 44);
   return (
     <div className="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
       <ChartContainer
@@ -94,28 +95,29 @@ export function FunnelBarChart({
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ left: 4, right: 40, top: 4, bottom: 0 }}
+          margin={{ left: 4, right: 40, top: 8, bottom: 4 }}
         >
-          <CartesianGrid horizontal={false} />
+          <CartesianGrid horizontal={false} vertical={false} />
           <XAxis
             type="number"
             allowDecimals={false}
+            hide
             domain={[
               0,
-              (dataMax: number) => Math.max(Math.ceil(dataMax * 1.12), 1),
+              (dataMax: number) => Math.max(Math.ceil(dataMax * 1.18), 1),
             ]}
           />
           <YAxis
             dataKey="etapa"
             type="category"
-            width={168}
+            width={148}
             tickLine={false}
             axisLine={false}
             interval={0}
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
           />
           <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-          <Bar dataKey="total" radius={4} minPointSize={4}>
+          <Bar dataKey="total" radius={[0, 10, 10, 0]} minPointSize={8} barSize={18}>
             {data.map((entry, index) => (
               <Cell
                 key={`${entry.etapa}-${index}`}
@@ -149,10 +151,10 @@ export function OverviewFunnelPanel({
   emptyLabel: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-      <div className="flex items-start justify-between gap-3 border-b border-border/50 px-4 py-3 sm:px-5">
+    <section className={SOFT_SURFACE}>
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-1 sm:px-5">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold tracking-tight text-module-title">
+          <h2 className="text-sm font-semibold tracking-tight">
             {title}
           </h2>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">

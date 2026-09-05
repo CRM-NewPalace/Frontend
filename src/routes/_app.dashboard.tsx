@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { PagePanel } from "@/components/page-panel";
 import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ import {
   ClipboardList,
   Clock3,
   FileCheck2,
+  FileText,
   Goal,
   Loader2,
   Percent,
@@ -117,7 +119,6 @@ function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-const KPI_EMBED = "shadow-none border-border/50 bg-muted/35";
 const DASHBOARD_PAGE_SIZE = 5;
 
 function usePagedList<T>(items: T[], pageSize = DASHBOARD_PAGE_SIZE) {
@@ -156,7 +157,7 @@ function ListPager({
 }) {
   if (totalPages <= 1) return null;
   return (
-    <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-3 flex flex-col gap-2 border-t border-black/5 pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <span>
         Exibindo até {DASHBOARD_PAGE_SIZE} por página · {total} no total
       </span>
@@ -189,44 +190,147 @@ function ListPager({
   );
 }
 
-function DashboardPanel({
-  title,
-  description,
-  action,
-  children,
-  className,
-  guia,
+function initials(nome: string) {
+  return nome
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+const MOTIVO_COLORS = ["#f43f5e", "#fb923c", "#f59e0b", "#94a3b8", "#64748b"];
+const EQUIPE_ACCENTS = [
+  "border-l-sky-500",
+  "border-l-emerald-500",
+  "border-l-violet-500",
+  "border-l-orange-500",
+  "border-l-slate-400",
+];
+
+function MotivosDonut({
+  items,
 }: {
-  title: string;
-  description?: string;
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  guia?: string;
+  items: Array<{ motivo: string; valor: number }>;
 }) {
-  return (
-    <section
-      data-guia={guia}
-      className={cn(
-        "overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm",
-        className,
-      )}
-    >
-      <div className="flex items-start justify-between gap-3 border-b border-border/50 px-4 py-3 sm:px-5">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold tracking-tight text-module-title">
-            {title}
-          </h2>
-          {description ? (
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              {description}
-            </p>
-          ) : null}
-        </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+  const total = items.reduce((sum, item) => sum + item.valor, 0);
+  if (total === 0) {
+    return (
+      <div className="mx-auto flex size-36 items-center justify-center rounded-full border-[10px] border-muted px-3 text-center text-[11px] leading-snug text-muted-foreground">
+        Nenhum lead perdido neste mês
       </div>
-      <div className="p-3 sm:p-4">{children}</div>
-    </section>
+    );
+  }
+  const r = 40;
+  const circ = 2 * Math.PI * r;
+  let acc = 0;
+  return (
+    <div className="relative mx-auto size-36">
+      <svg viewBox="0 0 120 120" className="-rotate-90">
+        {items.map((item, index) => {
+          const len = (item.valor / total) * circ;
+          const node = (
+            <circle
+              key={item.motivo}
+              cx="60"
+              cy="60"
+              r={r}
+              fill="none"
+              strokeWidth="16"
+              stroke={MOTIVO_COLORS[index % MOTIVO_COLORS.length]}
+              strokeDasharray={`${len} ${circ - len}`}
+              strokeDashoffset={-acc}
+            />
+          );
+          acc += len;
+          return node;
+        })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-xl font-bold tabular-nums">{total}</span>
+        <span className="text-[10px] text-muted-foreground">perdidos</span>
+      </div>
+    </div>
+  );
+}
+
+function ConversionRing({
+  value,
+  caption,
+}: {
+  value: number;
+  caption?: string;
+}) {
+  const pct = Math.max(0, Math.min(100, value));
+  const r = 52;
+  const c = 2 * Math.PI * r;
+  const offset = c - (pct / 100) * c;
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative size-36">
+        <svg viewBox="0 0 128 128" className="-rotate-90">
+          <circle
+            cx="64"
+            cy="64"
+            r={r}
+            fill="none"
+            strokeWidth="10"
+            className="stroke-muted"
+          />
+          <circle
+            cx="64"
+            cy="64"
+            r={r}
+            fill="none"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            className="stroke-teal-500"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold tabular-nums tracking-tight">
+            {pct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+          </span>
+        </div>
+      </div>
+      {caption ? (
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          {caption}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function AgendaStatusBadge({
+  status,
+  startsAt,
+}: {
+  status: string;
+  startsAt: string;
+}) {
+  if (status === "concluido") {
+    return (
+      <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+        Concluído
+      </span>
+    );
+  }
+  const late = new Date(startsAt).getTime() < Date.now();
+  if (late) {
+    return (
+      <span className="rounded-full bg-rose-500/12 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-300">
+        Atrasado
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-amber-500/12 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+      Pendente
+    </span>
   );
 }
 
@@ -462,7 +566,7 @@ function DashboardAdminView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PageHeader
         title="Dashboard"
         description={`Visão gerencial · ${mesLabel} · comparação com o mês anterior.`}
@@ -476,23 +580,23 @@ function DashboardAdminView() {
         </div>
       ) : null}
 
-      <DashboardPanel
+      <PagePanel
+        inset="muted"
         guia="dashboard-kpis"
         title="Entrada do mês"
         description={`Novos leads e VGV em ${mesLabel}.`}
         action={<PanelLink to="/leads">Ver leads</PanelLink>}
       >
-        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <FinanceKpiCard
             label="Novos leads (mês)"
             value={summary.entradas.mes.valor}
             evolucaoPct={summary.entradas.mes.evolucaoPct}
             valorMesAnterior={summary.entradas.mes.valorMesAnterior}
             icon={TrendingUp}
-            tone="teal"
+            tone="emerald"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label="Novos hoje"
@@ -500,8 +604,7 @@ function DashboardAdminView() {
             icon={UsersRound}
             tone="blue"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label="Novos na semana"
@@ -509,8 +612,7 @@ function DashboardAdminView() {
             icon={ClipboardList}
             tone="violet"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label="VGV vendido (mês)"
@@ -518,14 +620,14 @@ function DashboardAdminView() {
             evolucaoPct={summary.conversao.vgv.evolucaoPct}
             valorMesAnterior={summary.conversao.vgv.valorMesAnterior}
             icon={Wallet}
-            tone="emerald"
-            compact
-            className={KPI_EMBED}
+            tone="teal"
+            variant="dash"
           />
         </div>
-      </DashboardPanel>
+      </PagePanel>
 
-      <DashboardPanel
+      <PagePanel
+        inset="muted"
         title="Precisa de atenção"
         description={
           isPlatformAdmin
@@ -537,8 +639,8 @@ function DashboardAdminView() {
         <div
           className={
             isPlatformAdmin
-              ? "grid grid-cols-2 gap-2.5 xl:grid-cols-3"
-              : "grid grid-cols-2 gap-2.5 xl:grid-cols-4"
+              ? "grid grid-cols-2 gap-3 xl:grid-cols-3"
+              : "grid grid-cols-2 gap-3 xl:grid-cols-4"
           }
         >
           {isPlatformAdmin ? null : (
@@ -548,8 +650,7 @@ function DashboardAdminView() {
               icon={UserX}
               tone="orange"
               format="number"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
           )}
           <FinanceKpiCard
@@ -558,8 +659,7 @@ function DashboardAdminView() {
             icon={AlertTriangle}
             tone="rose"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label="Perdidos no mês"
@@ -570,8 +670,7 @@ function DashboardAdminView() {
             icon={UserX}
             tone="red"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label={
@@ -583,20 +682,20 @@ function DashboardAdminView() {
             icon={Goal}
             tone="teal"
             format="percent"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
         </div>
-      </DashboardPanel>
+      </PagePanel>
 
       {isPlatformAdmin ? null : (
       <div className="grid gap-4 xl:grid-cols-2">
-        <DashboardPanel
+        <PagePanel
+          inset="muted"
           title="Pipeline de documentação"
           description={`Processos cadastrados em ${mesLabel}.`}
           action={<PanelLink to="/documentacao">Ver documentação</PanelLink>}
         >
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FinanceKpiCard
               label="Aprovadas"
               value={summary.documentacaoPipeline.aprovadas.valor}
@@ -607,8 +706,8 @@ function DashboardAdminView() {
               icon={CheckCircle2}
               tone="emerald"
               format="number"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
+              wash
             />
             <FinanceKpiCard
               label="Reprovadas"
@@ -621,8 +720,8 @@ function DashboardAdminView() {
               icon={XCircle}
               tone="red"
               format="number"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
+              wash
             />
             <FinanceKpiCard
               label="Em análise"
@@ -634,13 +733,14 @@ function DashboardAdminView() {
               icon={Clock3}
               tone="orange"
               format="number"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
+              wash
             />
           </div>
-        </DashboardPanel>
+        </PagePanel>
 
-        <DashboardPanel
+        <PagePanel
+          inset="muted"
           guia="dashboard-comissao"
           title={isGerente ? "Sua comissão do mês" : "Comissões do mês"}
           description={
@@ -650,7 +750,7 @@ function DashboardAdminView() {
           }
           action={<PanelLink to="/financeiro/comissao">Ver comissões</PanelLink>}
         >
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
             <FinanceKpiCard
               label={isGerente ? "A receber" : "Total líquido"}
               value={
@@ -670,8 +770,7 @@ function DashboardAdminView() {
               }
               icon={Percent}
               tone="violet"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Pendentes"
@@ -680,8 +779,7 @@ function DashboardAdminView() {
               valorMesAnterior={summary.comissao.pendente.valorMesAnterior}
               icon={Clock3}
               tone="orange"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Liberadas"
@@ -690,8 +788,7 @@ function DashboardAdminView() {
               valorMesAnterior={summary.comissao.liberada.valorMesAnterior}
               icon={Banknote}
               tone="blue"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Pagas"
@@ -700,11 +797,10 @@ function DashboardAdminView() {
               valorMesAnterior={summary.comissao.paga.valorMesAnterior}
               icon={CheckCircle2}
               tone="emerald"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
           </div>
-        </DashboardPanel>
+        </PagePanel>
       </div>
       )}
 
@@ -712,7 +808,7 @@ function DashboardAdminView() {
         data-guia="dashboard-funil"
         className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]"
       >
-        <DashboardPanel
+        <PagePanel
           title="Funil geral"
           description="Leads ativos nas etapas do funil de vendas."
           action={<PanelLink to="/funil">Ver funil</PanelLink>}
@@ -721,9 +817,9 @@ function DashboardAdminView() {
             data={funnelData}
             emptyLabel="Nenhum lead ativo no funil."
           />
-        </DashboardPanel>
+        </PagePanel>
 
-        <DashboardPanel
+        <PagePanel
           title="Conversão do mês"
           description={
             isPlatformAdmin
@@ -737,108 +833,118 @@ function DashboardAdminView() {
           }
         >
           <div className="space-y-4">
-            <div className="rounded-xl border bg-secondary/40 p-3 text-center sm:p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Taxa de conversão
-              </div>
-              <div className="mt-1 text-3xl font-bold tabular-nums text-foreground sm:text-4xl">
-                {summary.conversao.taxa.valor.toLocaleString("pt-BR", {
-                  maximumFractionDigits: 1,
-                })}
-                %
-              </div>
-              <EvolucaoBadge
-                value={summary.conversao.taxa.evolucaoPct}
-                previous={summary.conversao.taxa.valorMesAnterior}
-                className="mt-2 justify-center"
-              />
-              <p className="mt-2 px-1 text-xs leading-relaxed text-muted-foreground">
-                {isPlatformAdmin
-                  ? `${summary.conversao.vendas.valor} venda${summary.conversao.vendas.valor === 1 ? "" : "s"} no mês`
-                  : `${summary.conversao.vendas.valor} venda${summary.conversao.vendas.valor === 1 ? "" : "s"} de ${summary.conversao.documentacoes.valor} ${summary.conversao.documentacoes.valor === 1 ? "documentação" : "documentações"} do mês`}
-              </p>
-              {summary.entradas.semana > summary.entradas.mes.valor ? (
-                <p className="mt-1 px-1 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
-                  Nesta semana há {summary.entradas.semana} novos — parte pode
-                  ser de dias do mês passado (a semana começa na segunda).
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-          {isPlatformAdmin ? null : (
-              <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">Documentações</div>
-                  <EvolucaoBadge
-                    value={summary.conversao.documentacoes.evolucaoPct}
-                    previous={summary.conversao.documentacoes.valorMesAnterior}
-                    className="mt-0.5"
-                  />
+            <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+              <ConversionRing value={summary.conversao.taxa.valor} />
+              <div className="w-full flex-1 space-y-3">
+                {isPlatformAdmin ? null : (
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/12 text-sky-600">
+                      <FileText className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          Documentações
+                        </span>
+                        <span className="font-semibold tabular-nums">
+                          {summary.conversao.documentacoes.valor}
+                        </span>
+                      </div>
+                      <EvolucaoBadge
+                        value={summary.conversao.documentacoes.evolucaoPct}
+                        previous={summary.conversao.documentacoes.valorMesAnterior}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/12 text-emerald-600">
+                    <CheckCircle2 className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Viraram venda
+                      </span>
+                      <span className="font-semibold tabular-nums">
+                        {summary.conversao.vendas.valor}
+                      </span>
+                    </div>
+                    <EvolucaoBadge
+                      value={summary.conversao.vendas.evolucaoPct}
+                      previous={summary.conversao.vendas.valorMesAnterior}
+                    />
+                  </div>
                 </div>
-                <span className="shrink-0 pt-0.5 font-semibold tabular-nums">
-                  {summary.conversao.documentacoes.valor}
-                </span>
-              </div>
-          )}
-              <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">Viraram venda</div>
-                  <EvolucaoBadge
-                    value={summary.conversao.vendas.evolucaoPct}
-                    previous={summary.conversao.vendas.valorMesAnterior}
-                    className="mt-0.5"
-                  />
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/12 text-teal-600">
+                    <Wallet className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        VGV do mês
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums">
+                        {money(summary.conversao.vgv.valor)}
+                      </span>
+                    </div>
+                    <EvolucaoBadge
+                      value={summary.conversao.vgv.evolucaoPct}
+                      previous={summary.conversao.vgv.valorMesAnterior}
+                    />
+                  </div>
                 </div>
-                <span className="shrink-0 pt-0.5 font-semibold tabular-nums">
-                  {summary.conversao.vendas.valor}
-                </span>
-              </div>
-              <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">VGV do mês</div>
-                  <EvolucaoBadge
-                    value={summary.conversao.vgv.evolucaoPct}
-                    previous={summary.conversao.vgv.valorMesAnterior}
-                    className="mt-0.5"
-                  />
-                </div>
-                <span className="max-w-[45%] shrink-0 break-all pt-0.5 text-right text-sm font-semibold tabular-nums">
-                  {money(summary.conversao.vgv.valor)}
-                </span>
               </div>
             </div>
+            {summary.entradas.semana > 0 ? (
+              <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                {summary.entradas.semana} novo
+                {summary.entradas.semana === 1 ? "" : "s"} nesta semana
+                {summary.entradas.semana > summary.entradas.mes.valor
+                  ? " — parte pode ser de dias do mês passado (a semana começa na segunda)."
+                  : "."}
+              </div>
+            ) : null}
           </div>
-        </DashboardPanel>
+        </PagePanel>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <DashboardPanel
+        <PagePanel
           title="Leads perdidos — motivos"
           description={`Motivos registrados em ${mesLabel}.`}
           action={<PanelLink to="/leads-perdidos">Ver perdidos</PanelLink>}
         >
-          <div className="space-y-2">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <MotivosDonut items={perdidosMotivos} />
+            <div className="min-w-0 flex-1 space-y-3">
             {perdidosMotivos.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
                 Nenhum lead perdido neste mês.
               </p>
             ) : (
               <>
-                {perdidosPage.pageItems.map((m) => (
-                  <div
-                    key={m.motivo}
-                    className="flex items-center justify-between rounded-lg border px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">
-                        {m.motivo}
-                      </div>
-                      <EvolucaoBadge value={m.evolucaoPct} invert />
+                {perdidosPage.pageItems.map((m) => {
+                  const total = perdidosMotivos.reduce((s, row) => s + row.valor, 0) || 1;
+                  const share = Math.round((m.valor / total) * 100);
+                  return (
+                  <div key={m.motivo} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="truncate font-medium">{m.motivo}</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {m.valor} · {share}%
+                      </span>
                     </div>
-                    <span className="font-semibold tabular-nums">{m.valor}</span>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-rose-400"
+                        style={{ width: `${Math.max(8, share)}%` }}
+                      />
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
                 <ListPager
                   page={perdidosPage.page}
                   totalPages={perdidosPage.totalPages}
@@ -847,24 +953,25 @@ function DashboardAdminView() {
                 />
               </>
             )}
+            </div>
           </div>
-        </DashboardPanel>
+        </PagePanel>
 
-        <DashboardPanel
+        <PagePanel
           title="Agenda de hoje"
           description={`${summary.agenda.totalHoje} compromisso${summary.agenda.totalHoje === 1 ? "" : "s"} · ${summary.agenda.atrasados} atrasado${summary.agenda.atrasados === 1 ? "" : "s"}`}
           action={<PanelLink to="/agenda">Abrir agenda</PanelLink>}
         >
           <div className="mb-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-secondary px-2.5 py-1">
+            <span className="rounded-full bg-sky-500/12 px-2.5 py-1 font-medium text-sky-700 dark:text-sky-300">
               {summary.agenda.pendentesHoje} pendente
               {summary.agenda.pendentesHoje === 1 ? "" : "s"}
             </span>
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+            <span className="rounded-full bg-emerald-500/12 px-2.5 py-1 font-medium text-emerald-700 dark:text-emerald-300">
               {summary.agenda.concluidosHoje} concluído
               {summary.agenda.concluidosHoje === 1 ? "" : "s"}
             </span>
-            <span className="rounded-full bg-rose-500/10 px-2.5 py-1 text-rose-700 dark:text-rose-300">
+            <span className="rounded-full bg-rose-500/12 px-2.5 py-1 font-medium text-rose-700 dark:text-rose-300">
               {summary.agenda.atrasados} atrasado
               {summary.agenda.atrasados === 1 ? "" : "s"}
             </span>
@@ -875,17 +982,18 @@ function DashboardAdminView() {
             </p>
           ) : (
             <>
-              <div className="divide-y rounded-md border">
+              <div className="space-y-2">
                 {agendaPage.pageItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 px-3 py-2.5"
+                    className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5"
                   >
-                    {item.status === "concluido" ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                    ) : (
-                      <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
-                    )}
+                    <time className="w-12 shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
                         {item.titulo}
@@ -894,12 +1002,10 @@ function DashboardAdminView() {
                         {item.contato ?? item.tipo}
                       </p>
                     </div>
-                    <time className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
+                    <AgendaStatusBadge
+                      status={item.status}
+                      startsAt={item.startsAt}
+                    />
                   </div>
                 ))}
               </div>
@@ -911,12 +1017,12 @@ function DashboardAdminView() {
               />
             </>
           )}
-        </DashboardPanel>
+        </PagePanel>
       </section>
 
       {isSolo || isPlatformAdmin ? null : (
       <section className="grid min-w-0 gap-4 xl:grid-cols-2">
-        <DashboardPanel
+        <PagePanel
           title="Ranking de corretores"
           description="Ordenado por VGV do mês."
           action={<PanelLink to="/corretores">Ver corretores</PanelLink>}
@@ -931,6 +1037,9 @@ function DashboardAdminView() {
                 <table className="w-full min-w-140 text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 pr-2 font-medium whitespace-nowrap">
+                        #
+                      </th>
                       <th className="pb-2 pr-3 font-medium whitespace-nowrap">
                         Corretor
                       </th>
@@ -949,15 +1058,27 @@ function DashboardAdminView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rankingPage.pageItems.map((r) => (
+                    {rankingPage.pageItems.map((r, index) => (
                       <tr
                         key={r.corretorId}
-                        className="border-b last:border-0 hover:bg-muted/40"
+                        className="border-b border-black/5 last:border-0"
                       >
-                        <td className="max-w-48 py-2.5 pr-3">
-                          <div className="truncate font-medium">{r.nome}</div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {r.equipe ?? "Sem equipe"}
+                        <td className="py-2.5 pr-2 text-xs tabular-nums text-muted-foreground">
+                          {(rankingPage.page - 1) * DASHBOARD_PAGE_SIZE +
+                            index +
+                            1}
+                        </td>
+                        <td className="max-w-52 py-2.5 pr-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-[11px] font-bold text-sky-700">
+                              {initials(r.nome)}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">{r.nome}</div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {r.equipe ?? "Sem equipe"}
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
@@ -991,9 +1112,13 @@ function DashboardAdminView() {
               />
             </>
           )}
-        </DashboardPanel>
+        </PagePanel>
 
-        <DashboardPanel title="Carteira por equipe">
+        <PagePanel
+          title="Carteira por equipe"
+          description="Leads e clientes ativos por time."
+          action={<PanelLink to="/leads">Ver carteira</PanelLink>}
+        >
           <div className="space-y-3">
             {equipesItens.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
@@ -1001,10 +1126,13 @@ function DashboardAdminView() {
               </p>
             ) : (
               <>
-                {equipesPage.pageItems.map((eq) => (
+                {equipesPage.pageItems.map((eq, index) => (
                   <div
                     key={eq.equipeId}
-                    className="rounded-lg border px-3 py-2.5"
+                    className={cn(
+                      "rounded-xl border border-black/5 bg-background px-3 py-2.5 border-l-4",
+                      EQUIPE_ACCENTS[index % EQUIPE_ACCENTS.length],
+                    )}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
@@ -1034,11 +1162,11 @@ function DashboardAdminView() {
               </>
             )}
           </div>
-        </DashboardPanel>
+        </PagePanel>
       </section>
       )}
 
-      <DashboardPanel
+      <PagePanel
         title="Metas vs realizado"
         description={
           isPlatformAdmin
@@ -1082,100 +1210,101 @@ function DashboardAdminView() {
               </p>
             )
           ) : (
-            <>
-          <div className="rounded-xl border bg-secondary/40 p-4">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <div className="font-semibold text-primary">
-                {isPlatformAdmin ? "Empresa" : "Imobiliária"}
-              </div>
-              <div className="text-sm tabular-nums">
-                {summary.metas.imobiliaria.atual.toLocaleString("pt-BR")} /{" "}
-                {summary.metas.imobiliaria.meta.toLocaleString("pt-BR")} (
-                {summary.metas.imobiliaria.percentual}%)
-              </div>
-            </div>
-            <Progress value={summary.metas.imobiliaria.percentual} />
-          </div>
-
-          {isPlatformAdmin ? null : metasEquipes.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-primary">Por equipe</h3>
-              {metasEquipesPage.pageItems.map((eq) => (
-                <div key={eq.equipeId}>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span>{eq.nome}</span>
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {isPlatformAdmin ? "Empresa" : "Imobiliária"}
+                </h3>
+                <div>
+                  <div className="mb-1.5 flex justify-between gap-3 text-sm">
+                    <span className="font-medium">Meta do mês</span>
                     <span className="tabular-nums text-muted-foreground">
-                      {eq.percentual}%
+                      {summary.metas.imobiliaria.atual.toLocaleString("pt-BR")} /{" "}
+                      {summary.metas.imobiliaria.meta.toLocaleString("pt-BR")} (
+                      {summary.metas.imobiliaria.percentual}%)
                     </span>
                   </div>
-                  <Progress value={eq.percentual} />
+                  <Progress value={summary.metas.imobiliaria.percentual} />
                 </div>
-              ))}
-              <ListPager
-                page={metasEquipesPage.page}
-                totalPages={metasEquipesPage.totalPages}
-                total={metasEquipesPage.total}
-                onPageChange={metasEquipesPage.setPage}
-              />
-            </div>
-          )}
+              </div>
 
-          {isPlatformAdmin ? null : metasCorretores.length > 0 ? (
-            <div className="overflow-x-auto">
-              <h3 className="mb-2 text-sm font-semibold text-primary">
-                Por corretor
-              </h3>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">Corretor</th>
-                    <th className="pb-2 font-medium">Tipo</th>
-                    <th className="pb-2 text-right font-medium">Progresso</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metasCorretoresPage.pageItems.map((m) => (
-                    <tr key={m.id} className="border-b last:border-0">
-                      <td className="py-2">
-                        <div className="font-medium">{m.corretorNome}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {m.equipeNome ?? "Sem equipe"}
+              {isPlatformAdmin ? null : (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Por equipe
+                  </h3>
+                  {metasEquipes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma meta de equipe.
+                    </p>
+                  ) : (
+                    <>
+                      {metasEquipesPage.pageItems.map((eq) => (
+                        <div key={eq.equipeId}>
+                          <div className="mb-1 flex justify-between text-sm">
+                            <span>{eq.nome}</span>
+                            <span className="tabular-nums text-muted-foreground">
+                              {eq.percentual}%
+                            </span>
+                          </div>
+                          <Progress value={eq.percentual} />
                         </div>
-                      </td>
-                      <td className="py-2">
-                        {META_TIPO_LABEL[m.tipo] ?? m.tipo}
-                      </td>
-                      <td className="py-2 text-right">
-                        <div className="font-medium tabular-nums">
-                          {m.tipo === "vgv"
-                            ? `${money(m.atual)} / ${money(m.valor)}`
-                            : `${m.atual} / ${m.valor}`}
+                      ))}
+                      <ListPager
+                        page={metasEquipesPage.page}
+                        totalPages={metasEquipesPage.totalPages}
+                        total={metasEquipesPage.total}
+                        onPageChange={metasEquipesPage.setPage}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {isPlatformAdmin ? null : (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Por corretor
+                  </h3>
+                  {metasCorretores.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma meta mensal ativa. Cadastre em Metas.
+                    </p>
+                  ) : (
+                    <>
+                      {metasCorretoresPage.pageItems.map((m) => (
+                        <div key={m.id}>
+                          <div className="mb-1 flex justify-between gap-2 text-sm">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">
+                                {m.corretorNome}
+                              </div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {META_TIPO_LABEL[m.tipo] ?? m.tipo}
+                                {m.equipeNome ? ` · ${m.equipeNome}` : ""}
+                              </div>
+                            </div>
+                            <span className="shrink-0 tabular-nums text-muted-foreground">
+                              {m.percentual}%
+                            </span>
+                          </div>
+                          <Progress value={m.percentual} className="h-1.5" />
                         </div>
-                        <div className="mb-1 text-xs text-muted-foreground">
-                          {m.percentual}%
-                        </div>
-                        <Progress value={m.percentual} className="h-1.5" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <ListPager
-                page={metasCorretoresPage.page}
-                totalPages={metasCorretoresPage.totalPages}
-                total={metasCorretoresPage.total}
-                onPageChange={metasCorretoresPage.setPage}
-              />
+                      ))}
+                      <ListPager
+                        page={metasCorretoresPage.page}
+                        totalPages={metasCorretoresPage.totalPages}
+                        total={metasCorretoresPage.total}
+                        onPageChange={metasCorretoresPage.setPage}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma meta mensal ativa. Cadastre em Metas.
-            </p>
-          )}
-            </>
           )}
         </div>
-      </DashboardPanel>
+      </PagePanel>
     </div>
   );
 }
@@ -1280,27 +1409,27 @@ function DashboardCorretorView() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PageHeader
         title="Dashboard"
         description={`Visão da sua carteira em ${mesLabel}.`}
       />
 
-      <DashboardPanel
+      <PagePanel
+        inset="muted"
         guia="dashboard-kpis"
         title="Sua carteira"
         description={`Resumo operacional em ${mesLabel}.`}
         action={<PanelLink to="/leads">Ver leads</PanelLink>}
       >
-        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <FinanceKpiCard
             label="Leads ativos"
             value={summary.carteira.leads}
             icon={UsersRound}
             tone="teal"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label="Clientes na carteira"
@@ -1308,8 +1437,7 @@ function DashboardCorretorView() {
             icon={UserRound}
             tone="blue"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label="Novos contatos no mês"
@@ -1317,8 +1445,7 @@ function DashboardCorretorView() {
             icon={TrendingUp}
             tone="orange"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
           <FinanceKpiCard
             label="Em análise"
@@ -1326,14 +1453,14 @@ function DashboardCorretorView() {
             icon={ClipboardList}
             tone="violet"
             format="number"
-            compact
-            className={KPI_EMBED}
+            variant="dash"
           />
         </div>
-      </DashboardPanel>
+      </PagePanel>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <DashboardPanel
+        <PagePanel
+          inset="muted"
           title="Documentação e vendas"
           description={`Resultado da sua carteira em ${mesLabel}.`}
           action={
@@ -1342,15 +1469,14 @@ function DashboardCorretorView() {
             ) : undefined
           }
         >
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
             <FinanceKpiCard
               label="Documentações registradas"
               value={summary.documentacao.registrados}
               icon={BriefcaseBusiness}
               tone="blue"
               format="number"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Em andamento"
@@ -1358,8 +1484,7 @@ function DashboardCorretorView() {
               icon={FileCheck2}
               tone="orange"
               format="number"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Vendas registradas"
@@ -1367,68 +1492,63 @@ function DashboardCorretorView() {
               icon={FileCheck2}
               tone="emerald"
               format="number"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="VGV vendido no mês"
               value={summary.documentacao.vgvVendidoMes}
               icon={Wallet}
               tone="teal"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
           </div>
-        </DashboardPanel>
+        </PagePanel>
 
-        <DashboardPanel
+        <PagePanel
+          inset="muted"
           guia="dashboard-comissao"
           title="Sua comissão do mês"
           description={`Quanto você recebe nas vendas de ${mesLabel}.`}
           action={<PanelLink to="/financeiro/comissao">Ver comissões</PanelLink>}
         >
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
             <FinanceKpiCard
               label="A receber"
               value={summary.comissao.aReceber}
               icon={Percent}
               tone="violet"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Pendentes"
               value={summary.comissao.pendente}
               icon={Clock3}
               tone="orange"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Liberadas"
               value={summary.comissao.liberada}
               icon={Banknote}
               tone="blue"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
             <FinanceKpiCard
               label="Pagas"
               value={summary.comissao.paga}
               icon={CheckCircle2}
               tone="emerald"
-              compact
-              className={KPI_EMBED}
+              variant="dash"
             />
           </div>
-        </DashboardPanel>
+        </PagePanel>
       </div>
 
       <section
         data-guia="dashboard-funil"
         className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,1fr)]"
       >
-        <DashboardPanel
+        <PagePanel
           title="Funil atual"
           description="Seus leads ativos nas etapas do funil de vendas."
           action={
@@ -1450,13 +1570,13 @@ function DashboardCorretorView() {
             data={funnelData}
             emptyLabel="Nenhum lead ativo no funil."
           />
-        </DashboardPanel>
-        <DashboardPanel title="Status das análises">
+        </PagePanel>
+        <PagePanel title="Status das análises">
           <div className="space-y-3">
             {analiseData.map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2"
+                className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5"
               >
                 <span className="text-sm text-muted-foreground">
                   {item.label}
@@ -1465,10 +1585,10 @@ function DashboardCorretorView() {
               </div>
             ))}
           </div>
-        </DashboardPanel>
+        </PagePanel>
       </section>
 
-      <DashboardPanel
+      <PagePanel
         title="Minha agenda de hoje"
         description={`${summary.agenda.totalHoje} compromisso${summary.agenda.totalHoje === 1 ? "" : "s"} marcado${summary.agenda.totalHoje === 1 ? "" : "s"} para hoje.`}
         action={<PanelLink to="/agenda">Abrir agenda</PanelLink>}
@@ -1495,7 +1615,7 @@ function DashboardCorretorView() {
             emptyMessage="Nenhuma atividade compartilhada marcada para hoje."
           />
         </div>
-      </DashboardPanel>
+      </PagePanel>
     </div>
   );
 }
@@ -1512,38 +1632,37 @@ function AgendaCategoria({
   const pageState = usePagedList(items);
 
   return (
-    <div className="rounded-lg border p-3">
+    <div className="rounded-xl bg-muted/30 p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-primary">{title}</h3>
+        <h3 className="text-sm font-semibold">{title}</h3>
         <span className="text-xs text-muted-foreground">{items.length}</span>
       </div>
       {items.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
         <>
-          <div className="divide-y rounded-md border">
+          <div className="space-y-2">
             {pageState.pageItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2.5"
+                className="flex items-center gap-3 rounded-xl bg-background px-3 py-2.5"
               >
-                {item.status === "concluido" ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                ) : (
-                  <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
-                )}
+                <time className="w-12 shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                  {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{item.titulo}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {item.contato ?? item.tipo}
                   </p>
                 </div>
-                <time className="shrink-0 text-xs text-muted-foreground">
-                  {new Date(item.startsAt).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </time>
+                <AgendaStatusBadge
+                  status={item.status}
+                  startsAt={item.startsAt}
+                />
               </div>
             ))}
           </div>

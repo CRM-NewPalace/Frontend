@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { EvolucaoBadge, FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -218,6 +220,8 @@ function Page() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const gerentesPager = useTablePager(data?.gerentes ?? []);
 
   useEffect(() => {
     if (!vendasAlvo) {
@@ -492,6 +496,7 @@ function Page() {
                       Nenhuma equipe com gerente cadastrada.
                     </p>
                   ) : (
+                    <>
                     <Table className="min-w-200 [&_th]:px-4 [&_td]:px-4">
                       <TableHeader>
                         <TableRow className="hover:bg-transparent">
@@ -510,11 +515,18 @@ function Page() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {data.gerentes.map((r) => (
+                        {gerentesPager.pageItems.map((r) => (
                           <GerenteRow key={r.gerenteId} row={r} />
                         ))}
                       </TableBody>
                     </Table>
+                    <TablePager
+                      page={gerentesPager.page}
+                      totalPages={gerentesPager.totalPages}
+                      total={gerentesPager.total}
+                      onPageChange={gerentesPager.setPage}
+                    />
+                    </>
                   )}
                 </CardContent>
               </Card>

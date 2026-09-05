@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import {
   FormDialogActions,
@@ -194,6 +196,10 @@ function Page() {
       );
     });
   }, [parceiros, search, tipo, ativo, isPlatformAdmin]);
+  const pager = useTablePager(
+    rows,
+    `${search}|${tipo}|${ativo}|${isPlatformAdmin}`,
+  );
 
   const hasActive = Boolean(
     search || (!isPlatformAdmin && tipo !== "todos") || ativo !== "todos",
@@ -348,13 +354,14 @@ function Page() {
         }}
       />
 
-      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Carregando parceiros…
           </div>
         ) : (
+          <>
           <Table className="[&_th]:px-4 [&_td]:px-4">
             <TableHeader>
               <TableRow>
@@ -381,7 +388,7 @@ function Page() {
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((p) => (
+                pager.pageItems.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.nome}</TableCell>
                     <TableCell className="tabular-nums text-muted-foreground">
@@ -448,6 +455,13 @@ function Page() {
               )}
             </TableBody>
           </Table>
+          <TablePager
+            page={pager.page}
+            totalPages={pager.totalPages}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
+          </>
         )}
       </div>
       <p className="text-xs text-muted-foreground mt-2">

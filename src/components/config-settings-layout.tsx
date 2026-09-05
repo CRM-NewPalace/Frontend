@@ -42,9 +42,9 @@ export function ConfigSettingsLayout({
                   )
                 }
                 className={cn(
-                  "flex min-w-36 shrink-0 items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full",
+                  "flex min-w-36 shrink-0 items-start gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full",
                   selected
-                    ? "border-primary/20 bg-primary/5 text-foreground shadow-sm"
+                    ? "border-black/5 bg-card text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]"
                     : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >

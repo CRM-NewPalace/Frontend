@@ -8,6 +8,8 @@ import {
 import { Banknote, CheckCircle2, Clock3, Eye, Loader2, Pencil, Percent, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { FinanceiroFiltrosBar } from "@/components/financeiro-filtros";
 import {
@@ -187,6 +189,7 @@ function Page() {
         .some((value) => value.includes(query));
     });
   }, [items, search, periodo, status, equipe]);
+  const pager = useTablePager(rows, `${search}|${periodo}|${status}|${equipe}`);
 
   const kpis = useMemo(() => {
     const sum = (state?: ComissaoStatus) =>
@@ -341,7 +344,7 @@ function Page() {
         }}
       />
 
-      <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+      <div className="overflow-hidden rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
         <div className="overflow-x-auto">
           <Table className="[&_th]:px-4 [&_td]:px-4">
             <TableHeader>
@@ -401,7 +404,7 @@ function Page() {
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((item) => (
+                pager.pageItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="py-2 font-medium">
                       {relationName(item.corretor)}
@@ -506,6 +509,12 @@ function Page() {
               )}
             </TableBody>
           </Table>
+          <TablePager
+            page={pager.page}
+            totalPages={pager.totalPages}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         </div>
       </div>
       <p className="mt-2 mb-4 text-xs text-muted-foreground">

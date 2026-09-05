@@ -35,6 +35,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -873,6 +875,10 @@ function Page() {
       ),
     [rows, sort],
   );
+  const pager = useTablePager(
+    sortedRows,
+    `${search}|${status}|${corretorId}|${equipeId}|${sort}`,
+  );
 
   const kpis = useMemo(() => {
     const total = rows.length;
@@ -1357,7 +1363,7 @@ function Page() {
         )}
       </div>
 
-      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
         <Table>
           <TableHeader>
             <TableRow>
@@ -1392,7 +1398,7 @@ function Page() {
                 </TableCell>
               </TableRow>
             ) : (
-              sortedRows.map((p) => (
+              pager.pageItems.map((p) => (
                 <TableRow
                   key={p.id}
                   className="cursor-pointer"
@@ -1467,6 +1473,12 @@ function Page() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       </div>
       <p className="text-xs text-muted-foreground mt-2">
         {rows.length} de {items.length} propostas
@@ -2716,7 +2728,7 @@ function ParcelasQtyValueEditor({
   const subtotal = q * unit;
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-border/70 bg-card/40 p-3 space-y-3">
+    <div className="flex h-full flex-col space-y-3 rounded-2xl border border-black/5 bg-card p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
       <div>
         <div className="text-sm font-medium">{title}</div>
         <div className="text-[11px] text-muted-foreground tabular-nums">

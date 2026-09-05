@@ -1394,7 +1394,7 @@ export function ComercialFunilBoard({
               key={stage.id}
               data-funnel-stage={isOrphanColumn ? undefined : stage.id}
               className={cn(
-                "w-72 shrink-0 flex flex-col rounded-xl p-3 transition-[box-shadow,background-color,transform] duration-200 ease-out",
+                "w-72 shrink-0 flex flex-col rounded-2xl border border-black/5 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)] transition-[box-shadow,background-color,transform] duration-200 ease-out",
                 isOrphanColumn
                   ? "bg-amber-50 dark:bg-amber-950/20"
                   : funnelColumnBg(stageIndex, boardStages.length),
@@ -2318,7 +2318,7 @@ function AnalistaFunilBoard() {
               <div
                 key={col.id}
                 className={cn(
-                  "w-72 shrink-0 flex flex-col rounded-xl p-3",
+                  "w-72 shrink-0 flex flex-col rounded-2xl border border-black/5 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]",
                   funnelColumnBg(index, ANALISTA_COLUMNS.length),
                 )}
               >

@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { CategoriaSearchSelect } from "@/components/categoria-search-select";
 import { getSession } from "@/lib/auth";
 import { canFinanceiroAction } from "@/lib/permissions";
@@ -406,6 +408,7 @@ function Page() {
       );
     });
   }, [items, search, periodo, status, tipo]);
+  const pager = useTablePager(rows, `${search}|${periodo}|${status}|${tipo}`);
 
   const totais = useMemo(() => {
     let entradas = 0;
@@ -597,13 +600,14 @@ function Page() {
         }}
       />
 
-      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Carregando lançamentos…
           </div>
         ) : (
+          <>
           <Table className="[&_th]:px-4 [&_td]:px-4">
             <TableHeader>
               <TableRow>
@@ -628,7 +632,7 @@ function Page() {
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((m) => (
+                pager.pageItems.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="tabular-nums whitespace-nowrap">
                       {formatDate(m.data)}
@@ -702,6 +706,13 @@ function Page() {
               )}
             </TableBody>
           </Table>
+          <TablePager
+            page={pager.page}
+            totalPages={pager.totalPages}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
+          </>
         )}
       </div>
       <p className="text-xs text-muted-foreground mt-2">

@@ -175,7 +175,7 @@ function VendasPage() {
   const [draft, setDraft] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     if (!canView) {

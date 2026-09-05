@@ -18,6 +18,8 @@ import {
 } from "@/components/agenda-board";
 import { FluxoCaixaBoard } from "@/components/fluxo-caixa-board";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import {
   FormDialogActions,
@@ -359,6 +361,8 @@ function Page() {
     const key = toDateInput(selectedDay);
     return items.filter((i) => i.data === key);
   }, [items, selectedDay]);
+  const dayPager = useTablePager(tableDayItems, toDateInput(selectedDay));
+  const bucketPager = useTablePager(buckets, view);
 
   return (
     <div>
@@ -650,7 +654,7 @@ function Page() {
           onSelectItem={onSelectItem}
         />
       ) : view === "dia" ? (
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -682,7 +686,7 @@ function Page() {
                   </TableCell>
                 </TableRow>
               ) : (
-                tableDayItems.map((it) => (
+                dayPager.pageItems.map((it) => (
                   <TableRow
                     key={`${it.origem}-${it.id}`}
                     className="cursor-pointer"
@@ -724,9 +728,15 @@ function Page() {
               )}
             </TableBody>
           </Table>
+          <TablePager
+            page={dayPager.page}
+            totalPages={dayPager.totalPages}
+            total={dayPager.total}
+            onPageChange={dayPager.setPage}
+          />
         </div>
       ) : (
-        <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
+        <div className="overflow-x-auto rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -749,7 +759,7 @@ function Page() {
                   </TableCell>
                 </TableRow>
               ) : (
-                buckets.map((d) => (
+                bucketPager.pageItems.map((d) => (
                   <TableRow
                     key={d.chave}
                     className="cursor-pointer hover:bg-muted/50"
@@ -776,6 +786,12 @@ function Page() {
               )}
             </TableBody>
           </Table>
+          <TablePager
+            page={bucketPager.page}
+            totalPages={bucketPager.totalPages}
+            total={bucketPager.total}
+            onPageChange={bucketPager.setPage}
+          />
         </div>
       )}
 

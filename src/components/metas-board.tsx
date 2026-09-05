@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -362,6 +364,7 @@ function MetasTable({
   showResponsavel?: boolean;
   emptyText: string;
 } & MetaActions) {
+  const pager = useTablePager(metas);
   if (metas.length === 0) {
     return (
       <div className="p-4">
@@ -371,6 +374,7 @@ function MetasTable({
   }
 
   return (
+    <>
     <Table className="[&_th]:px-4 [&_td]:px-4">
       <TableHeader>
         <TableRow>
@@ -384,7 +388,7 @@ function MetasTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {metas.map((meta) => {
+        {pager.pageItems.map((meta) => {
           const editavel = canEdit(meta);
           const tone = progressTone(meta.percentual);
           const barra = Math.min(100, Math.max(0, meta.percentual));
@@ -486,6 +490,13 @@ function MetasTable({
         })}
       </TableBody>
     </Table>
+    <TablePager
+      page={pager.page}
+      totalPages={pager.totalPages}
+      total={pager.total}
+      onPageChange={pager.setPage}
+    />
+    </>
   );
 }
 
@@ -513,14 +524,14 @@ function MetaCard({
   return (
     <article
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-l-[3px] shadow-sm transition hover:shadow-md",
+        "group relative overflow-hidden rounded-2xl border border-black/5 border-l-[4px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)] transition hover:shadow-md",
         META_TIPO_CARD[meta.tipo],
       )}
     >
       <div className="flex items-center gap-2.5 px-2.5 py-2">
         <div
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
             META_TIPO_WELL[meta.tipo],
           )}
         >

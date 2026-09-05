@@ -7,6 +7,8 @@ import {
 } from "react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1048,6 +1050,7 @@ export function ImoveisPage({
       ),
     [filtered, sort],
   );
+  const imoveisPager = useTablePager(sorted, sort);
 
   const captacaoFiltered = useMemo(() => {
     if (embedded) return [];
@@ -1475,7 +1478,7 @@ export function ImoveisPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map((item, index) => (
+              {imoveisPager.pageItems.map((item, index) => (
                   <TableRow
                     key={item.id}
                     className={cn(
@@ -1780,10 +1783,16 @@ export function ImoveisPage({
               ))}
             </TableBody>
           </Table>
+          <TablePager
+            page={imoveisPager.page}
+            totalPages={imoveisPager.totalPages}
+            total={imoveisPager.total}
+            onPageChange={imoveisPager.setPage}
+          />
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {sorted.map((item) => (
+          {imoveisPager.pageItems.map((item) => (
             <Card
               key={item.id}
               className="group overflow-hidden transition-shadow hover:shadow-lg"

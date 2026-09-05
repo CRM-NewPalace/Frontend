@@ -1104,7 +1104,7 @@ function AgendaPage() {
       </div>
 
       {section === "solicitacoes" ? (
-        <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-black/5 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]">
           <div className="border-b px-4 py-3 bg-muted/20">
             <h3 className="text-sm font-semibold">
               {isGerente ? "Aguardando sua aprovação" : "Aguardando o gerente"}

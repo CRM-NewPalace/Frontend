@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -425,6 +427,8 @@ function ConstrutorasPage() {
       ),
     [driveHubItems, sort],
   );
+  const construtorasPager = useTablePager(sortedItems, sort);
+  const drivePager = useTablePager(sortedDriveItems, sort);
 
   const visibilityCities = useMemo(() => {
     let rows = [...localidades].sort((a, b) =>
@@ -1085,7 +1089,7 @@ function ConstrutorasPage() {
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {sortedDriveItems.map((item) => {
+                  {drivePager.pageItems.map((item) => {
                     const bg = item.cor || "#079ED4";
                     return (
                       <button
@@ -1093,7 +1097,7 @@ function ConstrutorasPage() {
                         type="button"
                         onClick={() => openDriveFolder(item.driveFolderUrl!)}
                         className={cn(
-                          "group flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center transition-colors",
+                          "group flex flex-col items-center gap-2 rounded-2xl border border-black/5 bg-card p-4 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)] transition-colors",
                           "hover:border-[#079ED4]/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#079ED4]/35",
                         )}
                         title={`Abrir Drive de ${item.nome}`}
@@ -1158,6 +1162,7 @@ function ConstrutorasPage() {
                   <p>Nenhuma construtora encontrada.</p>
                 </div>
               ) : (
+                <>
                 <Table className="[&_th]:px-4 [&_td]:px-4">
                   <TableHeader>
                     <TableRow>
@@ -1177,7 +1182,7 @@ function ConstrutorasPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedItems.map((item) => (
+                    {construtorasPager.pageItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">
                           {canViewVendas ? (
@@ -1298,6 +1303,13 @@ function ConstrutorasPage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePager
+                  page={construtorasPager.page}
+                  totalPages={construtorasPager.totalPages}
+                  total={construtorasPager.total}
+                  onPageChange={construtorasPager.setPage}
+                />
+                </>
               )}
             </CardContent>
           </Card>
@@ -1509,7 +1521,7 @@ function ConstrutorasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedItems.map((item, index) => {
+                      {construtorasPager.pageItems.map((item, index) => {
                         const linkedIds = new Set(
                           (item.localidades ?? []).map(
                             (localidade) => localidade.id,
@@ -1561,6 +1573,12 @@ function ConstrutorasPage() {
                       })}
                     </TableBody>
                   </Table>
+                  <TablePager
+                    page={construtorasPager.page}
+                    totalPages={construtorasPager.totalPages}
+                    total={construtorasPager.total}
+                    onPageChange={construtorasPager.setPage}
+                  />
                 </div>
               )}
             </CardContent>

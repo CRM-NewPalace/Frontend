@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import {
   Table,
   TableBody,
@@ -537,6 +539,10 @@ function Usuarios() {
       ),
     [filtered, sort],
   );
+  const pager = useTablePager(
+    sorted,
+    `${search}|${roleFilter}|${statusFilter}|${creciFilter}|${sort}`,
+  );
 
   const adminStats = useMemo(() => {
     const corretores = users.filter(isBrokerForStats);
@@ -997,7 +1003,7 @@ function Usuarios() {
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((u) => (
+              pager.pageItems.map((u) => (
                 <TableRow key={u.id} className="hover:bg-muted/40">
                   <TableCell className="min-w-0">
                     <div className="flex min-w-0 items-center gap-3">
@@ -1158,6 +1164,12 @@ function Usuarios() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       </Card>
 
       <FormDialogShell

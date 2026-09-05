@@ -35,6 +35,29 @@ const TONE: Record<FinanceKpiTone, { bar: string; icon: string }> = {
   "blue-6": { bar: "bg-[var(--kpi-seq-6,#034E6E)]", icon: "bg-[var(--kpi-seq-6,#034E6E)]" },
 };
 
+/** Ícone circular do dashboard (referência de cards soltos). */
+const DASH_ICON: Record<FinanceKpiTone, string> = {
+  teal: "bg-teal-500",
+  emerald: "bg-emerald-500",
+  orange: "bg-orange-500",
+  red: "bg-red-500",
+  blue: "bg-sky-500",
+  violet: "bg-violet-500",
+  rose: "bg-rose-500",
+  "blue-1": "bg-[var(--kpi-seq-1,#5BC4E8)]",
+  "blue-2": "bg-[var(--kpi-seq-2,#079ED4)]",
+  "blue-3": "bg-[var(--kpi-seq-3,#0689BD)]",
+  "blue-4": "bg-[var(--kpi-seq-4,#057AA8)]",
+  "blue-5": "bg-[var(--kpi-seq-5,#04648A)]",
+  "blue-6": "bg-[var(--kpi-seq-6,#034E6E)]",
+};
+
+const DASH_WASH: Partial<Record<FinanceKpiTone, string>> = {
+  emerald: "bg-emerald-50/90 border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/50",
+  red: "bg-rose-50/90 border-rose-100 dark:bg-rose-950/30 dark:border-rose-900/50",
+  orange: "bg-orange-50/90 border-orange-100 dark:bg-orange-950/30 dark:border-orange-900/50",
+};
+
 function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -111,6 +134,8 @@ export function FinanceKpiCard({
   suffix,
   compact = false,
   showBar = true,
+  variant = "dash",
+  wash = false,
   valueLabel,
   search,
   detail,
@@ -132,6 +157,10 @@ export function FinanceKpiCard({
   suffix?: string;
   compact?: boolean;
   showBar?: boolean;
+  /** Card branco do dashboard: ícone redondo, sem faixa superior. */
+  variant?: "default" | "dash";
+  /** Fundo leve na cor do tom (pipeline de documentação). */
+  wash?: boolean;
   /** Substitui o valor formatado (ex.: "1h 20min"). */
   valueLabel?: string;
   detail?: string;
@@ -139,6 +168,8 @@ export function FinanceKpiCard({
   blurValue?: boolean;
 }) {
   const t = TONE[tone];
+  const isDash = variant === "dash";
+  const barOn = isDash ? false : showBar;
   const display =
     valueLabel ??
     (format === "number"
@@ -148,29 +179,37 @@ export function FinanceKpiCard({
         : money(value));
 
   const len = display.length;
-  const valueSize = compact
-    ? len > 14
-      ? "text-sm leading-snug"
-      : "text-base leading-tight"
-    : len > 18
-      ? "text-sm leading-snug"
-      : len > 14
-        ? "text-base leading-snug"
-        : "text-xl leading-tight";
+  const valueSize = isDash
+    ? len > 16
+      ? "text-lg leading-tight sm:text-xl"
+      : "text-xl leading-tight sm:text-2xl"
+    : compact
+      ? len > 14
+        ? "text-sm leading-snug"
+        : "text-base leading-tight"
+      : len > 18
+        ? "text-sm leading-snug"
+        : len > 14
+          ? "text-base leading-snug"
+          : "text-xl leading-tight";
 
   const interactive = Boolean(href || onClick);
 
   const card = (
     <div
       className={cn(
-        "h-full rounded-xl bg-card text-card-foreground shadow-sm border border-border/60 overflow-hidden min-w-0 flex flex-col",
+        "h-full min-w-0 flex flex-col overflow-hidden bg-card text-card-foreground",
+        isDash
+          ? "rounded-2xl border border-black/5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)]"
+          : "rounded-xl border border-border/60 shadow-sm",
+        wash && DASH_WASH[tone],
         interactive && "transition-shadow hover:shadow-md",
         active && "border-primary/50 ring-2 ring-primary/25 shadow-md",
         className,
       )}
       title={blurValue ? undefined : display}
     >
-      {showBar ? (
+      {barOn ? (
         <div
           className={cn("w-full shrink-0", compact ? "h-1" : "h-1.5", t.bar)}
         />
@@ -178,22 +217,42 @@ export function FinanceKpiCard({
       <div
         className={cn(
           "flex flex-1 items-center min-w-0",
-          compact
-            ? "gap-2 p-2.5 min-h-0"
-            : "gap-2.5 sm:gap-3 p-3 sm:p-4 min-h-21 sm:min-h-23",
+          isDash
+            ? "gap-3 p-4 min-h-22"
+            : compact
+              ? "gap-2 p-2.5 min-h-0"
+              : "gap-2.5 sm:gap-3 p-3 sm:p-4 min-h-21 sm:min-h-23",
         )}
       >
         <div
           className={cn(
-            "rounded-md flex items-center justify-center shrink-0 text-white shadow-sm",
-            compact ? "w-8 h-8" : "w-8 h-8 sm:w-12 sm:h-12 sm:rounded-lg",
-            t.icon,
+            "flex items-center justify-center shrink-0 text-white shadow-sm",
+            isDash
+              ? cn("size-10 rounded-full sm:size-11", DASH_ICON[tone])
+              : cn(
+                  "rounded-md",
+                  compact ? "w-8 h-8" : "w-8 h-8 sm:w-12 sm:h-12 sm:rounded-lg",
+                  t.icon,
+                ),
           )}
         >
-          <Icon className={cn(compact ? "w-4 h-4" : "w-4 h-4 sm:w-5 sm:h-5")} />
+          <Icon
+            className={cn(
+              isDash
+                ? "h-5 w-5"
+                : compact
+                  ? "w-4 h-4"
+                  : "w-4 h-4 sm:w-5 sm:h-5",
+            )}
+          />
         </div>
         <div className="min-w-0 flex-1 overflow-hidden flex flex-col justify-center">
-          <div className="text-[11px] sm:text-xs text-muted-foreground leading-snug truncate">
+          <div
+            className={cn(
+              "text-muted-foreground leading-snug truncate",
+              isDash ? "text-xs" : "text-[11px] sm:text-xs",
+            )}
+          >
             {label}
           </div>
           <div

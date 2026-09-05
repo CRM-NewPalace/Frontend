@@ -2,11 +2,6 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Mesma cor do aside (menu lateral). */
-const TABLE_HEADER_BG = {
-  backgroundColor: "var(--sidebar)",
-} as const;
-
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement> & {
@@ -34,12 +29,11 @@ Table.displayName = "Table";
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, style, ...props }, ref) => (
+>(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    style={{ ...TABLE_HEADER_BG, ...style }}
     className={cn(
-      "text-sidebar-foreground [&_tr]:border-b-0",
+      "bg-muted/40 text-muted-foreground [&_tr]:border-b [&_tr]:border-black/5",
       className,
     )}
     {...props}
@@ -81,7 +75,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted in-[[thead]]:border-b-0 in-[[thead]]:hover:bg-transparent",
+      "border-b border-black/5 transition-colors hover:bg-muted/40 data-[state=selected]:bg-muted in-[[thead]]:border-black/5 in-[[thead]]:hover:bg-transparent",
       className,
     )}
     {...props}
@@ -92,12 +86,11 @@ TableRow.displayName = "TableRow";
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, style, ...props }, ref) => (
+>(({ className, ...props }, ref) => (
   <th
     ref={ref}
-    style={{ ...TABLE_HEADER_BG, ...style }}
     className={cn(
-      "h-10 px-2 text-left align-middle font-semibold text-sidebar-foreground has-[[role=checkbox]]:pr-0 *:[[role=checkbox]]:translate-y-0.5",
+      "h-10 bg-muted/40 px-2 text-left align-middle text-xs font-medium text-muted-foreground has-[[role=checkbox]]:pr-0 *:[[role=checkbox]]:translate-y-0.5",
       className,
     )}
     {...props}

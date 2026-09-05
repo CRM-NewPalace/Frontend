@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import {
   Table,
   TableBody,
@@ -165,6 +167,7 @@ function LeadsPerdidos() {
       ),
     [filtered, sort],
   );
+  const pager = useTablePager(sorted, `${search}|${sort}`);
 
   const allVisibleIds = useMemo(() => sorted.map((l) => l.id), [sorted]);
   const allSelected =
@@ -388,7 +391,7 @@ function LeadsPerdidos() {
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((l) => (
+              pager.pageItems.map((l) => (
                 <TableRow
                   key={l.id}
                   className="hover:bg-muted/40"
@@ -459,6 +462,12 @@ function LeadsPerdidos() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       </Card>
 
       <FormDialogShell

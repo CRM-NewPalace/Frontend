@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -747,6 +749,22 @@ function LeadsPage() {
         (l) => l.createdAt,
       ),
     [filteredLeads, sort],
+  );
+
+  const leadsPager = useTablePager(
+    sortedLeads,
+    [
+      debouncedSearch,
+      stageFilter,
+      corretorFilter,
+      equipeFilter,
+      prioridadeFilter,
+      tipoRendaFilter,
+      origemFilter,
+      distribuicaoFilter,
+      paradosFilter,
+      sort,
+    ].join("|"),
   );
 
   const distribuicaoCounts = useMemo(() => {
@@ -3262,7 +3280,7 @@ function LeadsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              sortedLeads.map((l) => {
+              leadsPager.pageItems.map((l) => {
                 const stage = funnelStages.find((s) => s.id === l.stage) ?? {
                   id: l.stage,
                   name: l.stage,
@@ -3504,6 +3522,12 @@ function LeadsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={leadsPager.page}
+          totalPages={leadsPager.totalPages}
+          total={leadsPager.total}
+          onPageChange={leadsPager.setPage}
+        />
       </Card>
 
       <Dialog open={importHelpOpen} onOpenChange={setImportHelpOpen}>

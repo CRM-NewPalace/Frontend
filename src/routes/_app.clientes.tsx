@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import {
   Table,
   TableBody,
@@ -257,6 +259,7 @@ function Clientes() {
       ),
     [clientes, sort],
   );
+  const clientesPager = useTablePager(sortedClientes, sort);
 
   const corretorOptions = useMemo(
     () =>
@@ -791,7 +794,7 @@ function Clientes() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedClientes.map((l) => (
+            {clientesPager.pageItems.map((l) => (
               <TableRow
                 key={l.id}
                 className="hover:bg-muted/40 cursor-pointer"
@@ -892,6 +895,12 @@ function Clientes() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={clientesPager.page}
+          totalPages={clientesPager.totalPages}
+          total={clientesPager.total}
+          onPageChange={clientesPager.setPage}
+        />
       </Card>
 
       {/* Criar / Editar */}

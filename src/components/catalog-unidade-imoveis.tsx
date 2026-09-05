@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -146,6 +148,7 @@ export function CatalogUnidadeImoveis({
       return hay.includes(q);
     });
   }, [items, proprietarioId, search]);
+  const pager = useTablePager(filtered, `${search}|${proprietarioId}`);
 
   async function load() {
     setLoading(true);
@@ -365,7 +368,7 @@ export function CatalogUnidadeImoveis({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => {
+              {pager.pageItems.map((item) => {
                 const venda = vendaByImovel.get(item.id);
                 return (
                   <tr key={item.id} className="border-b last:border-0">
@@ -424,10 +427,17 @@ export function CatalogUnidadeImoveis({
               })}
             </tbody>
           </table>
+          <TablePager
+            page={pager.page}
+            totalPages={pager.totalPages}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         </div>
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((item) => {
+          {pager.pageItems.map((item) => {
             const venda = vendaByImovel.get(item.id);
             return (
               <Card key={item.id} className="overflow-hidden border-primary/15">
@@ -496,6 +506,13 @@ export function CatalogUnidadeImoveis({
             );
           })}
         </div>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
+        </>
       )}
 
       <FormDialogShell

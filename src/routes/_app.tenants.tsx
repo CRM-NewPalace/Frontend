@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -242,6 +244,7 @@ function TenantsPage() {
     if (listFilter === "teste") return items.filter((item) => item.isTest);
     return items;
   }, [items, listFilter]);
+  const pager = useTablePager(visibleItems, listFilter);
 
   function openCreate() {
     setFormMode("create");
@@ -797,6 +800,7 @@ function TenantsPage() {
               </p>
             </div>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -809,7 +813,7 @@ function TenantsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleItems.map((item) => {
+                {pager.pageItems.map((item) => {
                   const conexoes = connectionLabels(item);
                   return (
                   <TableRow key={item.id}>
@@ -934,6 +938,13 @@ function TenantsPage() {
                 })}
               </TableBody>
             </Table>
+            <TablePager
+              page={pager.page}
+              totalPages={pager.totalPages}
+              total={pager.total}
+              onPageChange={pager.setPage}
+            />
+            </>
           )}
         </CardContent>
       </Card>

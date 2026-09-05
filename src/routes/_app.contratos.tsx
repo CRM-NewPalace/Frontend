@@ -784,7 +784,7 @@ function ContratosPage() {
                     type="button"
                     onClick={() => openTemplate(template)}
                     className={cn(
-                      "group flex h-full cursor-pointer flex-col rounded-xl border border-border/60 bg-muted/20 p-4 text-left transition",
+                      "group flex h-full cursor-pointer flex-col rounded-2xl border border-black/5 bg-card p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_rgba(15,23,42,0.05)] transition",
                       "hover:border-primary/35 hover:bg-primary/[0.04] hover:shadow-md",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     )}

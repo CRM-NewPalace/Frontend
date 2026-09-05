@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,6 +91,8 @@ function ProprietariosPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const pager = useTablePager(items, search);
 
   function openCreate() {
     setEditing(null);
@@ -254,7 +258,7 @@ function ProprietariosPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((item) => (
+              pager.pageItems.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">
                     <Link
@@ -303,6 +307,12 @@ function ProprietariosPage() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          page={pager.page}
+          totalPages={pager.totalPages}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
         </TableFrame>
       )}
 

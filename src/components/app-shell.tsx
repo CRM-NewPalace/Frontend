@@ -857,14 +857,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Renderiza as seções de navegação. Reaproveitado tanto pelo <aside> fixo
   // do desktop quanto pelo drawer mobile, para não duplicar a lógica.
   function renderNavSections(collapsedView: boolean, onNavigate?: () => void) {
+    const parentClass =
+      "flex w-full items-center gap-3 px-3 py-2.5 text-[13.5px] font-medium text-white/95 transition-colors hover:bg-white/[0.04]";
+    const childClass = (active: boolean) =>
+      cn(
+        "relative flex w-full items-center gap-2.5 rounded-md py-2 pl-2.5 pr-2 text-[12.5px] font-normal transition-colors",
+        active
+          ? "bg-white/[0.08] text-white"
+          : "text-white/70 hover:bg-white/[0.04] hover:text-white",
+      );
+    const treeClass = "ml-[21px] space-y-0.5 border-l border-white/15 pl-2.5";
+
     return (
-      <nav className="sidebar-nav-scroll flex-1 overflow-y-auto py-3 px-2 space-y-1">
+      <nav className="sidebar-nav-scroll flex-1 overflow-y-auto">
         {navSections.map((section) => {
           const SectionIcon = section.icon;
           const isOpen = !!openSections[section.id];
-          const sectionActive = section.items.some((item) =>
-            itemMatchesPath(item, pathname),
-          );
           const standaloneLeaf =
             section.standalone &&
             section.items.length === 1 &&
@@ -877,98 +885,74 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               pathname === standaloneLeaf.to ||
               pathname.startsWith(`${standaloneLeaf.to}/`);
             return (
-              <Link
+              <div
                 key={section.id}
-                to={standaloneLeaf.to}
-                preload="intent"
-                onClick={onNavigate}
-                title={collapsedView ? section.label : undefined}
-                className={cn(
-                  "flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "text-sidebar-foreground bg-sidebar-accent"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-                )}
+                className="border-b border-white/10"
               >
-                <SectionIcon
-                  className={cn(
-                    "w-4 h-4 shrink-0",
-                    active && "text-brand-accent",
+                <Link
+                  to={standaloneLeaf.to}
+                  preload="intent"
+                  onClick={onNavigate}
+                  title={collapsedView ? section.label : undefined}
+                  className={cn(parentClass, active && "bg-white/[0.06] text-white")}
+                >
+                  <SectionIcon className="size-4 shrink-0 stroke-[1.6]" />
+                  {!collapsedView && (
+                    <span className="flex-1 truncate">{section.label}</span>
                   )}
-                />
-                {!collapsedView && (
-                  <span className="flex-1 truncate">{section.label}</span>
-                )}
-              </Link>
+                </Link>
+              </div>
             );
           }
 
           return (
-            <div key={section.id} className="space-y-0.5">
+            <div key={section.id} className="border-b border-white/10 py-1">
               <button
                 type="button"
                 onClick={() => toggleSection(section.id)}
                 title={collapsedView ? section.label : undefined}
-                className={cn(
-                  "w-full flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
-                  sectionActive
-                    ? "text-sidebar-foreground bg-sidebar-accent"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-                )}
+                className={cn(parentClass, "cursor-pointer")}
               >
-                <SectionIcon
-                  className={cn(
-                    "w-4 h-4 shrink-0",
-                    sectionActive
-                      ? "text-sidebar-foreground"
-                      : "text-sidebar-foreground/75",
-                  )}
-                />
+                <SectionIcon className="size-4 shrink-0 stroke-[1.6]" />
                 {!collapsedView && (
                   <>
-                    <span className="flex-1 text-left truncate">
+                    <span className="flex-1 truncate text-left">
                       {section.label}
                     </span>
                     {isOpen ? (
-                      <ChevronDown className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
+                      <ChevronDown className="size-4 shrink-0 text-white/50 stroke-[1.6]" />
                     ) : (
-                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
+                      <ChevronRight className="size-4 shrink-0 text-white/50 stroke-[1.6]" />
                     )}
                   </>
                 )}
               </button>
 
               {isOpen && !collapsedView && (
-                <div className="space-y-0.5 ml-4 border-l border-sidebar-border pl-2">
+                <div className={cn(treeClass, "mb-1.5 mt-0.5")}>
                   {section.items.map((item) => {
                     if (isNavGroup(item)) {
                       const groupOpen = !!openGroups[item.id];
-                      const groupActive = itemMatchesPath(item, pathname);
                       const GroupIcon = item.icon;
                       return (
-                        <div key={item.id} className="space-y-0.5">
+                        <div key={item.id}>
                           <button
                             type="button"
                             onClick={() => toggleGroup(item.id)}
-                            className={cn(
-                              "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors cursor-pointer",
-                              groupActive
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                                : "hover:bg-white/6 text-sidebar-foreground/75",
-                            )}
+                            className={cn(childClass(false), "cursor-pointer")}
                           >
-                            <GroupIcon className="w-4 h-4 shrink-0" />
-                            <span className="flex-1 text-left truncate">
+                            <GroupIcon className="size-3.5 shrink-0 stroke-[1.6]" />
+                            <span className="flex-1 truncate text-left">
                               {item.label}
                             </span>
                             {groupOpen ? (
-                              <ChevronDown className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
+                              <ChevronDown className="size-3.5 shrink-0 text-white/45 stroke-[1.6]" />
                             ) : (
-                              <ChevronRight className="w-3.5 h-3.5 shrink-0 text-sidebar-foreground/50" />
+                              <ChevronRight className="size-3.5 shrink-0 text-white/45 stroke-[1.6]" />
                             )}
                           </button>
                           {groupOpen && (
-                            <div className="space-y-0.5 ml-2 border-l border-sidebar-border pl-1">
+                            <div className={cn(treeClass, "mt-0.5")}>
                               {item.children.map((child) => {
                                 const active =
                                   pathname === child.to ||
@@ -980,17 +964,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     to={child.to}
                                     preload="intent"
                                     onClick={onNavigate}
-                                    className={cn(
-                                      "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
-                                      active
-                                        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                                        : "hover:bg-white/6 text-sidebar-foreground/75",
-                                    )}
+                                    className={childClass(active)}
                                   >
-                                    <ChildIcon className="w-4 h-4 shrink-0" />
-                                    <span className="truncate">
-                                      {child.label}
-                                    </span>
+                                    <ChildIcon className="size-3.5 shrink-0 stroke-[1.6]" />
+                                    <span className="truncate">{child.label}</span>
                                   </Link>
                                 );
                               })}
@@ -1011,15 +988,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         to={item.to}
                         preload="intent"
                         onClick={onNavigate}
-                        className={cn(
-                          "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
-                          active
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                            : "hover:bg-white/6 text-sidebar-foreground/75",
-                        )}
+                        className={childClass(active)}
                       >
                         <span className="relative shrink-0">
-                          <Icon className="w-4 h-4" />
+                          <Icon className="size-3.5 stroke-[1.6]" />
                           {isAgenda && showAgendaBadge && collapsedView ? (
                             <span
                               className={cn(
@@ -1029,23 +1001,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             />
                           ) : null}
                         </span>
-                        {!collapsedView && (
-                          <>
-                            <span className="truncate flex-1">
-                              {item.label}
-                            </span>
-                            {isAgenda && showAgendaBadge ? (
-                              <Badge
-                                className={cn(
-                                  "h-5 min-w-5 px-1.5 text-[10px]",
-                                  agendaBadgeClass,
-                                )}
-                              >
-                                {agendaBadgeCount > 9 ? "9+" : agendaBadgeCount}
-                              </Badge>
-                            ) : null}
-                          </>
-                        )}
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {isAgenda && showAgendaBadge ? (
+                          <Badge
+                            className={cn(
+                              "h-5 min-w-5 px-1.5 text-[10px]",
+                              agendaBadgeClass,
+                            )}
+                          >
+                            {agendaBadgeCount > 9 ? "9+" : agendaBadgeCount}
+                          </Badge>
+                        ) : null}
                       </Link>
                     );
                   })}
@@ -1063,7 +1029,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar fixa — visível apenas em telas md e acima */}
       <aside
         className={cn(
-          collapsed ? "w-16" : "w-60",
+          collapsed ? "w-16" : "w-64",
           "hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 sticky top-0 h-screen flex-col",
         )}
       >

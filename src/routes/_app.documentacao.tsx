@@ -12,6 +12,8 @@ import { FinanceKpiCard } from "@/components/finance-kpi-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { TablePager } from "@/components/table-pager";
+import { useTablePager } from "@/lib/use-table-pager";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -1005,6 +1007,7 @@ function DocumentacaoPage() {
       ),
     [filteredItems, sort],
   );
+  const docsPager = useTablePager(sortedItems, sort);
 
   const pipelineSummary = useMemo(() => {
     const base = filteredItems.reduce(
@@ -2593,6 +2596,7 @@ function DocumentacaoPage() {
               </Button>
             </div>
           ) : (
+            <>
             <Table
               containerClassName="overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]"
               className="w-full min-w-340 table-fixed text-xs [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:overflow-hidden [&_td]:px-3 [&_td]:py-2.5 [&_td]:text-left [&_td]:align-middle"
@@ -2613,7 +2617,7 @@ function DocumentacaoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedItems.map((doc) => (
+                {docsPager.pageItems.map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell>
                       <div
@@ -2767,6 +2771,13 @@ function DocumentacaoPage() {
                 ))}
               </TableBody>
             </Table>
+            <TablePager
+              page={docsPager.page}
+              totalPages={docsPager.totalPages}
+              total={docsPager.total}
+              onPageChange={docsPager.setPage}
+            />
+            </>
           )}
         </CardContent>
       </Card>
