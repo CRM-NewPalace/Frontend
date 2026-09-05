@@ -1,7 +1,9 @@
 import { apiFetch, apiFetchFile } from "@/lib/api";
 
 export type FuncionarioLancamento = {
+  codigo?: string;
   descricao: string;
+  referencia?: string;
   valor: number;
 };
 
@@ -10,6 +12,9 @@ export type Funcionario = {
   nome: string;
   cargo: string;
   empresa: string;
+  codigo: string;
+  dataAdmissao: string | null;
+  cbo: string;
   status: "ativo" | "inativo";
   salarioBruto: number;
   beneficios: FuncionarioLancamento[];
@@ -36,6 +41,9 @@ export type FuncionarioInput = {
   nome: string;
   cargo: string;
   empresa?: string;
+  codigo?: string;
+  dataAdmissao?: string;
+  cbo?: string;
   status?: "ativo" | "inativo";
   salarioBruto: number;
   beneficios: FuncionarioLancamento[];

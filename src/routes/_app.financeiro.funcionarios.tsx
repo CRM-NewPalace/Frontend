@@ -36,7 +36,6 @@ import {
   type Funcionario,
   type FuncionarioLancamento,
 } from "@/lib/funcionarios-api";
-import { SOFT_BTN } from "@/lib/soft-btn";
 import { useTablePager } from "@/lib/use-table-pager";
 import { getSession } from "@/lib/auth";
 import {
@@ -55,12 +54,20 @@ export const Route = createFileRoute("/_app/financeiro/funcionarios")({
   component: Page,
 });
 
-type LineForm = { descricao: string; valor: string };
+type LineForm = {
+  codigo: string;
+  descricao: string;
+  referencia: string;
+  valor: string;
+};
 
 type FormState = {
   nome: string;
   cargo: string;
   empresa: string;
+  codigo: string;
+  dataAdmissao: string;
+  cbo: string;
   status: "ativo" | "inativo";
   salarioBruto: string;
   beneficios: LineForm[];
@@ -68,15 +75,25 @@ type FormState = {
   observacoes: string;
 };
 
+function emptyLine(): LineForm {
+  return { codigo: "", descricao: "", referencia: "", valor: "" };
+}
+
 function emptyForm(empresa = ""): FormState {
   return {
     nome: "",
     cargo: "",
     empresa,
+    codigo: "",
+    dataAdmissao: "",
+    cbo: "",
     status: "ativo",
     salarioBruto: "",
-    beneficios: [{ descricao: "", valor: "" }],
-    descontos: [{ descricao: "", valor: "" }],
+    beneficios: [emptyLine()],
+    descontos: [
+      { codigo: "108", descricao: "I.N.S.S.", referencia: "", valor: "" },
+      { codigo: "107", descricao: "VALE TRANSPORTE", referencia: "", valor: "" },
+    ],
     observacoes: "",
   };
 }
@@ -94,16 +111,20 @@ function parseMoney(raw: string) {
 function toLines(items: FuncionarioLancamento[]): LineForm[] {
   return items.length
     ? items.map((item) => ({
+        codigo: item.codigo ?? "",
         descricao: item.descricao,
+        referencia: item.referencia ?? "",
         valor: item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
       }))
-    : [{ descricao: "", valor: "" }];
+    : [emptyLine()];
 }
 
 function fromLines(items: LineForm[]): FuncionarioLancamento[] {
   return items
     .map((item) => ({
+      codigo: item.codigo.trim() || undefined,
       descricao: item.descricao.trim(),
+      referencia: item.referencia.trim() || undefined,
       valor: parseMoney(item.valor),
     }))
     .filter((item) => item.descricao);
@@ -176,6 +197,9 @@ function Page() {
       nome: item.nome,
       cargo: item.cargo,
       empresa: item.empresa,
+      codigo: item.codigo ?? "",
+      dataAdmissao: item.dataAdmissao ?? "",
+      cbo: item.cbo ?? "",
       status: item.status,
       salarioBruto: item.salarioBruto.toLocaleString("pt-BR", {
         minimumFractionDigits: 2,
@@ -195,6 +219,9 @@ function Page() {
         nome: form.nome.trim(),
         cargo: form.cargo.trim(),
         empresa: form.empresa.trim() || undefined,
+        codigo: form.codigo.trim() || undefined,
+        dataAdmissao: form.dataAdmissao || undefined,
+        cbo: form.cbo.trim() || undefined,
         status: form.status,
         salarioBruto: bruto,
         beneficios,
@@ -275,7 +302,7 @@ function Page() {
         title="Funcionários"
         description="Cadastre o salário uma vez. Ao baixar o contracheque, o PDF usa esses dados com a data de hoje."
         actions={
-          <Button type="button" className={SOFT_BTN} onClick={openCreate}>
+          <Button type="button" onClick={openCreate}>
             <Plus className="size-4" />
             Novo funcionário
           </Button>
@@ -307,8 +334,9 @@ function Page() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Cód.</TableHead>
                   <TableHead>Funcionário</TableHead>
-                  <TableHead>Cargo</TableHead>
+                  <TableHead>Função</TableHead>
                   <TableHead>Empresa</TableHead>
                   <TableHead className="text-right">Bruto</TableHead>
                   <TableHead className="text-right">Líquido</TableHead>
@@ -319,6 +347,9 @@ function Page() {
               <TableBody>
                 {pager.pageItems.map((item) => (
                   <TableRow key={item.id}>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {item.codigo || "—"}
+                    </TableCell>
                     <TableCell>
                       <div className="font-medium">{item.nome}</div>
                       {item.ultimaCompetencia ? (
@@ -422,7 +453,34 @@ function Page() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cargo">Cargo</Label>
+                <Label htmlFor="codigo">Código</Label>
+                <Input
+                  id="codigo"
+                  value={form.codigo}
+                  onChange={(e) => setForm((c) => ({ ...c, codigo: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="admissao">Admissão</Label>
+                <Input
+                  id="admissao"
+                  type="date"
+                  value={form.dataAdmissao}
+                  onChange={(e) =>
+                    setForm((c) => ({ ...c, dataAdmissao: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cbo">CBO</Label>
+                <Input
+                  id="cbo"
+                  value={form.cbo}
+                  onChange={(e) => setForm((c) => ({ ...c, cbo: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cargo">Função</Label>
                 <Input
                   id="cargo"
                   value={form.cargo}
@@ -477,7 +535,7 @@ function Page() {
               onAdd={() =>
                 setForm((c) => ({
                   ...c,
-                  beneficios: [...c.beneficios, { descricao: "", valor: "" }],
+                  beneficios: [...c.beneficios, emptyLine()],
                 }))
               }
             />
@@ -488,7 +546,7 @@ function Page() {
               onAdd={() =>
                 setForm((c) => ({
                   ...c,
-                  descontos: [...c.descontos, { descricao: "", valor: "" }],
+                  descontos: [...c.descontos, emptyLine()],
                 }))
               }
             />
@@ -615,11 +673,21 @@ function LancamentosEditor({
         </Button>
       </div>
       {items.map((item, index) => (
-        <div key={index} className="grid grid-cols-[1fr_8rem] gap-2">
+        <div key={index} className="grid grid-cols-[4.5rem_1fr_5rem_7rem] gap-2">
+          <Input
+            placeholder="Cód."
+            value={item.codigo}
+            onChange={(e) => onChange(index, { codigo: e.target.value })}
+          />
           <Input
             placeholder="Descrição"
             value={item.descricao}
             onChange={(e) => onChange(index, { descricao: e.target.value })}
+          />
+          <Input
+            placeholder="Ref."
+            value={item.referencia}
+            onChange={(e) => onChange(index, { referencia: e.target.value })}
           />
           <Input
             placeholder="0,00"
