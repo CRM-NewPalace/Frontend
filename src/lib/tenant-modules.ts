@@ -219,6 +219,7 @@ export const SOLO_FINANCEIRO_ROUTES = [
   "/financeiro/contas-a-receber",
   "/financeiro/contas-a-pagar",
   "/financeiro/fluxo-caixa",
+  "/financeiro/funcionarios",
 ] as const;
 
 /** Telas de time / carteira — solo usa Funil em vez de Clientes. */

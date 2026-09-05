@@ -177,6 +177,7 @@ const FINANCEIRO_MODULES: NavLeaf[] = [
     icon: Receipt,
   },
   { to: "/financeiro/comissao", label: "Comissão", icon: Percent },
+  { to: "/financeiro/funcionarios", label: "Funcionários", icon: UsersRound },
 ];
 
 /** Operação da plataforma (super_admin). */
@@ -238,6 +239,7 @@ const PLATFORM_FINANCEIRO_MODULES: NavLeaf[] = [
     label: "Fluxo de caixa",
     icon: Banknote,
   },
+  { to: "/financeiro/funcionarios", label: "Funcionários", icon: UsersRound },
 ];
 
 const NAV_SECTIONS: {
